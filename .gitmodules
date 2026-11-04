@@ -28,3 +28,6 @@
 [submodule "third_party/heliboard"]
 	path = third_party/heliboard
 	url = https://github.com/HeliBorg/HeliBoard.git
+[submodule "third_party/mozc"]
+	path = third_party/mozc
+	url = https://github.com/google/mozc.git
