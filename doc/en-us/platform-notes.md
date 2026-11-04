@@ -2,7 +2,7 @@
 
 | Platform | Status |
 |---|---|
-| Android phones (`arm64-v8a`) | Spike S1 skeleton: a keyboard with placeholder candidates and no conversion engine yet; not yet run on a device. |
+| Android phones (`arm64-v8a`) | P0 spikes: the keyboard with English (S4) and Chinese (S2) engines; not yet run on a device. |
 | Android emulator (`x86_64`) | The development target for layouts and instrumentation tests where the host supports it; never evidence for latency or on-device AI. |
 | Android tablets and foldables | Planned for P1 together with one-handed mode; layouts never assume a phone screen size. |
 | Desktop hosts (Windows, Linux, macOS) | Build and test the engine core from P0; never a product target. |
@@ -43,8 +43,10 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 ## Known limitations
 
 - English mode suggests corrections, completions and next words from the S4 engine; the typed word
-  stays first and is what space commits. The other modes show placeholder candidates (the letters as
-  typed, capitalized and in capitals); no Chinese or Japanese conversion exists yet.
+  stays first and is what space commits. Chinese mode converts pinyin through librime (S2) once its
+  data has deployed on the device. Mixed and Japanese modes show placeholder candidates (the letters
+  as typed, capitalized and in capitals): Mozc is not in the app yet and the mixed coordinator (S6)
+  does not exist.
 - The keyboard view has no accessibility support (touch exploration) yet.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.
