@@ -159,6 +159,26 @@ int main(int argc, char** argv) {
   Check(swapped_rank == 0, "S2-swap-convert", "after the swap nihao -> 你好 at rank " + std::to_string(swapped_rank));
   rb::Shutdown();
 
+  // Prebuilt data, as the app ships it: the build host deploys and puts build/ into a copy of the
+  // shared data; the phone opens that with an empty user directory and never deploys.
+  const std::filesystem::path prebuilt_shared = user_dir.string() + "-prebuilt-shared";
+  const std::filesystem::path fresh_user = user_dir.string() + "-fresh";
+  std::filesystem::remove_all(prebuilt_shared);
+  std::filesystem::remove_all(fresh_user);
+  std::filesystem::copy(argv[1], prebuilt_shared, std::filesystem::copy_options::recursive);
+  std::filesystem::rename(swapped / "build", prebuilt_shared / "build");
+  std::filesystem::create_directories(fresh_user);
+  start = Clock::now();
+  Check(rb::Initialize(prebuilt_shared.string(), fresh_user.string()), "S2-prebuilt-open",
+        "session opens on prebuilt data with an empty user directory in " +
+            std::to_string(static_cast<int>(MillisSince(start))) + " ms");
+  const int prebuilt_rank = RankOf("nihao", "你好");
+  Check(prebuilt_rank == 0, "S2-prebuilt-convert", "on prebuilt data nihao -> 你好 at rank " + std::to_string(prebuilt_rank));
+  Check(RankOf("zhongguo", "中国") == 0, "S2-prebuilt-simplified", "on prebuilt data zhongguo -> 中国 at rank 0");
+  Check(!std::filesystem::exists(fresh_user / "build" / "luna_pinyin.table.bin"), "S2-prebuilt-no-compile",
+        "nothing was compiled into the user directory");
+  rb::Shutdown();
+
   std::printf("%s: %d failure(s)\n", failures == 0 ? "PASS" : "FAIL", failures);
   return failures == 0 ? 0 : 1;
 }

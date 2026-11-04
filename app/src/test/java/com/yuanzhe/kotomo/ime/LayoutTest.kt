@@ -118,6 +118,15 @@ class LayoutTest {
     }
 
     @Test
+    fun popupMarksFullAndHalfWidthOnlyWhenBothAreOffered() {
+        assertEquals(listOf(true, false, null), Layout.widthMarks(listOf("？", "?", "¿")))
+        assertEquals(listOf(true, true, true, false), Layout.widthMarks(listOf("“", "「", "『", "\"")))
+        // One kind only, or letters: nothing to tell apart.
+        assertEquals(listOf(null, null, null), Layout.widthMarks(listOf("、", "，", "；")))
+        assertEquals(listOf(null, null), Layout.widthMarks(listOf("3", "é")))
+    }
+
+    @Test
     fun punctuationFollowsTheMode() {
         assertEquals("，" to "。", Layout.punctuation(Mode.MIXED))
         assertEquals("、" to "。", Layout.punctuation(Mode.JAPANESE))

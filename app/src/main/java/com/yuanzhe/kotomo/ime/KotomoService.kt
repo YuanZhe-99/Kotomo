@@ -115,11 +115,24 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         engine.post {
             english = openEnglish()
             val files = RimeFiles(this)
-            if (files.hasBuild) rimeReady = Rime.initialize(files.shared.path, files.user.path)
+            // The app ships compiled data; it only needs unpacking (once per version). Without it
+            // (a build made without the Linux prebuild) the phone compiles in RimeDeployService.
+            val unpackMs = runCatching { files.unpack(this) }.getOrDefault(-1L)
+            files.user.mkdirs()
+            if (files.prebuilt) {
+                rimeReady = Rime.initialize(files.shared.path, files.user.path)
+                if (unpackMs > 0) {
+                    files.writeReport(unpackMs, 0, rimeReady)
+                    files.writeStatus(if (rimeReady) RimeFiles.Status.Prebuilt else RimeFiles.Status.Failed("prebuilt data did not open"))
+                }
+            } else if (files.hasBuild) {
+                rimeReady = Rime.initialize(files.shared.path, files.user.path)
+            }
             val open = rimeReady
+            val deploy = !files.prebuilt && !files.current
             main.post {
                 rimeOpen = open
-                if (!files.current) startDeploy()
+                if (deploy) startDeploy()
                 refresh(0)
             }
         }

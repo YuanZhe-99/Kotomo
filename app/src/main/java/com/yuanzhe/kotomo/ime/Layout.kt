@@ -225,6 +225,27 @@ data class Layout(val rows: List<Row>) {
             )
         }
 
+        /**
+         * Marks which popup choices are full-width (true) or half-width (false), for a popup that
+         * offers both kinds; null where it says nothing (letters, or a popup with one kind only).
+         * Notes: full-width covers the fullwidth forms block, CJK symbols and punctuation, and the
+         * curly quotes, ellipsis and dash used in Chinese text; half-width is printable ASCII.
+         */
+        fun widthMarks(choices: List<String>): List<Boolean?> {
+            fun kind(s: String): Boolean? {
+                val cp = s.codePointAt(0)
+                if (s.codePointCount(0, s.length) != 1) return null
+                return when {
+                    cp in 0xFF01..0xFF60 || cp in 0xFFE0..0xFFE6 || cp in 0x3000..0x303F ||
+                        cp in listOf(0x2018, 0x2019, 0x201C, 0x201D, 0x2026, 0x2014, 0x30FB) -> true
+                    cp in 0x21..0x7E && !Character.isLetterOrDigit(cp) -> false
+                    else -> null
+                }
+            }
+            val kinds = choices.map(::kind)
+            return if (true in kinds && false in kinds) kinds else choices.map { null }
+        }
+
         /** Returns the comma and full stop for [mode]: Chinese and Japanese forms or ASCII. */
         fun punctuation(mode: Mode) = when (mode) {
             Mode.MIXED, Mode.CHINESE -> "，" to "。"

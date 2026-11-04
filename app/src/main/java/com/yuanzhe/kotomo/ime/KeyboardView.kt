@@ -328,8 +328,15 @@ class PopupLayer(context: Context) : View(context) {
     }
     private val inkColor = context.getColor(R.color.kb_ink)
     private val onAccentColor = context.getColor(R.color.kb_on_accent)
+    private val captionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = res.getDimension(R.dimen.kb_hint_text)
+    }
+    private val fullWidth = context.getString(R.string.popup_full_width)
+    private val halfWidth = context.getString(R.string.popup_half_width)
 
     private var labels = emptyList<String>()
+    private var captions = emptyList<String?>()
     private var left = 0f
     private var top = 0f
     private val box = RectF()
@@ -346,6 +353,7 @@ class PopupLayer(context: Context) : View(context) {
     /** Opens the popup above the key spanning [anchorLeft]..[anchorRight] with its top at [anchorTop]. */
     fun show(labels: List<String>, selected: Int, anchorLeft: Float, anchorRight: Float, anchorTop: Float) {
         this.labels = labels
+        this.captions = Layout.widthMarks(labels).map { full -> full?.let { if (it) fullWidth else halfWidth } }
         this.selected = selected
         val w = labels.size * cell
         val center = (anchorLeft + anchorRight) / 2
@@ -385,8 +393,15 @@ class PopupLayer(context: Context) : View(context) {
                 canvas.drawRoundRect(box, radius - 3, radius - 3, selectedPaint)
             }
             textPaint.color = if (i == selected) onAccentColor else inkColor
-            val baseline = top + cellHeight / 2 - (textPaint.descent() + textPaint.ascent()) / 2
+            val caption = captions.getOrNull(i)
+            // With a full/half-width caption the glyph moves up to make room below it.
+            val center = if (caption == null) cellHeight / 2 else cellHeight * 0.4f
+            val baseline = top + center - (textPaint.descent() + textPaint.ascent()) / 2
             canvas.drawText(label, x + cell / 2, baseline, textPaint)
+            if (caption != null) {
+                captionPaint.color = textPaint.color
+                canvas.drawText(caption, x + cell / 2, top + cellHeight - captionPaint.descent() - 4, captionPaint)
+            }
         }
     }
 }

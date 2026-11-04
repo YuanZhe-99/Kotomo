@@ -39,4 +39,7 @@
     <string name="diag_rime_running">準備中…</string>
     <string name="diag_rime_failed">失敗：%1$s</string>
     <string name="diag_rime_partial">%1$d ms · 失敗的步驟：%2$s</string>
+    <string name="popup_full_width">全形</string>
+    <string name="popup_half_width">半形</string>
+    <string name="diag_rime_prebuilt">預先編譯 · 解壓 %1$d ms</string>
 </resources>

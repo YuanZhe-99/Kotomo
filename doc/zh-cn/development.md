@@ -22,6 +22,7 @@ java lexicon/CheckSamples.java          # S5 sample check; non-zero exit on a fa
 java tool/BuildEnglishDict.java         # S4 dictionary; assembleDebug and assembleRelease run it too
 sh core/english/tests/run-host.sh       # S4 host test (Linux or WSL: CMake, Ninja, g++, JDK)
 scripts/fetch-boost.sh                  # Boost headers for librime; needed before any native build
+scripts/prebuild-rime.sh                # compiled Chinese data for the APK (Linux or WSL); CI requires it
 scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test (Linux or WSL, Bazelisk)
 ```
 

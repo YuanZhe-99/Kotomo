@@ -31,6 +31,8 @@ class RimeFiles(context: Context) {
     sealed interface Status {
         data object Running : Status
         data object Done : Status
+        /** The app shipped compiled data; it was unpacked, nothing compiled on the phone. */
+        data object Prebuilt : Status
         /** The build works, but some deploy tasks failed ([tasks] names them). */
         data class Partial(val tasks: String) : Status
         data class Failed(val reason: String) : Status
@@ -43,6 +45,7 @@ class RimeFiles(context: Context) {
             when (status) {
                 Status.Running -> "running"
                 Status.Done -> "done"
+                Status.Prebuilt -> "prebuilt"
                 is Status.Partial -> "partial ${status.tasks}"
                 is Status.Failed -> "failed ${status.reason}"
             },
@@ -54,9 +57,46 @@ class RimeFiles(context: Context) {
         when {
             it == "running" -> Status.Running
             it == "done" -> Status.Done
+            it == "prebuilt" -> Status.Prebuilt
             it.startsWith("partial ") -> Status.Partial(it.removePrefix("partial "))
             it.startsWith("failed ") -> Status.Failed(it.removePrefix("failed "))
             else -> null
+        }
+    }
+
+    private val sharedStamp = File(shared, ".stamp")
+
+    /** Whether shared/ holds data compiled at build time (the app ships it when prebuilt). */
+    val prebuilt get() = File(shared, "build/default.yaml").isFile
+
+    /**
+     * Unpacks the bundled data into shared/ unless this version is already there.
+     * Returns: the milliseconds spent, or 0 when nothing had to be unpacked.
+     * Side effects: replaces shared/; when the data is prebuilt, removes a user/build compiled on
+     * the phone earlier, which librime would otherwise read first.
+     */
+    fun unpack(context: Context): Long {
+        if (sharedStamp.isFile && sharedStamp.readText() == stamp) return 0
+        val start = android.os.SystemClock.uptimeMillis()
+        shared.deleteRecursively()
+        copyAssets(context, "rime", shared)
+        sharedStamp.writeText(stamp)
+        if (prebuilt) {
+            File(user, "build").deleteRecursively()
+            deployed.delete()
+        }
+        return android.os.SystemClock.uptimeMillis() - start
+    }
+
+    /** Copies the asset tree at [path] into [dest]. */
+    private fun copyAssets(context: Context, path: String, dest: File) {
+        val children = context.assets.list(path).orEmpty()
+        if (children.isEmpty()) {
+            dest.parentFile?.mkdirs()
+            context.assets.open(path).use { input -> dest.outputStream().use { input.copyTo(it) } }
+        } else {
+            dest.mkdirs()
+            for (child in children) copyAssets(context, "$path/$child", File(dest, child))
         }
     }
 
@@ -124,11 +164,12 @@ class RimeDeployService : Service() {
         var step = "extract"
         var failedTasks = ""
         val failure: String? = try {
-            files.shared.deleteRecursively()
-            copyAssets("rime", files.shared)
+            files.unpack(this)
             step = "load"
             files.staging.deleteRecursively()
-            files.staging.mkdirs()
+            // librime creates build/ with std::filesystem before compiling default.yaml and only
+            // logs a failure; on a device build/ stayed empty, so it is created here first.
+            File(files.staging, "build").mkdirs()
             // initialize may fail to open a session before anything is deployed; deploy anyway.
             Rime.initialize(files.shared.path, files.staging.path)
             step = "deploy"
@@ -165,18 +206,6 @@ class RimeDeployService : Service() {
     private fun peakRssKb(): Long = runCatching {
         File("/proc/self/status").readLines().first { it.startsWith("VmHWM:") }.filter(Char::isDigit).toLong()
     }.getOrDefault(0L)
-
-    /** Copies the asset tree at [path] into [dest]. */
-    private fun copyAssets(path: String, dest: File) {
-        val children = assets.list(path).orEmpty()
-        if (children.isEmpty()) {
-            dest.parentFile?.mkdirs()
-            assets.open(path).use { input -> dest.outputStream().use { input.copyTo(it) } }
-        } else {
-            dest.mkdirs()
-            for (child in children) copyAssets("$path/$child", File(dest, child))
-        }
-    }
 
     companion object {
         const val ACTION_DONE = "com.yuanzhe.kotomo.RIME_DEPLOYED"

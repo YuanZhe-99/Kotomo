@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
                     stringResource(R.string.diag_rime),
                     when (rimeStatus) {
                         RimeFiles.Status.Running -> stringResource(R.string.diag_rime_running)
+                        RimeFiles.Status.Prebuilt -> stringResource(R.string.diag_rime_prebuilt, summary.rimeDeployMs?.toInt() ?: 0)
                         is RimeFiles.Status.Failed -> stringResource(R.string.diag_rime_failed, rimeStatus.reason)
                         is RimeFiles.Status.Partial -> stringResource(R.string.diag_rime_partial, summary.rimeDeployMs?.toInt() ?: 0, rimeStatus.tasks)
                         else -> summary.rimeDeployMs?.let { stringResource(R.string.diag_ms_mb, it.toInt(), (summary.rimeDeployPeakKb ?: 0) / 1024.0) }
@@ -169,10 +170,23 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Measure(label: String, value: String?) {
-        Row {
-            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Text(value ?: stringResource(R.string.diag_none), style = MaterialTheme.typography.bodyMedium)
+        val shown = value ?: stringResource(R.string.diag_none)
+        // A long value (an error report) goes under its label rather than squeezing it.
+        if (shown.length > LONG_VALUE) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+                Text(shown, style = MaterialTheme.typography.bodySmall)
+            }
+        } else {
+            Row {
+                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Text(shown, style = MaterialTheme.typography.bodyMedium)
+            }
         }
+    }
+
+    private companion object {
+        const val LONG_VALUE = 40
     }
 }
 

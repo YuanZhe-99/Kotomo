@@ -154,6 +154,9 @@ if(ANDROID)
   set_target_properties(kotomo_rime PROPERTIES LINK_DEPENDS
                         "${CMAKE_CURRENT_SOURCE_DIR}/jni/exports.map")
 else()
+  # Host: the prebuild tool (scripts/prebuild-rime.sh) and the tests.
+  add_executable(kotomo_rime_prebuild tools/prebuild.cc)
+  target_link_libraries(kotomo_rime_prebuild PRIVATE kotomo_rime_bridge)
   enable_testing()
   add_subdirectory(tests)
 endif()

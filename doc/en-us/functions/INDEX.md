@@ -31,3 +31,4 @@ side effects and notes where non-trivial).
 | `scripts/build-mozc.sh` | Builds Mozc and the glue for the host or for Android ABIs (Android needs x86_64 Linux or macOS) | `--abi` |
 | `.github/workflows/mozc.yml` | CI: host tests and the Android Mozc libraries as a hash-listed artifact | `mozc` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | librime deploy in its own process into a staging directory, the file layout under `filesDir/rime`, the swap and the deploy report | `RimeDeployService`, `RimeFiles.promote` |
+| `core/rime/tools/prebuild.cc`, `scripts/prebuild-rime.sh` | Compile librime's data on a Linux host into the shared data the APK ships | `main` |

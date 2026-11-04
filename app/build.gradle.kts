@@ -95,19 +95,35 @@ val englishDict = tasks.register<EnglishDictTask>("englishDict") {
 }
 
 /**
- * Stages librime's shared data (schemas, dictionaries, OpenCC tables) as assets under `rime/` with
- * core/rime/stage-data.cmake, run by the SDK's CMake.
- * Notes: the data is deployed (compiled) on the device at first start; only text ships.
+ * Puts librime's data into the assets under `rime/`: the prebuilt data from
+ * scripts/prebuild-rime.sh (staged data plus the compiled `build/`) when it exists, otherwise only
+ * the staged text data from core/rime/stage-data.cmake, which the phone then compiles itself.
+ * Notes: prebuilding needs a Linux host (CI, or WSL on Windows); with KOTOMO_REQUIRE_RIME_PREBUILT
+ * set (CI) a missing prebuild fails the build instead of shipping uncompiled data.
  */
 abstract class RimeDataTask : DefaultTask() {
     @get:InputFile abstract val script: RegularFileProperty
     @get:InputFile abstract val cmake: RegularFileProperty
     @get:Internal abstract val root: DirectoryProperty
+    @get:Internal abstract val prebuilt: DirectoryProperty
+    @get:Input abstract val requirePrebuilt: Property<Boolean>
     @get:OutputDirectory abstract val outputDir: DirectoryProperty
     @get:Inject abstract val exec: ExecOperations
+    @get:Inject abstract val files: FileSystemOperations
 
     @TaskAction
     fun stage() {
+        val compiled = prebuilt.get().asFile
+        if (compiled.resolve("build/default.yaml").isFile) {
+            files.sync {
+                from(compiled)
+                into(outputDir.dir("rime"))
+            }
+            return
+        }
+        check(!requirePrebuilt.get()) { "no prebuilt librime data in $compiled; run scripts/prebuild-rime.sh" }
+        logger.warn("rimeData: no prebuilt librime data; the phone will compile it on first use")
+        files.delete { delete(outputDir.dir("rime")) }
         exec.exec {
             commandLine(
                 cmake.get().asFile.path,
@@ -125,6 +141,8 @@ val rimeData = tasks.register<RimeDataTask>("rimeData") {
         it.file("cmake/3.22.1/bin/" + if (System.getProperty("os.name").startsWith("Windows")) "cmake.exe" else "cmake")
     }
     root = rootProject.layout.projectDirectory
+    prebuilt = rootProject.layout.projectDirectory.dir("build/rime-prebuilt")
+    requirePrebuilt = providers.environmentVariable("KOTOMO_REQUIRE_RIME_PREBUILT").map { it == "1" }.orElse(false)
     outputDir = layout.buildDirectory.dir("generated/rime")
     // The staged data follows the submodules; the script rewrites only changed files, so it always runs.
     outputs.upToDateWhen { false }

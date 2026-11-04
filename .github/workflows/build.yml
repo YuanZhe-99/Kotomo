@@ -38,6 +38,12 @@ jobs:
       - name: Fetch Boost headers (librime)
         run: scripts/fetch-boost.sh
 
+      # The app ships compiled Chinese data, so the phone never compiles it on first use.
+      - name: Prebuild Chinese data (librime on the host)
+        run: |
+          sudo apt-get install -y ninja-build > /dev/null
+          scripts/prebuild-rime.sh
+
       # The Rime data staging runs the SDK's CMake before the native build would install it.
       - name: Install CMake and the NDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "cmake;3.22.1" "ndk;30.0.16248370" > /dev/null
@@ -57,6 +63,8 @@ jobs:
 
       # AGP downloads the platform and build tools named in app/build.gradle.kts.
       - name: Build and check
+        env:
+          KOTOMO_REQUIRE_RIME_PREBUILT: "1"
         run: ./gradlew --no-daemon check assembleDebug assembleRelease
 
       - name: Verify release signature
