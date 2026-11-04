@@ -40,6 +40,13 @@ bool Deploy();
 /// Returns the deploy tasks that failed in the last Deploy(), comma-separated, or "".
 std::string DeployFailures();
 
+/// Probes the open session with fixed input and describes what librime does with it.
+/// Returns: one line: the current schema, ascii_mode, the candidates for `nihao` (count/first),
+///   whether the key `n` was handled and the preedit it left; or why there is no session.
+/// Side effects: clears the composition before and after.
+/// Notes: for the diagnostics page; it types only its own probe, never the user's text.
+std::string SelfCheck();
+
 /// Replaces the whole raw input (for example a pinyin span) and recomputes candidates.
 bool SetInput(const std::string& input);
 

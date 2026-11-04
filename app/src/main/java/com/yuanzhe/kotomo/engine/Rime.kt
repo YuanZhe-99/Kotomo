@@ -36,6 +36,13 @@ object Rime {
      */
     external fun deploy(): Boolean
 
+    /**
+     * Probes the open session with fixed input (`nihao`, the key n) for the diagnostics page.
+     * Returns: one line naming the schema, ascii_mode, the probe's candidates and whether the
+     * key was handled, or why there is no session. Side effects: clears the composition.
+     */
+    external fun selfCheck(): String
+
     /** Names the deploy tasks that failed in the last [deploy], comma-separated, or "". */
     external fun deployFailures(): String
 

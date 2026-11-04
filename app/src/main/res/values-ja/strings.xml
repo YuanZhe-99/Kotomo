@@ -39,7 +39,6 @@
     <string name="diag_rime_running">準備中…</string>
     <string name="diag_rime_failed">失敗：%1$s</string>
     <string name="diag_rime_partial">%1$d ms · 失敗した手順：%2$s</string>
-    <string name="popup_full_width">全角</string>
-    <string name="popup_half_width">半角</string>
     <string name="diag_rime_prebuilt">ビルド済み · 展開 %1$d ms</string>
+    <string name="diag_rime_check">中国語エンジンの自己診断</string>
 </resources>

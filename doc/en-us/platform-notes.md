@@ -43,10 +43,10 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 ## Known limitations
 
 - English mode suggests corrections, completions and next words from the S4 engine; the typed word
-  stays first and is what space commits. Chinese mode converts pinyin through librime (S2) once its
-  data has deployed on the device. Mixed and Japanese modes show placeholder candidates (the letters
-  as typed, capitalized and in capitals): Mozc is not in the app yet and the mixed coordinator (S6)
-  does not exist.
+  stays first and is what space commits. Chinese mode converts pinyin through librime (S2) with data
+  compiled at build time; Mixed mode does the same until the mixed coordinator (S6) exists. Japanese
+  mode shows placeholder candidates (the letters as typed, capitalized and in capitals): Mozc is not
+  in the app yet.
 - The keyboard view has no accessibility support (touch exploration) yet.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.

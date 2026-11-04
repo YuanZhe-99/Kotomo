@@ -39,7 +39,6 @@
     <string name="diag_rime_running">准备中…</string>
     <string name="diag_rime_failed">失败：%1$s</string>
     <string name="diag_rime_partial">%1$d ms · 失败的步骤：%2$s</string>
-    <string name="popup_full_width">全角</string>
-    <string name="popup_half_width">半角</string>
     <string name="diag_rime_prebuilt">预编译 · 解压 %1$d ms</string>
+    <string name="diag_rime_check">中文引擎自检</string>
 </resources>

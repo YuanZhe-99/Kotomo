@@ -65,6 +65,16 @@ class RimeFiles(context: Context) {
     }
 
     private val sharedStamp = File(shared, ".stamp")
+    private val checkFile = File(root, "check.txt")
+
+    /** Records what the keyboard found when it opened librime (keyboard process). */
+    fun writeCheck(text: String) {
+        root.mkdirs()
+        checkFile.writeText(text)
+    }
+
+    /** Reads the keyboard's last librime check, or null. */
+    fun readCheck(): String? = runCatching { checkFile.readText() }.getOrNull()
 
     /** Whether shared/ holds data compiled at build time (the app ships it when prebuilt). */
     val prebuilt get() = File(shared, "build/default.yaml").isFile

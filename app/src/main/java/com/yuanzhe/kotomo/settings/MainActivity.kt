@@ -119,6 +119,7 @@ class MainActivity : ComponentActivity() {
                 Measure(stringResource(R.string.diag_candidates), summary.candidateDraw?.let { stringResource(R.string.diag_series, it.p50, it.p95, it.max, it.count) })
                 Measure(stringResource(R.string.diag_cold), summary.coldStartMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
                 Measure(stringResource(R.string.diag_compose), summary.composeFirstFrameMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
+                RimeFiles(this@MainActivity).readCheck()?.let { Measure(stringResource(R.string.diag_rime_check), it) }
                 val rimeStatus = RimeFiles(this@MainActivity).readStatus()
                 Measure(
                     stringResource(R.string.diag_rime),

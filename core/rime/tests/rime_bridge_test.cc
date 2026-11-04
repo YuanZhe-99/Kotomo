@@ -177,6 +177,14 @@ int main(int argc, char** argv) {
   Check(RankOf("zhongguo", "中国") == 0, "S2-prebuilt-simplified", "on prebuilt data zhongguo -> 中国 at rank 0");
   Check(!std::filesystem::exists(fresh_user / "build" / "luna_pinyin.table.bin"), "S2-prebuilt-no-compile",
         "nothing was compiled into the user directory");
+  // The keyboard's own path: keys one by one on a freshly opened session (no SetLearning call).
+  const std::string self_check = rb::SelfCheck();
+  Check(self_check.find("key_n=handled") != std::string::npos && self_check.find("ascii_mode=off") != std::string::npos,
+        "S2-prebuilt-keys", "self-check: " + self_check);
+  rb::Clear();
+  for (const char c : std::string("nihao")) rb::ProcessKey(c, 0);
+  Check(rb::ProcessKey(0x20, 0) && rb::TakeCommit() == "你好", "S2-prebuilt-space",
+        "keys n i h a o + space commit 你好 on prebuilt data");
   rb::Shutdown();
 
   std::printf("%s: %d failure(s)\n", failures == 0 ? "PASS" : "FAIL", failures);

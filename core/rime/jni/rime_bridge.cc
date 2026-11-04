@@ -80,6 +80,24 @@ bool Deploy() {
 
 std::string DeployFailures() { return failed_tasks; }
 
+std::string SelfCheck() {
+  if (api == nullptr) return "librime not initialized";
+  if (session == 0) return "no session";
+  std::string out;
+  char schema[128] = {};
+  out += api->get_current_schema(session, schema, sizeof schema) ? std::string("schema=") + schema : "schema=?";
+  out += api->get_option(session, "ascii_mode") ? " ascii_mode=on" : " ascii_mode=off";
+  api->clear_composition(session);
+  api->set_input(session, "nihao");
+  const auto candidates = Candidates(5);
+  out += " nihao=" + std::to_string(candidates.size()) + (candidates.empty() ? "" : "/" + candidates[0].text);
+  api->clear_composition(session);
+  const bool handled = api->process_key(session, 'n', 0);
+  out += std::string(" key_n=") + (handled ? "handled" : "not_handled") + " preedit='" + Composition() + "'";
+  api->clear_composition(session);
+  return out;
+}
+
 bool SetInput(const std::string& input) {
   return session != 0 && api->set_input(session, input.c_str());
 }

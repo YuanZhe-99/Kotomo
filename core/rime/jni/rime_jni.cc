@@ -57,6 +57,11 @@ JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_deploy(JNIEnv*, j
   return rb::Deploy();
 }
 
+/// Probes the session; see rime_bridge::SelfCheck.
+JNIEXPORT jstring JNICALL Java_com_yuanzhe_kotomo_engine_Rime_selfCheck(JNIEnv* env, jobject) {
+  return ToJava(env, rb::SelfCheck());
+}
+
 /// Names the deploy tasks that failed; see rime_bridge::DeployFailures.
 JNIEXPORT jstring JNICALL Java_com_yuanzhe_kotomo_engine_Rime_deployFailures(JNIEnv* env, jobject) {
   return ToJava(env, rb::DeployFailures());

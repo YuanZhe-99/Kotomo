@@ -117,17 +117,30 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val files = RimeFiles(this)
             // The app ships compiled data; it only needs unpacking (once per version). Without it
             // (a build made without the Linux prebuild) the phone compiles in RimeDeployService.
-            val unpackMs = runCatching { files.unpack(this) }.getOrDefault(-1L)
-            files.user.mkdirs()
-            if (files.prebuilt) {
-                rimeReady = Rime.initialize(files.shared.path, files.user.path)
-                if (unpackMs > 0) {
-                    files.writeReport(unpackMs, 0, rimeReady)
-                    files.writeStatus(if (rimeReady) RimeFiles.Status.Prebuilt else RimeFiles.Status.Failed("prebuilt data did not open"))
+            // Every step is recorded for the diagnostics page: what was unpacked, whether
+            // librime opened, and what it does with a fixed probe.
+            val check = StringBuilder()
+            try {
+                val unpackMs = files.unpack(this)
+                check.append("unpack=").append(if (unpackMs > 0) "${unpackMs}ms" else "kept")
+                files.user.mkdirs()
+                check.append(" prebuilt=").append(files.prebuilt).append(" userBuild=").append(files.hasBuild)
+                if (files.prebuilt) {
+                    rimeReady = Rime.initialize(files.shared.path, files.user.path)
+                    if (unpackMs > 0) {
+                        files.writeReport(unpackMs, 0, rimeReady)
+                        files.writeStatus(if (rimeReady) RimeFiles.Status.Prebuilt else RimeFiles.Status.Failed("prebuilt data did not open"))
+                    }
+                } else if (files.hasBuild) {
+                    rimeReady = Rime.initialize(files.shared.path, files.user.path)
                 }
-            } else if (files.hasBuild) {
-                rimeReady = Rime.initialize(files.shared.path, files.user.path)
+                check.append(" open=").append(rimeReady)
+                if (rimeReady) check.append(" | ").append(Rime.selfCheck())
+            } catch (e: Throwable) {
+                rimeReady = false
+                check.append(" error=").append(e.javaClass.simpleName).append(": ").append(e.message.orEmpty())
             }
+            runCatching { files.writeCheck(check.toString()) }
             val open = rimeReady
             val deploy = !files.prebuilt && !files.current
             main.post {
@@ -349,7 +362,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             refresh(downTime)
             return
         }
-        if (mode == Mode.CHINESE && !direct && onChineseKey(action, longPress, downTime)) {
+        if (usesRime && !direct && onChineseKey(action, longPress, downTime)) {
             refresh(0)
             return
         }
@@ -474,7 +487,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (state.preedit.isNotEmpty()) ic.setComposingText(state.preedit, 1)
         chinesePreedit = state.preedit
         chineseCandidates = state.candidates
-        if (mode == Mode.CHINESE) {
+        if (usesRime) {
             candidates = chineseCandidates
             candidateBar.show(candidates, downTime)
             shownCandidates.value = candidates
@@ -504,7 +517,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Side effects: in English mode also types a space and asks for next-word predictions.
      */
     private fun pick(index: Int) {
-        if (mode == Mode.CHINESE && !direct) {
+        if (usesRime && !direct) {
             engine.post {
                 val handled = rimeReady && Rime.selectCandidate(index)
                 val state = rimeState(handled)
@@ -551,7 +564,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val gen = ++generation
         candidates = when {
             direct -> emptyList()
-            mode == Mode.CHINESE -> chineseCandidates
+            usesRime -> chineseCandidates
             mode == Mode.ENGLISH -> if (raw.isEmpty()) emptyList() else listOf(raw)
             raw.isEmpty() -> emptyList()
             else -> listOf(raw, raw.replaceFirstChar(Char::uppercase), raw.uppercase()).distinct()
@@ -562,9 +575,15 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (!direct && mode == Mode.ENGLISH && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
     }
 
+    /**
+     * Whether pinyin goes through librime: Chinese mode, and for now Mixed mode too, until the
+     * mixed coordinator (spike S6) handles pinyin, romaji and English in one string.
+     */
+    private val usesRime get() = mode == Mode.CHINESE || mode == Mode.MIXED
+
     /** Says why Chinese mode cannot convert yet (dictionary being prepared or failed), or null. */
     private fun chineseHint(): String? {
-        if (mode != Mode.CHINESE || direct || rimeOpen) return null
+        if (!usesRime || direct || rimeOpen) return null
         return when (RimeFiles(this).readStatus()) {
             is RimeFiles.Status.Failed -> getString(R.string.bar_rime_failed)
             else -> getString(R.string.bar_rime_preparing)
