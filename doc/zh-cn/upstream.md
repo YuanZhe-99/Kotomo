@@ -11,6 +11,12 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 嵌入接口 `rime_api.h`：会话、`process_key`、`set_input`、`get_context`（预编辑、光标、候选页）、`get_commit`、候选选择与迭代、`set_option`、`register_module` | 拼音片段可以经 `set_input` 与 `get_context` 转换；更深的接入走插件模块 | 已阅读 |
 | 模糊音和双拼都是方案中的 `speller/algebra` 规则 | 修改模糊音开关会改写方案并重新部署，所以部署耗时很重要 | 已阅读 |
 | Trime 用 Gradle 的 CMake 集成构建 librime（NDK 30.0.16248370）；fcitx5-android 链接独立 prebuilder 产出的静态库 | 两种构建方式都可用 | 已阅读 |
+| 1.17.0 可用 NDK 30 与 CMake 3.22.1，按 Kotomo 自己的目标列表（`core/rime/CMakeLists.txt`）为 Android 构建；它对 Boost 的使用全部只需头文件，Boost 1.92.0 的头文件即可；没有 glog 时使用 `no_logging.h` | `libkotomo_rime.so`，每个 ABI 去符号后约 2.9 MB，16 KB 页面，只导出 JNI；输入内容不可能进入日志 | 已构建（arm64-v8a、x86_64），已在主机上测试 |
+| 没有关闭学习的运行时开关；`translator/enable_user_dict: false` 使用户词典不被创建，因此既不读也不写 | 敏感输入框选用方案 `luna_pinyin_simp_private` | 主机测试 T12-S2 |
+| 部署器在解析 `__include` 与 `__patch` 之前就从原始方案文件读取 `schema/schema_id`；只靠补丁设置 ID 的方案会被静默跳过 | 派生方案按字面写出 `schema:` 块 | 已在主机上测试 |
+| `RimeDeployWorkspace` 同步部署，期间拒绝会话（主机：全新部署 5–15 s，未变化时约 0.2 s；峰值 RSS 294 MB） | 部署完成前，中文模式直接输入字母；要在部署期间继续中文输入，需要预构建数据或分阶段部署（PLAN §4.2） | 已在主机上测试；真机上 NOT_RUN |
+| 会话接口（`set_input` 与候选遍历）在主机上每个前缀约 0.2 ms | 足以按片段调用（PLAN §5.4） | 仅主机 |
+| 子模块不遵循仓库的 `.gitattributes`，而 CMake 的 `file(READ)`/`file(WRITE)` 在 Windows 上会转换换行符 | `core/rime/stage-data.cmake` 用 `configure_file(… NEWLINE_STYLE LF)` 写出共享数据，在各主机上逐字节相同 | 已在 Windows 与 Linux 上构建 |
 
 ## Mozc
 
@@ -21,12 +27,21 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 自带的 JNI 注册在 Google 的类 `com.google.android.apps.inputmethod.libs.mozc.session.MozcJni` 上，只暴露 `evalCommand`（序列化的 `commands::Command`）、`onPostLoad` 和 `getDataVersion`；Android 客户端没有开源 | Kotomo 自写客户端和 C++ 胶水层 | 已阅读 |
 | `Segment::SegmentType` 有 `FREE`、`FIXED_BOUNDARY`、`FIXED_VALUE`、`SUBMITTED` 与 `HISTORY`；`ImmutableConverter::Resegment` 保留 `FIXED_VALUE` 片段的值和 lid/rid，只用于转换请求 | 在转换器层的胶水代码中，可以把跨语言片段固定在日文整句转换里；预测候选无法携带固定片段 | 已阅读 |
 | 只发布标签（最近检查时为 `3.35.6354`） | 子模块跟随最新标签 | 已阅读 |
+| 3.35.6354（`0136c357`）没有 git 子模块；依赖通过 Bazel 模块（abseil-cpp 20260107.1、protobuf 34.1）与 `src/build_tools/update_deps.py`（Android NDK r29）获取 | `git submodule update --init third_party/mozc` 即可，其余由 Bazel 获取 | 已构建 |
+| 主机构建可在 aarch64 Linux 上运行（Debian 13、gcc 14.2、经 Bazelisk 1.30.0 的 Bazel 9.0.2）；Bazel 的 `local_jdk` 需要 `JAVA_HOME` | 主机测试在 Windows on ARM64 的 WSL 中运行 | 已构建 |
+| rules_android_ndk 获取 NDK 时会运行 NDK 的 clang，而 NDK 只有 x86_64 Linux 与 macOS 的主机工具；只要有 NDK，aarch64 Linux 上连主机构建也会失败 | Android 库由 x86_64 Linux 上的 `.github/workflows/mozc.yml` 构建 | 已构建 |
+| `converter::Converter::ApplyConversion` 是公开接口；手工构造的含 `FIXED_VALUE` 片段的分段会保留固定的值，其余部分由 Mozc 分段并转换 | PLAN §5.4 的固定片段转换在转换器层可行，不需要退路：固定池袋 + `にかいにいこう` → 池袋に買いに行こう | 主机测试 |
+| `DictionaryInterface::LookupExact` 返回带 lid 与 rid 的词条（池袋/いけぶくろ：1924/1924）；拼音拼写没有词条 | 固定片段取同一词条的 ID；未知词使用普通名词 | 主机测试 |
+| `//converter`、`//session:session_handler` 与 `//dictionary:dictionary_interface` 只对 Mozc 自身可见 | Kotomo 的胶水层用 `--nocheck_visibility` 构建，而不是打补丁 | 已构建 |
+| 只有提交转换时才学习；`Config.incognito_mode` 与 `Request.is_incognito_mode` 关闭一切可变操作 | 胶水层从不提交，并在敏感输入框中同时设置两者 | 已阅读，主机测试 |
+| 助词は的罗马字 `wa` 会转为わ：普通会话中 `watashiwanihonjin` → 私羽日本人 | 语料行 T03-001 需要协调层处理 | 主机测试 |
 
 ## OpenCC
 
 | 要点 | 影响 | 核实 |
 |---|---|---|
 | Apache-2.0；提供简繁、台湾与香港（含词组，`s2twp`、`s2hk` 等）以及日文新字体（`t2jp`、`jp2t`，官方称"有限支持"）的配置 | 地区转换直接使用；其新字体表只是词库流水线的输入之一 | 已阅读 |
+| 1.4.2 的数据构建需要 Python 和它自己的 `opencc_dict`；库本身也能读 `text` 词典；`Config::NewFromFile` 也会加载标记为 `may_output_tofu` 的词典（`TSCharactersExt`），缺少它会使整个配置失败 | Kotomo 分发文本词典，改写 `t2s.json`，并按 `extract_tofu_risk.py` 的方式生成 `TSCharactersExt.txt`（`core/rime/stage-data.cmake`） | 已在主机上测试 |
 
 ## 英文引擎
 

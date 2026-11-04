@@ -23,6 +23,8 @@ java -Xmx4g lexicon/CrossLexicon.java   # S5 lexicon into build/lexicon/; --offl
 java lexicon/CheckSamples.java          # S5 sample check; non-zero exit on a failed line
 java tool/BuildEnglishDict.java         # S4 dictionary; assembleDebug and assembleRelease run it too
 sh core/english/tests/run-host.sh       # S4 host test (Linux or WSL: CMake, Ninja, g++, JDK)
+scripts/fetch-boost.sh                  # Boost headers for librime; needed before any native build
+scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test (Linux or WSL, Bazelisk)
 ```
 
 The host engine tests and the conversion corpus runner join this list with their first code;

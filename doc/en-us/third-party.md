@@ -18,6 +18,15 @@ components.
 | AOSP LatinIME native suggestion core, through HeliBoard | `HeliBorg/HeliBoard` v4.2 (`0c60dffb`), `app/src/main/jni/src` | English correction, completion and prediction (`libkotomo_english.so`, S4) | Apache-2.0 (AOSP files); HeliBoard as a whole GPL-3.0 | none; Kotomo's own JNI bridge replaces LatinIME's JNI files | ship the Apache-2.0 license text and keep the AOSP notices |
 | AOSP LatinIME dicttool (build tool only) | AOSP `platform/packages/inputmethods/LatinIME` `127336e9` | builds the English dictionary at build time; not shipped | Apache-2.0 | none | none for the app |
 | English word list: Helium314/aosp-dictionaries `main_en_US__experimental.combined`, derived from the Leipzig Corpora Collection | codeberg `Helium314/aosp-dictionaries` `ff0cd52b` | English vocabulary and bigrams (`main_en_us.dict`, generated, shipped in the APK) | CC BY 4.0 (Leipzig: corpora for download are licensed under CC BY) | converted to LatinIME binary format 202 | attribution to the Leipzig Corpora Collection (Universität Leipzig) and to HeliBoard's aosp-dictionaries on the sources screen, with a link to CC BY 4.0 and a note that the data was converted |
+| librime | `rime/librime` 1.17.0 (`33e78140`); bundles darts-clone and utf8-cpp headers | Chinese engine (`libkotomo_rime.so`, S2) | BSD-3-Clause (darts-clone BSD-2-Clause, utf8-cpp BSL-1.0) | none; built without plugins and logging | keep the copyright and license notices |
+| LevelDB | `google/leveldb` 1.23 (`99b3c03b`) | librime's user dictionary | BSD-3-Clause | none | notice |
+| marisa-trie | `s-yata/marisa-trie` v0.3.1 (`3e87d53b`) | librime and OpenCC tries | BSD-2-Clause or LGPL-2.1-or-later, used under BSD-2-Clause | none | notice |
+| yaml-cpp | `jbeder/yaml-cpp` 0.9.0 (`56e3bb55`) | librime configuration | MIT | none | notice |
+| OpenCC | `BYVoid/OpenCC` ver.1.4.2 (`025f371d`); bundles rapidjson and darts-clone | Traditional → Simplified inside librime | Apache-2.0 (rapidjson MIT) | none; text dictionaries and a rewritten `t2s.json` are staged at build time | license and NOTICE; state that `t2s.json` was converted |
+| Boost (headers) | boost.org 1.92.0 | headers for librime | BSL-1.0 | none | license text with source distributions |
+| rime-luna-pinyin, rime-prelude, rime-essay, rime-stroke | `rime/*` at `56b934b0`, `082425ea`, `054920de`, `1e8fff9b` | pinyin schema, dictionary, defaults, language model and stroke lookup | LGPL-3.0 | none; Kotomo adds `default.custom.yaml` and the schema `luna_pinyin_simp_private` | ship the LGPL-3.0 and GPL-3.0 texts and provide the data source |
+| Mozc | `google/mozc` 3.35.6354 (`0136c357`), submodule `third_party/mozc` | Japanese conversion (`libkotomo_mozc.so` and `mozc.data`, S3; not in the app yet) | BSD-3-Clause; dictionary data under the NAIST IPAdic notice with the ICOT terms, a public-domain Okinawa dictionary and Google's additions | none; Kotomo's glue is separate (`core/mozc`) | ship Mozc's LICENSE in full, including the NAIST notice and the ICOT "NO WARRANTY" section |
+| japanese-usage-dictionary, Abseil, Protocol Buffers | fetched by Mozc's Bazel build (usage dictionary 2025-01-25, abseil-cpp 20260107.1, protobuf 34.1) | compiled into `mozc.data` and `libkotomo_mozc.so` | BSD-2-Clause; Apache-2.0; BSD-3-Clause | none | notices and license texts |
 
 ## Planned components
 
@@ -26,10 +35,6 @@ modifications and obligations when P0 adds it; spike S8 completes the audit.
 
 | Component | License | Planned use | Notes |
 |---|---|---|---|
-| librime | BSD-3-Clause | Chinese engine | with Boost, LevelDB, marisa and yaml-cpp, whose licenses are recorded when they are built |
-| Mozc | BSD-3-Clause; dictionary data under the IPAdic (NAIST and ICOT) notice, plus public-domain and Google entries | Japanese engine and dictionary | the dictionary notices ship with the data |
-| OpenCC | Apache-2.0 | Simplified, Traditional and regional conversion | shared with librime |
-| A Chinese schema and dictionary set | rime-ice GPL-3.0 only; rime_wanxiang CC BY 4.0; rime-luna-pinyin and rime-essay LGPL-3.0 | Chinese vocabulary and language model | chosen in spike S2; GPL-3.0-only data makes the whole distribution GPL-3.0-only |
 | CLDR annotations | Unicode License v3 | emoji keywords in four languages | — |
 | SudachiDict | Apache-2.0 | extra Japanese names, places, stations and loanwords | optional |
 | Noto Emoji | images Apache-2.0, font OFL-1.1, flags public domain | emoji style pack | — |

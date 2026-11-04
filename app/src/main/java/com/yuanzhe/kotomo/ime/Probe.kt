@@ -55,6 +55,8 @@ object Probe {
     var coldStartMs: Long? = null
     /** Emoji panel (Compose) attach → first onDraw, for the first opening in this process. */
     var composeFirstFrameMs: Long? = null
+    /** librime deploy (compiling the schemas) at the most recent engine start. */
+    var rimeDeployMs: Long? = null
     /** Process PSS in kilobytes, sampled when the keyboard was last shown. */
     var pssKb: Long? = null
 
@@ -67,6 +69,7 @@ object Probe {
         val coldStartMs: Long?,
         val composeFirstFrameMs: Long?,
         val pssKb: Long?,
+        val rimeDeployMs: Long?,
     )
 
     /** Percentiles of one latency series. */
@@ -90,6 +93,7 @@ object Probe {
             coldStartMs?.let { putLong("cold", it) }
             composeFirstFrameMs?.let { putLong("compose", it) }
             pssKb?.let { putLong("pss", it) }
+            rimeDeployMs?.let { putLong("rime", it) }
         }
     }
 
@@ -102,7 +106,7 @@ object Probe {
             null
         }
         fun long(name: String) = if (p.contains(name)) p.getLong(name, 0) else null
-        return Summary(series("key"), series("candidates"), long("cold"), long("compose"), long("pss"))
+        return Summary(series("key"), series("candidates"), long("cold"), long("compose"), long("pss"), long("rime"))
     }
 
     /** Clears stored and in-memory measurements. */
@@ -112,6 +116,7 @@ object Probe {
         coldStartMs = null
         composeFirstFrameMs = null
         pssKb = null
+        rimeDeployMs = null
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { clear() }
     }
 }

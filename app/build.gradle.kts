@@ -94,9 +94,46 @@ val englishDict = tasks.register<EnglishDictTask>("englishDict") {
     outputDir = layout.buildDirectory.dir("generated/dict")
 }
 
+/**
+ * Stages librime's shared data (schemas, dictionaries, OpenCC tables) as assets under `rime/` with
+ * core/rime/stage-data.cmake, run by the SDK's CMake.
+ * Notes: the data is deployed (compiled) on the device at first start; only text ships.
+ */
+abstract class RimeDataTask : DefaultTask() {
+    @get:InputFile abstract val script: RegularFileProperty
+    @get:InputFile abstract val cmake: RegularFileProperty
+    @get:Internal abstract val root: DirectoryProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @get:Inject abstract val exec: ExecOperations
+
+    @TaskAction
+    fun stage() {
+        exec.exec {
+            commandLine(
+                cmake.get().asFile.path,
+                "-DKOTOMO_ROOT=${root.get().asFile.path}",
+                "-DOUT=${outputDir.dir("rime").get().asFile.path}",
+                "-P", script.get().asFile.path,
+            )
+        }
+    }
+}
+
+val rimeData = tasks.register<RimeDataTask>("rimeData") {
+    script = rootProject.layout.projectDirectory.file("core/rime/stage-data.cmake")
+    cmake = androidComponents.sdkComponents.sdkDirectory.map {
+        it.file("cmake/3.22.1/bin/" + if (System.getProperty("os.name").startsWith("Windows")) "cmake.exe" else "cmake")
+    }
+    root = rootProject.layout.projectDirectory
+    outputDir = layout.buildDirectory.dir("generated/rime")
+    // The staged data follows the submodules; the script rewrites only changed files, so it always runs.
+    outputs.upToDateWhen { false }
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(englishDict, EnglishDictTask::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(rimeData, RimeDataTask::outputDir)
     }
 }
 

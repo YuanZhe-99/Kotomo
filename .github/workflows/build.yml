@@ -17,8 +17,14 @@ jobs:
       HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
+
+      # Every submodule the app build compiles; Mozc is built by mozc.yml and stays out of this job.
+      - name: Check out engine submodules
+        run: >
+          git submodule update --init --depth 1
+          third_party/heliboard third_party/librime third_party/leveldb third_party/marisa-trie
+          third_party/yaml-cpp third_party/opencc third_party/rime-luna-pinyin third_party/rime-prelude
+          third_party/rime-essay third_party/rime-stroke
 
       - uses: actions/setup-java@v6
         with:
@@ -28,6 +34,13 @@ jobs:
 
       - name: Check documentation
         run: java tool/CheckDocs.java
+
+      - name: Fetch Boost headers (librime)
+        run: scripts/fetch-boost.sh
+
+      # The Rime data staging runs the SDK's CMake before the native build would install it.
+      - name: Install CMake and the NDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "cmake;3.22.1" "ndk;30.0.16248370" > /dev/null
 
       # Pull requests from forks get no secrets; their release APK stays unsigned.
       - name: Setup release signing

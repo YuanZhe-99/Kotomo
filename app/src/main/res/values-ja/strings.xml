@@ -23,6 +23,7 @@
     <string name="diag_candidates">押してから候補描画まで</string>
     <string name="diag_cold">キーボード起動から最初のフレームまで</string>
     <string name="diag_compose">絵文字パネルの最初のフレーム</string>
+    <string name="diag_rime">中国語エンジンの準備</string>
     <string name="diag_memory">メモリ使用量</string>
     <string name="diag_series">p50 %1$d ms · p95 %2$d ms · 最大 %3$d ms（n = %4$d）</string>
     <string name="diag_ms">%1$d ms</string>

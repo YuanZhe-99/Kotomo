@@ -23,9 +23,11 @@
 | 技术验证 | 状态 | 证据 |
 |---|---|---|
 | S1 IME 骨架 | 真机上 NOT_RUN | 可以构建并通过单元测试。设置应用的诊断页记录按下到按键绘制、按下到候选绘制、冷启动到首帧、Compose Emoji 面板的首帧和内存，等待真机运行。 |
-| S5 跨语言词库 | 主机上 PASS | `java lexicon/CheckSamples.java`：28 条预期映射全部达到要求的名次（`chidai` 下的池袋、`dongjing` 下的東京、`coffee` 下的コーヒー……），10 条反例 0 条出错（`yunshu` 下没有芸術）。拼音 → 日文覆盖 Mozc 中 98.9% 的全汉字词条。 |
+| S2 librime | 主机上 PASS；真机上 NOT_RUN | `libkotomo_rime.so` 可为 arm64-v8a 与 x86_64 构建（去符号后约 2.9 MB，16 KB 对齐，只导出 JNI）；WSL 中的主机测试 14 项全部通过（`nihao` → 你好、`zhongguo` → 中国 均排第一；开启简体时不出现中國；私有方案不学习）。应用的中文模式在真机部署后使用它，部署耗时显示在诊断页上。 |
+| S3 Mozc | 主机上 PASS；Android 构建 NOT_RUN | Mozc 3.35.6354 与 Kotomo 的胶水层在 WSL（aarch64）中构建；主机测试 7 项全部通过：`わたしはにほんじん` → 私は日本人，固定池袋 + `にかいにいこう` → 池袋に買いに行こう，拼音不是 Mozc 的读音。Android 库需要在 x86_64 Linux 上运行 `.github/workflows/mozc.yml`，尚未运行。 |
 | S4 英文引擎 | 主机上 PASS；真机上 NOT_RUN | `libkotomo_english.so` 可为 arm64-v8a 与 x86_64 构建（去符号后约 360 KB，16 KB 对齐）；2.5 MB 的词典可复现构建；在 WSL（Debian，aarch64）中运行 `core/english/tests/run-host.sh`：13 项全部通过（`helo` → hello、`teh` → the、邻键误触、补全、下一词预测、反例）。主机上每次调用 3.8 ms，不代表真机延迟。 |
-| S2、S3、S6–S8 | NOT_RUN | — |
+| S5 跨语言词库 | 主机上 PASS | `java lexicon/CheckSamples.java`：28 条预期映射全部达到要求的名次（`chidai` 下的池袋、`dongjing` 下的東京、`coffee` 下的コーヒー……），10 条反例 0 条出错（`yunshu` 下没有芸術）。拼音 → 日文覆盖 Mozc 中 98.9% 的全汉字词条。 |
+| S6–S8 | NOT_RUN | — |
 
 ## 关卡
 

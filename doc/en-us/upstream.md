@@ -13,6 +13,12 @@ building or running anything; P0 re-checks each one and replaces "read" with the
 | The embedding API `rime_api.h`: sessions, `process_key`, `set_input`, `get_context` (preedit, cursor, candidate page), `get_commit`, candidate selection and iteration, `set_option`, `register_module` | a pinyin span converts through `set_input` and `get_context`; deeper access goes through a module | read |
 | Fuzzy pinyin and double pinyin are `speller/algebra` rules in the schema | changing a fuzzy-pinyin switch rewrites the schema and redeploys it, so deployment time matters | read |
 | Trime builds librime with Gradle's CMake integration (NDK 30.0.16248370); fcitx5-android links static libraries from a separate prebuilder | both build routes are available | read |
+| 1.17.0 builds for Android with NDK 30 and CMake 3.22.1 from Kotomo's own target lists (`core/rime/CMakeLists.txt`); every Boost use is header-only, so the Boost 1.92.0 headers suffice; without glog it uses `no_logging.h` | `libkotomo_rime.so`, about 2.9 MB stripped per ABI, 16 KB pages, JNI exports only; nothing typed can be logged | built (arm64-v8a, x86_64), host-tested |
+| No runtime switch disables learning; `translator/enable_user_dict: false` stops the user dictionary from being created, so it is neither read nor written | sensitive fields select the schema `luna_pinyin_simp_private` | host test T12-S2 |
+| The deployer reads `schema/schema_id` from the raw schema file before resolving `__include` and `__patch`; a schema that sets its ID only by patch is silently skipped | derived schemas write their `schema:` block literally | host-tested |
+| `RimeDeployWorkspace` deploys synchronously and refuses sessions meanwhile (host: 5–15 s fresh, about 0.2 s unchanged; peak RSS 294 MB) | the keyboard types letters directly in Chinese mode until the deploy finishes; prebuilt data or a staged deploy would keep Chinese typing during a deploy (PLAN §4.2) | host-tested; device NOT_RUN |
+| The session API (`set_input` and candidate iteration) costs about 0.2 ms per prefix on the host | enough for per-span use (PLAN §5.4) | host only |
+| Submodules ignore the repository's `.gitattributes`, and CMake's `file(READ)`/`file(WRITE)` translate newlines on Windows | `core/rime/stage-data.cmake` writes the shared data with `configure_file(… NEWLINE_STYLE LF)`, byte-identical on every host | built on Windows and Linux |
 
 ## Mozc
 
@@ -23,12 +29,21 @@ building or running anything; P0 re-checks each one and replaces "read" with the
 | The stock JNI registers on Google's class `com.google.android.apps.inputmethod.libs.mozc.session.MozcJni` and exposes only `evalCommand` (a serialized `commands::Command`), `onPostLoad` and `getDataVersion`; the Android client is not open source | Kotomo writes its own client and C++ glue | read |
 | `Segment::SegmentType` has `FREE`, `FIXED_BOUNDARY`, `FIXED_VALUE`, `SUBMITTED` and `HISTORY`; `ImmutableConverter::Resegment` keeps a `FIXED_VALUE` segment's value, lid and rid, for conversion requests only | a cross-language span can be pinned inside a Japanese conversion from converter-level glue; predictions cannot carry pinned spans | read |
 | Releases are tags only (`3.35.6354` at the last check) | the submodule follows the latest tag | read |
+| 3.35.6354 (`0136c357`) has no git submodules; its dependencies come through Bazel modules (abseil-cpp 20260107.1, protobuf 34.1) and `src/build_tools/update_deps.py` (Android NDK r29) | `git submodule update --init third_party/mozc` is enough; Bazel fetches the rest | built |
+| The host build works on aarch64 Linux (Debian 13, gcc 14.2, Bazel 9.0.2 through Bazelisk 1.30.0); Bazel's `local_jdk` needs `JAVA_HOME` | host tests run in WSL on Windows on ARM64 | built |
+| rules_android_ndk runs the NDK's clang when it fetches the NDK, and the NDK has only x86_64 Linux and macOS host tools; with an NDK present even host builds fail on aarch64 Linux | Android libraries come from `.github/workflows/mozc.yml` on x86_64 Linux | built |
+| `converter::Converter::ApplyConversion` is public; hand-built segments with a `FIXED_VALUE` segment keep the pinned value while Mozc segments and converts the rest | PLAN §5.4's pinned-span conversion works at the converter layer without its fallbacks: 池袋 pinned + `にかいにいこう` → 池袋に買いに行こう | host test |
+| `DictionaryInterface::LookupExact` returns tokens with lid and rid (池袋/いけぶくろ: 1924/1924); a pinyin spelling has no entry | pinned spans take the ids of the same entry; unknown words take the general noun | host test |
+| `//converter`, `//session:session_handler` and `//dictionary:dictionary_interface` are visible only inside Mozc | Kotomo's glue builds with `--nocheck_visibility` instead of a patch | built |
+| Learning happens only when a conversion is committed; `Config.incognito_mode` and `Request.is_incognito_mode` disable all mutable operations | the glue never commits and sets both for sensitive fields | read, host test |
+| The romaji `wa` for the particle は converts as わ: `watashiwanihonjin` → 私羽日本人 in a plain session | corpus line T03-001 needs the coordinator to handle it | host test |
 
 ## OpenCC
 
 | Point | Consequence | Checked |
 |---|---|---|
 | Apache-2.0; configurations for Simplified ↔ Traditional, Taiwan and Hong Kong with phrases (`s2twp`, `s2hk`, …) and Japanese Shinjitai (`t2jp`, `jp2t`, supported "to a limited extent") | regional conversion uses it directly; its Shinjitai tables are only one input of the lexicon pipeline | read |
+| 1.4.2's data build needs Python and its own `opencc_dict`; the library also reads `text` dictionaries; `Config::NewFromFile` also loads dictionaries marked `may_output_tofu` (`TSCharactersExt`), and a missing one fails the whole configuration | Kotomo ships text dictionaries, rewrites `t2s.json` and generates `TSCharactersExt.txt` as `extract_tofu_risk.py` does (`core/rime/stage-data.cmake`) | host-tested |
 
 ## English engine
 

@@ -23,9 +23,11 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 | Spike | Status | Evidence |
 |---|---|---|
 | S1 IME skeleton | NOT_RUN on a device | Builds and passes unit tests. The diagnostics page in the settings app records press → key drawn, press → candidates drawn, cold start → first frame, the Compose emoji panel's first frame and memory, ready for a device run. |
-| S5 cross-language lexicon | PASS on the host | `java lexicon/CheckSamples.java`: 28 of 28 expected mappings at their rank (池袋 under `chidai`, 東京 under `dongjing`, コーヒー under `coffee`, …) and 0 of 10 negative cases (芸術 is not under `yunshu`). Pinyin → Japanese covers 98.9 % of Mozc's all-kanji entries. |
+| S2 librime | PASS on the host; NOT_RUN on a device | `libkotomo_rime.so` builds for arm64-v8a and x86_64 (about 2.9 MB stripped, 16 KB-aligned, JNI exports only); host test in WSL: 14 of 14 checks (`nihao` → 你好 and `zhongguo` → 中国 at rank 1, no 中國 with Simplified on, no learning in the private schema). Chinese mode in the app uses it after an on-device deploy, whose time the diagnostics page shows. |
+| S3 Mozc | PASS on the host; Android build NOT_RUN | Mozc 3.35.6354 and Kotomo's glue build in WSL (aarch64); host test 7 of 7: `わたしはにほんじん` → 私は日本人, pinned 池袋 + `にかいにいこう` → 池袋に買いに行こう, pinyin is not a Mozc reading. The Android libraries need `.github/workflows/mozc.yml` on x86_64 Linux, which has not run yet. |
 | S4 English engine | PASS on the host; NOT_RUN on a device | `libkotomo_english.so` builds for arm64-v8a and x86_64 (about 360 KB stripped, 16 KB-aligned); the 2.5 MB dictionary builds reproducibly; `core/english/tests/run-host.sh` in WSL (Debian, aarch64): 13 of 13 cases (`helo` → hello, `teh` → the, near-key taps, completion, next-word prediction, negatives). Host timing 3.8 ms per call is not device latency. |
-| S2, S3, S6–S8 | NOT_RUN | — |
+| S5 cross-language lexicon | PASS on the host | `java lexicon/CheckSamples.java`: 28 of 28 expected mappings at their rank (池袋 under `chidai`, 東京 under `dongjing`, コーヒー under `coffee`, …) and 0 of 10 negative cases (芸術 is not under `yunshu`). Pinyin → Japanese covers 98.9 % of Mozc's all-kanji entries. |
+| S6–S8 | NOT_RUN | — |
 
 ## Gates
 

@@ -16,7 +16,14 @@
     "minSdk": 26,
     "buildTools": "37.0.0",
     "ndk": "30.0.16248370",
-    "cmake": "3.22.1"
+    "cmake": "3.22.1",
+    "bazelisk": {
+      "version": "v1.30.0",
+      "sha256": {
+        "linux-amd64": "a248ae2b2b62b5baebb748f6fba7203bff1a27e5d01b55399a8406744cb539e8",
+        "linux-arm64": "b2bcc040c213b44586b121bda6d983c35df121b917c3a7a66fb16f2fa0df1a4f"
+      }
+    }
   },
   "upstreams": {
     "heliboard": {
@@ -29,6 +36,48 @@
       "url": "https://android.googlesource.com/platform/packages/inputmethods/LatinIME",
       "commit": "127336e9f29d69607eab55982324b210279ae8c5",
       "used": "tools/dicttool, build time only"
+    },
+    "librime": {
+      "url": "https://github.com/rime/librime",
+      "tag": "1.17.0",
+      "commit": "33e78140250125871856cdc5b42ddc6a5fcd3cd4"
+    },
+    "leveldb": {
+      "url": "https://github.com/google/leveldb",
+      "tag": "1.23",
+      "commit": "99b3c03b3284f5886f9ef9a4ef703d57373e61be"
+    },
+    "marisa-trie": {
+      "url": "https://github.com/s-yata/marisa-trie",
+      "tag": "v0.3.1",
+      "commit": "3e87d53b78e15f2f43783d5e376561a8c9722051"
+    },
+    "yaml-cpp": {
+      "url": "https://github.com/jbeder/yaml-cpp",
+      "tag": "yaml-cpp-0.9.0",
+      "commit": "56e3bb550c91fd7005566f19c079cb7a503223cf"
+    },
+    "opencc": {
+      "url": "https://github.com/BYVoid/OpenCC",
+      "tag": "ver.1.4.2",
+      "commit": "025f371dc76b598d77384fbdab90c937471844d8"
+    },
+    "boost": {
+      "version": "1.92.0",
+      "url": "https://archives.boost.io/release/1.92.0/source/boost_1_92_0.tar.gz",
+      "sha256": "c4a3b310ddd2472416e091067166b0713be97c63f38c212c484ada022fd296ce"
+    },
+    "mozc": {
+      "url": "https://github.com/google/mozc.git",
+      "tag": "3.35.6354",
+      "commit": "0136c35782536cb43d710575c311cd4185982738",
+      "bazel": "9.0.2",
+      "ndk": {
+        "version": "r29",
+        "url": "https://dl.google.com/android/repository/android-ndk-r29-linux.zip",
+        "sha256": "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf"
+      },
+      "prebuilt": "not yet built: the first run of .github/workflows/mozc.yml records its artifact hashes here"
     }
   },
   "dataSources": {
@@ -87,6 +136,22 @@
     "junit": {
       "url": "https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
       "sha256": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3"
+    },
+    "rime-luna-pinyin": {
+      "url": "https://github.com/rime/rime-luna-pinyin",
+      "commit": "56b934b099dfbeab842320f13aa8b461a6ab3e42"
+    },
+    "rime-prelude": {
+      "url": "https://github.com/rime/rime-prelude",
+      "commit": "082425ea0684bca36474415d4a0e8db9b016487e"
+    },
+    "rime-essay": {
+      "url": "https://github.com/rime/rime-essay",
+      "commit": "054920de4f54c9e5994276a96a4fc2a35cb51aa3"
+    },
+    "rime-stroke": {
+      "url": "https://github.com/rime/rime-stroke",
+      "commit": "1e8fff9b9494ddec23b0cbc526bcfd8171a6fd48"
     }
   }
 }

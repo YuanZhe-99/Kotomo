@@ -16,6 +16,15 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | AOSP LatinIME 原生建议核心，经 HeliBoard | `HeliBorg/HeliBoard` v4.2（`0c60dffb`），`app/src/main/jni/src` | 英文纠错、补全与预测（`libkotomo_english.so`，S4） | Apache-2.0（AOSP 文件）；HeliBoard 整体为 GPL-3.0 | 无；以 Kotomo 自己的 JNI 桥接代替 LatinIME 的 JNI 文件 | 随附 Apache-2.0 许可文本并保留 AOSP 声明 |
 | AOSP LatinIME dicttool（仅为构建工具） | AOSP `platform/packages/inputmethods/LatinIME` `127336e9` | 构建时生成英文词典；不随应用分发 | Apache-2.0 | 无 | 对应用无义务 |
 | 英文词表：Helium314/aosp-dictionaries 的 `main_en_US__experimental.combined`，源自 Leipzig Corpora Collection | codeberg `Helium314/aosp-dictionaries` `ff0cd52b` | 英文词汇与二元组（`main_en_us.dict`，生成后随 APK 分发） | CC BY 4.0（Leipzig：可下载的语料以 CC BY 授权） | 转换为 LatinIME 二进制格式 202 | 在来源页中为 Leipzig Corpora Collection（莱比锡大学）与 HeliBoard 的 aosp-dictionaries 署名，链接 CC BY 4.0，并注明数据经过转换 |
+| librime | `rime/librime` 1.17.0（`33e78140`）；内含 darts-clone 与 utf8-cpp 头文件 | 中文引擎（`libkotomo_rime.so`，S2） | BSD-3-Clause（darts-clone 为 BSD-2-Clause，utf8-cpp 为 BSL-1.0） | 无；构建时不含插件与日志 | 保留版权与许可声明 |
+| LevelDB | `google/leveldb` 1.23（`99b3c03b`） | librime 的用户词典 | BSD-3-Clause | 无 | 声明 |
+| marisa-trie | `s-yata/marisa-trie` v0.3.1（`3e87d53b`） | librime 与 OpenCC 的字典树 | BSD-2-Clause 或 LGPL-2.1-or-later，按 BSD-2-Clause 使用 | 无 | 声明 |
+| yaml-cpp | `jbeder/yaml-cpp` 0.9.0（`56e3bb55`） | librime 的配置 | MIT | 无 | 声明 |
+| OpenCC | `BYVoid/OpenCC` ver.1.4.2（`025f371d`）；内含 rapidjson 与 darts-clone | librime 内的繁体 → 简体转换 | Apache-2.0（rapidjson 为 MIT） | 无；构建时整理文本词典并改写 `t2s.json` | 许可与 NOTICE；注明 `t2s.json` 经过转换 |
+| Boost（头文件） | boost.org 1.92.0 | librime 使用的头文件 | BSL-1.0 | 无 | 源码分发时附许可文本 |
+| rime-luna-pinyin、rime-prelude、rime-essay、rime-stroke | `rime/*`，分别在 `56b934b0`、`082425ea`、`054920de`、`1e8fff9b` | 拼音方案、词典、默认设置、语言模型与笔画反查 | LGPL-3.0 | 无；Kotomo 增加 `default.custom.yaml` 与方案 `luna_pinyin_simp_private` | 随附 LGPL-3.0 与 GPL-3.0 文本，并提供数据来源 |
+| Mozc | `google/mozc` 3.35.6354（`0136c357`），子模块 `third_party/mozc` | 日文转换（`libkotomo_mozc.so` 与 `mozc.data`，S3；尚未进入应用） | BSD-3-Clause；词典数据适用 NAIST IPAdic 声明与 ICOT 条款，另有公有领域的冲绳词典与 Google 增补 | 无；Kotomo 的胶水层独立存放（`core/mozc`） | 完整随附 Mozc 的 LICENSE，包括 NAIST 声明与 ICOT 的 "NO WARRANTY" 一节 |
+| japanese-usage-dictionary、Abseil、Protocol Buffers | 由 Mozc 的 Bazel 构建获取（用法词典 2025-01-25、abseil-cpp 20260107.1、protobuf 34.1） | 编入 `mozc.data` 与 `libkotomo_mozc.so` | BSD-2-Clause；Apache-2.0；BSD-3-Clause | 无 | 声明与许可文本 |
 
 ## 计划中的组件
 
@@ -23,10 +32,6 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 
 | 组件 | 许可证 | 计划用途 | 说明 |
 |---|---|---|---|
-| librime | BSD-3-Clause | 中文引擎 | 连同 Boost、LevelDB、marisa 与 yaml-cpp，构建时记录它们的许可证 |
-| Mozc | BSD-3-Clause；词典数据适用 IPAdic（NAIST 与 ICOT）声明，另有公有领域与 Google 增补条目 | 日文引擎与词典 | 词典声明随数据一起分发 |
-| OpenCC | Apache-2.0 | 简体、繁体与地区用词转换 | 与 librime 共用 |
-| 一套中文方案与词库 | rime-ice 为 GPL-3.0 only；rime_wanxiang 为 CC BY 4.0；rime-luna-pinyin 与 rime-essay 为 LGPL-3.0 | 中文词汇与语言模型 | 在技术验证 S2 中选定；仅限 GPL-3.0 的数据会使整个发行版只能以 GPL-3.0 发布 |
 | CLDR 注释 | Unicode License v3 | 四种语言的 Emoji 关键词 | — |
 | SudachiDict | Apache-2.0 | 补充日文人名、地名、车站名与外来语 | 可选 |
 | Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |

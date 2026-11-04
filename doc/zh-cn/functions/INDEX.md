@@ -22,3 +22,10 @@
 | `core/english/` | 英文引擎（S4）：LatinIME 核心与 Kotomo 的 JNI 桥接的 CMake 构建；主机测试 | `jni/english_jni.cpp`、`tests/run-host.sh` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | `libkotomo_english.so` 的 Kotlin 外观（只在引擎线程上调用） | `English.open`、`suggestions` |
 | `tool/BuildEnglishDict.java` | 用 AOSP 的 dicttool 从锁定的词表构建英文词典 | `main` |
+| `core/rime/` | 中文引擎（S2）：把 librime 及其依赖构建为 `libkotomo_rime.so` 的 CMake 构建、桥接层、数据整理与主机测试 | `jni/rime_bridge.h`、`stage-data.cmake`、`tests/rime_bridge_test.cc` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/Rime.kt` | `libkotomo_rime.so` 的 Kotlin 外观（只在引擎线程上调用） | `initialize`、`deploy`、`processKey`、`setLearning` |
+| `scripts/fetch-boost.sh` | 下载并校验 librime 需要的 Boost 头文件 | — |
+| `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换与固定片段转换、JNI、主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`tests/kotomo_mozc_test.cc` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | `libkotomo_mozc.so` 的 Kotlin 外观（Android 库生成前应用不使用它） | `sessionConvert`、`pinnedConvert` |
+| `scripts/build-mozc.sh` | 为主机或 Android ABI 构建 Mozc 与胶水层（Android 需要 x86_64 Linux 或 macOS） | `--abi` |
+| `.github/workflows/mozc.yml` | CI：主机测试，以及带哈希清单的 Android Mozc 库产物 | `mozc` |

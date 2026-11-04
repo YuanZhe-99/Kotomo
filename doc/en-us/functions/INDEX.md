@@ -23,3 +23,10 @@ side effects and notes where non-trivial).
 | `core/english/` | English engine (S4): CMake build of the LatinIME core and Kotomo's JNI bridge; host test | `jni/english_jni.cpp`, `tests/run-host.sh` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | Kotlin facade of `libkotomo_english.so` (engine thread only) | `English.open`, `suggestions` |
 | `tool/BuildEnglishDict.java` | Builds the English dictionary from the pinned word list with AOSP's dicttool | `main` |
+| `core/rime/` | Chinese engine (S2): CMake build of librime and its dependencies into `libkotomo_rime.so`, the bridge, the data staging and the host test | `jni/rime_bridge.h`, `stage-data.cmake`, `tests/rime_bridge_test.cc` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/Rime.kt` | Kotlin facade of `libkotomo_rime.so` (engine thread only) | `initialize`, `deploy`, `processKey`, `setLearning` |
+| `scripts/fetch-boost.sh` | Downloads and verifies the Boost headers librime needs | — |
+| `core/mozc/` | Japanese engine glue (S3): session conversion and pinned-span conversion over Mozc, JNI, host test; built inside Mozc's Bazel workspace | `kotomo_mozc.h`, `tests/kotomo_mozc_test.cc` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | Kotlin facade of `libkotomo_mozc.so` (not used by the app until the Android library exists) | `sessionConvert`, `pinnedConvert` |
+| `scripts/build-mozc.sh` | Builds Mozc and the glue for the host or for Android ABIs (Android needs x86_64 Linux or macOS) | `--abi` |
+| `.github/workflows/mozc.yml` | CI: host tests and the Android Mozc libraries as a hash-listed artifact | `mozc` |

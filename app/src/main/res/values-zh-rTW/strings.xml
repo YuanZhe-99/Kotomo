@@ -23,6 +23,7 @@
     <string name="diag_candidates">按下到候選繪製</string>
     <string name="diag_cold">鍵盤啟動到首幀</string>
     <string name="diag_compose">Emoji 面板首幀</string>
+    <string name="diag_rime">中文引擎準備</string>
     <string name="diag_memory">記憶體用量</string>
     <string name="diag_series">p50 %1$d ms · p95 %2$d ms · 最大 %3$d ms（n = %4$d）</string>
     <string name="diag_ms">%1$d ms</string>
