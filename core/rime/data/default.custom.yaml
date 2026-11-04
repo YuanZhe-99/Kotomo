@@ -1,0 +1,7 @@
+# Kotomo: the schemas librime deploys for Kotomo.
+# luna_pinyin_simp is the normal pinyin schema; luna_pinyin_simp_private is the same schema with the
+# user dictionary turned off, selected for sensitive fields (no learning, no personalized ranking).
+patch:
+  schema_list:
+    - schema: luna_pinyin_simp
+    - schema: luna_pinyin_simp_private

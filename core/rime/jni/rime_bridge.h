@@ -1,0 +1,80 @@
+// Kotomo's bridge to librime: one process-wide librime instance with one session.
+//
+// The JNI layer (rime_jni.cc) only converts types; everything that touches librime lives here so
+// the host tests exercise the same code the app runs.
+
+#ifndef KOTOMO_CORE_RIME_JNI_RIME_BRIDGE_H_
+#define KOTOMO_CORE_RIME_JNI_RIME_BRIDGE_H_
+
+#include <cstddef>
+#include <string>
+#include <vector>
+
+namespace kotomo::rime_bridge {
+
+/// Pairs a candidate's text with librime's comment for it (often empty).
+struct Candidate {
+  std::string text;
+  std::string comment;
+};
+
+/// Starts librime on the given data directories and opens the session.
+/// Inputs: shared_data_dir holds the read-only schema data (stage-data.cmake's output);
+///   user_data_dir is writable and receives the deployed build/, the user dictionary and user.yaml.
+/// Returns: true when a session is open. Before the first deploy() of a fresh user directory there
+///   is nothing to load, so this may return false; call deploy() and the session opens then.
+/// Side effects: calling it again shuts the previous instance down first.
+/// Notes: engine thread only; librime is compiled without logging, so nothing typed reaches a log.
+bool Initialize(const std::string& shared_data_dir, const std::string& user_data_dir);
+
+/// Compiles the schemas listed in default.yaml into user_data_dir/build, then reopens the session.
+/// Returns: librime's result for the whole workspace update (false if any schema failed).
+/// Side effects: closes the session first, so the current composition is lost; writes build/,
+///   installation.yaml and user.yaml. Unchanged schemas are skipped by librime's own checks.
+/// Notes: synchronous and slow (seconds on a fresh directory); librime refuses key input while it
+///   deploys, so the caller decides when the keyboard can afford it.
+bool Deploy();
+
+/// Replaces the whole raw input (for example a pinyin span) and recomputes candidates.
+bool SetInput(const std::string& input);
+
+/// Sends one key to librime.
+/// Inputs: keycode is an X11 keysym (`a` = 0x61, BackSpace = 0xff08, space = 0x20); mask holds
+///   librime's modifier bits (kShiftMask = 1, kControlMask = 4, kReleaseMask = 1 << 30).
+/// Returns: whether librime handled the key; an unhandled key belongs to the app.
+bool ProcessKey(int keycode, int mask);
+
+/// Returns: the preedit text of the composition, or empty when nothing is being composed.
+std::string Composition();
+
+/// Returns: up to `limit` candidates of the current segment, best first, across pages.
+std::vector<Candidate> Candidates(std::size_t limit);
+
+/// Selects the candidate at `index` (counted from the first candidate, not the page).
+/// Returns: false if there is no such candidate.
+/// Side effects: if the selection completes the input, librime commits; read it with TakeCommit().
+bool SelectCandidate(std::size_t index);
+
+/// Returns: the text librime committed since the last call, or empty; the text is consumed.
+std::string TakeCommit();
+
+/// Discards the composition without committing.
+void Clear();
+
+/// Sets a schema switch or runtime option (`zh_hans`, `ascii_mode`, `full_shape`, …).
+void SetOption(const std::string& name, bool value);
+
+/// Chooses whether typing may learn.
+/// Inputs: enabled false selects luna_pinyin_simp_private, whose user dictionary is turned off, so
+///   librime neither records commits nor ranks by what was learned.
+/// Returns: whether the schema was selected (false before a session exists; the choice is kept and
+///   applied when the session opens).
+/// Side effects: discards the composition.
+bool SetLearning(bool enabled);
+
+/// Closes the session and stops librime, flushing the user dictionary.
+void Shutdown();
+
+}  // namespace kotomo::rime_bridge
+
+#endif  // KOTOMO_CORE_RIME_JNI_RIME_BRIDGE_H_

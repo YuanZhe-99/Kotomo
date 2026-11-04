@@ -1,0 +1,8 @@
+/* libkotomo_rime.so exports only its JNI entry points; librime, its dependencies and libc++ stay
+   internal, so they cannot clash with the other engines' copies loaded in the same process. */
+{
+  global:
+    Java_com_yuanzhe_kotomo_engine_Rime_*;
+  local:
+    *;
+};

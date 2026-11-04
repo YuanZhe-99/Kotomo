@@ -1,0 +1,136 @@
+// Kotomo's bridge to librime; see rime_bridge.h.
+
+#include "rime_bridge.h"
+
+#include <rime_api.h>
+
+namespace kotomo::rime_bridge {
+namespace {
+
+constexpr const char* kSchema = "luna_pinyin_simp";
+constexpr const char* kPrivateSchema = "luna_pinyin_simp_private";
+
+// The service modules plus the deployer's, so Deploy() can run synchronously on the engine thread.
+const char* kModules[] = {"default", "deployer", nullptr};
+
+RimeApi* api = nullptr;
+RimeSessionId session = 0;
+bool learning = true;
+// RimeTraits keeps pointers, and librime reads the directories again when it reinitializes.
+std::string shared_dir;
+std::string user_dir;
+
+/// Selects the schema that matches `learning` in the open session.
+bool ApplyLearning() {
+  return session != 0 &&
+         api->select_schema(session, learning ? kSchema : kPrivateSchema);
+}
+
+/// Opens the session and applies the learning choice.
+bool OpenSession() {
+  session = api->create_session();
+  if (session == 0) return false;
+  ApplyLearning();
+  return true;
+}
+
+/// Closes the session, if any.
+void CloseSession() {
+  if (session != 0) api->destroy_session(session);
+  session = 0;
+}
+
+}  // namespace
+
+bool Initialize(const std::string& shared_data_dir, const std::string& user_data_dir) {
+  if (api != nullptr) Shutdown();
+  api = rime_get_api();
+  shared_dir = shared_data_dir;
+  user_dir = user_data_dir;
+
+  RIME_STRUCT(RimeTraits, traits);
+  traits.shared_data_dir = shared_dir.c_str();
+  traits.user_data_dir = user_dir.c_str();
+  traits.distribution_name = "Kotomo";
+  traits.distribution_code_name = "kotomo";
+  traits.distribution_version = RIME_VERSION;
+  traits.app_name = "rime.kotomo";
+  traits.modules = kModules;
+  traits.min_log_level = 3;
+  traits.log_dir = "";
+  api->setup(&traits);
+  api->initialize(&traits);
+  return OpenSession();
+}
+
+bool Deploy() {
+  if (api == nullptr) return false;
+  CloseSession();
+  const bool deployed = api->deploy();
+  return OpenSession() && deployed;
+}
+
+bool SetInput(const std::string& input) {
+  return session != 0 && api->set_input(session, input.c_str());
+}
+
+bool ProcessKey(int keycode, int mask) {
+  return session != 0 && api->process_key(session, keycode, mask);
+}
+
+std::string Composition() {
+  if (session == 0) return {};
+  RIME_STRUCT(RimeContext, context);
+  if (!api->get_context(session, &context)) return {};
+  std::string preedit = context.composition.preedit ? context.composition.preedit : "";
+  api->free_context(&context);
+  return preedit;
+}
+
+std::vector<Candidate> Candidates(std::size_t limit) {
+  std::vector<Candidate> result;
+  if (session == 0 || limit == 0) return result;
+  RimeCandidateListIterator iterator = {};
+  if (!api->candidate_list_begin(session, &iterator)) return result;
+  while (result.size() < limit && api->candidate_list_next(&iterator)) {
+    const RimeCandidate& c = iterator.candidate;
+    result.push_back({c.text ? c.text : "", c.comment ? c.comment : ""});
+  }
+  api->candidate_list_end(&iterator);
+  return result;
+}
+
+bool SelectCandidate(std::size_t index) {
+  return session != 0 && api->select_candidate(session, index);
+}
+
+std::string TakeCommit() {
+  if (session == 0) return {};
+  RIME_STRUCT(RimeCommit, commit);
+  if (!api->get_commit(session, &commit)) return {};
+  std::string text = commit.text ? commit.text : "";
+  api->free_commit(&commit);
+  return text;
+}
+
+void Clear() {
+  if (session != 0) api->clear_composition(session);
+}
+
+void SetOption(const std::string& name, bool value) {
+  if (session != 0) api->set_option(session, name.c_str(), value);
+}
+
+bool SetLearning(bool enabled) {
+  learning = enabled;
+  return ApplyLearning();
+}
+
+void Shutdown() {
+  if (api == nullptr) return;
+  CloseSession();
+  api->finalize();
+  api = nullptr;
+}
+
+}  // namespace kotomo::rime_bridge

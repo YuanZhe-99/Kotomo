@@ -1,0 +1,27 @@
+[submodule "third_party/librime"]
+	path = third_party/librime
+	url = https://github.com/rime/librime
+[submodule "third_party/leveldb"]
+	path = third_party/leveldb
+	url = https://github.com/google/leveldb
+[submodule "third_party/marisa-trie"]
+	path = third_party/marisa-trie
+	url = https://github.com/s-yata/marisa-trie
+[submodule "third_party/yaml-cpp"]
+	path = third_party/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp
+[submodule "third_party/opencc"]
+	path = third_party/opencc
+	url = https://github.com/BYVoid/OpenCC
+[submodule "third_party/rime-luna-pinyin"]
+	path = third_party/rime-luna-pinyin
+	url = https://github.com/rime/rime-luna-pinyin
+[submodule "third_party/rime-prelude"]
+	path = third_party/rime-prelude
+	url = https://github.com/rime/rime-prelude
+[submodule "third_party/rime-essay"]
+	path = third_party/rime-essay
+	url = https://github.com/rime/rime-essay
+[submodule "third_party/rime-stroke"]
+	path = third_party/rime-stroke
+	url = https://github.com/rime/rime-stroke
