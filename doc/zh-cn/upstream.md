@@ -14,7 +14,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 1.17.0 可用 NDK 30 与 CMake 3.22.1，按 Kotomo 自己的目标列表（`core/rime/CMakeLists.txt`）为 Android 构建；它对 Boost 的使用全部只需头文件，Boost 1.92.0 的头文件即可；没有 glog 时使用 `no_logging.h` | `libkotomo_rime.so`，每个 ABI 去符号后约 2.9 MB，16 KB 页面，只导出 JNI；输入内容不可能进入日志 | 已构建（arm64-v8a、x86_64），已在主机上测试 |
 | 没有关闭学习的运行时开关；`translator/enable_user_dict: false` 使用户词典不被创建，因此既不读也不写 | 敏感输入框选用方案 `luna_pinyin_simp_private` | 主机测试 T12-S2 |
 | 部署器在解析 `__include` 与 `__patch` 之前就从原始方案文件读取 `schema/schema_id`；只靠补丁设置 ID 的方案会被静默跳过 | 派生方案按字面写出 `schema:` 块 | 已在主机上测试 |
-| `RimeDeployWorkspace` 同步部署，期间拒绝会话（主机：全新部署 5–15 s，未变化时约 0.2 s；峰值 RSS 294 MB） | 部署完成前，中文模式直接输入字母；要在部署期间继续中文输入，需要预构建数据或分阶段部署（PLAN §4.2） | 已在主机上测试；真机上 NOT_RUN |
+| `RimeDeployWorkspace` 同步部署，期间拒绝会话（主机：全新部署 5–15 s，未变化时约 0.2 s；峰值 RSS 294 MB） | `RimeDeployService` 在独立进程（`:deploy`）中部署到暂存目录，键盘期间继续使用上一份构建的会话，完成后再换入新构建（PLAN §4.2）；只有第一次部署完成前，中文模式才直接输入字母 | 已在主机上测试；真机上 NOT_RUN |
 | 会话接口（`set_input` 与候选遍历）在主机上每个前缀约 0.2 ms | 足以按片段调用（PLAN §5.4） | 仅主机 |
 | 子模块不遵循仓库的 `.gitattributes`，而 CMake 的 `file(READ)`/`file(WRITE)` 在 Windows 上会转换换行符 | `core/rime/stage-data.cmake` 用 `configure_file(… NEWLINE_STYLE LF)` 写出共享数据，在各主机上逐字节相同 | 已在 Windows 与 Linux 上构建 |
 

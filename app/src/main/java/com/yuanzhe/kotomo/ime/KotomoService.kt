@@ -1,6 +1,13 @@
 package com.yuanzhe.kotomo.ime
 
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.ServiceConnection
 import android.inputmethodservice.InputMethodService
+import android.os.IBinder
 import android.os.Debug
 import android.os.Handler
 import android.os.HandlerThread
@@ -15,6 +22,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -30,7 +38,6 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Rime
-import java.io.File
 import java.io.IOException
 
 /**
@@ -43,7 +50,9 @@ import java.io.IOException
  * the engine's corrections and completions, and after a committed word its next-word predictions.
  * In Chinese mode librime owns the composition: every key goes to the engine thread in order,
  * librime decides whether it belongs to the composition, and the main thread applies the result;
- * until librime has deployed (first start), letters type directly. Mixed and Japanese modes still
+ * librime opens on the data already deployed; when the bundled data changed, [RimeDeployService]
+ * deploys it in its own process and the new build replaces the old one when it is done, so typing
+ * goes on meanwhile. Only before the very first deploy has finished do letters type directly. Mixed and Japanese modes still
  * show placeholder candidates until their engines arrive. Each update carries a
  * generation number and a stale engine result never replaces a newer one. Sensitive fields
  * (passwords, no-personalized-learning, e-mail and URL fields) get direct typing with no
@@ -92,49 +101,44 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         mode = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_MODE, null)
             ?.let { name -> Mode.entries.firstOrNull { it.name == name } } ?: Mode.MIXED
+        ContextCompat.registerReceiver(
+            this, deployDone, IntentFilter(RimeDeployService.ACTION_DONE), ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         engine.post {
             english = openEnglish()
-            rimeReady = startRime()
+            val files = RimeFiles(this)
+            if (files.hasBuild) rimeReady = Rime.initialize(files.shared.path, files.user.path)
+            if (!files.current) main.post(::startDeploy)
         }
     }
 
-    /**
-     * Extracts librime's shared data from the assets when the app changed, then deploys (engine
-     * thread).
-     * Returns: whether librime is ready. Side effects: writes filesDir/rime/shared (replaced on
-     * update) and filesDir/rime/user (kept); records the deploy time in [Probe.rimeDeployMs].
-     * Notes: a fresh deploy takes seconds; Chinese mode types letters directly meanwhile.
-     */
-    private fun startRime(): Boolean = try {
-        val root = File(filesDir, "rime")
-        val shared = File(root, "shared")
-        val user = File(root, "user").apply { mkdirs() }
-        val stamp = packageManager.getPackageInfo(packageName, 0).lastUpdateTime.toString()
-        val stampFile = File(shared, ".stamp")
-        if (!stampFile.exists() || stampFile.readText() != stamp) {
-            shared.deleteRecursively()
-            copyAssets("rime", shared)
-            stampFile.writeText(stamp)
-        }
-        val start = SystemClock.uptimeMillis()
-        val ready = Rime.initialize(shared.path, user.path) && Rime.deploy()
-        Probe.rimeDeployMs = SystemClock.uptimeMillis() - start
-        ready
-    } catch (_: IOException) {
-        false
-    } catch (_: UnsatisfiedLinkError) {
-        false
+    private val deployConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {}
+        override fun onServiceDisconnected(name: ComponentName) {}
+    }
+    private var deployBound = false
+
+    /** Binds to [RimeDeployService], which deploys on bind (main thread). */
+    private fun startDeploy() {
+        if (deployBound) return
+        deployBound = bindService(Intent(this, RimeDeployService::class.java), deployConnection, BIND_AUTO_CREATE)
     }
 
-    /** Copies the asset tree at [path] into [dest]. */
-    private fun copyAssets(path: String, dest: File) {
-        val children = assets.list(path).orEmpty()
-        if (children.isEmpty()) {
-            dest.parentFile?.mkdirs()
-            assets.open(path).use { input -> dest.outputStream().use { input.copyTo(it) } }
-        } else {
-            dest.mkdirs()
-            for (child in children) copyAssets("$path/$child", File(dest, child))
+    /** Receives the deploy process's result and swaps the new build in on the engine thread. */
+    private val deployDone = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (deployBound) {
+                unbindService(deployConnection)
+                deployBound = false
+            }
+            if (!intent.getBooleanExtra(RimeDeployService.EXTRA_OK, false)) return
+            engine.post {
+                val files = RimeFiles(this@KotomoService)
+                if (rimeReady) Rime.shutdown()
+                rimeReady = false
+                if (files.promote() || files.hasBuild) rimeReady = Rime.initialize(files.shared.path, files.user.path)
+                main.post(::clearChinese)
+            }
         }
     }
 
@@ -228,6 +232,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        unregisterReceiver(deployDone)
+        if (deployBound) unbindService(deployConnection)
         engine.post {
             english?.close()
             if (rimeReady) Rime.shutdown()

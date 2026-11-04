@@ -33,6 +33,7 @@
     <string name="diag_memory">Memory in use</string>
     <string name="diag_series">p50 %1$d ms · p95 %2$d ms · max %3$d ms (n = %4$d)</string>
     <string name="diag_ms">%1$d ms</string>
+    <string name="diag_ms_mb">%1$d ms · %2$.1f MB</string>
     <string name="diag_mb">%1$.1f MB</string>
     <string name="diag_none">No data yet</string>
     <string name="diag_refresh">Refresh</string>

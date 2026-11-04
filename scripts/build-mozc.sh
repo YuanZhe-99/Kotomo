@@ -158,14 +158,21 @@ for abi in "${abis[@]}"; do
   fi
   [[ -d "$ndk_dest" ]] || die "no NDK at $ndk_dest"
 
+  # The data set is the same for every ABI and incompatible with the Android platforms, so it is
+  # built for the host; its bazel-bin path is valid until the next build changes the config.
+  if [[ -z "${data_built:-}" ]]; then
+    (cd "$src" && "$bazelisk" build --config oss_linux "${bazel_flags[@]}" \
+      //data_manager/oss:mozc_dataset_for_oss) || die "data set build failed"
+    run mkdir -p "$out"
+    run cp "$src/bazel-bin/data_manager/oss/mozc.data" "$out/mozc.data"
+    data_built=1
+  fi
   (cd "$src" && "$bazelisk" build --config oss_android "${bazel_flags[@]}" \
-    "//kotomo:android_$abi" //data_manager/oss:mozc_dataset_for_oss) \
-    || die "Android build failed for $abi"
+    "//kotomo:android_$abi") || die "Android build failed for $abi"
   lib="$(cd "$src" && "$bazelisk" cquery --config oss_android "${bazel_flags[@]}" \
     --output=files "//kotomo:android_$abi" 2>/dev/null)" || die "cannot locate the $abi library"
   run mkdir -p "$out/$abi"
   run cp "$src/$lib" "$out/$abi/libkotomo_mozc.so"
-  run cp "$src/bazel-bin/data_manager/oss/mozc.data" "$out/mozc.data"
 
   # 16 KB pages: every PT_LOAD segment must be aligned to at least 0x4000.
   readelf="$(find "$ndk_dest/toolchains/llvm/prebuilt" -name llvm-readelf -type f -o -name llvm-readelf -type l | head -n1)"

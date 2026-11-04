@@ -32,6 +32,12 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+
+        <!-- Deploys librime's data in its own process (PLAN §4.2). -->
+        <service
+            android:name=".ime.RimeDeployService"
+            android:exported="false"
+            android:process=":deploy" />
     </application>
 
 </manifest>
