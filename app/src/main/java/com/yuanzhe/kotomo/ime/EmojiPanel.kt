@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,3 +83,65 @@ fun EmojiPanel(onEmoji: (String) -> Unit, onBack: () -> Unit) {
         }
     }
 }
+
+/**
+ * Shows every candidate in the keyboard's place (the candidate bar's expand arrow).
+ *
+ * Inputs: [candidates] follows the bar; [onPick] commits candidate n; [onBack] returns to the keys.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun CandidatesPanel(
+    candidates: androidx.compose.runtime.State<List<String>>,
+    onPick: (Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    val back = stringResource(R.string.candidates_collapse)
+    Column(Modifier.fillMaxSize().background(colorResource(R.color.kb_background))) {
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(8.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+        ) {
+            candidates.value.forEachIndexed { i, text ->
+                Box(
+                    Modifier
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colorResource(if (i == 0) R.color.kb_accent_container else R.color.kb_key))
+                        .clickable { onPick(i) }
+                        .padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text,
+                        fontSize = 18.sp,
+                        color = colorResource(if (i == 0) R.color.kb_on_accent_container else R.color.kb_ink),
+                    )
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth().height(48.dp).padding(6.dp)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(colorResource(R.color.kb_key_function))
+                    .clickable(onClick = onBack)
+                    .semantics { contentDescription = back },
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.foundation.Image(
+                    androidx.compose.ui.res.painterResource(R.drawable.ic_bar_collapse),
+                    contentDescription = null,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(colorResource(R.color.kb_ink)),
+                )
+            }
+        }
+    }
+}
+

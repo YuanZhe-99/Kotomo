@@ -10,8 +10,10 @@ sealed interface KeyAction {
     data object Space : KeyAction
     data object Symbols : KeyAction
     data object Letters : KeyAction
-    /** Opens the emoji panel; a long press switches the input mode instead. */
+    /** Opens the emoji panel; a long press opens the language choice instead. */
     data object Emoji : KeyAction
+    /** Switches to [mode] (chosen from the Emoji key's long-press popup). */
+    data class SetMode(val mode: Mode) : KeyAction
 }
 
 /** Input modes the keyboard offers; Mixed accepts pinyin, romaji and English in one string. */
@@ -20,19 +22,26 @@ enum class Mode { MIXED, CHINESE, JAPANESE, ENGLISH }
 /**
  * Describes one key: what it shows, what it does and how much of its row it takes.
  *
- * Notes: [hint] is the character a long press types, shown in the key's corner when hints are on;
- * [width] is relative to the other keys and spacers of the row.
+ * Notes: [hint] is drawn in the key's corner; [more] lists what a long press offers in its popup
+ * (the first is preselected); [width] is relative to the other keys of the row; [function] keys
+ * use the darker key color.
  */
 data class Key(
     val label: String,
     val action: KeyAction,
     val width: Float = 1f,
     val hint: String? = null,
+    val more: List<String> = emptyList(),
     val function: Boolean = false,
 )
 
-/** One keyboard row; [lead] and [trail] are empty widths that centre a shorter row. */
-data class Row(val keys: List<Key>, val lead: Float = 0f, val trail: Float = 0f)
+/**
+ * One keyboard row. [lead] and [trail] are empty widths (in key units) that centre a shorter row.
+ * In a split layout, [splitAt] is the index of the first key of the right half; a row without
+ * one spans the whole width, its [Key.width]s counted in units of a half's letter key, and its
+ * space bar takes what is left.
+ */
+data class Row(val keys: List<Key>, val lead: Float = 0f, val trail: Float = 0f, val splitAt: Int = -1)
 
 /** Places a key in view coordinates (pixels); the box excludes the gap around the key. */
 data class PlacedKey(val key: Key, val left: Float, val top: Float, val right: Float, val bottom: Float) {
@@ -44,24 +53,48 @@ data class PlacedKey(val key: Key, val left: Float, val top: Float, val right: F
 data class Layout(val rows: List<Row>) {
 
     /**
-     * Lays the rows out in a [width] × [height] area with [gap] pixels between keys.
+     * Lays the rows out from the top of a [width]-wide area.
      *
+     * Inputs: [keyHeight] and [rowGap] per row; [gap] between keys; [half] > 0 lays split rows
+     * out as two halves of exactly that width at both edges, the middle left empty (the thumb
+     * zones stay the same size on any screen).
      * Returns: every key with its box, rows top to bottom and keys left to right.
-     * Notes: each row gets an equal share of the height; widths follow the keys' weights.
      */
-    fun place(width: Float, height: Float, gap: Float): List<PlacedKey> {
-        val rowHeight = height / rows.size
-        return rows.flatMapIndexed { index, row ->
-            val units = row.lead + row.trail + row.keys.sumOf { it.width.toDouble() }.toFloat()
-            val unit = width / units
-            var x = row.lead * unit
-            val top = index * rowHeight
-            row.keys.map { key ->
-                val w = key.width * unit
-                PlacedKey(key, x + gap / 2, top + gap / 2, x + w - gap / 2, top + rowHeight - gap / 2)
-                    .also { x += w }
+    fun place(width: Float, keyHeight: Float, rowGap: Float, gap: Float, half: Float = 0f): List<PlacedKey> {
+        val out = mutableListOf<PlacedKey>()
+        rows.forEachIndexed { index, row ->
+            val top = index * (keyHeight + rowGap)
+            fun segment(keys: List<Key>, from: Float, to: Float, lead: Float, trail: Float) {
+                val units = lead + trail + keys.sumOf { it.width.toDouble() }.toFloat()
+                val unit = (to - from + gap) / units
+                var x = from + lead * unit
+                for (key in keys) {
+                    val w = key.width * unit
+                    out += PlacedKey(key, x, top, x + w - gap, top + keyHeight)
+                    x += w
+                }
+            }
+            when {
+                half <= 0f -> segment(row.keys, 0f, width, row.lead, row.trail)
+                row.splitAt >= 0 -> {
+                    segment(row.keys.subList(0, row.splitAt), 0f, half, row.lead, 0f)
+                    segment(row.keys.subList(row.splitAt, row.keys.size), width - half, width, 0f, row.trail)
+                }
+                else -> {
+                    // A whole-width row: keys keep a half's key unit and the space bar stretches.
+                    val unit = (half + gap) / 5.5f
+                    val fixed = row.keys.filter { it.action != KeyAction.Space }.sumOf { it.width.toDouble() }.toFloat() * unit
+                    val space = width + gap - fixed
+                    var x = 0f
+                    for (key in row.keys) {
+                        val w = if (key.action == KeyAction.Space) space else key.width * unit
+                        out += PlacedKey(key, x, top, x + w - gap, top + keyHeight)
+                        x += w
+                    }
+                }
             }
         }
+        return out
     }
 
     companion object {
@@ -69,7 +102,7 @@ data class Layout(val rows: List<Row>) {
          * Finds the key a touch at ([x], [y]) means.
          *
          * Returns: the key whose box contains the point, otherwise the nearest key in the touched
-         * row (touches in gaps and row margins still type), or null for an empty list.
+         * row (touches in gaps, margins and the split's middle still type), or null for none.
          */
         fun hit(keys: List<PlacedKey>, x: Float, y: Float): PlacedKey? {
             keys.firstOrNull { x >= it.left && x < it.right && y >= it.top && y < it.bottom }?.let { return it }
@@ -77,60 +110,95 @@ data class Layout(val rows: List<Row>) {
             return keys.filter { it.centerY == row }.minByOrNull { kotlin.math.abs(it.centerX - x) }
         }
 
-        private val digits = "1234567890".map(Char::toString)
+        /** The corner hints of the letter keys (design: digits on the top row, symbols below). */
+        private val hints = mapOf(
+            'q' to "1", 'w' to "2", 'e' to "3", 'r' to "4", 't' to "5", 'y' to "6", 'u' to "7", 'i' to "8", 'o' to "9", 'p' to "0",
+            'a' to "@", 's' to "#", 'd' to "$", 'f' to "%", 'g' to "&", 'h' to "-", 'j' to "+", 'k' to "(", 'l' to ")",
+            'z' to "*", 'x' to "\"", 'c' to "'", 'v' to ":", 'b' to ";", 'n' to "!", 'm' to "?",
+        )
+
+        /** Accented letters a long press offers after the hint. */
+        private val accents = mapOf(
+            'a' to "àáâäæãåā", 'c' to "çćč", 'e' to "èéêëē", 'i' to "ìíîïī", 'n' to "ñń",
+            'o' to "òóôöõøōœ", 's' to "ßśš", 'u' to "ùúûüū", 'y' to "ýÿ", 'z' to "žźż",
+        )
+
+        private fun letter(c: Char, shifted: Boolean): Key {
+            val s = if (shifted) c.uppercase() else c.toString()
+            val hint = hints.getValue(c)
+            val accented = accents[c].orEmpty().map { if (shifted) it.uppercase() else it.toString() }
+            return Key(s, KeyAction.Text(s), hint = hint, more = listOf(hint) + accented)
+        }
+
+        private fun letters(chars: String, shifted: Boolean) = chars.map { letter(it, shifted) }
+
+        private fun shift() = Key("⇧", KeyAction.Shift, 1.5f, function = true)
+        private fun backspace() = Key("⌫", KeyAction.Backspace, 1.5f, function = true)
 
         /**
-         * Builds the letter page for [mode]; [shifted] shows capitals.
-         *
-         * Notes: the top row carries the digits as long-press hints; the bottom row follows the
-         * design: ?123, comma, Emoji (long press: language), space, full stop, enter.
+         * Builds the letter page for [mode]; [shifted] shows capitals; [split] marks the rows for
+         * the split layout (g and v appear on both halves, as on the design).
          */
-        fun letters(mode: Mode, shifted: Boolean): Layout {
-            fun letterRow(chars: String, hints: List<String?> = List(chars.length) { null }) =
-                chars.mapIndexed { i, c ->
-                    val s = if (shifted) c.uppercase() else c.toString()
-                    Key(s, KeyAction.Text(s), hint = hints[i])
-                }
-            val (comma, stop) = punctuation(mode)
-            return Layout(
+        fun letters(mode: Mode, shifted: Boolean, split: Boolean = false): Layout {
+            val rows = if (split) {
                 listOf(
-                    Row(letterRow("qwertyuiop", digits)),
-                    Row(letterRow("asdfghjkl", listOf("@", "#", "&", "*", "-", "+", "(", ")", "/")), lead = 0.5f, trail = 0.5f),
-                    Row(
-                        listOf(Key("⇧", KeyAction.Shift, 1.5f, function = true)) +
-                            letterRow("zxcvbnm", listOf("'", "\"", ":", ";", "!", "?", "~")) +
-                            Key("⌫", KeyAction.Backspace, 1.5f, function = true),
-                    ),
-                    bottomRow(comma, stop, KeyAction.Symbols, "?123"),
-                ),
-            )
+                    Row(letters("qwertyuiop", shifted), splitAt = 5),
+                    Row(letters("asdfgghjkl", shifted), lead = 0.35f, trail = 0.35f, splitAt = 5),
+                    Row(listOf(shift()) + letters("zxcvvbnm", shifted) + backspace(), splitAt = 5),
+                )
+            } else {
+                listOf(
+                    Row(letters("qwertyuiop", shifted)),
+                    Row(letters("asdfghjkl", shifted), lead = 0.5f, trail = 0.5f),
+                    Row(listOf(shift()) + letters("zxcvbnm", shifted) + backspace()),
+                )
+            }
+            return Layout(rows + bottomRow(mode, split, KeyAction.Symbols, "?123"))
         }
 
         /** Builds the digit and symbol page; its bottom row returns to letters. */
-        fun symbols(mode: Mode): Layout {
+        fun symbols(mode: Mode, split: Boolean = false): Layout {
             fun row(s: String) = s.map { Key(it.toString(), KeyAction.Text(it.toString())) }
-            val (comma, stop) = punctuation(mode)
             val currency = if (mode == Mode.ENGLISH) "$" else "¥"
-            return Layout(
+            val rows = if (split) {
+                listOf(
+                    Row(row("1234567890"), splitAt = 5),
+                    Row(row("@#${currency}_&-+()/"), splitAt = 5),
+                    Row(row("=*\"':;!?") + backspace(), splitAt = 4),
+                )
+            } else {
                 listOf(
                     Row(row("1234567890")),
                     Row(row("@#${currency}_&-+()/")),
-                    Row(row("=*\"':;!?") + Key("⌫", KeyAction.Backspace, 2f, function = true)),
-                    bottomRow(comma, stop, KeyAction.Letters, "ABC"),
+                    Row(row("=*\"':;!?") + backspace().copy(width = 2f)),
+                )
+            }
+            return Layout(rows + bottomRow(mode, split, KeyAction.Letters, "ABC"))
+        }
+
+        /**
+         * The design's bottom row: page switch, comma, Emoji, space, full stop, enter.
+         * Notes: on the phone the comma and full stop are light keys and Emoji a dark one; split,
+         * the other way round.
+         */
+        private fun bottomRow(mode: Mode, split: Boolean, page: KeyAction, pageLabel: String): Row {
+            val (comma, stop) = punctuation(mode)
+            val (commaMore, stopMore) = when (mode) {
+                Mode.ENGLISH -> listOf(",", ";", ":", "'", "\"") to listOf(".", "…", "?", "!")
+                Mode.JAPANESE -> listOf("、", "，", "；", "：", "・") to listOf("。", "…", "？", "！")
+                else -> listOf("，", "、", "；", "：", "“”") to listOf("。", "…", "？", "！")
+            }
+            return Row(
+                listOf(
+                    Key(pageLabel, page, if (split) 1.5f else 1.4f, function = true),
+                    Key(comma, KeyAction.Text(comma), more = commaMore, function = split),
+                    Key("☺", KeyAction.Emoji, function = !split),
+                    Key("", KeyAction.Space, 4.6f),
+                    Key(stop, KeyAction.Text(stop), more = stopMore, function = split),
+                    Key("⏎", KeyAction.Enter, 1.5f, function = true),
                 ),
             )
         }
-
-        private fun bottomRow(comma: String, stop: String, page: KeyAction, pageLabel: String) = Row(
-            listOf(
-                Key(pageLabel, page, 1.5f, function = true),
-                Key(comma, KeyAction.Text(comma), hint = "!"),
-                Key("☺", KeyAction.Emoji, function = true),
-                Key("", KeyAction.Space, 4f),
-                Key(stop, KeyAction.Text(stop), hint = "?"),
-                Key("⏎", KeyAction.Enter, 1.5f, function = true),
-            ),
-        )
 
         /** Returns the comma and full stop for [mode]: Chinese and Japanese forms or ASCII. */
         fun punctuation(mode: Mode) = when (mode) {

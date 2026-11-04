@@ -5,42 +5,78 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Covers spike S1's keyboard geometry: placement, hit testing in gaps, and the page contents. */
+/** Covers the keyboard geometry (S1, PLAN §8.10): placement, split halves, hit testing, pages. */
 class LayoutTest {
     private val width = 1080f
-    private val height = 4 * 150f
+    private val keyHeight = 150f
+    private val rowGap = 20f
     private val gap = 16f
+
+    private fun pages(split: Boolean) =
+        Mode.entries.flatMap { listOf(Layout.letters(it, false, split), Layout.symbols(it, split)) }
 
     @Test
     fun rowsFillTheWidthWithoutOverlap() {
-        for (layout in Mode.entries.flatMap { listOf(Layout.letters(it, false), Layout.symbols(it)) }) {
-            val placed = layout.place(width, height, gap)
+        for (layout in pages(split = false)) {
+            val placed = layout.place(width, keyHeight, rowGap, gap)
             placed.groupBy { it.top }.values.forEach { row ->
-                row.zipWithNext().forEach { (a, b) -> assertTrue("keys overlap: ${a.key.label} ${b.key.label}", a.right <= b.left) }
-                assertTrue(row.last().right <= width - gap / 2 + 0.01f)
+                row.zipWithNext().forEach { (a, b) -> assertTrue("keys overlap: ${a.key.label} ${b.key.label}", a.right <= b.left + 0.01f) }
+                assertTrue(row.first().left >= -0.01f)
+                assertTrue(row.last().right <= width + 0.01f)
             }
         }
     }
 
     @Test
+    fun splitHalvesKeepTheirWidthOnAnyScreen() {
+        val half = 700f
+        for (screen in listOf(2400f, 1800f, 3200f)) {
+            for (layout in pages(split = true)) {
+                val placed = layout.place(screen, keyHeight, rowGap, gap, half)
+                val rows = placed.groupBy { it.top }.values.toList()
+                // Every split row has keys only inside the two halves at the edges.
+                rows.dropLast(1).forEach { row ->
+                    row.forEach { k -> assertTrue("${k.key.label} in the middle", k.right <= half + 0.01f || k.left >= screen - half - 0.01f) }
+                    assertTrue(row.last().right <= screen + 0.01f)
+                }
+                // The bottom row spans the whole width; the space bar takes the rest.
+                val bottom = rows.last()
+                assertTrue(bottom.last().right <= screen + 0.01f && bottom.last().right > screen - gap - 1f)
+            }
+        }
+    }
+
+    @Test
+    fun splitDuplicatesGAndV() {
+        val labels = Layout.letters(Mode.MIXED, false, split = true).rows.map { r -> r.keys.map { it.label } }
+        assertEquals(2, labels[1].count { it == "g" })
+        assertEquals(2, labels[2].count { it == "v" })
+    }
+
+    @Test
     fun hitFindsTheKeyUnderTheTouch() {
-        val placed = Layout.letters(Mode.MIXED, false).place(width, height, gap)
+        val placed = Layout.letters(Mode.MIXED, false).place(width, keyHeight, rowGap, gap)
         val q = placed.first { it.key.label == "q" }
         assertEquals("q", Layout.hit(placed, q.centerX, q.centerY)?.key?.label)
     }
 
     @Test
     fun touchesInGapsAndMarginsStillType() {
-        val placed = Layout.letters(Mode.MIXED, false).place(width, height, gap)
+        val placed = Layout.letters(Mode.MIXED, false).place(width, keyHeight, rowGap, gap)
         val q = placed.first { it.key.label == "q" }
         val w = placed.first { it.key.label == "w" }
-        // In the gap between q and w, nearer to w.
         assertEquals("w", Layout.hit(placed, w.left - 1f, q.centerY)?.key?.label)
-        // The half-key margin left of "a" belongs to "a".
         val a = placed.first { it.key.label == "a" }
         assertEquals("a", Layout.hit(placed, 1f, a.centerY)?.key?.label)
-        // Above the first row still means the first row.
-        assertEquals("q", Layout.hit(placed, q.centerX, 0f)?.key?.label)
+        assertEquals("q", Layout.hit(placed, q.centerX, q.top + keyHeight + rowGap / 3)?.key?.label)
+    }
+
+    @Test
+    fun touchesInTheSplitMiddleGoToTheNearestHalf() {
+        val placed = Layout.letters(Mode.MIXED, false, split = true).place(2400f, keyHeight, rowGap, gap, 700f)
+        val t = placed.first { it.key.label == "t" }
+        assertEquals("t", Layout.hit(placed, 800f, t.centerY)?.key?.label)
+        assertEquals("y", Layout.hit(placed, 1650f, t.centerY)?.key?.label)
     }
 
     @Test
@@ -55,9 +91,17 @@ class LayoutTest {
     }
 
     @Test
-    fun topRowHintsAreDigits() {
-        val hints = Layout.letters(Mode.MIXED, false).rows[0].keys.map { it.hint }
-        assertEquals("1234567890".map(Char::toString), hints)
+    fun hintsFollowTheDesign() {
+        val rows = Layout.letters(Mode.MIXED, false).rows
+        assertEquals("1234567890".map(Char::toString), rows[0].keys.map { it.hint })
+        assertEquals(listOf("@", "#", "$", "%", "&", "-", "+", "(", ")"), rows[1].keys.map { it.hint })
+    }
+
+    @Test
+    fun longPressOffersTheHintFirst() {
+        val e = Layout.letters(Mode.ENGLISH, false).rows[0].keys.first { it.label == "e" }
+        assertEquals("3", e.more.first())
+        assertTrue("é" in e.more)
     }
 
     @Test

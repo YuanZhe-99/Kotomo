@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.Probe
+import com.yuanzhe.kotomo.ime.RimeFiles
 
 /**
  * Hosts the Kotomo settings app: keyboard setup, a field to try typing, and spike S1's
@@ -118,7 +119,15 @@ class MainActivity : ComponentActivity() {
                 Measure(stringResource(R.string.diag_candidates), summary.candidateDraw?.let { stringResource(R.string.diag_series, it.p50, it.p95, it.max, it.count) })
                 Measure(stringResource(R.string.diag_cold), summary.coldStartMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
                 Measure(stringResource(R.string.diag_compose), summary.composeFirstFrameMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
-                Measure(stringResource(R.string.diag_rime), summary.rimeDeployMs?.let { stringResource(R.string.diag_ms_mb, it.toInt(), (summary.rimeDeployPeakKb ?: 0) / 1024.0) })
+                val rimeStatus = RimeFiles(this@MainActivity).readStatus()
+                Measure(
+                    stringResource(R.string.diag_rime),
+                    when (rimeStatus) {
+                        RimeFiles.Status.Running -> stringResource(R.string.diag_rime_running)
+                        is RimeFiles.Status.Failed -> stringResource(R.string.diag_rime_failed, rimeStatus.reason)
+                        else -> summary.rimeDeployMs?.let { stringResource(R.string.diag_ms_mb, it.toInt(), (summary.rimeDeployPeakKb ?: 0) / 1024.0) }
+                    },
+                )
                 Measure(stringResource(R.string.diag_memory), summary.pssKb?.let { stringResource(R.string.diag_mb, it / 1024.0) })
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { summary = Probe.load(this@MainActivity) }) { Text(stringResource(R.string.diag_refresh)) }

@@ -6,10 +6,6 @@
     <string name="mode_badge_japanese" translatable="false">日</string>
     <string name="mode_badge_english" translatable="false">EN</string>
 
-    <string name="mode_mixed">Mixed</string>
-    <string name="mode_chinese">Chinese</string>
-    <string name="mode_japanese">Japanese</string>
-    <string name="mode_english">English</string>
 
     <string name="emoji_back">Back to keyboard</string>
 
@@ -42,4 +38,15 @@
     <string name="build_debug">debug</string>
     <string name="build_release">release</string>
     <string name="about_version">Version %1$s</string>
+    <!-- Space bar labels, as on the design; each language names itself. -->
+    <string name="space_mixed" translatable="false">混合 · 中英日</string>
+    <string name="space_chinese" translatable="false">拼音</string>
+    <string name="space_japanese" translatable="false">日本語</string>
+    <string name="space_english" translatable="false">English</string>
+    <string name="bar_rime_preparing">Preparing the Chinese dictionary…</string>
+    <string name="bar_rime_failed">The Chinese dictionary could not be prepared. See Diagnostics in Kotomo.</string>
+    <string name="bar_not_yet">Not available yet</string>
+    <string name="candidates_collapse">Back to the keyboard</string>
+    <string name="diag_rime_running">Preparing…</string>
+    <string name="diag_rime_failed">Failed: %1$s</string>
 </resources>

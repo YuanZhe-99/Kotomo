@@ -1,15 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Keyboard layout tokens (phone). -->
+<!-- Keyboard layout tokens from the design canvas (Keyboard, Main, FoldMain, FoldMainPortrait). -->
 <resources>
-    <dimen name="kb_row_height">52dp</dimen>
+    <!-- Keys -->
+    <dimen name="kb_key_height">52dp</dimen>
+    <dimen name="kb_key_height_large">46dp</dimen>
+    <dimen name="kb_row_gap">8dp</dimen>
     <dimen name="kb_key_gap">6dp</dimen>
-    <dimen name="kb_padding">4dp</dimen>
-    <dimen name="kb_key_radius">8dp</dimen>
-    <dimen name="kb_key_text">22sp</dimen>
+    <dimen name="kb_pad_top">6dp</dimen>
+    <dimen name="kb_pad_bottom">8dp</dimen>
+    <dimen name="kb_side">4dp</dimen>
+    <dimen name="kb_key_radius">12dp</dimen>
+    <dimen name="kb_key_shadow">1dp</dimen>
+    <dimen name="kb_key_text">21sp</dimen>
     <dimen name="kb_function_text">15sp</dimen>
+    <dimen name="kb_space_text">13sp</dimen>
     <dimen name="kb_hint_text">10sp</dimen>
+    <dimen name="kb_hint_top">3dp</dimen>
+    <dimen name="kb_hint_end">5dp</dimen>
     <dimen name="kb_icon">22dp</dimen>
-    <dimen name="candidate_height">44dp</dimen>
-    <dimen name="candidate_text">18sp</dimen>
-    <dimen name="candidate_padding">14dp</dimen>
+    <!-- Split layout: each half keeps the phone's thumb zone; it starts at this window width. -->
+    <dimen name="kb_split_half">268dp</dimen>
+    <dimen name="kb_split_min_width">600dp</dimen>
+    <!-- Long-press popup -->
+    <dimen name="kb_popup_cell">44dp</dimen>
+    <dimen name="kb_popup_height">52dp</dimen>
+    <dimen name="kb_popup_text">22sp</dimen>
+    <dimen name="kb_popup_lift">6dp</dimen>
+    <!-- Candidate bar and toolbar -->
+    <dimen name="bar_height">52dp</dimen>
+    <dimen name="bar_pad_start">8dp</dimen>
+    <dimen name="bar_pill_height">40dp</dimen>
+    <dimen name="bar_pill_pad_first">14dp</dimen>
+    <dimen name="bar_pill_pad">12dp</dimen>
+    <dimen name="bar_text">18sp</dimen>
+    <dimen name="bar_hint_text">14sp</dimen>
+    <dimen name="bar_expand">44dp</dimen>
+    <dimen name="toolbar_pad">28dp</dimen>
+    <dimen name="toolbar_button">48dp</dimen>
 </resources>

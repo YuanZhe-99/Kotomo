@@ -132,6 +132,33 @@ int main(int argc, char** argv) {
             std::to_string(learned_rank));
 
   rb::Shutdown();
+
+  // PLAN §4.2, as the app does it: a separate process deploys into a staging directory, the
+  // keyboard moves its build/ into the user directory and reopens librime there without deploying
+  // (in the same process that had librime open before).
+  const std::filesystem::path staging = user_dir.string() + "-staging";
+  const std::filesystem::path swapped = user_dir.string() + "-swapped";
+  std::filesystem::remove_all(staging);
+  std::filesystem::remove_all(swapped);
+  std::filesystem::create_directories(staging);
+  const bool opened_empty = rb::Initialize(argv[1], staging.string());
+  std::printf("INFO a session %s before the first deploy\n", opened_empty ? "opens" : "does not open");
+  start = Clock::now();
+  const bool staged = rb::Deploy();
+  rb::Shutdown();
+  Check(staged && std::filesystem::is_directory(staging / "build"), "S2-staged-deploy",
+        "deploy into a staging directory in " + std::to_string(static_cast<int>(MillisSince(start))) +
+            " ms");
+  std::filesystem::create_directories(swapped);
+  std::filesystem::rename(staging / "build", swapped / "build");
+  start = Clock::now();
+  Check(rb::Initialize(argv[1], swapped.string()), "S2-swap-open",
+        "session opens on the moved build without a deploy in " +
+            std::to_string(static_cast<int>(MillisSince(start))) + " ms");
+  const int swapped_rank = RankOf("nihao", "你好");
+  Check(swapped_rank == 0, "S2-swap-convert", "after the swap nihao -> 你好 at rank " + std::to_string(swapped_rank));
+  rb::Shutdown();
+
   std::printf("%s: %d failure(s)\n", failures == 0 ? "PASS" : "FAIL", failures);
   return failures == 0 ? 0 : 1;
 }

@@ -67,6 +67,9 @@ mozc_cc_binary(
         "-Wl,-z,max-page-size=16384",
         "-Wl,--version-script=$(location exports.lds)",
         "-Wl,--gc-sections",
+        # lld exports the __start_/__stop_ bounds of protobuf's pb_defaults section unless told
+        # otherwise; the version script cannot hide linker-made symbols.
+        "-Wl,-z,start-stop-visibility=hidden",
     ],
     linkshared = 1,
     deps = [":jni"],

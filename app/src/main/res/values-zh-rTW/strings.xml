@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="mode_mixed">混合</string>
-    <string name="mode_chinese">中文</string>
-    <string name="mode_japanese">日文</string>
-    <string name="mode_english">英文</string>
 
     <string name="emoji_back">返回鍵盤</string>
 
@@ -36,4 +32,10 @@
     <string name="build_debug">debug</string>
     <string name="build_release">release</string>
     <string name="about_version">版本 %1$s</string>
+    <string name="bar_rime_preparing">正在準備中文詞庫…</string>
+    <string name="bar_rime_failed">中文詞庫準備失敗，請在 Kotomo 的診斷中查看。</string>
+    <string name="bar_not_yet">暫不可用</string>
+    <string name="candidates_collapse">返回鍵盤</string>
+    <string name="diag_rime_running">準備中…</string>
+    <string name="diag_rime_failed">失敗：%1$s</string>
 </resources>

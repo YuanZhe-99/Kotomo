@@ -21,12 +21,14 @@ import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import com.yuanzhe.kotomo.settings.MainActivity
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.core.view.WindowInsetsCompat.Type
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -78,7 +80,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private lateinit var keyboard: KeyboardView
     private lateinit var candidateBar: CandidateBar
     private lateinit var panelHost: FrameLayout
+    private lateinit var content: LinearLayout
     private var emojiPanel: ComposeView? = null
+    private var candidatesPanel: ComposeView? = null
+    /** Main thread: librime has a session (mirrors the engine thread's rimeReady). */
+    private var rimeOpen = false
+    /** Main thread: a toolbar notice shown for a moment, or null. */
+    private var notice: String? = null
 
     private val composing = StringBuilder()
     private var candidates = emptyList<String>()
@@ -108,7 +116,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             english = openEnglish()
             val files = RimeFiles(this)
             if (files.hasBuild) rimeReady = Rime.initialize(files.shared.path, files.user.path)
-            if (!files.current) main.post(::startDeploy)
+            val open = rimeReady
+            main.post {
+                rimeOpen = open
+                if (!files.current) startDeploy()
+                refresh(0)
+            }
         }
     }
 
@@ -131,13 +144,21 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 unbindService(deployConnection)
                 deployBound = false
             }
-            if (!intent.getBooleanExtra(RimeDeployService.EXTRA_OK, false)) return
+            if (!intent.getBooleanExtra(RimeDeployService.EXTRA_OK, false)) {
+                refresh(0)
+                return
+            }
             engine.post {
                 val files = RimeFiles(this@KotomoService)
                 if (rimeReady) Rime.shutdown()
                 rimeReady = false
                 if (files.promote() || files.hasBuild) rimeReady = Rime.initialize(files.shared.path, files.user.path)
-                main.post(::clearChinese)
+                val open = rimeReady
+                main.post {
+                    rimeOpen = open
+                    clearChinese()
+                    refresh(0)
+                }
             }
         }
     }
@@ -158,8 +179,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             it.setViewTreeLifecycleOwner(this)
             it.setViewTreeSavedStateRegistryOwner(this)
         }
-        keyboard = KeyboardView(this, ::onKey)
-        candidateBar = CandidateBar(this, ::pick)
+        val popups = PopupLayer(this)
+        keyboard = KeyboardView(this, popups, ::onKey)
+        candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool)
         panelHost = FrameLayout(this).apply { addView(keyboard) }
         keyboard.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
             override fun onDraw() {
@@ -168,14 +190,78 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
         })
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        return LinearLayout(this).apply {
+        content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(getColor(R.color.kb_background))
             addView(candidateBar)
             addView(panelHost)
-            ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
-                v.updatePadding(bottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom)
-                insets
+        }
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(getColor(R.color.kb_background))
+            addView(content)
+            addView(popups, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
+        // The window reaches under the navigation bar, where the system draws its own keyboard
+        // buttons; the keys stay above it on every device and posture. The insets are read on the
+        // window's decor view, since the input view's parents do not pass them on.
+        window.window?.decorView?.let { decor ->
+            ViewCompat.setOnApplyWindowInsetsListener(decor) { v, insets ->
+                content.updatePadding(bottom = bottomInset(insets))
+                ViewCompat.onApplyWindowInsets(v, insets)
+            }
+            ViewCompat.getRootWindowInsets(decor)?.let { content.updatePadding(bottom = bottomInset(it)) }
+            ViewCompat.requestApplyInsets(decor)
+        }
+        return root
+    }
+
+    /** The bottom space the system keeps for itself: the navigation bar or its tappable buttons. */
+    private fun bottomInset(insets: WindowInsetsCompat) = maxOf(
+        insets.getInsets(Type.navigationBars()).bottom,
+        insets.getInsets(Type.tappableElement()).bottom,
+    )
+
+    /** Whether the window is wide enough for the split layout (unfolded foldables, tablets). */
+    private fun isSplit() =
+        resources.configuration.screenWidthDp * resources.displayMetrics.density >= resources.getDimension(R.dimen.kb_split_min_width)
+
+    /** Opens or closes the page of every candidate in the keyboard's place. */
+    private fun toggleCandidates() {
+        if (panelHost.getChildAt(0) === candidatesPanel) {
+            showKeyboard()
+            return
+        }
+        val height = keyboard.height
+        val panel = candidatesPanel ?: ComposeView(this).also { view ->
+            candidatesPanel = view
+            view.setContent {
+                CandidatesPanel(
+                    candidates = shownCandidates,
+                    onPick = { index ->
+                        showKeyboard()
+                        pick(index)
+                    },
+                    onBack = ::showKeyboard,
+                )
+            }
+        }
+        shownCandidates.value = candidates
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
+    private val shownCandidates = androidx.compose.runtime.mutableStateOf(emptyList<String>())
+
+    /** Runs a toolbar button: settings opens the app; the rest arrive with later phases. */
+    private fun onTool(tool: Tool) {
+        when (tool) {
+            Tool.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Tool.MORE, Tool.CLIPBOARD, Tool.AI, Tool.TRANSLATE -> {
+                notice = getString(R.string.bar_not_yet)
+                refresh(0)
+                main.postDelayed({
+                    notice = null
+                    refresh(0)
+                }, NOTICE_MS)
             }
         }
     }
@@ -244,6 +330,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     private fun onKey(action: KeyAction, longPress: Boolean, downTime: Long) {
         val ic = currentInputConnection ?: return
+        if (action is KeyAction.SetMode) {
+            commitComposition()
+            previousWord = null
+            mode = action.mode
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit { putString(KEY_MODE, mode.name) }
+            refresh(downTime)
+            return
+        }
         if (mode == Mode.CHINESE && !direct && onChineseKey(action, longPress, downTime)) {
             refresh(0)
             return
@@ -293,13 +387,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             KeyAction.Emoji -> {
                 commitComposition()
                 previousWord = null
-                if (longPress) {
-                    mode = Mode.entries[(mode.ordinal + 1) % Mode.entries.size]
-                    getSharedPreferences(PREFS, MODE_PRIVATE).edit { putString(KEY_MODE, mode.name) }
-                } else {
-                    showEmoji()
-                }
+                showEmoji()
             }
+            is KeyAction.SetMode -> Unit
         }
         refresh(downTime)
     }
@@ -373,6 +463,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (mode == Mode.CHINESE) {
             candidates = chineseCandidates
             candidateBar.show(candidates, downTime)
+            shownCandidates.value = candidates
         }
     }
 
@@ -437,24 +528,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun refresh(downTime: Long) {
         if (!::keyboard.isInitialized) return
-        keyboard.layout = if (symbols) Layout.symbols(mode) else Layout.letters(mode, shift != Shift.OFF)
+        val split = isSplit()
+        keyboard.split = split
+        keyboard.layout = if (symbols) Layout.symbols(mode, split) else Layout.letters(mode, shift != Shift.OFF, split)
         keyboard.shift = shift
-        keyboard.modeBadge = getString(
-            when (mode) {
-                Mode.MIXED -> R.string.mode_badge_mixed
-                Mode.CHINESE -> R.string.mode_badge_chinese
-                Mode.JAPANESE -> R.string.mode_badge_japanese
-                Mode.ENGLISH -> R.string.mode_badge_english
-            },
-        )
-        keyboard.spaceLabel = getString(
-            when (mode) {
-                Mode.MIXED -> R.string.mode_mixed
-                Mode.CHINESE -> R.string.mode_chinese
-                Mode.JAPANESE -> R.string.mode_japanese
-                Mode.ENGLISH -> R.string.mode_english
-            },
-        )
+        keyboard.mode = mode
         val raw = composing.toString()
         val gen = ++generation
         candidates = when {
@@ -465,7 +543,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             else -> listOf(raw, raw.replaceFirstChar(Char::uppercase), raw.uppercase()).distinct()
         }
         candidateBar.show(candidates, downTime)
+        shownCandidates.value = candidates
+        candidateBar.hint = notice ?: chineseHint()
         if (!direct && mode == Mode.ENGLISH && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
+    }
+
+    /** Says why Chinese mode cannot convert yet (dictionary being prepared or failed), or null. */
+    private fun chineseHint(): String? {
+        if (mode != Mode.CHINESE || direct || rimeOpen) return null
+        return when (RimeFiles(this).readStatus()) {
+            is RimeFiles.Status.Failed -> getString(R.string.bar_rime_failed)
+            else -> getString(R.string.bar_rime_preparing)
+        }
     }
 
     /** Asks the engine thread for English suggestions and shows them if still current. */
@@ -478,6 +567,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 val shown = words.map { if (capital) it.replaceFirstChar(Char::uppercase) else it }
                 candidates = if (typed.isEmpty()) shown.distinct() else (listOf(typed) + shown).distinct()
                 candidateBar.show(candidates, 0)
+                shownCandidates.value = candidates
             }
         }
     }
@@ -514,6 +604,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val PREFS = "ime"
         const val KEY_MODE = "mode"
         const val ENGLISH_DICT = "main_en_us.dict"
+        const val NOTICE_MS = 1500L
         const val CHINESE_CANDIDATES = 30
         // X11 keysyms that librime takes.
         const val SPACE = 0x20
