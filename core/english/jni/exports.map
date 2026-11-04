@@ -1,0 +1,7 @@
+/* Exports only Kotomo's English JNI entry points; everything else in the library stays local. */
+{
+    global:
+        Java_com_yuanzhe_kotomo_engine_EnglishJni_*;
+    local:
+        *;
+};
