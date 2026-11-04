@@ -1,0 +1,47 @@
+# Cross-language lexicon samples for spike S5 (PLAN.md §5.9, §7 S5, §13.2), checked by
+# java lexicon/CheckSamples.java against build/lexicon/. Reviewed by hand; every rule has a
+# positive and a negative line.
+# Columns: id, table (pinyin = pinyin-ja.tsv, en = en-ja.tsv), key ("*" = any key, negatives
+# only), surface ("!" prefix = must not appear), reading (empty = any), rank, notes.
+# rank: a positive line passes when the surface is among the key's first N distinct surfaces
+# (by cost); a negative line fails when it is; 0 means anywhere. Lines from §13.2 and the S5
+# list use 3; single syllables, which only context can rank, use 0.
+id	table	key	surface	reading	rank	notes
+S5-P001	pinyin	chidai	池袋	いけぶくろ	3	§13.2 T05-002, T07-001..003
+S5-P002	pinyin	dongjing	東京	とうきょう	3	§13.2 T05-003
+S5-P003	pinyin	mianjie	面接	めんせつ	3	§13.2 T05-001
+S5-P004	pinyin	zailiu	在留	ざいりゅう	3	§13.2 T07-004 (zailiucard)
+S5-P005	pinyin	riben	日本	にほん	3	S5 list
+S5-P006	pinyin	ying	桜	さくら	0	S5 list; 桜 → 櫻 → 樱 yīng
+S5-P007	pinyin	mao	猫	ねこ	0	S5 list
+S5-P008	pinyin	xuexiao	学校	がっこう	3	S5 list; 学 → 學 (CC-CEDICT 學校)
+S5-P009	pinyin	yishu	芸術	げいじゅつ	3	§3.3, §5.9: 芸 is the new form of 藝 (yì)
+S5-P010	pinyin	yi	芸	げい	0	§3.3, §5.9
+S5-P011	pinyin	yuding	予定	よてい	3	OpenCC phrase 予定 → 預定
+S5-P012	pinyin	huaban	花弁	かべん	3	弁 → 辨/辯/瓣: the CC-CEDICT word 花瓣 decides
+S5-P013	pinyin	bianhushi	弁護士	べんごし	3	弁 → 辯
+S5-P014	pinyin	huizhuan	回転	かいてん	3	OpenCC phrase 回転 → 廻転 keeps the new form 転, which still maps to 轉
+S5-P015	pinyin	shenshe	神社	じんじゃ	3	kJapaneseOldVariant 神 → U+FA19 is a compatibility ideograph of the same character
+S5-P016	pinyin	renren	人々	ひとびと	3	々 repeats the previous character
+S5-N001	pinyin	yunshu	!芸術		0	§3.3: 芸 must not read yún when it stands for 藝
+S5-N002	pinyin	yun	!芸		0	§3.3
+S5-N003	pinyin	huabian	!花弁		0	the word reading 花瓣 huābàn wins over per-character 辨
+S5-N004	pinyin	*	!峠		0	§5.9 kokuji: Unihan has only an unattested kMandarin value
+S5-N005	pinyin	*	!込		0	§5.9 kokuji: Unihan has only an unattested kMandarin value
+S5-N006	pinyin	*	!申込		0	§5.9: a word with a kokuji is skipped
+S5-E001	en	computer	コンピューター		3	§13.2 T06-001
+S5-E002	en	coffee	コーヒー		3	§13.2 T06-002
+S5-E003	en	card	カード		3	§13.2 T07-004 (zailiucard); S5 list
+S5-E004	en	chocolate	チョコレート		3	§13.2 T07-005; S5 list
+S5-E005	en	schedule	スケジュール		3	S5 list
+S5-E006	en	school	学校		3	S5 list; §5.9 semantic class
+S5-E007	en	cat	猫		3	S5 list
+S5-E008	en	japan	日本		3	S5 list
+S5-E009	en	tokyo	東京		3	S5 list
+S5-E010	en	interview	面接		3	S5 list
+S5-E011	en	cherryblossom	桜		3	S5 list
+S5-E012	en	residencecard	在留カード		3	§13.2 T07-004 as one word
+S5-EN01	en	coffee	!珈琲		1	ateji of a usually-kana word is not first
+S5-EN02	en	cat	!ネコ		1	a katakana spelling of a native word is not first
+S5-EN03	en	school	!スクール		1	§5.9: school → 学校 before the loanword
+S5-EN04	en	card	!解く		3	a verb gloss "to card (wool)" stays below the noun
