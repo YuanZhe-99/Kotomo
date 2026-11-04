@@ -1,0 +1,21 @@
+# Gradle, Kotlin and Android build output
+.gradle/
+.kotlin/
+build/
+.cxx/
+/local.properties
+# IDE state
+.idea/
+*.iml
+# Local working files: notes, logs, reference screenshots of other keyboards
+/.dev/
+# Downloaded toolchains, upstream archives and dictionary sources
+/.deps/
+# Signing material never lives in the repository
+/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key

@@ -1,0 +1,15 @@
+# LF everywhere, also in Windows working trees (the Kotlin, C++ and shell tooling expect it).
+* text=auto eol=lf
+# Windows batch files keep CRLF (the Gradle wrapper's gradlew.bat).
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.webp binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.apk binary
+*.aab binary
+*.so binary
+*.svg text eol=lf
+*.patch text eol=lf
