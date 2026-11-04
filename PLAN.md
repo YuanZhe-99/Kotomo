@@ -47,7 +47,7 @@
 - `minSdk` 26：与 MyApps 系列相同，也是 ML Kit GenAI 的最低要求。`compileSdk` 与 `targetSdk` 跟随最新稳定平台，目前为 API 37；Google Play 自 2026-08-31 起要求至少 API 36（§3.2）。
 - 界面语言：English、简体中文、繁體中文、日本語（与 MyApps 系列一致）。
 - 键盘用自定义 View 绘制；设置应用用 Jetpack Compose（Material 3），呈现方式参考 MyApps-UI 的设置组件（分组、分段选择、说明文字）。
-- 不写死屏幕尺寸：P1 起布局就按可用宽度计算；平板、折叠屏和横屏分离布局在 P3/P5 交付。
+- 不写死屏幕尺寸：P1 起布局就按窗口尺寸类别与可用宽度计算，并在 P1 交付平板、折叠屏与单手模式的基础适配（§8.10，用户 2026-11-04 要求）；横屏分离与悬浮键盘在 P3。
 
 ### 2.3 输入模式（草案 §2）
 
@@ -80,6 +80,7 @@
 - 在线词库社区与主题市场（P5）；WebDAV 和用户文件夹以外的同步后端。
 - 在线 AI：只在 P4 之后、用户显式开启时提供（§11.3）。
 - `armeabi-v7a`、iOS 与桌面版本。
+- 本地 AI 模型与中文的校对、重写（用户 2026-11-04 决定不做）。
 
 ### 2.5 已确定与待用户决定的事项
 
@@ -94,6 +95,7 @@
 | 分发渠道 | GitHub Releases（签名 APK） | Google Play 有输入法与数据披露要求；F-Droid 不接受 ML Kit 这类非自由依赖，需要不含 ML Kit 的构建变体 |
 | 草案提到的主题截图与 Madamada 交互截图 | 放在本地 `.dev/reference/`，不提交 | 截图尚不在仓库中；第三方产品的界面截图不进入公开仓库 |
 | 原创"Apple 风格"Emoji 主题的美术来源 | 暂不制作，先用许可明确的素材 | 需要原创美术或明确授权（§11.5） |
+| 自定义 AI 提示词（草案 §13.1） | 不提供 | 只用专用 API 时无法实现；如需提供，要引入 Prompt API |
 | Mozc 构建主机 | CI（Linux）产出预构建库，Windows 开发机使用锁定哈希的产物 | Mozc 的 Android 构建只支持 macOS/Linux 主机（§3.1） |
 
 ## 3. 已核实事实与待验证假设
@@ -124,9 +126,9 @@
 | Android 16、17 的变化 | Android 16 新增 `onCustomImeSwitcherButtonRequestedVisible` 与 `onShouldVerifyKeyEvent`。Android 17 对所有应用：未处理的旋转后不再恢复键盘可见性，并按设备内存设定应用的内存上限。面向 API 37：中日韩输入法可以用 `TextAttribute.Builder.setTextSuggestionSelected()` 标记选中的转换候选；禁止修改 `static final` 字段（经 JNI 修改会崩溃）；`System.load()` 加载的本地库必须只读 | 转换片段的标记使用新接口（§8.2）；内存基线必须在 Android 17 设备上测量；JNI 层不碰 `static final` |
 | Compose 与输入法 | `ComposeView` 需要经视图树传递的 `LifecycleOwner` 与 `SavedStateRegistryOwner`；没有官方的输入法指南，社区做法是让服务实现这些所有者并设置到输入法窗口的 decor view 上 | S1 验证之后再决定面板是否使用 Compose |
 | 剪贴板 | Android 10 起只有默认输入法和焦点应用能读取剪贴板；Android 12 的读取提示不对默认输入法显示；Android 13 起敏感剪贴以 `ClipDescription.EXTRA_IS_SENSITIVE` 标记，键盘应隐藏其预览；Android 13 起系统在最后一次读写后不超过 60 分钟清除剪贴板（CDD §9.8.7，AOSP 默认 1 小时）；Android 14–17 没有剪贴板行为变更 | 剪贴板历史由 Kotomo 自己保存（§10.7），不依赖系统保留；敏感剪贴永不记录 |
-| ML Kit GenAI | 提供 Prompt、Proofreading、Rewriting、Summarization、Image Description、Speech Recognition，以及 2026-10-26 新增的 Text-to-Speech、Speech Translation、Agent、Embeddings（alpha，需要 Kotlin 2.3+）。`genai-proofreading` 与 `genai-rewriting` 为 1.0.0-beta1，`genai-prompt` 为 1.0.0-beta5，均为 beta、无 SLA。校对与重写支持英语、日语、法语、德语、意大利语、西班牙语、韩语（**不含中文**），输入少于 256 token，API 26+，解锁 bootloader 的设备不可用；重写风格有 ELABORATE、EMOJIFY、SHORTEN、FRIENDLY、PROFESSIONAL、REPHRASE。Prompt API 输入少于 4,000 token、输出最多 4,096 token。支持的设备包括 Pixel 9/10/11、Galaxy S25/S26/Z Fold7/Flip8/Fold8 和多家厂商的旗舰 | 英文、日文使用专用 API；中文只能用 Prompt API，质量需要验证；长文本分段处理 |
+| ML Kit GenAI | 提供 Prompt、Proofreading、Rewriting、Summarization、Image Description、Speech Recognition，以及 2026-10-26 新增的 Text-to-Speech、Speech Translation、Agent、Embeddings（alpha，需要 Kotlin 2.3+）。`genai-proofreading` 与 `genai-rewriting` 为 1.0.0-beta1，`genai-prompt` 为 1.0.0-beta5，均为 beta、无 SLA。校对与重写支持英语、日语、法语、德语、意大利语、西班牙语、韩语（**不含中文**），输入少于 256 token，API 26+，解锁 bootloader 的设备不可用；重写风格有 ELABORATE、EMOJIFY、SHORTEN、FRIENDLY、PROFESSIONAL、REPHRASE。Prompt API 输入少于 4,000 token、输出最多 4,096 token。支持的设备包括 Pixel 9/10/11、Galaxy S25/S26/Z Fold7/Flip8/Fold8 和多家厂商的旗舰 | 英文、日文使用专用 API；中文不提供校对与重写（用户决定）；长文本分段处理 |
 | 前台限制 | 官方文档："GenAI API inference is permitted only when the app is the top foreground application"；在前台服务中调用同样返回 `BACKGROUND_USE_BLOCKED`（30）。另有每应用配额（`BUSY` 9、`PER_APP_BATTERY_USE_QUOTA_EXCEEDED` 27），数值未公开。没有找到针对输入法的官方豁免。开发者报告（非官方）：在 Galaxy S25 Ultra（Android 16）上从 `InputMethodService` 调用（键盘显示在其他应用之上）返回 `BACKGROUND_USE_BLOCKED`，同一调用在该应用自己的 Activity 中成功；另有报告 `checkStatus()` 显示可用，生成时才被拒绝 | **默认设计：AI 推理在用户主动打开的 Kotomo 前台界面中进行**（§11.1）；S7 在实际设备上复核直接调用与这一设计 |
-| ML Kit 翻译与语言识别 | `translate` 17.0.3，API 23+，59 种语言，含中文、日文、英文；每种语言模型约 30 MB，按需下载。定位为简单翻译：不含英语的语言对经英语中转（中日互译即如此），质量随语言对变化。语言识别内置版 17.0.6（约 900 KB），支持 100 多种语言，含罗马化的中文与日文 | 翻译结果先预览；中日互译的质量在 P4 评估，必要时改用 Prompt API |
+| ML Kit 翻译与语言识别 | `translate` 17.0.3，API 23+，59 种语言，含中文、日文、英文；每种语言模型约 30 MB，按需下载。它是 ML Kit 的普通语言 API，不属于 GenAI，官方页面没有任何前台或后台限制的说明。定位为简单翻译：不含英语的语言对经英语中转（中日互译即如此），质量随语言对变化。语言识别内置版 17.0.6（约 900 KB），支持 100 多种语言，含罗马化的中文与日文 | 翻译直接在键盘中运行（S7 确认）；结果先预览；中日互译的质量在 P4 评估 |
 
 依据：[Android 17](https://android-developers.googleblog.com/2026/06/Android-17.html)、[Play 目标 API 要求](https://developer.android.com/google/play/requirements/target-sdk)、[16 KB 页大小](https://developer.android.com/guide/practices/page-sizes)、[AGP 版本说明](https://developer.android.com/build/releases/about-agp)、[`EditorInfo`](https://developer.android.com/reference/android/view/inputmethod/EditorInfo)、[输入法与自动填充](https://developer.android.com/guide/topics/text/ime-autofill)、[`InputMethodService`](https://developer.android.com/reference/android/inputmethodservice/InputMethodService)、[Android 17 行为变更](https://developer.android.com/about/versions/17/behavior-changes-17)、[复制与粘贴](https://developer.android.com/develop/ui/views/touch-and-input/copy-paste)、[剪贴板安全](https://developer.android.com/privacy-and-security/risks/secure-clipboard-handling)、[Android 13 CDD](https://source.android.com/docs/compatibility/13/android-13-cdd)、[ML Kit GenAI](https://developers.google.com/ml-kit/genai)、[校对 API](https://developers.google.com/ml-kit/genai/proofreading/android)、[重写 API](https://developers.google.com/ml-kit/genai/rewriting/android)、[Prompt API](https://developers.google.com/ml-kit/genai/prompt/android/get-started)、[ML Kit 翻译](https://developers.google.com/ml-kit/language/translation/android)；开发者报告 [wmkeyboard #804](https://github.com/wasi-master/wmkeyboard/issues/804)、[googlesamples/mlkit #1013](https://github.com/googlesamples/mlkit/issues/1013)。
 
@@ -152,8 +154,8 @@
 
 - "librime 和 Mozc 各自能用，拼起来就能混合整句"：两者都是会话式引擎，各自切分输入，不接受外部候选网格；跨语言整句需要协调层（§5）。
 - "Mozc 的固定片段能直接用于所有候选"：只有转换请求支持，建议和预测不支持（§3.1）。
-- "Gemini Nano 可以直接在输入法里调用"：ML Kit GenAI 只允许位于最前台的应用推理，已有开发者报告从 `InputMethodService` 调用被拒绝（§3.2）；默认改为在 Kotomo 的前台界面中推理，S7 在实际设备上复核。
-- "ML Kit 的校对与重写支持中文"：不支持；中文只能走 Prompt API（§3.2）。
+- "Gemini Nano 可以直接在输入法里调用"：ML Kit GenAI 只允许位于最前台的应用推理，已有开发者报告从 `InputMethodService` 调用被拒绝（§3.2）；默认改为在 Kotomo 的前台界面中推理，S7 在实际设备上复核。这一限制只针对 GenAI：设备端翻译属于 ML Kit 的普通 API，不受它约束（§3.2）。
+- "ML Kit 的校对与重写支持中文"：不支持（§3.2）；Kotomo 因此不为中文提供校对与重写（§11.1）。
 - "英文转日文就是音译"：以词典映射为主，音译只作最后的候选（草案 §5.3）。
 - "简繁转换只需逐字转换"：需要词组级转换和地区用词，并让地区词库参与候选生成（草案 §4.3）。
 - "日文汉字词可以直接得到汉语拼音"：需要字形归一（新字体 → 旧字体 → 简体）和多音字处理；新字体可能与无关的汉字同形，日本国字没有汉语读音（§3.3、§5.9）。
@@ -161,7 +163,7 @@
 - "Telegram 使用 Apple 风格 Emoji，所以素材可以用"：不能据此推定任何授权（草案 §8.4）。
 - "LLM 生成的词库可以直接用"：不可以，必须校验且默认低优先级（草案 §7.4）。
 - "首批候选 50 ms 在所有设备上都能达到"：需要真机基线，先测量再承诺（草案 §17.1）。
-- 草案 §19.1 的 `chida nikainiikou` 与 §3.1 的 `chidai` 不一致：以 `chidai ni kai ni ikou` 为整句主用例，`chida…` 作为音节缺字纠错用例（§13.2）。
+- 草案 §3.4 与 §19.1 的 `chida nikainiikou` 是 `chidai nikainiikou` 的笔误（用户 2026-11-04 确认）：与 §3.1 一样，`chidai` 是「池袋」的汉语拼音，这些用例验证的都是"拼音 → 日文"加罗马字的整句转换（§13.2）。
 - 草案用例 `chocolateokainiikou` 中的 `o` 对应助词「を」（标准罗马字写作 `wo`）：需要一条带代价、只在名词之后生效的"助词 o → を"容错规则，不能把它当成普通的「お」。
 
 ## 4. 架构决策
@@ -353,7 +355,7 @@ P0 技术验证与工具链
 - [ ] **S4 英文引擎**：构建 AOSP LatinIME 的原生建议代码（参考 HeliBoard 的维护版本），用许可明确的词表生成二进制词典；验证按键纠错、拼写纠错与下一词预测；记录体积与延迟。
 - [ ] **S5 跨语言词库原型**：按 §5.9 从 JMdict、Unihan、OpenCC 与 Mozc 词典生成拼音 → 日文与英文 → 日文映射；统计样本清单的覆盖率与错误，至少覆盖池袋、東京、面接、在留、日本、桜、猫、カード、コーヒー、コンピューター、チョコレート、スケジュール、学校。
 - [ ] **S6 混合整句原型（主机）**：用 S2–S5 的组件实现 §5.2–§5.4 的最小协调层，在桌面上运行 §13.2 的用例与单语基线，输出前 k 名与差距分析。
-- [ ] **S7 输入法中的 Gemini Nano**：在支持的真机上，(1) 从 `InputMethodService` 直接调用 ML Kit GenAI（校对或 Prompt），在目标 App 位于前台时记录结果（§3.2 的报告预期为 `BACKGROUND_USE_BLOCKED`）；(2) 验证默认设计：用户在键盘上点 AI 后打开 Kotomo 的前台界面完成推理，返回后把结果作为替换建议交给输入法，并测量原输入框的文本与选区能否可靠恢复（§11.1）。
+- [ ] **S7 输入法中的 Gemini Nano**：在支持的真机上，(1) 从 `InputMethodService` 直接调用 ML Kit GenAI 的校对 API，在目标 App 位于前台时记录结果（§3.2 的报告预期为 `BACKGROUND_USE_BLOCKED`）；(2) 验证默认设计：用户在键盘上点 AI 后打开 Kotomo 的前台界面完成推理，返回后把结果作为替换建议交给输入法，并测量原输入框的文本与选区能否可靠恢复（§11.1）；(3) 从输入法服务直接调用 ML Kit 设备端翻译，确认它不受前台限制。
 - [ ] **S8 许可证与数据源审查**：为每个候选上游与数据源记录版本、来源、哈希、许可证、义务和是否采用（中文方案与词库、英文词表、日文词典、JMdict、Unihan、CLDR、Emoji 素材、字体、ML Kit 的数据处理条款）。
 - [ ] 把引擎 ↔ 应用契约的初稿写入 `doc/en-us/`；第一个 ADR 记录引擎组合与调用深度、Mozc 的构建方式和快照序列化格式。
 
@@ -426,11 +428,20 @@ P0 技术验证与工具链
 
 - 版本号、签名（Kotomo 新建自己的签名密钥，只存在于 CI secrets 与维护者的离线副本中）、release 构建（R8）、GitHub 仓库建立后的 Actions 发布产物、`version-history.md`。
 
+### 8.10 平板、折叠屏与单手模式（用户 2026-11-04 要求）
+
+- 布局按窗口尺寸类别（紧凑、中等、展开）与实际可用宽度计算：键宽、键高、间距与候选栏密度都由令牌和可用尺寸推导，不写死手机尺寸；分屏、多窗口与自由窗口下按实际窗口布局。
+- 平板：大屏上限制键盘的最大宽度（居中或靠边），横屏时键高随屏幕高度缩放；候选栏一次显示更多候选，整句候选可以展开得更宽。
+- 折叠屏：折叠与展开、外屏与内屏切换、半折叠（桌面姿态，用 Jetpack WindowManager 的折叠特征识别铰链位置）时立即重新布局，组合内容与候选不丢失；按键不落在铰链区域。
+- 单手模式：左手、右手切换，宽度可调；空出的一侧提供切换方向与恢复全宽的按钮；按设备与方向分别记住设置。
+- 设计稿（`design/`）给出紧凑、中等、展开三种宽度与单手模式下的键盘和候选栏。
+
 ### G1 验收
 
 - 三种单语模式在真机上达到单语语料（T01–T03）规定的名次。
 - 密码类输入、`IME_FLAG_NO_PERSONALIZED_LEARNING` 与无痕模式下不学习、不记录（T12）。
 - 首批候选延迟、输入法冷启动和内存达到 §13.4 的目标，或记录差距与原因。
+- §8.10 在一台平板、一台折叠屏（含折叠与展开切换、半折叠）和手机的单手模式下通过（T14）。
 - release 构建在真机上可用；致谢、许可证与隐私页面完整。
 
 ## 9. P2 — 核心混合输入（草案 Phase 2，最主要的开发阶段）
@@ -575,7 +586,7 @@ P0 技术验证与工具链
 
 ### 10.9 布局（草案 §9.1、§9.2）
 
-- 中文九宫格、日语 12 键 Flick 输入、单手键盘、横屏分离式键盘、悬浮键盘、平板与折叠屏自适应。
+- 中文九宫格、日语 12 键 Flick 输入、横屏分离式键盘、悬浮键盘；在 §8.10 的基础上，为平板与折叠屏展开状态提供分离布局等大屏优化。
 - 自定义：键盘高度、按键宽度与间距、圆角、字体大小、数字行、工具栏、空格键大小、功能键位置、长按符号映射。
 
 ### 10.10 工具栏、代码模式与按 App 设置（草案 §9.4、§10）
@@ -594,8 +605,8 @@ P0 技术验证与工具链
 ### 11.1 Gemini Nano（草案 §13.1、§13.3）
 
 - 通过官方支持的 ML Kit GenAI（经 AICore）：校对、拼写修正、语法修正、翻译、文本重写、润色、扩写、缩写、日语敬语转换、语气调整、自定义提示词。AI 功能独立于核心输入引擎。
-- 语言（§3.2）：校对与重写的专用 API 支持英语和日语，不支持中文，输入须少于 256 token；中文的校对、重写与润色只能用 Prompt API（beta），在 P4 先评估质量。翻译优先用 ML Kit 设备端翻译（中日互译经英语中转，质量需要评估），必要时改用 Prompt API。草案功能与重写风格的对应：润色 → REPHRASE 或 PROFESSIONAL，扩写 → ELABORATE，缩写 → SHORTEN，语气调整 → FRIENDLY 或 PROFESSIONAL，日语敬语转换 → PROFESSIONAL 或 Prompt API；超出 256 token 的文本分段处理。
-- 运行位置：官方只允许位于最前台的应用推理，已有报告显示从输入法服务调用会被拒绝（§3.2）。默认设计是用户在键盘上点 AI 后，打开 Kotomo 的前台界面（底部弹出或半透明的 Activity）完成推理；回到原输入框后，只有原文与选区都没有变化时才替换，否则把结果复制到剪贴板并说明原因。S7 的结果可以改变这一设计。
+- 语言与接口（用户 2026-11-04 决定）：英文和日文直接使用校对与重写的专用 API（输入须少于 256 token，超出时分段处理）；**中文不提供校对与重写**，选中中文文本时不显示这些按钮；不使用 Prompt API，也不使用本地模型。翻译只用 ML Kit 设备端翻译（中日互译经英语中转，质量在 P4 评估）。草案功能与重写风格的对应：润色 → REPHRASE 或 PROFESSIONAL，扩写 → ELABORATE，缩写 → SHORTEN，语气调整 → FRIENDLY 或 PROFESSIONAL，日语敬语转换 → PROFESSIONAL。草案的"自定义提示词"需要 Prompt API，因此暂不提供（§2.5）。
+- 运行位置：前台限制只针对 GenAI（Gemini Nano），ML Kit 设备端翻译直接在键盘中运行。GenAI 只允许位于最前台的应用推理，已有报告显示从输入法服务调用会被拒绝（§3.2），所以校对、重写等功能的默认设计是：用户在键盘上点 AI 后，打开 Kotomo 的前台界面（底部弹出或半透明的 Activity）完成推理；回到原输入框后，只有原文与选区都没有变化时才替换，否则把结果复制到剪贴板并说明原因。S7 的结果可以改变这一设计。
 - 移植 MyApps-AI 的 `GenAiChannel.kt`：模型变体探测、错误映射（`BACKGROUND_USE_BLOCKED` → 后台、配额、过长等）、R8 保留规则；沿用 MyApps-AI 的规则：默认关闭；开关就是闸门（关闭时不调用任何 AI 接口，连状态也不查）；每次请求前重新检查状态；不代替用户下载模型；结果标注生成位置。
 - 兼容：设备支持、Android 版本、AICore 状态、模型下载状态、语言限制、输入长度限制、模型版本差异。不支持的设备上隐藏 AI 入口或说明原因，所有输入功能照常可用。
 
@@ -635,7 +646,7 @@ P0 技术验证与工具链
 ## 12. P5 — 扩展与优化（草案 Phase 5）→ 1.0
 
 - 中英日语音输入、中文与日语手写（含 Android 14 起由输入法实现的手写笔"在任意输入框书写"，§3.2）、外接物理键盘、更多输入方案与语言、英文滑动输入（开源手势解码器可用之后）。语音输入若使用 ML Kit 的设备端语音识别，很可能同样受前台限制（推断，§3.2），需先验证。
-- 性能优化、主流厂商系统上的兼容性测试、平板与折叠屏优化、在线词库社区与主题扩展。
+- 性能优化、主流厂商系统上的兼容性测试、平板与折叠屏的进一步优化、在线词库社区与主题扩展。
 
 ### G5 验收
 
@@ -660,7 +671,7 @@ P0 技术验证与工具链
 | T11 | 简繁与地区用词 | 网络/網路、软件/軟體 等 | P1、P3 |
 | T12 | 隐私 | 敏感输入框、无学习标记、无痕模式、日志不含输入内容、敏感剪贴 | P1 |
 | T13 | 输入框适配 | §8.7 的各类输入框 | P1 |
-| T14 | 交互 | 竖屏、横屏、分离式、单手、输入框切换、长按、剪贴板、主题、Emoji 包、备份与恢复 | P1–P4 |
+| T14 | 交互与适配 | 竖屏、横屏、分离式、单手、平板、折叠与展开切换、半折叠、分屏、输入框切换、长按、剪贴板、主题、Emoji 包、备份与恢复 | P1–P4 |
 | T15 | 性能 | 快速连续打字、长句、多词库、低端设备内存、冷启动、候选刷新、频繁切换 App、后台恢复、长时间稳定 | P0–P5 |
 | T16 | 日语变形与敬语 | 每个活用型 | P3 |
 | T17 | 词库导入 | 校验、冲突、回滚、LLM 词库低优先级 | P3 |
@@ -682,10 +693,10 @@ P0 技术验证与工具链
 | T06-001 | 混合 | `computer` | コンピューター | 前 3 |
 | T06-002 | 混合 | `coffee` | コーヒー | 前 3 |
 | T07-001 | 混合 | `chidai ni kai ni ikou` | 池袋に買いに行こう | 首个整句候选 |
-| T07-002 | 混合 | `chidainikainiikou` | 池袋に買いに行こう | 前 3 |
-| T07-003 | 混合 | `zailiucard` | 在留カード | 前 3 |
-| T07-004 | 混合 | `chocolateokainiikou` | チョコレートを買いに行こう | 前 3 |
-| T08-001 | 混合 | `chida nikainiikou` | 池袋に買いに行こう | 前 5（音节缺字纠错） |
+| T07-002 | 混合 | `chidai nikainiikou` | 池袋に買いに行こう | 前 3（草案 §3.4、§19.1 写作 `chida`，为笔误） |
+| T07-003 | 混合 | `chidainikainiikou` | 池袋に買いに行こう | 前 3 |
+| T07-004 | 混合 | `zailiucard` | 在留カード | 前 3 |
+| T07-005 | 混合 | `chocolateokainiikou` | チョコレートを買いに行こう | 前 3 |
 
 每个用例都配有反例，例如 `nihao` 在混合模式中不以日文结果为首选，`coffee` 不以拼音拆分为首选。
 
@@ -709,7 +720,7 @@ P0 技术验证与工具链
 
 此外在 P0 建立基线、在后续阶段持续记录：输入法冷启动到首帧、空闲与打字时的内存（PSS，至少在一台 Android 17 设备上测量，因为它按设备内存设定应用的内存上限）、每个 ABI 的 APK 体积、librime 部署时间、Mozc 数据加载时间。除首批候选外的数值目标在基线之后以 ADR 设定，不预先编造。
 
-参考设备：一台中端设备（P0 选定并记录型号）、一台低端设备（≤ 4 GB 内存）、一台支持 Gemini Nano 的设备、一台折叠屏或平板；模拟器只用于功能验证。
+参考设备：一台中端设备（P0 选定并记录型号）、一台低端设备（≤ 4 GB 内存）、一台支持 Gemini Nano 的设备、一台折叠屏、一台平板（模拟器可以补充尺寸覆盖，但折叠切换以真机为准）；模拟器只用于功能验证。
 
 ### 13.5 验证方法
 
@@ -861,6 +872,7 @@ build/host/kotomo-corpus tests/conversion/   # 输出每行的名次，与上一
 - [ ] 支持 Emoji 显示主题。
 - [ ] 支持 Gboard 风格键盘交互。
 - [ ] 支持竖屏、横屏及分离式布局。
+- [ ] 支持平板、折叠屏与单手模式（用户 2026-11-04 加入）。
 - [ ] 支持高度自定义的键盘主题。
 - [ ] 支持持久化剪贴板。
 - [ ] 支持智能输入框适配。
@@ -895,7 +907,7 @@ build/host/kotomo-corpus tests/conversion/   # 输出每行的名次，与上一
 | 六 统一候选与智能纠错 | §4.4、§9.7–§9.9 |
 | 七 词库系统 | §10.5 |
 | 八 Emoji 系统 | §8.6、§10.6、§11.5、§15 |
-| 九 键盘布局与交互 | §8.1、§10.9–§10.10 |
+| 九 键盘布局与交互 | §8.1、§8.10、§10.9–§10.10 |
 | 十 智能输入框适配 | §8.7、§10.10 |
 | 十一 键盘主题系统 | §8.6、§11.4 |
 | 十二 持久化剪贴板 | §10.7 |

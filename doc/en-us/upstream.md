@@ -53,8 +53,8 @@ building or running anything; P0 re-checks each one and replaces "read" with the
 | Point | Consequence | Checked |
 |---|---|---|
 | GenAI inference runs only while the app is the top foreground application; a foreground service gets `BACKGROUND_USE_BLOCKED`; per-app quotas return `BUSY` and `PER_APP_BATTERY_USE_QUOTA_EXCEEDED`. Developers report the same block from an `InputMethodService` | AI runs in a Kotomo screen the person opens; spike S7 verifies it on a device | read |
-| Proofreading and rewriting (beta) take English, Japanese, French, German, Italian, Spanish and Korean, not Chinese, under 256 tokens, on API 26 or later, never on an unlocked bootloader; the Prompt API (beta) takes under 4,000 input tokens | Chinese AI features go through the Prompt API | read |
-| On-device translation covers Chinese, Japanese and English (about 30 MB per language, downloaded on demand); pairs without English pivot through English | Chinese ↔ Japanese quality is evaluated before it is offered | read |
+| Proofreading and rewriting (beta) take English, Japanese, French, German, Italian, Spanish and Korean, not Chinese, under 256 tokens, on API 26 or later, never on an unlocked bootloader; the Prompt API (beta) takes under 4,000 input tokens | English and Japanese use these APIs; Chinese gets no proofreading or rewriting, and the Prompt API is not used | read |
+| On-device translation covers Chinese, Japanese and English (about 30 MB per language, downloaded on demand); pairs without English pivot through English. It is a standard ML Kit API, not GenAI, and its documentation states no foreground restriction | translation runs in the keyboard itself (spike S7 confirms); Chinese ↔ Japanese quality is evaluated before it is offered | read |
 
 ## Data sets
 

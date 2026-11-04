@@ -4,7 +4,7 @@
 |---|---|
 | Android phones (`arm64-v8a`) | Scaffold only: no app, engine or dictionary code yet. |
 | Android emulator (`x86_64`) | The development target for layouts and instrumentation tests from P0; never evidence for latency or on-device AI. |
-| Android tablets and foldables | Planned (P3, P5); layouts never assume a phone screen size. |
+| Android tablets and foldables | Planned for P1 together with one-handed mode; layouts never assume a phone screen size. |
 | Desktop hosts (Windows, Linux, macOS) | Build and test the engine core from P0; never a product target. |
 
 ## Repository
