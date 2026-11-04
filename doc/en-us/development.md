@@ -2,21 +2,51 @@
 
 ## Requirements
 
-- JDK 21 or later. The documentation check runs on it directly, and the Gradle build will use it.
-- From P0: the Android SDK with the newest platform, the Android NDK, and CMake and Ninja from the
-  SDK; Bazelisk too, if spike S3 keeps Mozc's own Bazel build. P0 chooses the versions and locks
-  them in `build-lock.json`.
+- JDK 21 or later. The documentation check and the Gradle build run on it.
+- The Android SDK with the platform and build tools named in `build-lock.json` (currently
+  platform 37.2 and build tools 37.0.0), found through `sdk.dir` in the ignored `local.properties`
+  or `ANDROID_HOME`. Gradle itself comes from the wrapper, which checks the distribution's hash.
+- From later P0 spikes: the Android NDK, and CMake and Ninja from the SDK; Bazelisk too, if spike
+  S3 keeps Mozc's own Bazel build. Each is locked in `build-lock.json` by the commit that adds it.
 - A real Android device for every claim about input latency, the IME lifecycle and on-device AI.
-  An `x86_64` emulator is enough for layouts and most instrumentation tests.
+  An emulator is enough for layouts and most instrumentation tests where the host supports one;
+  Google's Android Emulator does not run on Windows on ARM64 hosts.
 
 ## Commands
 
 ```bash
 java tool/CheckDocs.java   # doc/en-us and doc/zh-cn mirror each other; local links resolve
+./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease  # R8 on; signed when key.properties exists, otherwise left unsigned
 ```
 
-The Gradle build, the host engine tests and the conversion corpus runner join this list with their
-first code; `PLAN.md` §17 lists the intended commands.
+The host engine tests and the conversion corpus runner join this list with their first code;
+`PLAN.md` §17 lists the intended commands.
+
+## Release signing
+
+`assembleRelease` signs with the key that the ignored `key.properties` at the repository root
+names. It holds four entries:
+
+```properties
+storeFile=/absolute/path/to/kotomo-release.jks
+storePassword=…
+keyAlias=kotomo
+keyPassword=…
+```
+
+Use forward slashes in `storeFile`. Without the file, the release APK is left unsigned
+(`app-release-unsigned.apk`); it never falls back to the debug key, so an installed release is
+always signed by the release key. The keystore itself never enters the repository.
+
+## Continuous integration
+
+`.github/workflows/build.yml` runs on GitHub for every push to `main`, every pull request and every
+`v*` tag: the documentation check, `./gradlew check`, and the debug and release builds, uploaded
+as the `kotomo-apk` artifact. The repository secrets `KEYSTORE_BASE64`, `STORE_PASSWORD`,
+`KEY_ALIAS` and `KEY_PASSWORD` become a temporary keystore and `key.properties`; without them (pull
+requests from forks) the release APK stays unsigned. A `v*` tag also publishes the signed APK as a
+GitHub Release. Dependabot proposes Gradle and Actions updates weekly.
 
 ## Testing principles
 

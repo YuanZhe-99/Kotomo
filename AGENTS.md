@@ -41,8 +41,9 @@ about to change, verify against the code, then fix the docs in the same commit.
 | English→Chinese terminology | `doc/en-us/translation-guide.md` |
 | Past releases and the upstream versions they used | `doc/en-us/version-history.md` |
 | Per-module and per-file roles | `doc/en-us/functions/INDEX.md` |
+| Toolchain, upstream commits, data-source versions and hashes each build uses | `build-lock.json` |
 
-`build-lock.json` (toolchain, upstream commits, data-source versions and hashes), `design/`
+`design/`
 (screens, wording and tokens from the design agent) and the concept docs added from P0 on (the
 architecture, the engine ↔ app contract, the composition engine, lexicon formats, ranking, data
 formats, privacy, decisions) get their rows here in the commit that creates them.
@@ -295,7 +296,7 @@ model that did the work.
 ## Remotes and secrets
 
 - `origin` → `<local_gitea_address>` (private Gitea)
-- `github` → not configured yet; the user names the public repository when it is created.
+- `github` → `git@github.com:YuanZhe-99/Kotomo.git` (public; CI and GitHub Releases run here)
 
 Determine the repository path from the runtime workspace; do not hardcode a machine-specific
 absolute path here.

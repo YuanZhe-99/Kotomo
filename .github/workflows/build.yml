@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Check documentation
+        run: java tool/CheckDocs.java
+
+      # Pull requests from forks get no secrets; their release APK stays unsigned.
+      - name: Setup release signing
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kotomo.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$RUNNER_TEMP/kotomo.jks" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
+
+      # AGP downloads the platform and build tools named in app/build.gradle.kts.
+      - name: Build and check
+        run: ./gradlew --no-daemon check assembleDebug assembleRelease
+
+      - name: Verify release signature
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        run: |
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kotomo-apk
+          path: app/build/outputs/apk/*/*.apk
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-apk
+          path: artifacts
+
+      - name: Name the release APK
+        run: |
+          mkdir -p release
+          cp artifacts/release/app-release.apk "release/Kotomo-${GITHUB_REF_NAME}.apk"
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: release/*
+          generate_release_notes: true
