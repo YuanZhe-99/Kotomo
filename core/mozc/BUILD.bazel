@@ -1,0 +1,89 @@
+# Kotomo's Mozc glue, built inside Mozc's Bazel workspace.
+#
+# scripts/build-mozc.sh copies third_party/mozc to a work directory and this
+# directory to its src/kotomo, so this file is the BUILD of package //kotomo
+# there; Mozc's own tree is never edited. The build passes
+# --nocheck_visibility because several Mozc targets used here (//converter,
+# //session:session_handler, //dictionary:dictionary_interface) are visible
+# only to Mozc's own packages.
+
+load("//:build_defs.bzl", "mozc_cc_binary", "mozc_cc_library", "mozc_cc_test", "mozc_select")
+load("//android/jni:cross_build_binary.bzl", "cross_build_binary")
+
+mozc_cc_library(
+    name = "glue",
+    srcs = ["kotomo_mozc.cc"],
+    hdrs = ["kotomo_mozc.h"],
+    deps = [
+        "//base:system_util",
+        "//base:util",
+        "//config:config_handler",
+        "//converter",
+        "//converter:segments",
+        "//data_manager",
+        "//dictionary:dictionary_interface",
+        "//dictionary:dictionary_token",
+        "//dictionary:pos_matcher",
+        "//engine",
+        "//engine:modules",
+        "//protocol:commands_cc_proto",
+        "//protocol:config_cc_proto",
+        "//request:conversion_request",
+        "//session:session_handler",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+mozc_cc_test(
+    name = "kotomo_mozc_test",
+    srcs = ["tests/kotomo_mozc_test.cc"],
+    args = ["$(rootpath //data_manager/oss:mozc.data)"],
+    data = ["//data_manager/oss:mozc.data"],
+    deps = [
+        ":glue",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+mozc_cc_library(
+    name = "jni",
+    srcs = ["kotomo_mozc_jni.cc"],
+    # The NDK sysroot has jni.h; a host build takes it from the local JDK.
+    deps = [
+        ":glue",
+        "//base:util",
+    ] + mozc_select(
+        android = [],
+        default = ["@bazel_tools//tools/jdk:jni"],
+    ),
+    alwayslink = 1,
+)
+
+# libkotomo_mozc.so: 16 KB pages (Android 15+ requirement), JNI symbols only.
+mozc_cc_binary(
+    name = "libkotomo_mozc.so",
+    additional_linker_inputs = ["exports.lds"],
+    linkopts = [
+        "-Wl,-z,max-page-size=16384",
+        "-Wl,--version-script=$(location exports.lds)",
+        "-Wl,--gc-sections",
+    ],
+    linkshared = 1,
+    deps = [":jni"],
+)
+
+# Android ABIs, built with --config oss_android on the platforms Mozc defines
+# for its own libmozc.so.
+cross_build_binary(
+    name = "android_arm64-v8a",
+    cpu = "arm64-v8a",
+    platform = "//android/jni:arm64-v8a",
+    target = ":libkotomo_mozc.so",
+)
+
+cross_build_binary(
+    name = "android_x86_64",
+    cpu = "x86_64",
+    platform = "//android/jni:x86_64",
+    target = ":libkotomo_mozc.so",
+)

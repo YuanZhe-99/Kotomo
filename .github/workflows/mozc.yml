@@ -1,0 +1,57 @@
+name: Mozc
+
+# Builds libkotomo_mozc.so (Mozc plus Kotomo's glue in core/mozc) for Android
+# with Mozc's Bazel build. Mozc's Android build runs only on Linux or macOS
+# hosts, so Windows machines use these hash-locked artifacts (PLAN.md §2.5).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - third_party/mozc
+      - core/mozc/**
+      - patches/mozc/**
+      - scripts/build-mozc.sh
+      - .github/workflows/mozc.yml
+  pull_request:
+    paths:
+      - third_party/mozc
+      - core/mozc/**
+      - patches/mozc/**
+      - scripts/build-mozc.sh
+      - .github/workflows/mozc.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mozc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+          persist-credentials: false
+
+      # Bazel's repository cache and Mozc's download cache (the NDK) survive
+      # between runs; both are keyed by the Mozc commit.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/bazel/_bazel_*/cache/repos
+            build/mozc/mozc/src/third_party_cache
+          key: mozc-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-${{ github.sha }}
+          restore-keys: |
+            mozc-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-
+
+      - name: Host build and glue tests
+        run: scripts/build-mozc.sh --abi host
+
+      - name: Android libraries
+        run: scripts/build-mozc.sh --abi arm64-v8a --abi x86_64 --out build/mozc/out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kotomo-mozc
+          path: build/mozc/out/
+          if-no-files-found: error
