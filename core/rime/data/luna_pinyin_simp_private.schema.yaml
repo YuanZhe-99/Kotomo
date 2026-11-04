@@ -1,0 +1,16 @@
+# Kotomo: luna_pinyin_simp without the user dictionary.
+# Used in password fields, fields with IME_FLAG_NO_PERSONALIZED_LEARNING and incognito mode:
+# `translator/enable_user_dict: false` makes librime neither read nor write the user dictionary, so
+# nothing typed here is learned and no personalized ranking applies.
+#
+# The `schema` block is written out rather than patched because librime's deployer reads
+# schema/schema_id from the source file before it resolves __include and __patch.
+__include: luna_pinyin_simp.schema:/
+schema:
+  schema_id: luna_pinyin_simp_private
+  name: 朙月拼音·简化字（不学习）
+  version: "0.31"
+  dependencies:
+    - stroke
+__patch:
+  translator/enable_user_dict: false
