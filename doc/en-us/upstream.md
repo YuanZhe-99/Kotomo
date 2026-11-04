@@ -34,8 +34,11 @@ building or running anything; P0 re-checks each one and replaces "read" with the
 
 | Point | Consequence | Checked |
 |---|---|---|
-| AOSP LatinIME (Apache-2.0) has native C++ for binary dictionaries, key-proximity correction and suggestions; its gesture decoder is an empty stub; `main` last changed on 2025-02-26 | the default English engine, built in spike S4 | read |
-| HeliBoard (GPL-3.0) maintains that native code; its dictionaries carry per-file licenses (the English experimental lists are CC BY 4.0); gesture typing needs Google's closed library | the maintained copy is S4's reference; gesture typing waits for an open decoder | read |
+| HeliBoard v4.2 (`0c60dffb`, 2026-10-12) carries AOSP LatinIME's native suggestion core in `app/src/main/jni/src`; every core file keeps its AOSP Apache-2.0 header, the repository is GPL-3.0 | submodule `third_party/heliboard`, unmodified; `core/english/` compiles the core with Kotomo's own JNI bridge into `libkotomo_english.so` (16 KB-aligned, only Kotomo's three JNI symbols exported) | built (NDK 30, arm64-v8a and x86_64) |
+| The core's `ProximityInfo`, `Dictionary` and `SuggestionResults` take a `JNIEnv` and Java arrays; results come out lowest score first and can list a word twice | the bridge builds the QWERTY proximity grid itself (32 × 16 cells, as `ProximityInfo.computeNearestNeighbors` does), sorts best first and drops duplicates; touch points use a fixed 1000 × 600 QWERTY space | host-tested |
+| Main dictionaries are binary format 202 (one read-only file), opened by path, offset and size; AOSP's dicttool (`127336e9`) compiles with plain `javac` and `makedict -2` turns a `.combined` word list into one, byte for byte reproducibly | `tool/BuildEnglishDict.java`; the app maps the uncompressed asset in place from the APK | host-tested |
+| Typing returns corrections and completions (`helo` → hello, `teh` → the) and bigram predictions; gibberish yields multi-word splits that LatinIME's Java layer would filter | Kotomo needs its own confidence threshold before any automatic replacement | host-tested |
+| The gesture decoder is an empty stub; gesture typing needs Google's closed library | gesture typing waits for an open decoder | read |
 
 ## Android input method platform
 

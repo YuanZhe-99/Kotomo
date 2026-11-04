@@ -24,7 +24,8 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 |---|---|---|
 | S1 IME skeleton | NOT_RUN on a device | Builds and passes unit tests. The diagnostics page in the settings app records press → key drawn, press → candidates drawn, cold start → first frame, the Compose emoji panel's first frame and memory, ready for a device run. |
 | S5 cross-language lexicon | PASS on the host | `java lexicon/CheckSamples.java`: 28 of 28 expected mappings at their rank (池袋 under `chidai`, 東京 under `dongjing`, コーヒー under `coffee`, …) and 0 of 10 negative cases (芸術 is not under `yunshu`). Pinyin → Japanese covers 98.9 % of Mozc's all-kanji entries. |
-| S2–S4, S6–S8 | NOT_RUN | — |
+| S4 English engine | PASS on the host; NOT_RUN on a device | `libkotomo_english.so` builds for arm64-v8a and x86_64 (about 360 KB stripped, 16 KB-aligned); the 2.5 MB dictionary builds reproducibly; `core/english/tests/run-host.sh` in WSL (Debian, aarch64): 13 of 13 cases (`helo` → hello, `teh` → the, near-key taps, completion, next-word prediction, negatives). Host timing 3.8 ms per call is not device latency. |
+| S2, S3, S6–S8 | NOT_RUN | — |
 
 ## Gates
 
@@ -39,8 +40,9 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 
 ## Known limitations
 
-- The keyboard types Latin letters as a composition with placeholder candidates (the letters as
-  typed, capitalized and in capitals); no Chinese, Japanese or English conversion exists yet.
+- English mode suggests corrections, completions and next words from the S4 engine; the typed word
+  stays first and is what space commits. The other modes show placeholder candidates (the letters as
+  typed, capitalized and in capitals); no Chinese or Japanese conversion exists yet.
 - The keyboard view has no accessibility support (touch exploration) yet.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.

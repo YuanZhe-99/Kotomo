@@ -1,4 +1,5 @@
 import java.util.Properties
+import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.android.application)
@@ -18,6 +19,7 @@ android {
         version = release(37) { minorApiLevel = 2 }
     }
     buildToolsVersion = "37.0.0"
+    ndkVersion = "30.0.16248370"
 
     defaultConfig {
         applicationId = "com.yuanzhe.kotomo"
@@ -25,7 +27,19 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        externalNativeBuild { cmake { arguments += listOf("-DANDROID_STL=c++_static") } }
     }
+
+    externalNativeBuild {
+        cmake {
+            path = file("../core/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    // Dictionaries are memory-mapped straight from the APK, so they must stay uncompressed.
+    androidResources { noCompress += "dict" }
 
     signingConfigs {
         if (keyProperties != null) {
@@ -49,6 +63,40 @@ android {
 
     buildFeatures {
         compose = true
+    }
+}
+
+/**
+ * Builds the English dictionary asset with tool/BuildEnglishDict.java (pinned, hash-checked inputs
+ * under .deps/).
+ * Notes: runs from the repository root because the tool resolves .deps/ there; the output is
+ * build output and never committed.
+ */
+abstract class EnglishDictTask : DefaultTask() {
+    @get:InputFile abstract val tool: RegularFileProperty
+    @get:Internal abstract val root: DirectoryProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @get:Inject abstract val exec: ExecOperations
+
+    @TaskAction
+    fun build() {
+        val java = File(System.getProperty("java.home"), "bin/java").path
+        exec.exec {
+            workingDir = root.get().asFile
+            commandLine(java, tool.get().asFile.path, outputDir.file("main_en_us.dict").get().asFile.path)
+        }
+    }
+}
+
+val englishDict = tasks.register<EnglishDictTask>("englishDict") {
+    tool = rootProject.layout.projectDirectory.file("tool/BuildEnglishDict.java")
+    root = rootProject.layout.projectDirectory
+    outputDir = layout.buildDirectory.dir("generated/dict")
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(englishDict, EnglishDictTask::outputDir)
     }
 }
 

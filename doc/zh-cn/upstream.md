@@ -32,8 +32,11 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 
 | 要点 | 影响 | 核实 |
 |---|---|---|
-| AOSP LatinIME（Apache-2.0）有二进制词典、按键邻近纠错与建议的原生 C++ 代码；手势解码为空实现；`main` 最近一次变更在 2025-02-26 | 默认的英文引擎，在技术验证 S4 中构建 | 已阅读 |
-| HeliBoard（GPL-3.0）维护这部分原生代码；其词典按文件各有许可证（英文 experimental 词表为 CC BY 4.0）；手势输入需要 Google 的闭源库 | 维护版本是 S4 的参考；手势输入等待开源解码器 | 已阅读 |
+| HeliBoard v4.2（`0c60dffb`，2026-10-12）在 `app/src/main/jni/src` 中带有 AOSP LatinIME 的原生建议核心；每个核心文件保留 AOSP 的 Apache-2.0 文件头，仓库整体为 GPL-3.0 | 子模块 `third_party/heliboard`，未修改；`core/english/` 把核心与 Kotomo 自己的 JNI 桥接编译为 `libkotomo_english.so`（16 KB 对齐，只导出 Kotomo 的三个 JNI 符号） | 已构建（NDK 30，arm64-v8a 与 x86_64） |
+| 核心的 `ProximityInfo`、`Dictionary` 与 `SuggestionResults` 需要 `JNIEnv` 和 Java 数组；结果按分数从低到高输出，且可能重复列出同一个词 | 桥接层自己构建 QWERTY 邻近网格（32 × 16 格，与 `ProximityInfo.computeNearestNeighbors` 相同），按分数从高到低排序并去重；触摸点使用固定的 1000 × 600 QWERTY 坐标系 | 已在主机上测试 |
+| 主词典为二进制格式 202（单个只读文件），按路径、偏移与长度打开；AOSP 的 dicttool（`127336e9`）可直接用 `javac` 编译，`makedict -2` 把 `.combined` 词表转为该格式，结果逐字节可复现 | `tool/BuildEnglishDict.java`；应用直接从 APK 中映射未压缩的资源文件 | 已在主机上测试 |
+| 输入时给出纠错与补全（`helo` → hello、`teh` → the）以及二元组预测；乱码会得到多词拆分，LatinIME 的 Java 层原本会过滤它们 | Kotomo 在任何自动替换之前都需要自己的置信度阈值 | 已在主机上测试 |
+| 手势解码为空实现；手势输入需要 Google 的闭源库 | 手势输入等待开源解码器 | 已阅读 |
 
 ## Android 输入法平台
 

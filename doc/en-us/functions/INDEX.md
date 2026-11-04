@@ -19,3 +19,7 @@ side effects and notes where non-trivial).
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | Settings app: keyboard setup, try-it fields, diagnostics | `SettingsScreen` |
 | `lexicon/CrossLexicon.java` | Cross-language lexicon pipeline (S5): fetches and verifies the data sources, builds pinyin → Japanese and English → Japanese tables into `build/lexicon/` | `main`, `SOURCES` |
 | `lexicon/CheckSamples.java` | Checks the generated tables against `tests/lexicon/samples.tsv` (positive and negative lines) | `main` |
+| `core/CMakeLists.txt` | Top-level native build for the app; one subdirectory per engine library | — |
+| `core/english/` | English engine (S4): CMake build of the LatinIME core and Kotomo's JNI bridge; host test | `jni/english_jni.cpp`, `tests/run-host.sh` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | Kotlin facade of `libkotomo_english.so` (engine thread only) | `English.open`, `suggestions` |
+| `tool/BuildEnglishDict.java` | Builds the English dictionary from the pinned word list with AOSP's dicttool | `main` |

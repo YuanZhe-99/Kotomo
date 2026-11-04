@@ -18,3 +18,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用：键盘设置引导、试打框、诊断 | `SettingsScreen` |
 | `lexicon/CrossLexicon.java` | 跨语言词库流水线（S5）：获取并校验数据源，在 `build/lexicon/` 中生成拼音 → 日文与英文 → 日文表 | `main`、`SOURCES` |
 | `lexicon/CheckSamples.java` | 用 `tests/lexicon/samples.tsv`（正例与反例）检查生成的表 | `main` |
+| `core/CMakeLists.txt` | 应用的顶层原生构建；每个引擎库一个子目录 | — |
+| `core/english/` | 英文引擎（S4）：LatinIME 核心与 Kotomo 的 JNI 桥接的 CMake 构建；主机测试 | `jni/english_jni.cpp`、`tests/run-host.sh` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | `libkotomo_english.so` 的 Kotlin 外观（只在引擎线程上调用） | `English.open`、`suggestions` |
+| `tool/BuildEnglishDict.java` | 用 AOSP 的 dicttool 从锁定的词表构建英文词典 | `main` |

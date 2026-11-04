@@ -15,6 +15,9 @@ components.
 | CC-CEDICT | MDBG release 2026-11-04T07:19:40Z | word-level pinyin for the pinyin → Japanese mapping (S5) | CC BY-SA 4.0 (MDBG; based on CEDICT by Paul Andrew Denisowski) | none | attribution and a link to the license; derived readings stay CC BY-SA 4.0 |
 | OpenCC Japanese Shinjitai tables (`JPShinjitaiCharacters.txt`, `JPShinjitaiPhrases.txt`) | `BYVoid/OpenCC` ver.1.4.2 | Shinjitai → old forms for the pinyin → Japanese mapping (S5) | Apache-2.0 | none | include the license and NOTICE |
 | JMdict (English), through jmdict-simplified | jmdict-simplified 3.6.2+20261102210542 (JMdict 2026-11-02) | glosses for the English → Japanese mapping (S5) | CC BY-SA 4.0 under the EDRDG licence | none | credit the EDRDG as copyright holder on a separate sources page reached from a menu, link the licence and the JMdict project page, keep the data updated; the derived mapping stays CC BY-SA 4.0 |
+| AOSP LatinIME native suggestion core, through HeliBoard | `HeliBorg/HeliBoard` v4.2 (`0c60dffb`), `app/src/main/jni/src` | English correction, completion and prediction (`libkotomo_english.so`, S4) | Apache-2.0 (AOSP files); HeliBoard as a whole GPL-3.0 | none; Kotomo's own JNI bridge replaces LatinIME's JNI files | ship the Apache-2.0 license text and keep the AOSP notices |
+| AOSP LatinIME dicttool (build tool only) | AOSP `platform/packages/inputmethods/LatinIME` `127336e9` | builds the English dictionary at build time; not shipped | Apache-2.0 | none | none for the app |
+| English word list: Helium314/aosp-dictionaries `main_en_US__experimental.combined`, derived from the Leipzig Corpora Collection | codeberg `Helium314/aosp-dictionaries` `ff0cd52b` | English vocabulary and bigrams (`main_en_us.dict`, generated, shipped in the APK) | CC BY 4.0 (Leipzig: corpora for download are licensed under CC BY) | converted to LatinIME binary format 202 | attribution to the Leipzig Corpora Collection (Universität Leipzig) and to HeliBoard's aosp-dictionaries on the sources screen, with a link to CC BY 4.0 and a note that the data was converted |
 
 ## Planned components
 
@@ -26,9 +29,7 @@ modifications and obligations when P0 adds it; spike S8 completes the audit.
 | librime | BSD-3-Clause | Chinese engine | with Boost, LevelDB, marisa and yaml-cpp, whose licenses are recorded when they are built |
 | Mozc | BSD-3-Clause; dictionary data under the IPAdic (NAIST and ICOT) notice, plus public-domain and Google entries | Japanese engine and dictionary | the dictionary notices ship with the data |
 | OpenCC | Apache-2.0 | Simplified, Traditional and regional conversion | shared with librime |
-| AOSP LatinIME native code, or HeliBoard's maintained copy | Apache-2.0; HeliBoard GPL-3.0 | English engine | chosen in spike S4 |
 | A Chinese schema and dictionary set | rime-ice GPL-3.0 only; rime_wanxiang CC BY 4.0; rime-luna-pinyin and rime-essay LGPL-3.0 | Chinese vocabulary and language model | chosen in spike S2; GPL-3.0-only data makes the whole distribution GPL-3.0-only |
-| An English word list | AOSP lists (Apache-2.0, to be confirmed); HeliBoard's English experimental lists CC BY 4.0 | English vocabulary | chosen in spike S4 |
 | CLDR annotations | Unicode License v3 | emoji keywords in four languages | — |
 | SudachiDict | Apache-2.0 | extra Japanese names, places, stations and loanwords | optional |
 | Noto Emoji | images Apache-2.0, font OFL-1.1, flags public domain | emoji style pack | — |

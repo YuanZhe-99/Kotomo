@@ -14,9 +14,23 @@
     "compileSdk": "37.2",
     "targetSdk": 37,
     "minSdk": 26,
-    "buildTools": "37.0.0"
+    "buildTools": "37.0.0",
+    "ndk": "30.0.16248370",
+    "cmake": "3.22.1"
   },
-  "upstreams": {},
+  "upstreams": {
+    "heliboard": {
+      "url": "https://github.com/HeliBorg/HeliBoard.git",
+      "tag": "v4.2",
+      "commit": "0c60dffb03a4e2e7a37cb82210f5299f93c03979",
+      "used": "app/src/main/jni/src (AOSP LatinIME native core)"
+    },
+    "latinime-dicttool": {
+      "url": "https://android.googlesource.com/platform/packages/inputmethods/LatinIME",
+      "commit": "127336e9f29d69607eab55982324b210279ae8c5",
+      "used": "tools/dicttool, build time only"
+    }
+  },
   "dataSources": {
     "mozc-dictionary-oss": {
       "version": "3.35.6354",
@@ -60,6 +74,19 @@
       "version": "jmdict-simplified 3.6.2+20261102210542 (JMdict 2026-11-02)",
       "url": "https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20261102210542/jmdict-eng-3.6.2%2B20261102210542.json.zip",
       "sha256": "851791d3cc98a29ca7e4f65532966cdee637a1bc218cf1c99b4895b780edb101"
+    },
+    "english-wordlist": {
+      "url": "https://codeberg.org/Helium314/aosp-dictionaries/raw/commit/ff0cd52be8d9530200fefe8b296c53d4f662091e/wordlists/main_en_US__experimental.combined",
+      "license": "CC BY 4.0 (Leipzig Corpora Collection)",
+      "sha256": "466c2eb4737fa1a9453e5f4a33337db8dd703f75012b70c2534490fd189c9487"
+    },
+    "jsr305": {
+      "url": "https://repo1.maven.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar",
+      "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
+    },
+    "junit": {
+      "url": "https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
+      "sha256": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3"
     }
   }
 }

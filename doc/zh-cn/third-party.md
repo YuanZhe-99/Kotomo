@@ -13,6 +13,9 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | CC-CEDICT | MDBG 发布于 2026-11-04T07:19:40Z | 为拼音 → 日文映射提供词级拼音（S5） | CC BY-SA 4.0（MDBG；基于 Paul Andrew Denisowski 的 CEDICT） | 无 | 署名并链接许可；派生的读音仍为 CC BY-SA 4.0 |
 | OpenCC 日文新字体表（`JPShinjitaiCharacters.txt`、`JPShinjitaiPhrases.txt`） | `BYVoid/OpenCC` ver.1.4.2 | 为拼音 → 日文映射把新字体映射到旧字体（S5） | Apache-2.0 | 无 | 附上许可与 NOTICE |
 | JMdict（英文），经 jmdict-simplified | jmdict-simplified 3.6.2+20261102210542（JMdict 2026-11-02） | 为英文 → 日文映射提供释义（S5） | 依 EDRDG 许可的 CC BY-SA 4.0 | 无 | 在从菜单进入的独立来源页中注明 EDRDG 为版权所有者，链接许可与 JMdict 项目页，保持数据更新；派生的映射仍为 CC BY-SA 4.0 |
+| AOSP LatinIME 原生建议核心，经 HeliBoard | `HeliBorg/HeliBoard` v4.2（`0c60dffb`），`app/src/main/jni/src` | 英文纠错、补全与预测（`libkotomo_english.so`，S4） | Apache-2.0（AOSP 文件）；HeliBoard 整体为 GPL-3.0 | 无；以 Kotomo 自己的 JNI 桥接代替 LatinIME 的 JNI 文件 | 随附 Apache-2.0 许可文本并保留 AOSP 声明 |
+| AOSP LatinIME dicttool（仅为构建工具） | AOSP `platform/packages/inputmethods/LatinIME` `127336e9` | 构建时生成英文词典；不随应用分发 | Apache-2.0 | 无 | 对应用无义务 |
+| 英文词表：Helium314/aosp-dictionaries 的 `main_en_US__experimental.combined`，源自 Leipzig Corpora Collection | codeberg `Helium314/aosp-dictionaries` `ff0cd52b` | 英文词汇与二元组（`main_en_us.dict`，生成后随 APK 分发） | CC BY 4.0（Leipzig：可下载的语料以 CC BY 授权） | 转换为 LatinIME 二进制格式 202 | 在来源页中为 Leipzig Corpora Collection（莱比锡大学）与 HeliBoard 的 aosp-dictionaries 署名，链接 CC BY 4.0，并注明数据经过转换 |
 
 ## 计划中的组件
 
@@ -23,9 +26,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | librime | BSD-3-Clause | 中文引擎 | 连同 Boost、LevelDB、marisa 与 yaml-cpp，构建时记录它们的许可证 |
 | Mozc | BSD-3-Clause；词典数据适用 IPAdic（NAIST 与 ICOT）声明，另有公有领域与 Google 增补条目 | 日文引擎与词典 | 词典声明随数据一起分发 |
 | OpenCC | Apache-2.0 | 简体、繁体与地区用词转换 | 与 librime 共用 |
-| AOSP LatinIME 原生代码，或 HeliBoard 维护的版本 | Apache-2.0；HeliBoard 为 GPL-3.0 | 英文引擎 | 在技术验证 S4 中选定 |
 | 一套中文方案与词库 | rime-ice 为 GPL-3.0 only；rime_wanxiang 为 CC BY 4.0；rime-luna-pinyin 与 rime-essay 为 LGPL-3.0 | 中文词汇与语言模型 | 在技术验证 S2 中选定；仅限 GPL-3.0 的数据会使整个发行版只能以 GPL-3.0 发布 |
-| 一份英文词表 | AOSP 词表（Apache-2.0，待确认）；HeliBoard 的英文 experimental 词表为 CC BY 4.0 | 英文词汇 | 在技术验证 S4 中选定 |
 | CLDR 注释 | Unicode License v3 | 四种语言的 Emoji 关键词 | — |
 | SudachiDict | Apache-2.0 | 补充日文人名、地名、车站名与外来语 | 可选 |
 | Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |
