@@ -98,6 +98,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var previousWord: String? = null
     private var mode = Mode.MIXED
     private var symbols = false
+    private var symbolPage = 0
     private var shift = Shift.OFF
     private var direct = false
     private var createdAt = 0L
@@ -265,6 +266,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         direct = isDirect(info)
+        symbolPage = 0
         symbols = when (info.inputType and InputType.TYPE_MASK_CLASS) {
             InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME -> true
             else -> false
@@ -378,7 +380,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 Shift.ONCE -> Shift.LOCKED
                 Shift.LOCKED -> Shift.OFF
             }
-            KeyAction.Symbols -> symbols = true
+            is KeyAction.Symbols -> {
+                symbols = true
+                symbolPage = action.page
+            }
             KeyAction.Letters -> symbols = false
             KeyAction.Emoji -> {
                 commitComposition()
@@ -526,7 +531,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (!::keyboard.isInitialized) return
         val split = isSplit()
         keyboard.split = split
-        keyboard.layout = if (symbols) Layout.symbols(mode, split) else Layout.letters(mode, shift != Shift.OFF, split)
+        keyboard.layout = if (symbols) Layout.symbols(mode, split, symbolPage) else Layout.letters(mode, shift != Shift.OFF, split)
         keyboard.shift = shift
         keyboard.mode = mode
         val raw = composing.toString()

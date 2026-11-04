@@ -13,7 +13,20 @@ class LayoutTest {
     private val gap = 16f
 
     private fun pages(split: Boolean) =
-        Mode.entries.flatMap { listOf(Layout.letters(it, false, split), Layout.symbols(it, split)) }
+        Mode.entries.flatMap { listOf(Layout.letters(it, false, split), Layout.symbols(it, split, 0), Layout.symbols(it, split, 1)) }
+
+    @Test
+    fun symbolPagesSwitchAndFollowTheMode() {
+        val zh = Layout.symbols(Mode.CHINESE, page = 0)
+        val labels = zh.rows.flatMap { r -> r.keys.map { it.label } }
+        assertTrue("full-width Chinese punctuation", "？" in labels && "（" in labels)
+        assertEquals(KeyAction.Symbols(1), zh.rows[2].keys.first().action)
+        assertEquals(KeyAction.Symbols(0), Layout.symbols(Mode.CHINESE, page = 1).rows[2].keys.first().action)
+        val en = Layout.symbols(Mode.ENGLISH, page = 0).rows.flatMap { r -> r.keys.map { it.label } }
+        assertTrue("$" in en && "?" in en && "？" !in en)
+        val dollar = Layout.symbols(Mode.ENGLISH).rows[1].keys.first { it.label == "$" }
+        assertTrue("€" in dollar.more)
+    }
 
     @Test
     fun rowsFillTheWidthWithoutOverlap() {

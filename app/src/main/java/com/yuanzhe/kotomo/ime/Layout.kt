@@ -8,7 +8,8 @@ sealed interface KeyAction {
     data object Backspace : KeyAction
     data object Enter : KeyAction
     data object Space : KeyAction
-    data object Symbols : KeyAction
+    /** Shows symbol page [page] (0: digits and common marks, 1: more symbols). */
+    data class Symbols(val page: Int) : KeyAction
     data object Letters : KeyAction
     /** Opens the emoji panel; a long press opens the language choice instead. */
     data object Emoji : KeyAction
@@ -153,25 +154,49 @@ data class Layout(val rows: List<Row>) {
                     Row(listOf(shift()) + letters("zxcvbnm", shifted) + backspace()),
                 )
             }
-            return Layout(rows + bottomRow(mode, split, KeyAction.Symbols, "?123"))
+            return Layout(rows + bottomRow(mode, split, KeyAction.Symbols(0), "?123"))
         }
 
-        /** Builds the digit and symbol page; its bottom row returns to letters. */
-        fun symbols(mode: Mode, split: Boolean = false): Layout {
-            fun row(s: String) = s.map { Key(it.toString(), KeyAction.Text(it.toString())) }
-            val currency = if (mode == Mode.ENGLISH) "$" else "¥"
+        /** Long-press variants of symbols, the symbol itself first. */
+        private val symbolMore = mapOf(
+            "$" to "$€£¥¢₩", "¥" to "¥￥$€£", "￥" to "￥¥$€£", "-" to "-–—_", "_" to "_-—", "\"" to "\"“”„«»",
+            "'" to "'‘’‚‹›", "?" to "?¿", "!" to "!¡", "%" to "%‰", "(" to "([{<", ")" to ")]}>", "*" to "*★†‡",
+            "=" to "=≠≈∞", "/" to "/÷", "+" to "+±", "<" to "<≤«", ">" to ">≥»", "." to ".…", "…" to "…⋯",
+            "？" to "？?¿", "！" to "！!¡", "“" to "“「『\"", "”" to "”」』\"", "（" to "（【〔(", "）" to "）】〕)",
+            "、" to "、，", "・" to "・·•", "—" to "—–-",
+        )
+
+        private fun symbolKeys(s: String) = s.codePoints().toArray().map { cp ->
+            val c = String(Character.toChars(cp))
+            Key(c, KeyAction.Text(c), more = symbolMore[c]?.codePoints()?.toArray()?.map { String(Character.toChars(it)) }.orEmpty())
+        }
+
+        /**
+         * Builds symbol page [page] for [mode]: page 0 has the digits and the marks used most,
+         * page 1 more symbols; Chinese and Mixed use full-width Chinese punctuation, Japanese its
+         * own marks, English ASCII. The third row's first key switches page; the bottom row returns
+         * to letters. Many symbols offer variants on long press.
+         */
+        fun symbols(mode: Mode, split: Boolean = false, page: Int = 0): Layout {
+            val (row2, row3) = when (mode) {
+                Mode.ENGLISH -> if (page == 0) "@#\$_&-+()/" to "*\"':;!?" else "~`|•√π÷×¶∆" to "%©®™✓[]<>"
+                Mode.JAPANESE -> if (page == 0) "@#￥&-+（）「」" to "、；：・？！…" else "『』【】〈〉《》～｜" to "%^=\\{}<>"
+                Mode.MIXED, Mode.CHINESE -> if (page == 0) "@#￥&-+（）“”" to "、；：‘’？！" else "【】《》「」…—·～" to "%^=\\{}<>"
+            }
+            val row1 = if (page == 0) "1234567890" else when (mode) {
+                Mode.ENGLISH -> "£€¥¢^°={}\\"
+                else -> "£€$¢^°=_|\\"
+            }
+            val switch = Key(if (page == 0) "=\\<" else "?123", KeyAction.Symbols(1 - page), 1.5f, function = true)
+            val third = listOf(switch) + symbolKeys(row3) + backspace()
             val rows = if (split) {
                 listOf(
-                    Row(row("1234567890"), splitAt = 5),
-                    Row(row("@#${currency}_&-+()/"), splitAt = 5),
-                    Row(row("=*\"':;!?") + backspace(), splitAt = 4),
+                    Row(symbolKeys(row1), splitAt = 5),
+                    Row(symbolKeys(row2), splitAt = 5),
+                    Row(third, splitAt = 1 + (third.size - 2) / 2),
                 )
             } else {
-                listOf(
-                    Row(row("1234567890")),
-                    Row(row("@#${currency}_&-+()/")),
-                    Row(row("=*\"':;!?") + backspace().copy(width = 2f)),
-                )
+                listOf(Row(symbolKeys(row1)), Row(symbolKeys(row2)), Row(third))
             }
             return Layout(rows + bottomRow(mode, split, KeyAction.Letters, "ABC"))
         }

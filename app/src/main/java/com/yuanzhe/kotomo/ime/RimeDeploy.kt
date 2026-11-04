@@ -137,8 +137,16 @@ class RimeDeployService : Service() {
             Rime.shutdown()
             // The keyboard needs the compiled main schema; a failed side task (cleanup, user
             // dictionary upgrade) does not stop it from typing.
-            if (File(files.staging, "build/$SCHEMA.schema.yaml").isFile) null
-            else "no compiled $SCHEMA (failed tasks: ${failedTasks.ifEmpty { "none" }})"
+            if (File(files.staging, "build/$SCHEMA.schema.yaml").isFile) {
+                null
+            } else {
+                // What librime produced and what it read from tell which deploy step broke.
+                fun list(dir: File) = dir.listFiles().orEmpty().sortedBy { it.name }
+                    .joinToString(", ") { if (it.isDirectory) "${it.name}/" else "${it.name} ${it.length()}" }
+                    .ifEmpty { "empty" }
+                "no compiled $SCHEMA (failed tasks: ${failedTasks.ifEmpty { "none" }}); " +
+                    "build: ${list(File(files.staging, "build"))}; shared: ${list(files.shared)}"
+            }
         } catch (e: Throwable) {
             "$step: ${e.javaClass.simpleName}: ${e.message.orEmpty()}"
         }
