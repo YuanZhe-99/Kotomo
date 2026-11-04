@@ -19,3 +19,5 @@ build/
 *.pfx
 *.pem
 *.key
+# Agent worktrees and local agent state
+/.claude/

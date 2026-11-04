@@ -14,6 +14,7 @@
 
 ```bash
 java tool/CheckDocs.java   # doc/en-us and doc/zh-cn mirror each other; local links resolve
+./gradlew check            # unit tests and lint
 ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew assembleRelease  # R8 on; signed when key.properties exists, otherwise left unsigned
 ```

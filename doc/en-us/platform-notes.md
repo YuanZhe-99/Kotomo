@@ -2,18 +2,28 @@
 
 | Platform | Status |
 |---|---|
-| Android phones (`arm64-v8a`) | Scaffold only: no app, engine or dictionary code yet. |
-| Android emulator (`x86_64`) | The development target for layouts and instrumentation tests from P0; never evidence for latency or on-device AI. |
+| Android phones (`arm64-v8a`) | Spike S1 skeleton: a keyboard with placeholder candidates and no conversion engine yet; not yet run on a device. |
+| Android emulator (`x86_64`) | The development target for layouts and instrumentation tests where the host supports it; never evidence for latency or on-device AI. |
 | Android tablets and foldables | Planned for P1 together with one-handed mode; layouts never assume a phone screen size. |
 | Desktop hosts (Windows, Linux, macOS) | Build and test the engine core from P0; never a product target. |
 
 ## Repository
 
-Verified on Windows 11 x64 (2026-11-04; JDK 21.0.13):
+Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions (`ubuntu-latest`):
 
 | Check | Result |
 |---|---|
 | Documentation mirror and links | `java tool/CheckDocs.java` passes |
+| Unit tests (S1: layout and hit testing, latency percentiles) | `./gradlew testDebugUnitTest`: 11 tests pass |
+| Lint | `./gradlew check` passes with no warnings |
+| Release build | `./gradlew assembleRelease`: R8 on, signed with the release key (APK Signature Scheme v2) |
+
+## Spikes
+
+| Spike | Status | Evidence |
+|---|---|---|
+| S1 IME skeleton | NOT_RUN on a device | Builds and passes unit tests. The diagnostics page in the settings app records press → key drawn, press → candidates drawn, cold start → first frame, the Compose emoji panel's first frame and memory, ready for a device run. |
+| S2–S8 | NOT_RUN | — |
 
 ## Gates
 
@@ -28,6 +38,8 @@ Verified on Windows 11 x64 (2026-11-04; JDK 21.0.13):
 
 ## Known limitations
 
-- Nothing can be typed yet: no engine, app or dictionary exists.
+- The keyboard types Latin letters as a composition with placeholder candidates (the letters as
+  typed, capitalized and in capitals); no Chinese, Japanese or English conversion exists yet.
+- The keyboard view has no accessibility support (touch exploration) yet.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.

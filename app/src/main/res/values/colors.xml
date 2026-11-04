@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keyboard theme tokens from the design canvas (light). -->
+<resources>
+    <color name="kb_background">#EEF0F3</color>
+    <color name="kb_key">#FFFFFF</color>
+    <color name="kb_key_function">#DCE0E6</color>
+    <color name="kb_key_pressed">#C9CED8</color>
+    <color name="kb_ink">#16181C</color>
+    <color name="kb_ink_secondary">#5A6070</color>
+    <color name="kb_accent">#3451C7</color>
+    <color name="kb_on_accent">#FFFFFF</color>
+    <color name="kb_accent_container">#E3E8FF</color>
+    <color name="kb_on_accent_container">#1F3596</color>
+    <color name="kb_divider">#D3D7DE</color>
+    <!-- The launcher icon keeps the light accent in both themes. -->
+    <color name="icon_background">#3451C7</color>
+</resources>

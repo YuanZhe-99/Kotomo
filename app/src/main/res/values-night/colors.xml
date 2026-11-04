@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keyboard theme tokens (dark). -->
+<resources>
+    <color name="kb_background">#17191D</color>
+    <color name="kb_key">#2C2F36</color>
+    <color name="kb_key_function">#40444D</color>
+    <color name="kb_key_pressed">#555A65</color>
+    <color name="kb_ink">#ECEEF2</color>
+    <color name="kb_ink_secondary">#A4AAB8</color>
+    <color name="kb_accent">#9FB1FF</color>
+    <color name="kb_on_accent">#0B1A5C</color>
+    <color name="kb_accent_container">#2A3570</color>
+    <color name="kb_on_accent_container">#DDE3FF</color>
+    <color name="kb_divider">#3A3E46</color>
+</resources>

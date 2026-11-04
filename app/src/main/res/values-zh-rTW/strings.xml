@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_mixed">混合</string>
+    <string name="mode_chinese">中文</string>
+    <string name="mode_japanese">日文</string>
+    <string name="mode_english">英文</string>
+
+    <string name="emoji_back">返回鍵盤</string>
+
+    <string name="setup_title">設定鍵盤</string>
+    <string name="setup_enable">在鍵盤清單中開啟 Kotomo</string>
+    <string name="setup_enable_action">開啟鍵盤設定</string>
+    <string name="setup_select">將 Kotomo 設為目前的鍵盤</string>
+    <string name="setup_select_action">選擇鍵盤</string>
+    <string name="setup_done">已完成</string>
+    <string name="try_title">試試看</string>
+    <string name="try_hint">在這裡輸入</string>
+    <string name="try_password_hint">密碼欄（這裡不學習任何內容）</string>
+
+    <string name="diag_title">診斷</string>
+    <string name="diag_note">在本機打字時測得。只保留耗時與記憶體，不儲存你輸入的任何內容。</string>
+    <string name="diag_key">按下到按鍵繪製</string>
+    <string name="diag_candidates">按下到候選繪製</string>
+    <string name="diag_cold">鍵盤啟動到首幀</string>
+    <string name="diag_compose">Emoji 面板首幀</string>
+    <string name="diag_memory">記憶體用量</string>
+    <string name="diag_series">p50 %1$d ms · p95 %2$d ms · 最大 %3$d ms（n = %4$d）</string>
+    <string name="diag_ms">%1$d ms</string>
+    <string name="diag_mb">%1$.1f MB</string>
+    <string name="diag_none">尚無資料</string>
+    <string name="diag_refresh">重新整理</string>
+    <string name="diag_clear">清除</string>
+    <string name="diag_device">%1$s · Android %2$s · %3$s 建置</string>
+    <string name="build_debug">debug</string>
+    <string name="build_release">release</string>
+    <string name="about_version">版本 %1$s</string>
+</resources>

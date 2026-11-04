@@ -1,4 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">Kotomo</string>
+    <string name="mode_badge_mixed" translatable="false">混</string>
+    <string name="mode_badge_chinese" translatable="false">中</string>
+    <string name="mode_badge_japanese" translatable="false">日</string>
+    <string name="mode_badge_english" translatable="false">EN</string>
+
+    <string name="mode_mixed">Mixed</string>
+    <string name="mode_chinese">Chinese</string>
+    <string name="mode_japanese">Japanese</string>
+    <string name="mode_english">English</string>
+
+    <string name="emoji_back">Back to keyboard</string>
+
+    <string name="setup_title">Set up the keyboard</string>
+    <string name="setup_enable">Turn on Kotomo in the list of keyboards</string>
+    <string name="setup_enable_action">Open keyboard settings</string>
+    <string name="setup_select">Choose Kotomo as the current keyboard</string>
+    <string name="setup_select_action">Choose keyboard</string>
+    <string name="setup_done">Done</string>
+    <string name="try_title">Try it</string>
+    <string name="try_hint">Type here</string>
+    <string name="try_password_hint">Password field (nothing is learned here)</string>
+
+    <string name="diag_title">Diagnostics</string>
+    <string name="diag_note">Measured on this device while you type. Only timings and memory are kept; nothing you type is stored.</string>
+    <string name="diag_key">Press to key drawn</string>
+    <string name="diag_candidates">Press to candidates drawn</string>
+    <string name="diag_cold">Keyboard start to first frame</string>
+    <string name="diag_compose">Emoji panel first frame</string>
+    <string name="diag_memory">Memory in use</string>
+    <string name="diag_series">p50 %1$d ms · p95 %2$d ms · max %3$d ms (n = %4$d)</string>
+    <string name="diag_ms">%1$d ms</string>
+    <string name="diag_mb">%1$.1f MB</string>
+    <string name="diag_none">No data yet</string>
+    <string name="diag_refresh">Refresh</string>
+    <string name="diag_clear">Clear</string>
+    <string name="diag_device">%1$s · Android %2$s · %3$s build</string>
+    <string name="build_debug">debug</string>
+    <string name="build_release">release</string>
+    <string name="about_version">Version %1$s</string>
 </resources>

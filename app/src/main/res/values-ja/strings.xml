@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mode_mixed">ミックス</string>
+    <string name="mode_chinese">中国語</string>
+    <string name="mode_japanese">日本語</string>
+    <string name="mode_english">英語</string>
+
+    <string name="emoji_back">キーボードに戻る</string>
+
+    <string name="setup_title">キーボードの設定</string>
+    <string name="setup_enable">キーボードの一覧で Kotomo をオンにする</string>
+    <string name="setup_enable_action">キーボードの設定を開く</string>
+    <string name="setup_select">Kotomo を現在のキーボードにする</string>
+    <string name="setup_select_action">キーボードを選ぶ</string>
+    <string name="setup_done">完了</string>
+    <string name="try_title">試してみる</string>
+    <string name="try_hint">ここに入力</string>
+    <string name="try_password_hint">パスワード欄（ここでは何も学習しません）</string>
+
+    <string name="diag_title">診断</string>
+    <string name="diag_note">この端末で入力中に測定しました。記録するのは時間とメモリだけで、入力した内容は保存しません。</string>
+    <string name="diag_key">押してからキー描画まで</string>
+    <string name="diag_candidates">押してから候補描画まで</string>
+    <string name="diag_cold">キーボード起動から最初のフレームまで</string>
+    <string name="diag_compose">絵文字パネルの最初のフレーム</string>
+    <string name="diag_memory">メモリ使用量</string>
+    <string name="diag_series">p50 %1$d ms · p95 %2$d ms · 最大 %3$d ms（n = %4$d）</string>
+    <string name="diag_ms">%1$d ms</string>
+    <string name="diag_mb">%1$.1f MB</string>
+    <string name="diag_none">まだデータがありません</string>
+    <string name="diag_refresh">更新</string>
+    <string name="diag_clear">消去</string>
+    <string name="diag_device">%1$s · Android %2$s · %3$s ビルド</string>
+    <string name="build_debug">debug</string>
+    <string name="build_release">release</string>
+    <string name="about_version">バージョン %1$s</string>
+</resources>

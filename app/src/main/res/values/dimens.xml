@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keyboard layout tokens (phone). -->
+<resources>
+    <dimen name="kb_row_height">52dp</dimen>
+    <dimen name="kb_key_gap">6dp</dimen>
+    <dimen name="kb_padding">4dp</dimen>
+    <dimen name="kb_key_radius">8dp</dimen>
+    <dimen name="kb_key_text">22sp</dimen>
+    <dimen name="kb_function_text">15sp</dimen>
+    <dimen name="kb_hint_text">10sp</dimen>
+    <dimen name="kb_icon">22dp</dimen>
+    <dimen name="candidate_height">44dp</dimen>
+    <dimen name="candidate_text">18sp</dimen>
+    <dimen name="candidate_padding">14dp</dimen>
+</resources>

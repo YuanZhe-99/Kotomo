@@ -9,6 +9,8 @@
       "sha256": "21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607"
     },
     "androidGradlePlugin": "9.5.0",
+    "kotlin": "2.4.21",
+    "composeBom": "2026.09.00",
     "compileSdk": "37.2",
     "targetSdk": 37,
     "minSdk": 26,

@@ -1,7 +1,8 @@
 import java.util.Properties
 
 plugins {
-    id("com.android.application")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
 }
 
 // Release signing reads the ignored key.properties at the repository root (storeFile,
@@ -45,4 +46,19 @@ android {
             signingConfig = signingConfigs.findByName("release")
         }
     }
+
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.savedstate.ktx)
+    testImplementation(libs.junit)
 }
