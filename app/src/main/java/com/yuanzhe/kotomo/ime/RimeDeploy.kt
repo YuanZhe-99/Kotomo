@@ -31,6 +31,8 @@ class RimeFiles(context: Context) {
     sealed interface Status {
         data object Running : Status
         data object Done : Status
+        /** The build works, but some deploy tasks failed ([tasks] names them). */
+        data class Partial(val tasks: String) : Status
         data class Failed(val reason: String) : Status
     }
 
@@ -41,6 +43,7 @@ class RimeFiles(context: Context) {
             when (status) {
                 Status.Running -> "running"
                 Status.Done -> "done"
+                is Status.Partial -> "partial ${status.tasks}"
                 is Status.Failed -> "failed ${status.reason}"
             },
         )
@@ -51,6 +54,7 @@ class RimeFiles(context: Context) {
         when {
             it == "running" -> Status.Running
             it == "done" -> Status.Done
+            it.startsWith("partial ") -> Status.Partial(it.removePrefix("partial "))
             it.startsWith("failed ") -> Status.Failed(it.removePrefix("failed "))
             else -> null
         }
@@ -118,6 +122,7 @@ class RimeDeployService : Service() {
         val start = SystemClock.uptimeMillis()
         // Each step names itself, so a failure on a device can be read off the diagnostics page.
         var step = "extract"
+        var failedTasks = ""
         val failure: String? = try {
             files.shared.deleteRecursively()
             copyAssets("rime", files.shared)
@@ -127,18 +132,24 @@ class RimeDeployService : Service() {
             // initialize may fail to open a session before anything is deployed; deploy anyway.
             Rime.initialize(files.shared.path, files.staging.path)
             step = "deploy"
-            val deployed = Rime.deploy()
+            Rime.deploy()
+            failedTasks = Rime.deployFailures()
             Rime.shutdown()
-            when {
-                !deployed -> "librime did not deploy every schema"
-                !File(files.staging, "build").isDirectory -> "no build directory after deploy"
-                else -> null
-            }
+            // The keyboard needs the compiled main schema; a failed side task (cleanup, user
+            // dictionary upgrade) does not stop it from typing.
+            if (File(files.staging, "build/$SCHEMA.schema.yaml").isFile) null
+            else "no compiled $SCHEMA (failed tasks: ${failedTasks.ifEmpty { "none" }})"
         } catch (e: Throwable) {
             "$step: ${e.javaClass.simpleName}: ${e.message.orEmpty()}"
         }
         files.writeReport(SystemClock.uptimeMillis() - start, peakRssKb(), failure == null)
-        files.writeStatus(if (failure == null) RimeFiles.Status.Done else RimeFiles.Status.Failed(failure))
+        files.writeStatus(
+            when {
+                failure != null -> RimeFiles.Status.Failed(failure)
+                failedTasks.isNotEmpty() -> RimeFiles.Status.Partial(failedTasks)
+                else -> RimeFiles.Status.Done
+            },
+        )
         sendBroadcast(Intent(ACTION_DONE).setPackage(packageName).putExtra(EXTRA_OK, failure == null))
     }
 
@@ -162,5 +173,7 @@ class RimeDeployService : Service() {
     companion object {
         const val ACTION_DONE = "com.yuanzhe.kotomo.RIME_DEPLOYED"
         const val EXTRA_OK = "ok"
+        /** The schema the keyboard opens (core/rime/data/default.custom.yaml). */
+        const val SCHEMA = "luna_pinyin_simp"
     }
 }

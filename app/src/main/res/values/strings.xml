@@ -23,7 +23,7 @@
     <string name="diag_note">Measured on this device while you type. Only timings and memory are kept; nothing you type is stored.</string>
     <string name="diag_key">Press to key drawn</string>
     <string name="diag_candidates">Press to candidates drawn</string>
-    <string name="diag_cold">Keyboard start to first frame</string>
+    <string name="diag_cold">Keyboard view to first frame</string>
     <string name="diag_compose">Emoji panel first frame</string>
     <string name="diag_rime">Chinese engine setup</string>
     <string name="diag_memory">Memory in use</string>
@@ -44,9 +44,10 @@
     <string name="space_japanese" translatable="false">日本語</string>
     <string name="space_english" translatable="false">English</string>
     <string name="bar_rime_preparing">Preparing the Chinese dictionary…</string>
-    <string name="bar_rime_failed">The Chinese dictionary could not be prepared. See Diagnostics in Kotomo.</string>
+    <string name="bar_rime_failed">The Chinese dictionary failed. See Diagnostics.</string>
     <string name="bar_not_yet">Not available yet</string>
     <string name="candidates_collapse">Back to the keyboard</string>
     <string name="diag_rime_running">Preparing…</string>
     <string name="diag_rime_failed">Failed: %1$s</string>
+    <string name="diag_rime_partial">%1$d ms · tasks that failed: %2$s</string>
 </resources>

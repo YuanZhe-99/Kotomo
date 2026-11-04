@@ -36,6 +36,9 @@ object Rime {
      */
     external fun deploy(): Boolean
 
+    /** Names the deploy tasks that failed in the last [deploy], comma-separated, or "". */
+    external fun deployFailures(): String
+
     /** Replaces the whole raw input (for example a pinyin span) and recomputes the candidates. */
     external fun setInput(input: String): Boolean
 

@@ -52,7 +52,7 @@ class CandidateBar(
         color = context.getColor(R.color.kb_on_accent_container)
         isFakeBoldText = true
     }
-    private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val hintPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = res.getDimension(R.dimen.bar_hint_text)
         color = context.getColor(R.color.kb_ink_secondary)
     }
@@ -107,7 +107,8 @@ class CandidateBar(
             candidates.isNotEmpty() -> drawCandidates(canvas)
             hint != null -> {
                 val baseline = height / 2 - (hintPaint.descent() + hintPaint.ascent()) / 2
-                canvas.drawText(hint!!, padStart + pad, baseline, hintPaint)
+                val shown = android.text.TextUtils.ellipsize(hint, hintPaint, width - (padStart + pad) * 2, android.text.TextUtils.TruncateAt.END)
+                canvas.drawText(shown, 0, shown.length, padStart + pad, baseline, hintPaint)
             }
             else -> drawToolbar(canvas)
         }

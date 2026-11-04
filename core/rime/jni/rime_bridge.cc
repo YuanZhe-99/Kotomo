@@ -19,6 +19,8 @@ bool learning = true;
 // RimeTraits keeps pointers, and librime reads the directories again when it reinitializes.
 std::string shared_dir;
 std::string user_dir;
+// The deploy tasks that failed in the last Deploy().
+std::string failed_tasks;
 
 /// Selects the schema that matches `learning` in the open session.
 bool ApplyLearning() {
@@ -66,9 +68,17 @@ bool Initialize(const std::string& shared_data_dir, const std::string& user_data
 bool Deploy() {
   if (api == nullptr) return false;
   CloseSession();
-  const bool deployed = api->deploy();
-  return OpenSession() && deployed;
+  failed_tasks.clear();
+  for (const char* task : {"installation_update", "workspace_update", "user_dict_upgrade", "cleanup_trash"}) {
+    if (!api->run_task(task)) {
+      if (!failed_tasks.empty()) failed_tasks += ", ";
+      failed_tasks += task;
+    }
+  }
+  return OpenSession() && failed_tasks.empty();
 }
+
+std::string DeployFailures() { return failed_tasks; }
 
 bool SetInput(const std::string& input) {
   return session != 0 && api->set_input(session, input.c_str());

@@ -28,12 +28,17 @@ struct Candidate {
 bool Initialize(const std::string& shared_data_dir, const std::string& user_data_dir);
 
 /// Compiles the schemas listed in default.yaml into user_data_dir/build, then reopens the session.
-/// Returns: librime's result for the whole workspace update (false if any schema failed).
+/// Returns: true when every deploy task succeeded; DeployFailures() names the ones that did not.
 /// Side effects: closes the session first, so the current composition is lost; writes build/,
 ///   installation.yaml and user.yaml. Unchanged schemas are skipped by librime's own checks.
-/// Notes: synchronous and slow (seconds on a fresh directory); librime refuses key input while it
-///   deploys, so the caller decides when the keyboard can afford it.
+/// Notes: runs librime's four workspace tasks (installation_update, workspace_update,
+///   user_dict_upgrade, cleanup_trash) one by one rather than through RimeDeployWorkspace, whose
+///   `&&` skips the schema compile when an earlier task fails; synchronous and slow (seconds on a
+///   fresh directory); librime refuses key input while it deploys.
 bool Deploy();
+
+/// Returns the deploy tasks that failed in the last Deploy(), comma-separated, or "".
+std::string DeployFailures();
 
 /// Replaces the whole raw input (for example a pinyin span) and recomputes candidates.
 bool SetInput(const std::string& input);

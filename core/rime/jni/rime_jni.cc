@@ -57,6 +57,11 @@ JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_deploy(JNIEnv*, j
   return rb::Deploy();
 }
 
+/// Names the deploy tasks that failed; see rime_bridge::DeployFailures.
+JNIEXPORT jstring JNICALL Java_com_yuanzhe_kotomo_engine_Rime_deployFailures(JNIEnv* env, jobject) {
+  return ToJava(env, rb::DeployFailures());
+}
+
 /// Replaces the raw input; see rime_bridge::SetInput.
 JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_setInput(JNIEnv* env, jobject,
                                                                          jstring input) {

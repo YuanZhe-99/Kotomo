@@ -125,6 +125,7 @@ class MainActivity : ComponentActivity() {
                     when (rimeStatus) {
                         RimeFiles.Status.Running -> stringResource(R.string.diag_rime_running)
                         is RimeFiles.Status.Failed -> stringResource(R.string.diag_rime_failed, rimeStatus.reason)
+                        is RimeFiles.Status.Partial -> stringResource(R.string.diag_rime_partial, summary.rimeDeployMs?.toInt() ?: 0, rimeStatus.tasks)
                         else -> summary.rimeDeployMs?.let { stringResource(R.string.diag_ms_mb, it.toInt(), (summary.rimeDeployPeakKb ?: 0) / 1024.0) }
                     },
                 )

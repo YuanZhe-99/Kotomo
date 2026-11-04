@@ -390,3 +390,26 @@ class PopupLayer(context: Context) : View(context) {
         }
     }
 }
+
+/**
+ * Holds the input view: [content] (candidate bar and keys) decides the size, and [popups] covers
+ * exactly that area on top.
+ *
+ * Notes: a plain FrameLayout would let the full-size popup layer stretch the input view to the
+ * whole window height.
+ */
+@SuppressLint("ViewConstructor")
+class InputRoot(context: Context, private val content: View, private val popups: View) : android.widget.FrameLayout(context) {
+    init {
+        addView(content)
+        addView(popups)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        content.measure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        val w = content.measuredWidth
+        val h = content.measuredHeight
+        popups.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
+        setMeasuredDimension(w, h)
+    }
+}

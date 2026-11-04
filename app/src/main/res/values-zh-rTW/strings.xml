@@ -17,7 +17,7 @@
     <string name="diag_note">在本機打字時測得。只保留耗時與記憶體，不儲存你輸入的任何內容。</string>
     <string name="diag_key">按下到按鍵繪製</string>
     <string name="diag_candidates">按下到候選繪製</string>
-    <string name="diag_cold">鍵盤啟動到首幀</string>
+    <string name="diag_cold">鍵盤視圖到首幀</string>
     <string name="diag_compose">Emoji 面板首幀</string>
     <string name="diag_rime">中文引擎準備</string>
     <string name="diag_memory">記憶體用量</string>
@@ -33,9 +33,10 @@
     <string name="build_release">release</string>
     <string name="about_version">版本 %1$s</string>
     <string name="bar_rime_preparing">正在準備中文詞庫…</string>
-    <string name="bar_rime_failed">中文詞庫準備失敗，請在 Kotomo 的診斷中查看。</string>
+    <string name="bar_rime_failed">中文詞庫準備失敗，請查看診斷。</string>
     <string name="bar_not_yet">暫不可用</string>
     <string name="candidates_collapse">返回鍵盤</string>
     <string name="diag_rime_running">準備中…</string>
     <string name="diag_rime_failed">失敗：%1$s</string>
+    <string name="diag_rime_partial">%1$d ms · 失敗的步驟：%2$s</string>
 </resources>

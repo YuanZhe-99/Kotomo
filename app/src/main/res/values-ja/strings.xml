@@ -17,7 +17,7 @@
     <string name="diag_note">この端末で入力中に測定しました。記録するのは時間とメモリだけで、入力した内容は保存しません。</string>
     <string name="diag_key">押してからキー描画まで</string>
     <string name="diag_candidates">押してから候補描画まで</string>
-    <string name="diag_cold">キーボード起動から最初のフレームまで</string>
+    <string name="diag_cold">キーボード表示から最初のフレームまで</string>
     <string name="diag_compose">絵文字パネルの最初のフレーム</string>
     <string name="diag_rime">中国語エンジンの準備</string>
     <string name="diag_memory">メモリ使用量</string>
@@ -33,9 +33,10 @@
     <string name="build_release">release</string>
     <string name="about_version">バージョン %1$s</string>
     <string name="bar_rime_preparing">中国語の辞書を準備しています…</string>
-    <string name="bar_rime_failed">中国語の辞書を準備できませんでした。Kotomo の診断を確認してください。</string>
+    <string name="bar_rime_failed">中国語の辞書を準備できませんでした。診断を確認してください。</string>
     <string name="bar_not_yet">まだ使えません</string>
     <string name="candidates_collapse">キーボードに戻る</string>
     <string name="diag_rime_running">準備中…</string>
     <string name="diag_rime_failed">失敗：%1$s</string>
+    <string name="diag_rime_partial">%1$d ms · 失敗した手順：%2$s</string>
 </resources>

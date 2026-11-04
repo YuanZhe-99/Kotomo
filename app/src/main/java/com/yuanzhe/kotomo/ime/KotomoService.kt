@@ -104,7 +104,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     override fun onCreate() {
         super.onCreate()
-        createdAt = SystemClock.uptimeMillis()
         savedState.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         mode = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_MODE, null)
@@ -175,6 +174,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     override fun onCreateInputView(): View {
+        createdAt = SystemClock.uptimeMillis()
         window.window?.decorView?.let {
             it.setViewTreeLifecycleOwner(this)
             it.setViewTreeSavedStateRegistryOwner(this)
@@ -195,11 +195,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             addView(candidateBar)
             addView(panelHost)
         }
-        val root = FrameLayout(this).apply {
-            setBackgroundColor(getColor(R.color.kb_background))
-            addView(content)
-            addView(popups, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        }
+        val root = InputRoot(this, content, popups).apply { setBackgroundColor(getColor(R.color.kb_background)) }
         // The window reaches under the navigation bar, where the system draws its own keyboard
         // buttons; the keys stay above it on every device and posture. The insets are read on the
         // window's decor view, since the input view's parents do not pass them on.
