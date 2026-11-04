@@ -17,3 +17,5 @@ side effects and notes where non-trivial).
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | Compose emoji panel with sample emoji (S1's Compose check) | `EmojiPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Probe.kt` | S1 measurements (timings and memory only) and their stored summary | `Probe`, `LatencyStats` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | Settings app: keyboard setup, try-it fields, diagnostics | `SettingsScreen` |
+| `lexicon/CrossLexicon.java` | Cross-language lexicon pipeline (S5): fetches and verifies the data sources, builds pinyin → Japanese and English → Japanese tables into `build/lexicon/` | `main`, `SOURCES` |
+| `lexicon/CheckSamples.java` | Checks the generated tables against `tests/lexicon/samples.tsv` (positive and negative lines) | `main` |

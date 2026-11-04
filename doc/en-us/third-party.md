@@ -10,6 +10,11 @@ components.
 | Component | Repository and version | Used for | License | Modifications | Obligations |
 |---|---|---|---|---|---|
 | MyApps conventions and documentation checks | `YuanZhe-99/Kyokai` (`tools/checkdocs`), `YuanZhe-99/MyApps-AI` (`tool/check_docs.py`), the MyApps `AGENTS.md` rules | `tool/CheckDocs.java` follows their mirror and link rules; `AGENTS.md` follows their conventions | AGPL-3.0 and GPL-3.0, same author as Kotomo | written anew for Kotomo | none beyond Kotomo's license |
+| Mozc dictionary data (`src/data/dictionary_oss`: `dictionary00–09.txt`, `id.def`, `README.txt`) | `google/mozc` tag 3.35.6354 | entries, readings, POS ids and costs for the cross-language lexicon (S5; build input, the generated lexicon is not shipped yet) | IPAdic-derived (mecab-ipadic-2.7.0-20070801, NAIST and ICOT terms), Okinawa dictionary data, Google additions | none | ship `README.txt`'s notices and disclaimers with any lexicon derived from it |
+| Unihan | Unicode 18.0.0 (`Unihan.zip`) | readings (`kMandarin`, attested by `kXHC1983`, `kTGHZ2013`, `kHanyuPinyin`), `kSimplifiedVariant`, `kJapaneseOldVariant` for the pinyin → Japanese mapping (S5) | Unicode License v3 | none | include the Unicode copyright and license notice |
+| CC-CEDICT | MDBG release 2026-11-04T07:19:40Z | word-level pinyin for the pinyin → Japanese mapping (S5) | CC BY-SA 4.0 (MDBG; based on CEDICT by Paul Andrew Denisowski) | none | attribution and a link to the license; derived readings stay CC BY-SA 4.0 |
+| OpenCC Japanese Shinjitai tables (`JPShinjitaiCharacters.txt`, `JPShinjitaiPhrases.txt`) | `BYVoid/OpenCC` ver.1.4.2 | Shinjitai → old forms for the pinyin → Japanese mapping (S5) | Apache-2.0 | none | include the license and NOTICE |
+| JMdict (English), through jmdict-simplified | jmdict-simplified 3.6.2+20261102210542 (JMdict 2026-11-02) | glosses for the English → Japanese mapping (S5) | CC BY-SA 4.0 under the EDRDG licence | none | credit the EDRDG as copyright holder on a separate sources page reached from a menu, link the licence and the JMdict project page, keep the data updated; the derived mapping stays CC BY-SA 4.0 |
 
 ## Planned components
 
@@ -24,9 +29,6 @@ modifications and obligations when P0 adds it; spike S8 completes the audit.
 | AOSP LatinIME native code, or HeliBoard's maintained copy | Apache-2.0; HeliBoard GPL-3.0 | English engine | chosen in spike S4 |
 | A Chinese schema and dictionary set | rime-ice GPL-3.0 only; rime_wanxiang CC BY 4.0; rime-luna-pinyin and rime-essay LGPL-3.0 | Chinese vocabulary and language model | chosen in spike S2; GPL-3.0-only data makes the whole distribution GPL-3.0-only |
 | An English word list | AOSP lists (Apache-2.0, to be confirmed); HeliBoard's English experimental lists CC BY 4.0 | English vocabulary | chosen in spike S4 |
-| JMdict (EDRDG), through jmdict-simplified | CC BY-SA 4.0 | English → Japanese mapping | credited on a separate sources screen reached from a menu, with links to the license and documentation; kept up to date |
-| CC-CEDICT | CC BY-SA 4.0 | word-level pinyin for the pinyin → Japanese mapping | attribution |
-| Unihan | Unicode License v3 | readings and variants for the pinyin → Japanese mapping | — |
 | CLDR annotations | Unicode License v3 | emoji keywords in four languages | — |
 | SudachiDict | Apache-2.0 | extra Japanese names, places, stations and loanwords | optional |
 | Noto Emoji | images Apache-2.0, font OFL-1.1, flags public domain | emoji style pack | — |

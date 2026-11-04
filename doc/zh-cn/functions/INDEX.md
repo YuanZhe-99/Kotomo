@@ -16,3 +16,5 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | 带示例 Emoji 的 Compose 面板（S1 对 Compose 的验证） | `EmojiPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Probe.kt` | S1 的测量（只有耗时和内存）及其保存的摘要 | `Probe`、`LatencyStats` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用：键盘设置引导、试打框、诊断 | `SettingsScreen` |
+| `lexicon/CrossLexicon.java` | 跨语言词库流水线（S5）：获取并校验数据源，在 `build/lexicon/` 中生成拼音 → 日文与英文 → 日文表 | `main`、`SOURCES` |
+| `lexicon/CheckSamples.java` | 用 `tests/lexicon/samples.tsv`（正例与反例）检查生成的表 | `main` |

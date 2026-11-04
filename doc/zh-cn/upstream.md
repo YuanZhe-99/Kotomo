@@ -64,3 +64,9 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | CLDR 49 注释（Unicode License v3）提供 en、zh、zh-Hant 与 ja 的 Emoji 关键词和名称 | Emoji 关键词词库 | 已阅读 |
 | Noto Emoji：字体 OFL-1.1，图像 Apache-2.0，支持 Unicode 18.0；Twemoji（jdecked）：图形 CC BY 4.0，覆盖 Emoji 17.0；Apple 的 Emoji 不得再分发，也不得包含在第三方键盘中 | Emoji 样式包；绝不使用 Apple 的图像 | 已阅读 |
 | 中文方案数据：rime-ice 为 GPL-3.0 only，rime_wanxiang 为 CC BY 4.0，rime-luna-pinyin 与 rime-essay 为 LGPL-3.0。日文：SudachiDict 为 Apache-2.0；alt-cannadic 只允许 GPL-2.0 | 在技术验证 S2 与 S8 中选定；从不使用仅限 GPL-2.0 的数据 | 已阅读 |
+| Unihan 18 给部分日本国字标了没有中文词典佐证的 `kMandarin`（込 yū、峠 qiǎ、笹 shì），另一些则有佐证（畑 tián、辻 shí） | 只有 `kXHC1983`、`kTGHZ2013`、`kHanyuPinyin` 或 CC-CEDICT 的单字条目佐证的读音才算数 | 在 S5 中使用 |
+| `kJapaneseOldVariant` 的 363 条中有 62 条指向 NFC 会折回原字的 CJK 兼容汉字（神 → U+FA19） | 取读音前先去掉 | 在 S5 中使用 |
+| OpenCC 的新字体词组给出历史写法（世論 → 輿論、予定 → 預定），也可能保留新字体（回転 → 廻転）；OpenCC 与 Unihan 对部分字的旧字体不一致（挙、弁） | 先试词组，再在两张表的并集上逐字映射 | 在 S5 中使用 |
+| CC-CEDICT 把 ü 写作 `u:`，专有名词首字母大写，并有占位读音（`xx5`）；MDBG 只发布当前文件 | 以文件的日期头与 SHA-256 锁定，有意识地更新 | 在 S5 中使用 |
+| jmdict-simplified 把 JMdict 的优先级标记（`news1`、`ichi1`、`spec1/2`、`gai1`）合并为一个 `common` 标志，并提供 `languageSource`；EDRDG 自己的文件每天替换 | 发行版可以按哈希锁定；外来语取自 `languageSource`，而不是 `gai1` | 在 S5 中使用 |
+| Mozc `dictionary_oss` 的行格式为读音、lid、rid、代价、表层形式（共 1,289,014 条；普通名词为 1851 号）；平假名表层形式会与其他词的活用形冲突 | 纯假名的映射不与 Mozc 词条关联，使用普通名词 | 在 S5 中使用 |

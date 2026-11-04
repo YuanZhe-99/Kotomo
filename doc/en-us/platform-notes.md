@@ -23,7 +23,8 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 | Spike | Status | Evidence |
 |---|---|---|
 | S1 IME skeleton | NOT_RUN on a device | Builds and passes unit tests. The diagnostics page in the settings app records press → key drawn, press → candidates drawn, cold start → first frame, the Compose emoji panel's first frame and memory, ready for a device run. |
-| S2–S8 | NOT_RUN | — |
+| S5 cross-language lexicon | PASS on the host | `java lexicon/CheckSamples.java`: 28 of 28 expected mappings at their rank (池袋 under `chidai`, 東京 under `dongjing`, コーヒー under `coffee`, …) and 0 of 10 negative cases (芸術 is not under `yunshu`). Pinyin → Japanese covers 98.9 % of Mozc's all-kanji entries. |
+| S2–S4, S6–S8 | NOT_RUN | — |
 
 ## Gates
 

@@ -17,6 +17,8 @@ java tool/CheckDocs.java   # doc/en-us and doc/zh-cn mirror each other; local li
 ./gradlew check            # unit tests and lint
 ./gradlew assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew assembleRelease  # R8 on; signed when key.properties exists, otherwise left unsigned
+java -Xmx4g lexicon/CrossLexicon.java   # S5 lexicon into build/lexicon/; --offline uses .deps/ only
+java lexicon/CheckSamples.java          # S5 sample check; non-zero exit on a failed line
 ```
 
 主机端引擎测试和转换语料运行器随各自的第一份代码加入此列表；`PLAN.md` §17 列出了计划中的命令。

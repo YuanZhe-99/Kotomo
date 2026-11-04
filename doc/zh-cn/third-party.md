@@ -8,6 +8,11 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | 组件 | 仓库与版本 | 用途 | 许可证 | 修改 | 义务 |
 |---|---|---|---|---|---|
 | MyApps 的工作规范与文档检查 | `YuanZhe-99/Kyokai`（`tools/checkdocs`）、`YuanZhe-99/MyApps-AI`（`tool/check_docs.py`）、MyApps 的 `AGENTS.md` 规则 | `tool/CheckDocs.java` 沿用其镜像与链接规则；`AGENTS.md` 沿用其工作规范 | AGPL-3.0 与 GPL-3.0，与 Kotomo 同一作者 | 为 Kotomo 重新编写 | 除 Kotomo 自身的许可证外无其他义务 |
+| Mozc 词典数据（`src/data/dictionary_oss`：`dictionary00–09.txt`、`id.def`、`README.txt`） | `google/mozc` 标签 3.35.6354 | 为跨语言词库提供词条、读音、词性 ID 与代价（S5；构建输入，生成的词库尚未随应用分发） | 源自 IPAdic（mecab-ipadic-2.7.0-20070801，NAIST 与 ICOT 条款）、冲绳词典数据与 Google 增补 | 无 | 由其派生的任何词库都随附 `README.txt` 中的声明与免责条款 |
+| Unihan | Unicode 18.0.0（`Unihan.zip`） | 为拼音 → 日文映射提供读音（`kMandarin`，以 `kXHC1983`、`kTGHZ2013`、`kHanyuPinyin` 佐证）、`kSimplifiedVariant` 与 `kJapaneseOldVariant`（S5） | Unicode License v3 | 无 | 附上 Unicode 版权与许可声明 |
+| CC-CEDICT | MDBG 发布于 2026-11-04T07:19:40Z | 为拼音 → 日文映射提供词级拼音（S5） | CC BY-SA 4.0（MDBG；基于 Paul Andrew Denisowski 的 CEDICT） | 无 | 署名并链接许可；派生的读音仍为 CC BY-SA 4.0 |
+| OpenCC 日文新字体表（`JPShinjitaiCharacters.txt`、`JPShinjitaiPhrases.txt`） | `BYVoid/OpenCC` ver.1.4.2 | 为拼音 → 日文映射把新字体映射到旧字体（S5） | Apache-2.0 | 无 | 附上许可与 NOTICE |
+| JMdict（英文），经 jmdict-simplified | jmdict-simplified 3.6.2+20261102210542（JMdict 2026-11-02） | 为英文 → 日文映射提供释义（S5） | 依 EDRDG 许可的 CC BY-SA 4.0 | 无 | 在从菜单进入的独立来源页中注明 EDRDG 为版权所有者，链接许可与 JMdict 项目页，保持数据更新；派生的映射仍为 CC BY-SA 4.0 |
 
 ## 计划中的组件
 
@@ -21,9 +26,6 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | AOSP LatinIME 原生代码，或 HeliBoard 维护的版本 | Apache-2.0；HeliBoard 为 GPL-3.0 | 英文引擎 | 在技术验证 S4 中选定 |
 | 一套中文方案与词库 | rime-ice 为 GPL-3.0 only；rime_wanxiang 为 CC BY 4.0；rime-luna-pinyin 与 rime-essay 为 LGPL-3.0 | 中文词汇与语言模型 | 在技术验证 S2 中选定；仅限 GPL-3.0 的数据会使整个发行版只能以 GPL-3.0 发布 |
 | 一份英文词表 | AOSP 词表（Apache-2.0，待确认）；HeliBoard 的英文 experimental 词表为 CC BY 4.0 | 英文词汇 | 在技术验证 S4 中选定 |
-| JMdict（EDRDG），经 jmdict-simplified | CC BY-SA 4.0 | 英文 → 日文映射 | 在从菜单进入的独立来源页中署名，并链接许可与文档；保持更新 |
-| CC-CEDICT | CC BY-SA 4.0 | 为拼音 → 日文映射提供词级拼音 | 署名 |
-| Unihan | Unicode License v3 | 为拼音 → 日文映射提供读音与异体字 | — |
 | CLDR 注释 | Unicode License v3 | 四种语言的 Emoji 关键词 | — |
 | SudachiDict | Apache-2.0 | 补充日文人名、地名、车站名与外来语 | 可选 |
 | Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |
