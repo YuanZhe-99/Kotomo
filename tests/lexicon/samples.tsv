@@ -26,9 +26,8 @@ S5-P016	pinyin	renren	人々	ひとびと	3	々 repeats the previous character
 S5-N001	pinyin	yunshu	!芸術		0	§3.3: 芸 must not read yún when it stands for 藝
 S5-N002	pinyin	yun	!芸		0	§3.3
 S5-N003	pinyin	huabian	!花弁		0	the word reading 花瓣 huābàn wins over per-character 辨
-S5-N004	pinyin	*	!峠		0	§5.9 kokuji: Unihan has only an unattested kMandarin value
-S5-N005	pinyin	*	!込		0	§5.9 kokuji: Unihan has only an unattested kMandarin value
-S5-N006	pinyin	*	!申込		0	§5.9: a word with a kokuji is skipped
+S5-P017	pinyin	qia	峠	とうげ	0	kokuji: Unihan kMandarin qiǎ counts (user decision 2026-11-04)
+S5-P018	pinyin	shenyu	申込		0	kokuji 込: Unihan kMandarin yū
 S5-E001	en	computer	コンピューター		3	§13.2 T06-001
 S5-E002	en	coffee	コーヒー		3	§13.2 T06-002
 S5-E003	en	card	カード		3	§13.2 T07-004 (zailiucard); S5 list
@@ -45,3 +44,8 @@ S5-EN01	en	coffee	!珈琲		1	ateji of a usually-kana word is not first
 S5-EN02	en	cat	!ネコ		1	a katakana spelling of a native word is not first
 S5-EN03	en	school	!スクール		1	§5.9: school → 学校 before the loanword
 S5-EN04	en	card	!解く		3	a verb gloss "to card (wool)" stays below the noun
+S5-P019	pinyin	yulun	世論		3	OpenCC phrase 世論 → 輿論: the historical reading
+S5-P020	pinyin	shilun	世論		3	the reading as written is kept too (user decision 2026-11-04)
+S5-P021	pinyin	diandao	転倒		3	OpenCC phrase 転倒 → 顛倒
+S5-P022	pinyin	zhuandao	転倒		3	as written: 転 → 轉 zhuǎn
+S5-N004	pinyin	*	!三﨑		0	a character with no reading anywhere (﨑, a compatibility form) still skips its word

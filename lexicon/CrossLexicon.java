@@ -304,13 +304,10 @@ public final class CrossLexicon {
                 default -> { }
             }
         });
-        // A kMandarin value counts only for a character some Chinese dictionary attests (§5.9:
-        // kokuji such as 込 and 峠 carry a kMandarin value but no dictionary reading).
-        for (int cp : new HashSet<>(mandarin.keySet())) {
-            if (!attested.contains(cp)) {
-                mandarin.remove(cp);
-            }
-        }
+        // Every kMandarin value counts, attested by a Chinese dictionary or not: the user decided
+        // (2026-11-04) to follow Unihan for kokuji such as 込 (yū) and 峠 (qiǎ), since Chinese
+        // dictionaries have no reading for them at all.
+        attested.addAll(mandarin.keySet());
         for (int cp : attested) {
             LinkedHashSet<String> all = new LinkedHashSet<>();
             String m = mandarin.get(cp);
@@ -565,7 +562,7 @@ public final class CrossLexicon {
         String word = new String(cps, 0, cps.length);
         List<int[]> forms = new ArrayList<>();
         List<Integer> formPenalty = new ArrayList<>();
-        oldFormSpellings(word, forms, formPenalty);
+        oldFormSpellings(word, forms, formPenalty, true);
         boolean glyph = forms.stream().anyMatch(f -> !new String(f, 0, f.length).equals(word));
 
         Map<String, Integer> found = new LinkedHashMap<>();
@@ -589,6 +586,22 @@ public final class CrossLexicon {
             String primary = primaryReading(forms.get(0));
             List<Reading> out = new ArrayList<>();
             found.forEach((r, p) -> out.add(new Reading(r, p + (r.equals(primary) || found.size() == 1 ? 0 : ALT_READING))));
+            // An OpenCC phrase may give a historical spelling with its own reading (世論 → 輿論
+            // yúlùn); the reading of the characters as written (shìlùn) is kept as well, one step
+            // costlier, so both keys find the word (user decision, 2026-11-04).
+            List<int[]> literal = new ArrayList<>();
+            oldFormSpellings(word, literal, new ArrayList<>(), false);
+            String asWritten = primaryReading(literal.get(0));
+            // Only a phrase that brings in another character counts (世 → 輿, 転 → 顛); one that
+            // picks among a character's own old forms (花弁 → 花瓣) is no historical spelling.
+            int[] spelled = forms.get(0);
+            boolean historical = false;
+            for (int k = 0; spelled.length == cps.length && k < cps.length; k++) {
+                historical |= spelled[k] != cps[k] && !glyphSlot(cps[k]).contains(spelled[k]);
+            }
+            if (historical && !asWritten.isEmpty() && !found.containsKey(asWritten)) {
+                out.add(new Reading(asWritten, ALT_READING));
+            }
             return new Derivation(cap(out), "cedict" + suffix, null);
         }
         Map<String, Integer> perChar = new LinkedHashMap<>();
@@ -625,19 +638,20 @@ public final class CrossLexicon {
 
     /**
      * Lists the old-form spellings of a word, cheapest first.
-     * Inputs: forms and penalties receive parallel entries.
+     * Inputs: forms and penalties receive parallel entries; usePhrases false spells each character
+     * on its own, ignoring the OpenCC phrases.
      * Notes: within an OpenCC phrase (longest match first) a changed character takes the phrase's
      * form first; every character otherwise expands to each of its old forms that has a Chinese
      * reading, the n-th alternative costing n × ALT_GLYPH; a character without such old forms
      * stays as it is (萌 → 萠 has no reading, so 萌 stays). At most MAX_GLYPH_FORMS spellings are
      * kept.
      */
-    private void oldFormSpellings(String word, List<int[]> forms, List<Integer> penalties) {
+    private void oldFormSpellings(String word, List<int[]> forms, List<Integer> penalties, boolean usePhrases) {
         List<List<Integer>> slots = new ArrayList<>();
         int i = 0;
         while (i < word.length()) {
             String hit = null;
-            int len = Math.min(longestPhrase, word.length() - i);
+            int len = usePhrases ? Math.min(longestPhrase, word.length() - i) : 0;
             while (len >= 2 && (hit = phrases.get(word.substring(i, i + len))) == null) {
                 len--;
             }
