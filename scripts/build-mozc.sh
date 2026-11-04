@@ -185,8 +185,11 @@ for abi in "${abis[@]}"; do
   done <<<"$aligns"
   exported="$("$readelf" --dyn-syms -W "$out/$abi/libkotomo_mozc.so" \
     | awk '($5 == "GLOBAL" || $5 == "WEAK") && $7 != "UND" {print $8}')" || die "readelf failed"
-  if grep -v '^Java_com_yuanzhe_kotomo_engine_Mozc_' <<<"$exported" | grep -q .; then
-    die "$abi library exports more than its JNI functions"
+  extra="$(grep -v '^Java_com_yuanzhe_kotomo_engine_Mozc_' <<<"$exported" || true)"
+  if [[ -n "$extra" ]]; then
+    echo "$abi exports beyond the JNI functions:" >&2
+    head -n 40 <<<"$extra" >&2
+    die "$abi library exports more than its JNI functions ($(wc -l <<<"$extra") symbols)"
   fi
   echo "$abi: 16 KB-aligned, $(wc -l <<<"$exported") exported symbols, all JNI"
 done
