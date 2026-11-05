@@ -12,6 +12,11 @@
     <color name="kb_accent_container">#E3E8FF</color>
     <color name="kb_on_accent_container">#1F3596</color>
     <color name="kb_key_shadow">#2416181C</color>
+    <!-- Clipboard tags (PhoneClipboard): addresses, links and phone numbers; quick phrases. -->
+    <color name="clip_tag_neutral">#E4E6EA</color>
+    <color name="clip_on_tag_neutral">#3A3F4A</color>
+    <color name="clip_tag_phrase">#F6DCC4</color>
+    <color name="clip_on_tag_phrase">#7A3E0B</color>
     <!-- Settings app surfaces (SettingsHome, SettingsMixed, SettingsTablet). -->
     <color name="settings_background">#F6F7F9</color>
     <color name="settings_card">#FFFFFF</color>

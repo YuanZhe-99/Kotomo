@@ -47,6 +47,9 @@
 | `keys.corner_hints` | boolean | `true` | 在按键角上显示长按符号 |
 | `keys.haptics` | boolean | `true` | 按键震动 |
 | `privacy.incognito` | boolean | `false` | 无痕模式：不学习、不记录历史与剪贴板 |
+| `clipboard.history` | boolean | `true` | 把复制的文字保存在剪贴板历史中（[clipboard.md](clipboard.md)） |
+| `clipboard.retention_days` | int 1–90 | 7 | 未固定的剪贴板条目保留的天数（隐私页提供 1、7、30） |
+| `clipboard.quick_paste` | boolean | `true` | 在键盘上方提供刚复制的内容和其中的验证码 |
 
 ## 隐私
 

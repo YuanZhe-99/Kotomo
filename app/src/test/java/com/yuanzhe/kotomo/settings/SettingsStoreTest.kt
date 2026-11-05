@@ -64,6 +64,7 @@ class SettingsStoreTest {
         heightPercent = 85,
         keyHints = false,
         incognito = true,
+        clipboard = ClipboardSettings(history = false, retentionDays = 30, quickPaste = false),
     )
 
     @Test
@@ -74,6 +75,7 @@ class SettingsStoreTest {
         assertEquals(MixedLevel.BALANCED, s.mixed.level)
         assertEquals(CrossLanguage(), s.japanese)
         assertFalse(s.incognito)
+        assertEquals(ClipboardSettings(history = true, retentionDays = 7, quickPaste = true), s.clipboard)
     }
 
     @Test
@@ -127,10 +129,12 @@ class SettingsStoreTest {
             data.edit {
                 it[intPreferencesKey("layout.height_percent")] = 400
                 it[intPreferencesKey("mixed.weight_emoji")] = -1
+                it[intPreferencesKey("clipboard.retention_days")] = 0
             }
             val s = SettingsFormat.read(data.data.first())
             assertEquals(Settings().heightPercent, s.heightPercent)
             assertEquals(Settings().mixed.weightEmoji, s.mixed.weightEmoji)
+            assertEquals(Settings().clipboard.retentionDays, s.clipboard.retentionDays)
         }
     }
 

@@ -67,6 +67,9 @@ Android 字符串资源中（英文、简体中文、繁体中文和日文），
 | toolbar | 工具栏 |
 | clipboard history | 剪贴板历史 |
 | quick phrase | 快捷短语 |
+| quick-paste strip | 快捷输入条 |
+| verification code | 验证码 |
+| pin (a clipboard item) | 固定 |
 | text field | 输入框 |
 | on-device AI | 设备端 AI |
 | proofreading / rewriting | 校对 / 重写 |

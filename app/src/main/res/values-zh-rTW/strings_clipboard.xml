@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="clip_back">返回鍵盤</string>
+    <string name="clip_tab_all">全部</string>
+    <string name="clip_tab_pinned">固定與片語</string>
+    <string name="clip_tab_codes">驗證碼</string>
+    <string name="clip_tag_address">地址</string>
+    <string name="clip_tag_phone">電話</string>
+    <string name="clip_tag_link">連結</string>
+    <string name="clip_tag_code">驗證碼</string>
+    <string name="clip_tag_phrase">片語</string>
+    <string name="clip_pinned">已固定</string>
+    <string name="clip_time_phrase">快速片語</string>
+    <string name="clip_time_now">剛剛</string>
+    <plurals name="clip_time_minutes">
+        <item quantity="other">%d 分鐘前</item>
+    </plurals>
+    <plurals name="clip_time_hours">
+        <item quantity="other">%d 小時前</item>
+    </plurals>
+    <string name="clip_time_yesterday">昨天</string>
+    <plurals name="clip_time_days">
+        <item quantity="other">%d 天前</item>
+    </plurals>
+    <string name="clip_footer">僅存於本機並加密 · %1$s · 密碼與敏感內容不記錄</string>
+    <plurals name="clip_kept_days">
+        <item quantity="other">保留 %d 天</item>
+    </plurals>
+    <string name="clip_footer_off">剪貼簿記錄已關閉，複製的內容不會保存</string>
+    <string name="clip_manage">管理</string>
+    <string name="clip_empty_all">複製的文字會顯示在這裡</string>
+    <string name="clip_empty_pinned">固定一則內容，它就會一直保留在這裡</string>
+    <string name="clip_empty_codes">複製的驗證碼會顯示在這裡</string>
+    <string name="clip_actions">固定或刪除</string>
+    <string name="clip_pin">固定</string>
+    <string name="clip_unpin">取消固定</string>
+    <string name="clip_paste_all">貼上全文</string>
+    <string name="clip_delete">刪除</string>
+    <string name="quick_region">快速輸入</string>
+    <string name="quick_close">關閉快速輸入</string>
+    <string name="quick_copied">剛複製</string>
+    <string name="quick_copied_hint">輕觸即可輸入剛複製的內容</string>
+    <string name="quick_code_one">剛複製的內容中有驗證碼</string>
+    <string name="quick_codes_many">來自剛複製的內容 · 無法確定哪個是驗證碼，全部列出</string>
+    <string name="quick_more_likely">較可能</string>
+    <string name="clip_settings_section">剪貼簿</string>
+    <string name="clip_settings_history">剪貼簿記錄</string>
+    <string name="clip_settings_history_desc">把複製的文字加密保存在本機；密碼與敏感內容從不保存</string>
+    <string name="clip_settings_keep">未固定的內容保留</string>
+    <plurals name="clip_settings_days">
+        <item quantity="other">%d 天</item>
+    </plurals>
+    <string name="clip_settings_quick">快速輸入</string>
+    <string name="clip_settings_quick_desc">複製後一分鐘內，在鍵盤上方提供剛複製的內容和其中的驗證碼</string>
+    <string name="clip_settings_clear">清除未固定的內容</string>
+</resources>

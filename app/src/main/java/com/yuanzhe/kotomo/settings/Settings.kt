@@ -54,6 +54,19 @@ data class Mixed(
 )
 
 /**
+ * Holds the clipboard settings (PLAN §10.7): whether copied text is kept in the history, for how
+ * many days unpinned items are kept, and whether the quick-paste strip offers what was just copied.
+ *
+ * Notes: none of them records anything in sensitive fields, for clips marked sensitive or in
+ * incognito mode.
+ */
+data class ClipboardSettings(
+    val history: Boolean = true,
+    val retentionDays: Int = 7,
+    val quickPaste: Boolean = true,
+)
+
+/**
  * Holds every setting the person can change in the settings app, with the defaults a fresh
  * install starts from.
  *
@@ -77,6 +90,7 @@ data class Settings(
     val keyHints: Boolean = true,
     val haptics: Boolean = true,
     val incognito: Boolean = false,
+    val clipboard: ClipboardSettings = ClipboardSettings(),
 ) {
     companion object {
         /** Allowed keyboard heights, in percent of the designed height. */
@@ -85,6 +99,8 @@ data class Settings(
         val THUMB_RANGE = 200..340
         /** Allowed Mixed-mode candidate weights. */
         val WEIGHT_RANGE = 0..100
+        /** Allowed clipboard retention, in days. */
+        val RETENTION_RANGE = 1..90
     }
 }
 
@@ -121,6 +137,9 @@ internal object SettingsFormat {
     private val keyHints = booleanPreferencesKey("keys.corner_hints")
     private val haptics = booleanPreferencesKey("keys.haptics")
     private val incognito = booleanPreferencesKey("privacy.incognito")
+    private val clipHistory = booleanPreferencesKey("clipboard.history")
+    private val clipRetention = intPreferencesKey("clipboard.retention_days")
+    private val clipQuickPaste = booleanPreferencesKey("clipboard.quick_paste")
 
     /**
      * Reads the settings from a Preferences file.
@@ -153,6 +172,11 @@ internal object SettingsFormat {
             keyHints = p[keyHints] ?: d.keyHints,
             haptics = p[haptics] ?: d.haptics,
             incognito = p[incognito] ?: d.incognito,
+            clipboard = ClipboardSettings(
+                history = p[clipHistory] ?: d.clipboard.history,
+                retentionDays = p.int(clipRetention, Settings.RETENTION_RANGE, d.clipboard.retentionDays),
+                quickPaste = p[clipQuickPaste] ?: d.clipboard.quickPaste,
+            ),
         )
     }
 
@@ -187,6 +211,9 @@ internal object SettingsFormat {
         p.put(keyHints, old.keyHints, new.keyHints)
         p.put(haptics, old.haptics, new.haptics)
         p.put(incognito, old.incognito, new.incognito)
+        p.put(clipHistory, old.clipboard.history, new.clipboard.history)
+        p.put(clipRetention, old.clipboard.retentionDays, new.clipboard.retentionDays)
+        p.put(clipQuickPaste, old.clipboard.quickPaste, new.clipboard.quickPaste)
         p[version] = maxOf(p[version] ?: 0, VERSION)
         p[updated] = nowUtcMs
     }
