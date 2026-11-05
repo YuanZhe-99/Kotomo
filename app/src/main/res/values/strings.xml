@@ -192,7 +192,6 @@
     <string name="keys_hints_desc">Show the long-press symbol in each key\'s corner</string>
     <string name="keys_haptics">Vibrate on key press</string>
     <string name="keys_haptics_desc">A short vibration with each key</string>
-    <string name="themes_later">Themes arrive in a later version. For now the keyboard and the settings follow the system\'s light or dark setting.</string>
     <string name="dictionaries_later">Managing and importing dictionaries arrives in a later version. Kotomo uses the dictionaries built into the app and downloads nothing.</string>
     <string name="incognito_title">Incognito mode</string>
     <string name="incognito_desc">No learning, no history, no clipboard recording</string>
@@ -253,4 +252,10 @@
     <string-array name="preview_ai_aggressive" translatable="false"><item>爱</item><item>愛</item><item>あい</item><item>AI</item></string-array>
     <string name="quick_all_settings">All settings</string>
     <string name="bar_forgotten">Removed from what Kotomo learned</string>
+    <string name="theme_title">Colors</string>
+    <string name="theme_system">Follow the system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_dynamic">Material You (wallpaper colors)</string>
+    <string name="theme_radius">Key corners</string>
 </resources>

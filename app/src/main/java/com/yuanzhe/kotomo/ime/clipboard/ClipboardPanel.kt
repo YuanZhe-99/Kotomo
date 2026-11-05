@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime.clipboard
 
+import com.yuanzhe.kotomo.ime.kbColor
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -118,7 +119,7 @@ fun ClipboardPanel(
     var actions by remember { mutableStateOf<Long?>(null) }
     val now = remember { System.currentTimeMillis() }
     val items = history.value.filter(tab.shows)
-    Column(Modifier.fillMaxSize().background(colorResource(R.color.kb_background))) {
+    Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         TopBar(tab, onBack) {
             tab = it
             actions = null
@@ -135,7 +136,7 @@ fun ClipboardPanel(
                     ),
                     Modifier.align(Alignment.Center).padding(dimensionResource(R.dimen.clip_footer_pad)),
                     fontSize = dimensionResource(R.dimen.clip_text).asText(),
-                    color = colorResource(R.color.kb_ink_secondary),
+                    color = kbColor(R.color.kb_ink_secondary),
                 )
             } else {
                 val gap = dimensionResource(R.dimen.clip_card_gap)
@@ -193,7 +194,7 @@ private fun TopBar(tab: Tab, onBack: () -> Unit, onTab: (Tab) -> Unit) {
                 painterResource(R.drawable.ic_settings_back),
                 contentDescription = null,
                 modifier = Modifier.size(dimensionResource(R.dimen.clip_icon)),
-                colorFilter = ColorFilter.tint(colorResource(R.color.kb_ink)),
+                colorFilter = ColorFilter.tint(kbColor(R.color.kb_ink)),
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.clip_bar_gap))) {
@@ -255,7 +256,7 @@ private fun timeOf(clip: Clip, now: Long): String {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Card(clip: Clip, now: Long, onClick: () -> Unit, onLongClick: () -> Unit) {
-    val secondary = colorResource(R.color.kb_ink_secondary)
+    val secondary = kbColor(R.color.kb_ink_secondary)
     val meta = dimensionResource(R.dimen.clip_meta_text).asText()
     CardFrame(
         Modifier.combinedClickable(
@@ -305,13 +306,13 @@ private fun Card(clip: Clip, now: Long, onClick: () -> Unit, onLongClick: () -> 
                     painterResource(R.drawable.ic_clip_pin),
                     contentDescription = pinned,
                     modifier = Modifier.size(dimensionResource(R.dimen.clip_pin_icon)),
-                    colorFilter = ColorFilter.tint(colorResource(R.color.kb_accent)),
+                    colorFilter = ColorFilter.tint(kbColor(R.color.kb_accent)),
                 )
             }
         }
         val code = clip.code
         if (code != null) {
-            Text(code.value, fontSize = dimensionResource(R.dimen.clip_code_text).asText(), color = colorResource(R.color.kb_ink), maxLines = 1)
+            Text(code.value, fontSize = dimensionResource(R.dimen.clip_code_text).asText(), color = kbColor(R.color.kb_ink), maxLines = 1)
             if (code.context.isNotEmpty()) {
                 Text(code.context, fontSize = meta, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -319,7 +320,7 @@ private fun Card(clip: Clip, now: Long, onClick: () -> Unit, onLongClick: () -> 
             Text(
                 clip.text,
                 fontSize = dimensionResource(R.dimen.clip_text).asText(),
-                color = colorResource(R.color.kb_ink),
+                color = kbColor(R.color.kb_ink),
                 maxLines = integerResource(R.integer.clip_text_lines),
                 overflow = TextOverflow.Ellipsis,
             )
@@ -348,7 +349,7 @@ private fun Action(@StringRes label: Int, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(vertical = dimensionResource(R.dimen.clip_action_pad_v)),
         fontSize = dimensionResource(R.dimen.clip_action_text).asText(),
-        color = colorResource(R.color.kb_accent),
+        color = kbColor(R.color.kb_accent),
         maxLines = 1,
     )
 }
@@ -361,7 +362,7 @@ private fun CardFrame(modifier: Modifier, content: @Composable () -> Unit) {
             .fillMaxWidth()
             .height(dimensionResource(R.dimen.clip_card_height))
             .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_card_radius)))
-            .background(colorResource(R.color.kb_key))
+            .background(kbColor(R.color.kb_key))
             .then(modifier)
             .padding(horizontal = dimensionResource(R.dimen.clip_card_pad_h), vertical = dimensionResource(R.dimen.clip_card_pad_v)),
         verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.clip_card_inner_gap)),
@@ -371,7 +372,7 @@ private fun CardFrame(modifier: Modifier, content: @Composable () -> Unit) {
 /** Draws the footer: how the history is kept (or that it is off), and Manage. */
 @Composable
 private fun Footer(retentionDays: Int, recording: Boolean, onManage: () -> Unit) {
-    val secondary = colorResource(R.color.kb_ink_secondary)
+    val secondary = kbColor(R.color.kb_ink_secondary)
     Row(
         Modifier
             .fillMaxWidth()
@@ -406,7 +407,7 @@ private fun Footer(retentionDays: Int, recording: Boolean, onManage: () -> Unit)
                 .padding(horizontal = dimensionResource(R.dimen.clip_manage_pad)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(stringResource(R.string.clip_manage), fontSize = dimensionResource(R.dimen.clip_manage_text).asText(), color = colorResource(R.color.kb_accent))
+            Text(stringResource(R.string.clip_manage), fontSize = dimensionResource(R.dimen.clip_manage_text).asText(), color = kbColor(R.color.kb_accent))
         }
     }
 }

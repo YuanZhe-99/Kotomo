@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime.clipboard
 
+import com.yuanzhe.kotomo.ime.kbColor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -122,11 +123,11 @@ fun QuickPasteStrip(copied: Copied, numberField: Boolean, onPaste: (String) -> U
     val chips = QuickPaste.chips(copied, numberField)
     val codes = chips.count { it is QuickPaste.Chip.Code }
     val region = stringResource(R.string.quick_region)
-    val secondary = colorResource(R.color.kb_ink_secondary)
+    val secondary = kbColor(R.color.kb_ink_secondary)
     Column(
         Modifier
             .fillMaxWidth()
-            .background(colorResource(R.color.kb_background))
+            .background(kbColor(R.color.kb_background))
             .semantics { paneTitle = region }
             .padding(
                 start = dimensionResource(R.dimen.quick_pad_h),
@@ -230,8 +231,8 @@ private fun CodeChip(chip: QuickPaste.Chip.Code, marked: Boolean, onClick: () ->
 /** Draws the chip of the text just copied: "Just copied" with the clipboard icon, and the text's start. */
 @Composable
 private fun TextChip(text: String, onClick: () -> Unit) {
-    val ink = colorResource(R.color.kb_ink)
-    Chip(dimensionResource(R.dimen.quick_chip_width), colorResource(R.color.kb_key), onClick) {
+    val ink = kbColor(R.color.kb_ink)
+    Chip(dimensionResource(R.dimen.quick_chip_width), kbColor(R.color.kb_key), onClick) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap))) {
             Image(
                 painterResource(R.drawable.ic_tool_clipboard),
@@ -250,7 +251,7 @@ private fun TextChip(text: String, onClick: () -> Unit) {
         Text(
             text.replace(whitespace, " ").trim(),
             fontSize = dimensionResource(R.dimen.quick_context_text).asText(),
-            color = colorResource(R.color.kb_ink_secondary),
+            color = kbColor(R.color.kb_ink_secondary),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

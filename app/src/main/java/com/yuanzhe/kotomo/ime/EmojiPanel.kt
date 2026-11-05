@@ -170,7 +170,7 @@ fun EmojiPanel(
         onEmoji(emoji)
         if (recordRecents) loaded?.recents?.add(emoji)
     }
-    Column(Modifier.fillMaxSize().background(colorResource(R.color.kb_background))) {
+    Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
             EmojiGrid(cells, grid, send) { i, cell ->
                 val info = grid.layoutInfo.visibleItemsInfo.firstOrNull { it.index == i } ?: return@EmojiGrid
@@ -238,8 +238,8 @@ private fun EmojiGrid(
     val glyph = dimensionResource(R.dimen.emoji_glyph).asText()
     val radius = dimensionResource(R.dimen.emoji_radius)
     val mark = dimensionResource(R.dimen.emoji_tone_mark)
-    val markColor = colorResource(R.color.kb_ink_secondary)
-    val titleColor = colorResource(R.color.kb_ink_secondary)
+    val markColor = kbColor(R.color.kb_ink_secondary)
+    val titleColor = kbColor(R.color.kb_ink_secondary)
     val titleSize = dimensionResource(R.dimen.emoji_header_text).asText()
     val titlePad = dimensionResource(R.dimen.emoji_header_pad)
     LazyVerticalGrid(
@@ -326,7 +326,7 @@ private fun TonePicker(p: Picker, modifier: Modifier, onPick: (String) -> Unit) 
             }
             .semantics { contentDescription = label },
         shape = RoundedCornerShape(dimensionResource(R.dimen.emoji_picker_radius)),
-        color = colorResource(R.color.kb_key),
+        color = kbColor(R.color.kb_key),
         shadowElevation = dimensionResource(R.dimen.emoji_picker_elevation),
     ) {
         androidx.compose.foundation.layout.FlowRow(
@@ -359,7 +359,7 @@ private fun BottomBar(
     onBack: () -> Unit,
 ) {
     val back = stringResource(R.string.emoji_back)
-    val ink = colorResource(R.color.kb_ink)
+    val ink = kbColor(R.color.kb_ink)
     val key = dimensionResource(R.dimen.emoji_bar_key)
     val tab = dimensionResource(R.dimen.emoji_tab)
     val tabGlyph = dimensionResource(R.dimen.emoji_tab_glyph).asText()
@@ -428,7 +428,7 @@ private fun BarKey(modifier: Modifier, onClick: () -> Unit, content: @Composable
         modifier
             .fillMaxHeight()
             .clip(RoundedCornerShape(dimensionResource(R.dimen.kb_key_radius)))
-            .background(colorResource(R.color.kb_key_function))
+            .background(kbColor(R.color.kb_key_function))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { content() }
@@ -447,7 +447,7 @@ fun CandidatesPanel(
     onBack: () -> Unit,
 ) {
     val back = stringResource(R.string.candidates_collapse)
-    Column(Modifier.fillMaxSize().background(colorResource(R.color.kb_background))) {
+    Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         androidx.compose.foundation.layout.FlowRow(
             Modifier
                 .weight(1f)
@@ -480,7 +480,7 @@ fun CandidatesPanel(
                 Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(colorResource(R.color.kb_key_function))
+                    .background(kbColor(R.color.kb_key_function))
                     .clickable(onClick = onBack)
                     .semantics { contentDescription = back },
                 contentAlignment = Alignment.Center,
@@ -488,7 +488,7 @@ fun CandidatesPanel(
                 androidx.compose.foundation.Image(
                     androidx.compose.ui.res.painterResource(R.drawable.ic_bar_collapse),
                     contentDescription = null,
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(colorResource(R.color.kb_ink)),
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(kbColor(R.color.kb_ink)),
                 )
             }
         }

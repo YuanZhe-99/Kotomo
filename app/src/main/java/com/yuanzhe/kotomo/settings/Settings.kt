@@ -17,6 +17,9 @@ enum class OneHanded { OFF, LEFT, RIGHT }
 /** Chooses the script Chinese is committed in. */
 enum class ChineseScript { SIMPLIFIED, TRADITIONAL }
 
+/** The keyboard's colors: following the system, always light, always dark, or Material You. */
+enum class KeyboardTheme { SYSTEM, LIGHT, DARK, DYNAMIC }
+
 /** Chooses how strongly Mixed mode offers cross-language candidates (PLAN §2.3). */
 enum class MixedLevel { CONSERVATIVE, BALANCED, AGGRESSIVE }
 
@@ -91,6 +94,8 @@ data class Settings(
     val haptics: Boolean = true,
     val incognito: Boolean = false,
     val clipboard: ClipboardSettings = ClipboardSettings(),
+    val theme: KeyboardTheme = KeyboardTheme.SYSTEM,
+    val keyRadiusDp: Int = 12,
 ) {
     companion object {
         /** Allowed keyboard heights, in percent of the designed height. */
@@ -101,6 +106,8 @@ data class Settings(
         val WEIGHT_RANGE = 0..100
         /** Allowed clipboard retention, in days. */
         val RETENTION_RANGE = 1..90
+        /** Allowed key corner radii, in dp. */
+        val RADIUS_RANGE = 0..24
     }
 }
 
@@ -140,6 +147,8 @@ internal object SettingsFormat {
     private val clipHistory = booleanPreferencesKey("clipboard.history")
     private val clipRetention = intPreferencesKey("clipboard.retention_days")
     private val clipQuickPaste = booleanPreferencesKey("clipboard.quick_paste")
+    private val theme = stringPreferencesKey("theme.choice")
+    private val keyRadius = intPreferencesKey("theme.key_radius_dp")
 
     /**
      * Reads the settings from a Preferences file.
@@ -177,6 +186,8 @@ internal object SettingsFormat {
                 retentionDays = p.int(clipRetention, Settings.RETENTION_RANGE, d.clipboard.retentionDays),
                 quickPaste = p[clipQuickPaste] ?: d.clipboard.quickPaste,
             ),
+            theme = p.enum(theme, KeyboardTheme.entries, d.theme),
+            keyRadiusDp = p.int(keyRadius, Settings.RADIUS_RANGE, d.keyRadiusDp),
         )
     }
 
@@ -214,6 +225,8 @@ internal object SettingsFormat {
         p.put(clipHistory, old.clipboard.history, new.clipboard.history)
         p.put(clipRetention, old.clipboard.retentionDays, new.clipboard.retentionDays)
         p.put(clipQuickPaste, old.clipboard.quickPaste, new.clipboard.quickPaste)
+        p.put(theme, old.theme.key, new.theme.key)
+        p.put(keyRadius, old.keyRadiusDp, new.keyRadiusDp)
         p[version] = maxOf(p[version] ?: 0, VERSION)
         p[updated] = nowUtcMs
     }

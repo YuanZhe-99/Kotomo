@@ -48,7 +48,7 @@ import com.yuanzhe.kotomo.settings.SplitLayout
 fun QuickPanel(store: SettingsStore, onOpenSettings: () -> Unit, onBack: () -> Unit) {
     val settings by store.flow.collectAsState()
     val back = stringResource(R.string.candidates_collapse)
-    Column(Modifier.fillMaxSize().background(colorResource(R.color.kb_background))) {
+    Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -70,13 +70,13 @@ fun QuickPanel(store: SettingsStore, onOpenSettings: () -> Unit, onBack: () -> U
             ) { value -> store.set { it.copy(chineseScript = value) } }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.incognito_title), fontSize = 15.sp, color = colorResource(R.color.kb_ink))
-                    Text(stringResource(R.string.incognito_desc), fontSize = 12.sp, color = colorResource(R.color.kb_ink_secondary))
+                    Text(stringResource(R.string.incognito_title), fontSize = 15.sp, color = kbColor(R.color.kb_ink))
+                    Text(stringResource(R.string.incognito_desc), fontSize = 12.sp, color = kbColor(R.color.kb_ink_secondary))
                 }
                 Switch(
                     checked = settings.incognito,
                     onCheckedChange = { on -> store.set { it.copy(incognito = on) } },
-                    colors = SwitchDefaults.colors(checkedTrackColor = colorResource(R.color.kb_accent)),
+                    colors = SwitchDefaults.colors(checkedTrackColor = kbColor(R.color.kb_accent)),
                 )
             }
             Pill(stringResource(R.string.quick_all_settings), selected = false, modifier = Modifier.fillMaxWidth(), onClick = onOpenSettings)
@@ -87,7 +87,7 @@ fun QuickPanel(store: SettingsStore, onOpenSettings: () -> Unit, onBack: () -> U
                 .height(48.dp)
                 .padding(6.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(colorResource(R.color.kb_key_function))
+                .background(kbColor(R.color.kb_key_function))
                 .clickable(onClick = onBack)
                 .semantics { contentDescription = back },
             contentAlignment = Alignment.Center,
@@ -95,7 +95,7 @@ fun QuickPanel(store: SettingsStore, onOpenSettings: () -> Unit, onBack: () -> U
             androidx.compose.foundation.Image(
                 androidx.compose.ui.res.painterResource(R.drawable.ic_bar_collapse),
                 contentDescription = null,
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(colorResource(R.color.kb_ink)),
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(kbColor(R.color.kb_ink)),
             )
         }
     }
@@ -105,7 +105,7 @@ fun QuickPanel(store: SettingsStore, onOpenSettings: () -> Unit, onBack: () -> U
 @Composable
 private fun <T> Choice(title: String, options: List<Pair<T, Int>>, current: T, onPick: (T) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, fontSize = 15.sp, color = colorResource(R.color.kb_ink))
+        Text(title, fontSize = 15.sp, color = kbColor(R.color.kb_ink))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             options.forEach { (value, label) ->
                 Pill(stringResource(label), selected = value == current, modifier = Modifier.weight(1f)) { onPick(value) }

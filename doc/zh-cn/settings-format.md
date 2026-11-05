@@ -50,6 +50,8 @@
 | `clipboard.history` | boolean | `true` | 把复制的文字保存在剪贴板历史中（[clipboard.md](clipboard.md)） |
 | `clipboard.retention_days` | int 1–90 | 7 | 未固定的剪贴板条目保留的天数（隐私页提供 1、7、30） |
 | `clipboard.quick_paste` | boolean | `true` | 在键盘上方提供刚复制的内容和其中的验证码 |
+| `theme.choice` | string：`system`、`light`、`dark`、`dynamic` | `system` | 键盘配色；`dynamic` 即 Material You（Android 12 及以上） |
+| `theme.key_radius_dp` | int，0–24 | `12` | 按键圆角，单位 dp |
 
 ## 隐私
 

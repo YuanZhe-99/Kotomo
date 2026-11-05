@@ -140,6 +140,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var direct = false
     private var createdAt = 0L
     private lateinit var store: SettingsStore
+    /** The theme and key radius the current views were built with. */
+    private var appliedLook: Pair<com.yuanzhe.kotomo.settings.KeyboardTheme, Int>? = null
     /** Main thread: the settings in force (the store's latest value; no I/O to read). */
     private val settings: Settings get() = store.current
 
@@ -155,6 +157,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         // Changes made in the settings app apply at once: relayout and the engines' options.
         lifecycleScope.launch {
             store.flow.collect {
+                // A new theme repaints everything: rebuild the views and drop the cached panels.
+                if (appliedLook != null && appliedLook != (it.theme to it.keyRadiusDp)) {
+                    emojiPanel = null
+                    candidatesPanel = null
+                    quickPanel = null
+                    clipboardPanel = null
+                    setInputView(onCreateInputView())
+                }
                 refresh(0)
                 applyEngineSettings()
             }
@@ -255,6 +265,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     override fun onCreateInputView(): View {
+        KeyboardColors.apply(this, settings.theme)
+        appliedLook = settings.theme to settings.keyRadiusDp
         createdAt = SystemClock.uptimeMillis()
         window.window?.decorView?.let {
             it.setViewTreeLifecycleOwner(this)
@@ -297,7 +309,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             addView(quickStrip, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(panelHost)
         }
-        val root = InputRoot(this, content, popups).apply { setBackgroundColor(getColor(R.color.kb_background)) }
+        val root = InputRoot(this, content, popups).apply { setBackgroundColor(KeyboardColors.color(this@KotomoService, R.color.kb_background)) }
         // The window reaches under the navigation bar, where the system draws its own keyboard
         // buttons; the keys stay above it on every device and posture. The insets are read on the
         // window's decor view, since the input view's parents do not pass them on.
@@ -845,6 +857,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.hints = s.keyHints
         keyboard.haptics = s.haptics
         keyboard.longPressSymbols = s.longPressSymbols
+        keyboard.radius = s.keyRadiusDp * resources.displayMetrics.density
         keyboard.layout = if (symbols) Layout.symbols(mode, split, symbolPage) else Layout.letters(mode, shift != Shift.OFF, split)
         keyboard.shift = shift
         keyboard.mode = mode

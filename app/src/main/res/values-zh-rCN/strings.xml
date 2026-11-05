@@ -178,7 +178,6 @@
     <string name="keys_hints_desc">在按键角上显示长按符号</string>
     <string name="keys_haptics">按键震动</string>
     <string name="keys_haptics_desc">每次按键短促震动</string>
-    <string name="themes_later">主题将在之后的版本中提供。目前键盘与设置跟随系统的浅色或深色设置。</string>
     <string name="dictionaries_later">词库管理与导入将在之后的版本中提供。Kotomo 使用应用内置的词库，不下载任何内容。</string>
     <string name="incognito_title">无痕模式</string>
     <string name="incognito_desc">不学习、不记录历史与剪贴板</string>
@@ -230,4 +229,10 @@
     <string name="design_gji_desc">罗马字转换、假名汉字转换与长句转换、文节转换、日语词典与预测</string>
     <string name="quick_all_settings">全部设置</string>
     <string name="bar_forgotten">已从学习记录中移除</string>
+    <string name="theme_title">配色</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_dynamic">Material You（壁纸取色）</string>
+    <string name="theme_radius">按键圆角</string>
 </resources>

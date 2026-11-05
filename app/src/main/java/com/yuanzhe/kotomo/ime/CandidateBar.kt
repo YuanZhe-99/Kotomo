@@ -48,18 +48,18 @@ class CandidateBar(
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = res.getDimension(R.dimen.bar_text)
-        color = context.getColor(R.color.kb_ink)
+        color = KeyboardColors.color(context, R.color.kb_ink)
     }
     private val firstPaint = Paint(textPaint).apply {
-        color = context.getColor(R.color.kb_on_accent_container)
+        color = KeyboardColors.color(context, R.color.kb_on_accent_container)
         isFakeBoldText = true
     }
     private val hintPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = res.getDimension(R.dimen.bar_hint_text)
-        color = context.getColor(R.color.kb_ink_secondary)
+        color = KeyboardColors.color(context, R.color.kb_ink_secondary)
     }
-    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.kb_accent_container) }
-    private val inkColor = context.getColor(R.color.kb_ink)
+    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_accent_container) }
+    private val inkColor = KeyboardColors.color(context, R.color.kb_ink)
 
     private fun icon(id: Int) = context.getDrawable(id)!!.mutate().apply { setTint(inkColor) }
     private val expandIcon = icon(R.drawable.ic_bar_expand)

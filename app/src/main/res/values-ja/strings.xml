@@ -178,7 +178,6 @@
     <string name="keys_hints_desc">長押しで入力できる記号をキーの角に表示します</string>
     <string name="keys_haptics">キーを押したときのバイブレーション</string>
     <string name="keys_haptics_desc">キーごとに短く振動します</string>
-    <string name="themes_later">テーマは今後のバージョンで追加されます。今はキーボードと設定がシステムのライト・ダーク設定に従います。</string>
     <string name="dictionaries_later">辞書の管理と読み込みは今後のバージョンで追加されます。Kotomo はアプリに組み込まれた辞書を使い、何もダウンロードしません。</string>
     <string name="incognito_title">シークレットモード</string>
     <string name="incognito_desc">学習せず、履歴もクリップボードも記録しません</string>
@@ -230,4 +229,10 @@
     <string name="design_gji_desc">ローマ字変換、かな漢字変換と長文変換、文節変換、日本語辞書と予測</string>
     <string name="quick_all_settings">すべての設定</string>
     <string name="bar_forgotten">学習した内容から削除しました</string>
+    <string name="theme_title">配色</string>
+    <string name="theme_system">システムに合わせる</string>
+    <string name="theme_light">ライト</string>
+    <string name="theme_dark">ダーク</string>
+    <string name="theme_dynamic">Material You（壁紙の色）</string>
+    <string name="theme_radius">キーの角の丸み</string>
 </resources>

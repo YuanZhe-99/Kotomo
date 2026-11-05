@@ -119,22 +119,27 @@ class KeyboardView(
     private val padBottom = res.getDimension(R.dimen.kb_pad_bottom)
     private val sidePhone = res.getDimension(R.dimen.kb_side)
     private val half = res.getDimension(R.dimen.kb_split_half)
-    private val radius = res.getDimension(R.dimen.kb_key_radius)
+    /** Key corner radius in pixels (Settings.keyRadiusDp; the design's 12 dp by default). */
+    var radius = res.getDimension(R.dimen.kb_key_radius)
+        set(value) {
+            field = value
+            invalidate()
+        }
     private val shadow = res.getDimension(R.dimen.kb_key_shadow)
     private val iconSize = res.getDimensionPixelSize(R.dimen.kb_icon)
     private val hintTop = res.getDimension(R.dimen.kb_hint_top)
     private val hintEnd = res.getDimension(R.dimen.kb_hint_end)
 
-    private val keyColor = context.getColor(R.color.kb_key)
-    private val functionColor = context.getColor(R.color.kb_key_function)
-    private val pressedColor = context.getColor(R.color.kb_key_pressed)
-    private val accentColor = context.getColor(R.color.kb_accent)
-    private val onAccentColor = context.getColor(R.color.kb_on_accent)
-    private val inkColor = context.getColor(R.color.kb_ink)
-    private val secondaryColor = context.getColor(R.color.kb_ink_secondary)
+    private val keyColor = KeyboardColors.color(context, R.color.kb_key)
+    private val functionColor = KeyboardColors.color(context, R.color.kb_key_function)
+    private val pressedColor = KeyboardColors.color(context, R.color.kb_key_pressed)
+    private val accentColor = KeyboardColors.color(context, R.color.kb_accent)
+    private val onAccentColor = KeyboardColors.color(context, R.color.kb_on_accent)
+    private val inkColor = KeyboardColors.color(context, R.color.kb_ink)
+    private val secondaryColor = KeyboardColors.color(context, R.color.kb_ink_secondary)
 
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.kb_key_shadow) }
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_key_shadow) }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
@@ -543,15 +548,15 @@ class PopupLayer(context: Context) : View(context) {
     private val cellHeight = res.getDimension(R.dimen.kb_popup_height)
     private val lift = res.getDimension(R.dimen.kb_popup_lift)
     private val radius = res.getDimension(R.dimen.kb_key_radius)
-    private val panelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.kb_key) }
-    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.kb_key_shadow) }
-    private val selectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.kb_accent) }
+    private val panelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_key) }
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_key_shadow) }
+    private val selectedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_accent) }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = res.getDimension(R.dimen.kb_popup_text)
     }
-    private val inkColor = context.getColor(R.color.kb_ink)
-    private val onAccentColor = context.getColor(R.color.kb_on_accent)
+    private val inkColor = KeyboardColors.color(context, R.color.kb_ink)
+    private val onAccentColor = KeyboardColors.color(context, R.color.kb_on_accent)
     private val captionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         textSize = res.getDimension(R.dimen.kb_hint_text)
