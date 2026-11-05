@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kotomo Design Drafts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+/* One gallery of every artboard, rows as on the design canvas; each board is its own page in a scaled frame. */
+:root {
+  --bg: #F3F4F7; --surface: #FFFFFF; --ink: #16181C; --ink-2: #5A6070; --line: #D3D7DE; --accent: #3451C7;
+  --font: 'Noto Sans SC', system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111317; --surface: #1B1E24; --ink: #E8EAEE; --ink-2: #9AA1B0; --line: #2E333C; --accent: #8EA2FF; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); }
+header, main { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { padding-block: 32px 8px; }
+h1 { margin: 0 0 6px; font-size: 26px; text-wrap: balance; }
+header p { margin: 0; max-width: 65ch; color: var(--ink-2); line-height: 1.6; font-size: 14px; }
+header code { font-size: 13px; }
+main { padding-block: 8px 48px; display: flex; flex-direction: column; gap: 32px; }
+section h2 { margin: 0 0 12px; font-size: 17px; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.frame { position: relative; overflow: hidden; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.frame iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #FFFFFF; }
+figcaption { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--ink-2); }
+figcaption a { color: var(--accent); text-decoration: none; white-space: nowrap; }
+figcaption a:hover, figcaption a:focus-visible { text-decoration: underline; }
+.size { font-variant-numeric: tabular-nums; }
+#error { color: #B3261E; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kotomo 设计稿</h1>
+  <p>键盘、候选栏、面板与设置的全部画板，按设计画布的行排列。点"打开"看原尺寸。请通过本地 HTTP 服务打开本页（例如在仓库根目录运行
+  <code>jwebserver -d "$PWD/design"</code>，再访问 <code>http://127.0.0.1:8000/</code>），否则共用的键盘组件无法载入。</p>
+  <p id="error" hidden></p>
+</header>
+<main id="rows"></main>
+<script>
+(async () => {
+  const rowsEl = document.getElementById('rows');
+  let canvas;
+  try {
+    canvas = await (await fetch('canvas.json')).json();
+  } catch (e) {
+    const err = document.getElementById('error');
+    err.hidden = false;
+    err.textContent = '无法读取 canvas.json：请通过本地 HTTP 服务打开本页。';
+    return;
+  }
+  // Rows are the canvas's title notes, top to bottom; each board joins the row whose band it sits in.
+  const notes = Object.values(canvas.notes || {}).sort((a, b) => a.y - b.y);
+  const rows = notes.map((n) => ({ title: n.text, y: n.y, boards: [] }));
+  for (const file of canvas.order) {
+    const b = canvas.boards[file];
+    if (!b) continue;
+    let row = rows[0];
+    for (const r of rows) if (b.y >= r.y) row = r;
+    row.boards.push({ file, ...b });
+  }
+  for (const row of rows) {
+    if (!row.boards.length) continue;
+    row.boards.sort((a, b) => a.x - b.x);
+    const section = document.createElement('section');
+    const h2 = document.createElement('h2');
+    h2.textContent = row.title;
+    const wrap = document.createElement('div');
+    wrap.className = 'row';
+    for (const b of row.boards) {
+      // Phones at half size, wide boards a little smaller, never wider than the window.
+      const scale = Math.min(b.w > 900 ? 0.42 : 0.6, (window.innerWidth - 32) / b.w);
+      const fig = document.createElement('figure');
+      const frame = document.createElement('div');
+      frame.className = 'frame';
+      frame.style.width = Math.round(b.w * scale) + 'px';
+      frame.style.height = Math.round(b.h * scale) + 'px';
+      const iframe = document.createElement('iframe');
+      iframe.src = b.file;
+      iframe.title = b.title;
+      iframe.loading = 'lazy';
+      iframe.width = b.w;
+      iframe.height = b.h;
+      iframe.style.transform = 'scale(' + scale + ')';
+      frame.appendChild(iframe);
+      const cap = document.createElement('figcaption');
+      const name = document.createElement('span');
+      name.textContent = b.title + ' ';
+      const size = document.createElement('span');
+      size.className = 'size';
+      size.textContent = b.w + '×' + b.h;
+      name.appendChild(size);
+      const open = document.createElement('a');
+      open.href = b.file;
+      open.target = '_blank';
+      open.rel = 'noopener';
+      open.textContent = '打开';
+      cap.append(name, open);
+      fig.append(frame, cap);
+      wrap.appendChild(fig);
+    }
+    section.append(h2, wrap);
+    rowsEl.appendChild(section);
+  }
+})();
+</script>
+</body>
+</html>

@@ -6,11 +6,19 @@ The keyboard, candidate bar, panels and settings screens from the design agent (
 and tokens; the app's own resources (`app/src/main/res/values*/`) stay authoritative where the
 app has deliberately moved on.
 
-Each `*.dc.html` file is one artboard. The markup and inline styles are readable as they are; to
-render them as on the canvas they need the canvas runtime (`support.js`), which belongs to the
-design tool and is not part of this repository. `Keyboard.dc.html` is the shared key-area component
-the other artboards import, with its parameters (`w`, `keyH`, `mode`, `split`, `half`, `side`).
-`canvas.json` places the artboards and gives their titles and sizes.
+Start at `index.html`: it lays out every artboard in the canvas's rows, scaled, with a link to each
+at full size. Serve the folder over HTTP, since the artboards load the shared keyboard component:
+
+```bash
+jwebserver -p 8000 -d "$PWD/design"   # JDK 18+; then open http://127.0.0.1:8000/
+```
+
+Each `*.dc.html` file is one artboard. `support.js` is Kotomo's own small renderer for their
+template format (`{{expression}}`, `sc-for`, `sc-if`, `dc-import`, event handlers and `setState`);
+the design tool's runtime is not part of this repository. `Keyboard.dc.html` is the shared
+key-area component the other artboards import, with its parameters (`w`, `keyH`, `mode`, `split`,
+`half`, `side`). `canvas.json` places the artboards and gives their titles and sizes; `index.html`
+reads it, so a new artboard needs only its file and an entry there.
 
 | Artboard | Title on the canvas | Size (dp) |
 |---|---|---|

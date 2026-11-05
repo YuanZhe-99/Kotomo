@@ -26,7 +26,12 @@ scripts/fetch-boost.sh                  # Boost headers for librime; needed befo
 scripts/prebuild-rime.sh                # compiled Chinese data for the APK (Linux or WSL); CI requires it
 scripts/fetch-mozc.sh                   # Mozc libraries and data pinned in build-lock.json (gh); CI requires them
 scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test (Linux or WSL, Bazelisk)
+cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime --target kotomo_rime_test && ctest --test-dir build/host/rime -V   # S2 librime host test (Linux or WSL)
+./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```
+
+Gradle 在 Windows 主机上运行（Git Bash 或 PowerShell），不在 WSL 中运行；WSL 只用于在主机上构建 librime 和
+Mozc。从 Git Bash 调用 WSL 时加上 `MSYS_NO_PATHCONV=1`，让 `/mnt/c` 下的路径原样传入；多行命令写成脚本。
 
 主机端引擎测试和转换语料运行器随各自的第一份代码加入此列表；`PLAN.md` §17 列出了计划中的命令。
 

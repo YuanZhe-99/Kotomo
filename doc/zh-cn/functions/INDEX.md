@@ -25,7 +25,8 @@
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用的外壳：带设置引导卡片和试打框的首页、页面导航（单栏加返回栈；840 dp 起导航列表与页面并排）、由 Kotomo 令牌生成的 Material 3 主题 | `SettingsApp`、`Page`、`SetupCard` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Pages.kt` | 各设置页（输入模式、混合模式、中文、日文、英文、布局与尺寸、按键与手势、隐私（含剪贴板设置）、之后提供的页面）与诊断页；共用的行与控件 | `MixedPage`、`LayoutPage`、`DiagnosticsPage`、`Section` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |
-| `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来 | `README.md`、`Keyboard.dc.html`、`canvas.json` |
+| `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来；总览页与 Kotomo 自己的画板模板渲染器 | `index.html`、`support.js`、`Keyboard.dc.html`、`canvas.json` |
+| `tests/device/` | 里程碑时交给用户的真机检查清单（逐行 PASS / FAIL） | `p1-checklist.md` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Settings.kt`、`SettingsStore.kt` | 设置模型、带版本的 Preferences DataStore 文件（[settings-format.md](../settings-format.md)），以及进程内共用、无需 I/O 即可读取快照的存储 | `Settings`、`SettingsFormat`、`SettingsStore.current` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Themes.kt`、`app/src/main/java/com/yuanzhe/kotomo/dictionary/Json.kt` | 以带版本的 JSON 文件保存的键盘主题（`files/themes/current.json`，[settings-format.md](../settings-format.md)）及其所用的纯 Kotlin JSON 读写（有单元测试） | `ThemeFormat`、`ThemeFile`、`Json.parse` |
 | `lexicon/CrossLexicon.java` | 跨语言词库流水线（S5）：获取并校验数据源，在 `build/lexicon/` 中生成拼音 → 日文与英文 → 日文表 | `main`、`SOURCES` |

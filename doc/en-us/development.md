@@ -28,7 +28,13 @@ scripts/fetch-boost.sh                  # Boost headers for librime; needed befo
 scripts/prebuild-rime.sh                # compiled Chinese data for the APK (Linux or WSL); CI requires it
 scripts/fetch-mozc.sh                   # Mozc libraries and data pinned in build-lock.json (gh); CI requires them
 scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test (Linux or WSL, Bazelisk)
+cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime --target kotomo_rime_test && ctest --test-dir build/host/rime -V   # S2 librime host test (Linux or WSL)
+./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```
+
+Gradle runs on the Windows host (Git Bash or PowerShell), never in WSL; WSL builds only librime and
+Mozc for the host. From Git Bash, call WSL with `MSYS_NO_PATHCONV=1` so paths under `/mnt/c` are
+passed unchanged, and put multi-line commands in a script.
 
 The host engine tests and the conversion corpus runner join this list with their first code;
 `PLAN.md` §17 lists the intended commands.

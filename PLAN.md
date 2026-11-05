@@ -95,6 +95,13 @@
 - Gradle 若报告 SDK 中"没有包"或许可证缺失，多半是复用了另一个受沙箱限制的守护进程：使用 `./gradlew --no-daemon`。Gradle 在 Windows 的 Git Bash 或 PowerShell 中运行，不在 WSL 中运行；WSL 只用于 librime 与 Mozc 的主机构建。
 - 从 Git Bash 调用 WSL 时设置 `MSYS_NO_PATHCONV=1`，多行命令写成脚本再执行。
 - 不读取 `key.properties`（签名配置）；不把私有远端的地址写进任何文件或对话。
+
+用户的工作约定（2026-11-04，适用于所有 Agent）：
+
+- 普通提交在验证后直接推送到两个远端，不必先问；版本号、`vX.Y.Z` 标签与发布先向用户报告，确认后再推送。这一条优先于 AGENTS.md 的"推送前询问"。
+- 不要每改一处就请用户在真机上测试：先把计划的功能做完，主机测试、CI 与诊断页的自检承担验证，到里程碑时一次交付一个 APK 和一份检查清单（`tests/device/`）。用户的测试机是 Galaxy Z Fold（Android 17），通过侧载安装 APK，没有 adb；怀疑只在真机出现的问题时，把自检输出加到诊断页，而不是反复要截图。
+- 在线词库与目录托管在 GitHub（Releases，由 CI 构建）；词库主要来自已核查许可证的开源词库，Agent 只做框架和极小的原创样例；不创建发布、不上传。
+- 开发机是 Windows 11 on ARM64，带 WSL2（Debian）、JDK 21、SDK 37.2、NDK 30；没有 Python，没有官方 Android 模拟器（不支持 ARM64 Windows 主机），布局与逻辑之外的验证都要真机。
 - 构建产物已于 2026-11-04 清理。重新构建依次需要：`scripts/fetch-boost.sh`（如缺）、`scripts/prebuild-rime.sh`（WSL）、`scripts/fetch-mozc.sh` 或 `scripts/build-mozc.sh --abi host`、`java -Xmx4g lexicon/CrossLexicon.java --offline`，然后才是 Gradle。
 
 ### 0.5 恢复后的顺序
@@ -105,6 +112,23 @@
 4. S8 审查。
 5. 工作包 B（词库数据）与 C（剪贴板剩余部分）。
 6. 按顺序推进 P2（§9.1–§9.10），再到 P3–P5。
+
+### 0.6 不在仓库中、接手前需要知道的东西
+
+| 内容 | 位置与状态 | 接手时怎么办 |
+| --- | --- | --- |
+| 签名配置与密钥 | 维护者本机被忽略的 `key.properties`，以及 GitHub Actions 的密钥 | 本地只构建 debug 或未签名的 release；签名发布由 CI 或维护者完成 |
+| SDK 路径 | 被忽略的 `local.properties`（`sdk.dir`） | 新 worktree 复制一份，或设置 `ANDROID_HOME` |
+| 上游下载 | `.deps/`（忽略，按 `build-lock.json` 的哈希锁定） | 各脚本缺失时自动下载并校验 |
+| 构建产物 | 2026-11-04 已全部清理 | 按 §0.4 最后一条的顺序重新生成 |
+| Mozc 的 Android 库与数据 | 由 Linux CI 构建，`scripts/fetch-mozc.sh` 经 `gh` 下载 | 需要已登录的 `gh`；否则日文模式在 APK 中不可用 |
+| 未完成的工作 | `wip/paused-2026-11-04`，只在私有远端 | 需要私有远端的访问权；公开仓库没有这个分支 |
+| S6 的 Mozc 行服务 | 代码在 WIP 分支；`scripts/build-mozc.sh` 还不会构建它 | 恢复 S6 时把 `//kotomo:kotomo_mozc_server` 加进脚本的 host 分支 |
+| P1 真机检查结果 | 在用户手里，尚未回报 | 先向用户索取，再判定 G1 |
+| 设计稿 | 已固化到 `design/`（入口 `design/index.html`） | 以仓库中的文件为准 |
+| 附录 B 提示词的副本 | 只在本机 `.dev/`，与附录 B 相同 | 需要时用脚本从附录 B 复制，不打印 |
+| Agent 的记忆 | 本机 `.dev/memory/`（副本），要点已写入 §0.4 | 以本节为准 |
+| 旧的 Agent worktree | 本机 `.claude/worktrees/` 下 8 个，都是已合并或已放弃的分支 | 不要在其中继续工作；清理需用户同意 |
 
 ## 1. 给 Coding Agent 的执行要求
 
