@@ -4,6 +4,11 @@
 
 #include <rime_api.h>
 
+#include <sys/stat.h>
+
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -97,6 +102,17 @@ std::string SelfCheck() {
   std::ifstream in(schema_file, std::ios::binary);
   std::string bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
   out += " ifstream=" + std::to_string(bytes.size());
+  // The path exactly as librime got it, and what the C library says about it.
+  out += " shared='" + shared_dir + "'";
+  errno = 0;
+  if (FILE* f = std::fopen(schema_file.c_str(), "rb")) {
+    std::fclose(f);
+    out += " fopen=ok";
+  } else {
+    out += std::string(" fopen=") + std::strerror(errno);
+  }
+  struct stat dir_stat;
+  out += std::string(" shared_dir=") + (::stat(shared_dir.c_str(), &dir_stat) == 0 ? "ok" : std::strerror(errno));
   RimeConfig config = {};
   if (api->config_open("default", &config)) {
     out += " default.schema_list=" + std::to_string(api->config_list_size(&config, "schema_list"));
