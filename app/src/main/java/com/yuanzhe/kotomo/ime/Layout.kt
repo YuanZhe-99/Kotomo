@@ -19,6 +19,8 @@ sealed interface KeyAction {
     data class MoveCursor(val steps: Int) : KeyAction
     /** Deletes [count] words before the cursor, from dragging left from backspace. */
     data class DeleteWords(val count: Int) : KeyAction
+    /** Moves the one-handed keyboard to [side], or back to full width for OFF. */
+    data class SetOneHanded(val side: com.yuanzhe.kotomo.settings.OneHanded) : KeyAction
 }
 
 /** Input modes the keyboard offers; Mixed accepts pinyin, romaji and English in one string. */

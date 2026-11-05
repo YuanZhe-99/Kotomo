@@ -9,7 +9,7 @@
 | `app/build.gradle.kts` | Android 应用构建：SDK 级别、版本号、R8、从 `key.properties` 读取 release 签名 | `signingConfigs`、`buildTypes` |
 | `build-lock.json` | 工具链、上游与数据源的版本及下载哈希 | `toolchain` |
 | `.github/workflows/build.yml` | CI：文档检查、Gradle 检查与构建、签名的 release APK；`v*` 标签时创建 GitHub Release | `android`、`release` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务（S1）：组合、占位候选、敏感输入框中的直接输入、Compose 面板的宿主 | `onKey`、`isDirect`、`refresh` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、敏感输入框中的直接输入、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`isDirect`、`refresh` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.place`、`Layout.hit` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、Gboard 式长按弹出（滑动选择、松开输入）、按键预览、在空格上拖动移动光标与从退格向左拖动删除词、退格连删、每个按键的 TalkBack 节点；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏、状态提示 | `show`、`hint`、`onTouchEvent` |

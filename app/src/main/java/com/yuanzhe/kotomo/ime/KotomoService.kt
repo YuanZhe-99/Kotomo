@@ -22,6 +22,12 @@ import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.yuanzhe.kotomo.settings.MainActivity
+import com.yuanzhe.kotomo.settings.ChineseScript
+import com.yuanzhe.kotomo.settings.Settings
+import com.yuanzhe.kotomo.settings.SettingsStore
+import com.yuanzhe.kotomo.settings.SplitLayout
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -111,11 +117,22 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var shift = Shift.OFF
     private var direct = false
     private var createdAt = 0L
+    private lateinit var store: SettingsStore
+    /** Main thread: the settings in force (the store's latest value; no I/O to read). */
+    private val settings: Settings get() = store.current
 
     override fun onCreate() {
         super.onCreate()
         savedState.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        store = SettingsStore.get(this)
+        // Changes made in the settings app apply at once: relayout and the engines' options.
+        lifecycleScope.launch {
+            store.flow.collect {
+                refresh(0)
+                applyEngineSettings()
+            }
+        }
         mode = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_MODE, null)
             ?.let { name -> Mode.entries.firstOrNull { it.name == name } } ?: Mode.MIXED
         ContextCompat.registerReceiver(
@@ -154,6 +171,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val deploy = !files.prebuilt && !files.current
             main.post {
                 rimeOpen = open
+                applyEngineSettings()
                 if (deploy) startDeploy()
                 refresh(0)
             }
@@ -191,6 +209,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 val open = rimeReady
                 main.post {
                     rimeOpen = open
+                    applyEngineSettings()
                     clearChinese()
                     refresh(0)
                 }
@@ -253,8 +272,27 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     )
 
     /** Whether the window is wide enough for the split layout (unfolded foldables, tablets). */
-    private fun isSplit() =
-        resources.configuration.screenWidthDp * resources.displayMetrics.density >= resources.getDimension(R.dimen.kb_split_min_width)
+    private fun isSplit() = when (settings.split) {
+        SplitLayout.ALWAYS -> true
+        SplitLayout.NEVER -> false
+        SplitLayout.AUTO ->
+            resources.configuration.screenWidthDp * resources.displayMetrics.density >= resources.getDimension(R.dimen.kb_split_min_width)
+    }
+
+    /**
+     * Passes the settings the engines hold to the engine thread: Simplified or Traditional
+     * output, and no learning in incognito mode (sensitive fields never reach librime).
+     */
+    private fun applyEngineSettings() {
+        val simplified = settings.chineseScript == ChineseScript.SIMPLIFIED
+        val learning = !settings.incognito
+        engine.post {
+            if (rimeReady) {
+                Rime.setOption("zh_hans", simplified)
+                Rime.setLearning(learning)
+            }
+        }
+    }
 
     /** Opens or closes the page of every candidate in the keyboard's place. */
     private fun toggleCandidates() {
@@ -311,10 +349,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         clearChinese()
         previousWord = null
         // Each app comes back in the mode last used in it (only the package name is stored).
-        if (!direct) info.packageName?.let { app ->
+        mode = info.packageName?.takeIf { !direct }?.let { app ->
             getSharedPreferences(PREFS, MODE_PRIVATE).getString("$KEY_MODE.$app", null)
-                ?.let { name -> Mode.entries.firstOrNull { it.name == name } }?.let { mode = it }
-        }
+                ?.let { name -> Mode.entries.firstOrNull { it.name == name } }
+        } ?: settings.defaultMode
+        applyEngineSettings()
         showKeyboard()
         updateAutoCaps()
         refresh(0)
@@ -377,7 +416,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val app = currentInputEditorInfo?.packageName
             getSharedPreferences(PREFS, MODE_PRIVATE).edit {
                 putString(KEY_MODE, mode.name)
-                if (app != null && !direct) putString("$KEY_MODE.$app", mode.name)
+                if (app != null && !direct && !settings.incognito) putString("$KEY_MODE.$app", mode.name)
             }
             updateAutoCaps()
             refresh(downTime)
@@ -442,6 +481,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 showEmoji()
             }
             is KeyAction.SetMode -> Unit
+            is KeyAction.SetOneHanded -> store.set { it.copy(oneHanded = action.side) }
             is KeyAction.MoveCursor -> {
                 commitComposition()
                 val code = if (action.steps < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
@@ -600,7 +640,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Notes: one InputConnection call, made only after commits, not per letter.
      */
     private fun updateAutoCaps() {
-        if (mode != Mode.ENGLISH || symbols || shift == Shift.LOCKED) return
+        if (mode != Mode.ENGLISH || symbols || shift == Shift.LOCKED || !settings.englishAutoCapitalize) return
         val info = currentInputEditorInfo ?: return
         val caps = (currentInputConnection?.getCursorCapsMode(info.inputType) ?: 0) != 0
         shift = if (caps) Shift.ONCE else if (shift == Shift.ONCE) Shift.OFF else shift
@@ -625,7 +665,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun refresh(downTime: Long) {
         if (!::keyboard.isInitialized) return
         val split = isSplit()
+        val s = settings
         keyboard.split = split
+        keyboard.heightScale = s.heightPercent / 100f
+        keyboard.thumbHalf = s.thumbZoneDp * resources.displayMetrics.density
+        keyboard.oneHanded = s.oneHanded
+        keyboard.hints = s.keyHints
+        keyboard.haptics = s.haptics
+        keyboard.longPressSymbols = s.longPressSymbols
         keyboard.layout = if (symbols) Layout.symbols(mode, split, symbolPage) else Layout.letters(mode, shift != Shift.OFF, split)
         keyboard.shift = shift
         keyboard.mode = mode
@@ -643,7 +690,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         shownCandidates.value = candidates
         candidateBar.hint = notice ?: chineseHint()
         if (raw.isEmpty()) japaneseReading = ""
-        if (!direct && mode == Mode.ENGLISH && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
+        if (!direct && mode == Mode.ENGLISH && s.englishSuggestions && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
         if (!direct && mode == Mode.JAPANESE && raw.isNotEmpty()) suggestJapanese(raw, gen)
     }
 
@@ -670,12 +717,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * first segment's alternatives with the rest of the sentence, then hiragana and katakana.
      */
     private fun suggestJapanese(typed: String, gen: Int) {
+        val incognito = settings.incognito
         engine.post {
             if (!mozcTried) {
                 mozcTried = true
                 mozc = openMozc()
             }
-            val segments = mozc?.sessionConvert(typed, incognito = false).orEmpty()
+            val segments = mozc?.sessionConvert(typed, incognito = incognito).orEmpty()
             main.post {
                 if (gen != generation || segments.isEmpty()) return@post
                 val reading = segments.joinToString("") { it.reading }
@@ -754,7 +802,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onBack = ::showKeyboard,
                     // Sensitive fields record nothing, recent emoji included.
-                    recordRecents = currentInputEditorInfo?.let { !isDirect(it) } ?: false,
+                    recordRecents = !settings.incognito && (currentInputEditorInfo?.let { !isDirect(it) } ?: false),
                 )
             }
         }

@@ -10,7 +10,7 @@ side effects and notes where non-trivial).
 | `app/build.gradle.kts` | Android app build: SDK levels, version, R8, release signing from `key.properties` | `signingConfigs`, `buildTypes` |
 | `build-lock.json` | Toolchain, upstream and data-source versions with download hashes | `toolchain` |
 | `.github/workflows/build.yml` | CI: documentation check, Gradle check and build, signed release APK; GitHub Release on `v*` tags | `android`, `release` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | Input method service (S1): composition, placeholder candidates, direct typing in sensitive fields, Compose panel host | `onKey`, `isDirect`, `refresh` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | Input method service: modes and engines on the engine thread, direct typing in sensitive fields, the settings in force (SettingsStore), Compose panel host | `onKey`, `isDirect`, `refresh` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | Keyboard pages, key placement and hit testing (pure Kotlin, unit-tested) | `Layout.letters`, `Layout.place`, `Layout.hit` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | Canvas keyboard as in the design (phone, and split halves of fixed width on wide screens), taps, Gboard-style long-press popups (slide to choose, release to type), the key preview, dragging on space to move the cursor and left from backspace to delete words, backspace repeat, TalkBack nodes per key; `PopupLayer` draws the popup | `onTouchEvent`, `onDraw`, `PopupLayer` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | The row above the keys: candidate pills that scroll, the expand arrow, the toolbar when idle, status hints | `show`, `hint`, `onTouchEvent` |

@@ -58,6 +58,46 @@ class KeyboardView(
             invalidate()
         }
 
+    /** Key height as a share of the design's (Settings.heightPercent / 100). */
+    var heightScale = 1f
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            requestLayout()
+        }
+
+    /** Width of each split half in pixels (Settings.thumbZoneDp). */
+    var thumbHalf = 0f
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            invalidate()
+        }
+
+    /** One-handed side; ignored in the split layout, which already keeps the keys at the edges. */
+    var oneHanded = com.yuanzhe.kotomo.settings.OneHanded.OFF
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            invalidate()
+        }
+
+    /** Corner hints on the keys (the Emoji key's mode badge stays). */
+    var hints = true
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Haptic feedback on key presses. */
+    var haptics = true
+
+    /** Long press on a letter offers its symbol and accents. */
+    var longPressSymbols = true
+
     var shift = Shift.OFF
         set(value) {
             field = value
@@ -151,7 +191,10 @@ class KeyboardView(
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val repeatInterval = 50L
 
-    private val keyHeight get() = if (split) keyHeightLarge else keyHeightPhone
+    private val keyHeight get() = (if (split) keyHeightLarge else keyHeightPhone) * heightScale
+    private val oneHandedActive get() = !split && oneHanded != com.yuanzhe.kotomo.settings.OneHanded.OFF
+    /** Share of the width the one-handed keyboard keeps. */
+    private val oneHandedShare = 0.82f
     private val side get() = if (split) width * 0.05f else sidePhone
 
     private val longPress = Runnable {
@@ -162,7 +205,12 @@ class KeyboardView(
                 repeatBackspace.run()
             }
             KeyAction.Emoji -> openPopup(key, Mode.entries.map { badges.getValue(it) }, Mode.entries.map(KeyAction::SetMode), Mode.entries.indexOf(mode))
-            else -> if (key.key.more.isNotEmpty()) openPopup(key, key.key.more, key.key.more.map(KeyAction::Text), 0)
+            else -> {
+                val letter = key.key.label.singleOrNull()?.isLetter() == true
+                if (key.key.more.isNotEmpty() && (longPressSymbols || !letter)) {
+                    openPopup(key, key.key.more, key.key.more.map(KeyAction::Text), 0)
+                }
+            }
         }
     }
 
@@ -176,7 +224,7 @@ class KeyboardView(
     private fun openPopup(key: PlacedKey, labels: List<String>, actions: List<KeyAction>, selected: Int) {
         longPressed = true
         popupLayer.hidePreview()
-        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        buzz(HapticFeedbackConstants.LONG_PRESS)
         popupActions = actions
         val here = IntArray(2).also(::getLocationInWindow)
         val there = IntArray(2).also(popupLayer::getLocationInWindow)
@@ -243,7 +291,7 @@ class KeyboardView(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rows = layout.rows.size
-        val height = padTop + rows * keyHeight + (rows - 1) * rowGap + padBottom
+        val height = padTop + rows * keyHeight + (rows - 1) * rowGap * heightScale + padBottom
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height.toInt())
     }
 
@@ -253,10 +301,12 @@ class KeyboardView(
 
     private fun keys(): List<PlacedKey> {
         if (placed.isEmpty() && width > 0) {
-            val inner = width - side * 2
-            val splitHalf = if (split) minOf(half, (inner - gap) / 2) else 0f
-            placed = layout.place(inner, keyHeight, rowGap, gap, splitHalf).map {
-                it.copy(left = it.left + side, top = it.top + padTop, right = it.right + side, bottom = it.bottom + padTop)
+            val full = width - side * 2
+            val inner = if (oneHandedActive) full * oneHandedShare else full
+            val x0 = side + if (oneHandedActive && oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) full - inner else 0f
+            val splitHalf = if (split) minOf(if (thumbHalf > 0) thumbHalf else half, (inner - gap) / 2) else 0f
+            placed = layout.place(inner, keyHeight, rowGap * heightScale, gap, splitHalf).map {
+                it.copy(left = it.left + x0, top = it.top + padTop, right = it.right + x0, bottom = it.bottom + padTop)
             }
         }
         return placed
@@ -303,9 +353,20 @@ class KeyboardView(
                 val baseline = k.centerY - (labelPaint.descent() + labelPaint.ascent()) / 2
                 canvas.drawText(label, k.centerX, baseline, labelPaint)
             }
-            val corner = if (k.key.action == KeyAction.Emoji) badges.getValue(mode) else k.key.hint
+            val corner = if (k.key.action == KeyAction.Emoji) badges.getValue(mode) else k.key.hint?.takeIf { hints }
             if (corner != null) {
                 canvas.drawText(corner, k.right - hintEnd, k.top + hintTop - hintPaint.ascent(), hintPaint)
+            }
+        }
+        sideButtons()?.let { (swap, full) ->
+            val r = keyHeight * 0.45f
+            keyPaint.color = functionColor
+            canvas.drawCircle(swap.first, swap.second, r, keyPaint)
+            canvas.drawCircle(full.first, full.second, r, keyPaint)
+            labelPaint.color = inkColor
+            labelPaint.textSize = functionText
+            for ((c, glyph) in listOf(swap to "⇆", full to "⤢")) {
+                canvas.drawText(glyph, c.first, c.second - (labelPaint.descent() + labelPaint.ascent()) / 2, labelPaint)
             }
         }
         if (pendingDrawProbe != 0L) {
@@ -330,6 +391,21 @@ class KeyboardView(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 if (pressed != null) release(commit = true)
                 val i = event.actionIndex
+                sideButtons()?.let { (swap, full) ->
+                    val x = event.getX(i)
+                    val y = event.getY(i)
+                    val r = keyHeight * 0.6f
+                    fun near(c: Pair<Float, Float>) = (x - c.first) * (x - c.first) + (y - c.second) * (y - c.second) < r * r
+                    if (near(swap)) {
+                        val other = if (oneHanded == com.yuanzhe.kotomo.settings.OneHanded.LEFT) com.yuanzhe.kotomo.settings.OneHanded.RIGHT else com.yuanzhe.kotomo.settings.OneHanded.LEFT
+                        onKey(KeyAction.SetOneHanded(other), false, event.eventTime)
+                        return true
+                    }
+                    if (near(full)) {
+                        onKey(KeyAction.SetOneHanded(com.yuanzhe.kotomo.settings.OneHanded.OFF), false, event.eventTime)
+                        return true
+                    }
+                }
                 val key = Layout.hit(keys(), event.getX(i), event.getY(i)) ?: return true
                 pressed = key
                 pressDownTime = event.eventTime
@@ -340,7 +416,7 @@ class KeyboardView(
                 deleteWords = 0
                 swiping = false
                 pendingDrawProbe = event.eventTime
-                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                buzz(HapticFeedbackConstants.KEYBOARD_TAP)
                 postDelayed(longPress, longPressTimeout)
                 if (key.key.action is KeyAction.Text && !key.key.function) showPreview(key)
                 invalidate()
@@ -387,7 +463,7 @@ class KeyboardView(
                 if (steps != movedSteps) {
                     onKey(KeyAction.MoveCursor(steps - movedSteps), true, SystemClock.uptimeMillis())
                     movedSteps = steps
-                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    buzz(HapticFeedbackConstants.CLOCK_TICK)
                 }
             }
             KeyAction.Backspace -> {
@@ -396,12 +472,27 @@ class KeyboardView(
                 val words = (-dx / wordStep).toInt().coerceAtLeast(0)
                 if (words != deleteWords) {
                     deleteWords = words
-                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    buzz(HapticFeedbackConstants.CLOCK_TICK)
                     popupLayer.showBadge(if (words > 0) "−$words" else null, key, this)
                 }
             }
             else -> if (kotlin.math.abs(dx) > touchSlop * 3) popupLayer.hidePreview()
         }
+    }
+
+    /** Plays haptic feedback [type] when the person has it on. */
+    private fun buzz(type: Int) {
+        if (haptics) performHapticFeedback(type)
+    }
+
+    /** Centres of the one-handed side buttons (swap side, full width) in the empty strip, or null. */
+    private fun sideButtons(): Pair<Pair<Float, Float>, Pair<Float, Float>>? {
+        if (!oneHandedActive) return null
+        val full = width - side * 2
+        val strip = full * (1 - oneHandedShare)
+        val cx = if (oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) side + strip / 2 else width - side - strip / 2
+        val mid = height / 2f
+        return (cx to mid - keyHeight * 0.7f) to (cx to mid + keyHeight * 0.7f)
     }
 
     private fun startSwipe() {
