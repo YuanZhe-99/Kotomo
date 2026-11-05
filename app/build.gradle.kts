@@ -128,6 +128,35 @@ val englishDict = tasks.register<EnglishDictTask>("englishDict") {
 }
 
 /**
+ * Builds the emoji asset (`emoji.tsv`: groups, skin-tone variants, keyword keys) with
+ * lexicon/EmojiData.java from pinned, hash-checked Unicode, CLDR, Unihan, CC-CEDICT and Mozc data
+ * under .deps/.
+ * Notes: runs from the repository root because the tool resolves .deps/ there; the output is
+ * build output and never committed.
+ */
+abstract class EmojiDataTask : DefaultTask() {
+    @get:InputFile abstract val tool: RegularFileProperty
+    @get:Internal abstract val root: DirectoryProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @get:Inject abstract val exec: ExecOperations
+
+    @TaskAction
+    fun build() {
+        val java = File(System.getProperty("java.home"), "bin/java").path
+        exec.exec {
+            workingDir = root.get().asFile
+            commandLine(java, tool.get().asFile.path, outputDir.file("emoji.tsv").get().asFile.path)
+        }
+    }
+}
+
+val emojiData = tasks.register<EmojiDataTask>("emojiData") {
+    tool = rootProject.layout.projectDirectory.file("lexicon/EmojiData.java")
+    root = rootProject.layout.projectDirectory
+    outputDir = layout.buildDirectory.dir("generated/emoji")
+}
+
+/**
  * Puts librime's data into the assets under `rime/`: the prebuilt data from
  * scripts/prebuild-rime.sh (staged data plus the compiled `build/`) when it exists, otherwise only
  * the staged text data from core/rime/stage-data.cmake, which the phone then compiles itself.
@@ -190,6 +219,7 @@ androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(englishDict, EnglishDictTask::outputDir)
         variant.sources.assets?.addGeneratedSourceDirectory(rimeData, RimeDataTask::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(emojiData, EmojiDataTask::outputDir)
     }
 }
 

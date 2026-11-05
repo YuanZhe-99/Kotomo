@@ -20,6 +20,7 @@ java tool/CheckDocs.java   # doc/en-us and doc/zh-cn mirror each other; local li
 java -Xmx4g lexicon/CrossLexicon.java   # S5 lexicon into build/lexicon/; --offline uses .deps/ only
 java lexicon/CheckSamples.java          # S5 sample check; non-zero exit on a failed line
 java tool/BuildEnglishDict.java         # S4 dictionary; assembleDebug and assembleRelease run it too
+java lexicon/EmojiData.java             # emoji asset into build/emoji/emoji.tsv; --offline; the app's emojiData task runs it
 sh core/english/tests/run-host.sh       # S4 host test (Linux or WSL: CMake, Ninja, g++, JDK)
 scripts/fetch-boost.sh                  # Boost headers for librime; needed before any native build
 scripts/prebuild-rime.sh                # compiled Chinese data for the APK (Linux or WSL); CI requires it

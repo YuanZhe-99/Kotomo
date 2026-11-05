@@ -2,6 +2,18 @@
 <resources>
 
     <string name="emoji_back">返回键盘</string>
+    <string name="emoji_recent">最近使用</string>
+    <string name="emoji_recent_empty">用过的 Emoji 会显示在这里</string>
+    <string name="emoji_smileys">笑脸与情感</string>
+    <string name="emoji_people">人物与身体</string>
+    <string name="emoji_animals">动物与自然</string>
+    <string name="emoji_food">食物与饮料</string>
+    <string name="emoji_travel">旅行与地点</string>
+    <string name="emoji_activities">活动</string>
+    <string name="emoji_objects">物品</string>
+    <string name="emoji_symbols">符号</string>
+    <string name="emoji_flags">旗帜</string>
+    <string name="emoji_tones">选择肤色</string>
 
     <string name="setup_title">设置键盘</string>
     <string name="setup_enable">在键盘列表中打开 Kotomo</string>
