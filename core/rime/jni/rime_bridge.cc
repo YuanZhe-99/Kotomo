@@ -4,6 +4,10 @@
 
 #include <rime_api.h>
 
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+
 namespace kotomo::rime_bridge {
 namespace {
 
@@ -84,6 +88,30 @@ std::string SelfCheck() {
   if (api == nullptr) return "librime not initialized";
   if (session == 0) return "no session";
   std::string out;
+  // Files as the C++ runtime sees them, and configs as librime loads them.
+  namespace fs = std::filesystem;
+  const fs::path schema_file = fs::path(shared_dir) / "build" / "luna_pinyin_simp.schema.yaml";
+  std::error_code ec;
+  const bool exists = fs::exists(schema_file, ec);
+  out += std::string("fs_exists=") + (exists ? "yes" : "no") + (ec ? "(" + ec.message() + ")" : "");
+  std::ifstream in(schema_file, std::ios::binary);
+  std::string bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+  out += " ifstream=" + std::to_string(bytes.size());
+  RimeConfig config = {};
+  if (api->config_open("default", &config)) {
+    out += " default.schema_list=" + std::to_string(api->config_list_size(&config, "schema_list"));
+    api->config_close(&config);
+  } else {
+    out += " default=unopened";
+  }
+  if (api->schema_open(kSchema, &config)) {
+    out += " schema.processors=" + std::to_string(api->config_list_size(&config, "engine/processors"));
+    out += " translators=" + std::to_string(api->config_list_size(&config, "engine/translators"));
+    api->config_close(&config);
+  } else {
+    out += " schema=unopened";
+  }
+  out += " | ";
   char schema[128] = {};
   out += api->get_current_schema(session, schema, sizeof schema) ? std::string("schema=") + schema : "schema=?";
   out += api->get_option(session, "ascii_mode") ? " ascii_mode=on" : " ascii_mode=off";

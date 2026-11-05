@@ -625,6 +625,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             view.setContent {
                 EmojiPanel(
                     onEmoji = { currentInputConnection?.commitText(it, 1) },
+                    onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onBack = ::showKeyboard,
                 )
             }
