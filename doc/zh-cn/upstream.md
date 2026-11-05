@@ -80,7 +80,9 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | JMdict 与 KANJIDIC2 为 CC BY-SA 4.0（EDRDG）；应用须在从菜单进入的独立页面中署名，并保持数据更新；优先级标记标出常用词与外来语（`gai1`） | 英文 → 日文映射；"关于"下的来源页 | 已阅读 |
 | GPLv3 是 CC BY-SA 4.0 的单向兼容许可（Creative Commons，2015） | CC BY-SA 4.0 数据可随 GPL-3.0 应用分发，并保留署名 | 已阅读 |
 | Unihan（Unicode License v3）按字提供 `kMandarin`；Unicode 18.0 新增 `kJapaneseOldVariant` 与 `kJapaneseNewVariant`；新字体可能与无关的汉字同形（芸 yún 与 藝 yì） | 拼音 → 日文映射先把新字体映射到旧字体 | 已阅读 |
-| CLDR 49 注释（Unicode License v3）提供 en、zh、zh-Hant 与 ja 的 Emoji 关键词和名称 | Emoji 关键词词库 | 已阅读 |
+| CLDR 49 注释（Unicode License v3）提供 en、zh、zh-Hant 与 ja 的 Emoji 关键词和名称 | Emoji 关键词词库 | 在 P1 中使用 |
+| cldr-json 文件不带版本字段，键省略 U+FE0F（`☺` 而非 `☺️`）；`annotations` 覆盖单个 Emoji，`annotationsDerived` 覆盖肤色与 ZWJ 序列（家庭、职业）；日文关键词不带读音 | 锁定到 49.0.0 标签的提交并校验 SHA-256；查找时去掉 U+FE0F 再试；两个文件都读取；假名读音取自 Mozc 词典 | 在 P1 中使用 |
+| `emoji-test.txt` 中每个基础 Emoji 后紧跟它的全部肤色形式；混合肤色的双人组合没有自己的无肤色形式（👩🏻‍🤝‍👨🏼 属于 👫，🫱🏻‍🫲🏼 属于 🤝），Component 组只含单独的肤色色块与发型部件 | 带肤色的序列作为其前一个基础 Emoji 的变体；去掉 Component 组 | 在 P1 中使用 |
 | Noto Emoji：字体 OFL-1.1，图像 Apache-2.0，支持 Unicode 18.0；Twemoji（jdecked）：图形 CC BY 4.0，覆盖 Emoji 17.0；Apple 的 Emoji 不得再分发，也不得包含在第三方键盘中 | Emoji 样式包；绝不使用 Apple 的图像 | 已阅读 |
 | 中文方案数据：rime-ice 为 GPL-3.0 only，rime_wanxiang 为 CC BY 4.0，rime-luna-pinyin 与 rime-essay 为 LGPL-3.0。日文：SudachiDict 为 Apache-2.0；alt-cannadic 只允许 GPL-2.0 | 在技术验证 S2 与 S8 中选定；从不使用仅限 GPL-2.0 的数据 | 已阅读 |
 | Unihan 18 给部分日本国字标了没有中文词典佐证的 `kMandarin`（込 yū、峠 qiǎ、笹 shì），另一些则有佐证（畑 tián、辻 shí） | `kMandarin` 的读音一律采用，因为中文词典对国字本来就没有读音（用户决定，2026-11-04）；只有完全没有读音的字（﨑、𩸽）会使其所在的词被跳过 | 在 S5 中使用 |

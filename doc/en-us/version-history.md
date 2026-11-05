@@ -6,3 +6,5 @@
   draft 2.0), mirrored documentation and the documentation check (`tool/CheckDocs.java`).
 - Upstreams read on 2026-11-04, nothing built yet: librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2;
   Android API 37, Android Gradle Plugin 9.5.0, Kotlin 2.4.21, NDK r30.
+- Emoji data (P1), checked 2026-11-04: Unicode Emoji 18.0 and CLDR 49.0.0 annotations, the latest
+  releases; pinyin and kana readings from the Unihan, CC-CEDICT and Mozc pins above.

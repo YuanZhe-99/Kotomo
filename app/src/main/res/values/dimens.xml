@@ -37,4 +37,23 @@
     <dimen name="bar_expand">44dp</dimen>
     <dimen name="toolbar_pad">28dp</dimen>
     <dimen name="toolbar_button">48dp</dimen>
+    <!-- Emoji panel: the grid adds columns while a cell stays at least emoji_cell wide. -->
+    <dimen name="emoji_cell">48dp</dimen>
+    <dimen name="emoji_glyph">30dp</dimen>
+    <dimen name="emoji_radius">10dp</dimen>
+    <dimen name="emoji_grid_pad_h">6dp</dimen>
+    <dimen name="emoji_grid_pad_v">4dp</dimen>
+    <dimen name="emoji_header_text">13sp</dimen>
+    <dimen name="emoji_header_pad">8dp</dimen>
+    <dimen name="emoji_tone_mark">5dp</dimen>
+    <dimen name="emoji_bar_height">52dp</dimen>
+    <dimen name="emoji_bar_pad_v">6dp</dimen>
+    <dimen name="emoji_bar_key">56dp</dimen>
+    <dimen name="emoji_tab">36dp</dimen>
+    <dimen name="emoji_tab_glyph">19dp</dimen>
+    <dimen name="emoji_tab_icon">20dp</dimen>
+    <dimen name="emoji_picker_pad">6dp</dimen>
+    <dimen name="emoji_picker_radius">16dp</dimen>
+    <dimen name="emoji_picker_elevation">6dp</dimen>
+    <integer name="emoji_picker_columns">6</integer>
 </resources>

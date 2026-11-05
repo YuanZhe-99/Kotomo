@@ -65,6 +65,9 @@ Latin words only where it helps readability. The input modes are 中文, 英文,
 | honorific language (keigo) | 敬语 |
 | regional vocabulary | 地区用词 |
 | emoji style pack | Emoji 样式包 |
+| skin tone (emoji) | 肤色 |
+| Recents (emoji) | 最近使用 |
+| Hepburn romaji | 平文式罗马字 |
 | theme | 主题 |
 | toolbar | 工具栏 |
 | clipboard history | 剪贴板历史 |

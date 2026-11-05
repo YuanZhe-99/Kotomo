@@ -10,9 +10,11 @@ components.
 | Component | Repository and version | Used for | License | Modifications | Obligations |
 |---|---|---|---|---|---|
 | MyApps conventions and documentation checks | `YuanZhe-99/Kyokai` (`tools/checkdocs`), `YuanZhe-99/MyApps-AI` (`tool/check_docs.py`), the MyApps `AGENTS.md` rules | `tool/CheckDocs.java` follows their mirror and link rules; `AGENTS.md` follows their conventions | AGPL-3.0 and GPL-3.0, same author as Kotomo | written anew for Kotomo | none beyond Kotomo's license |
-| Mozc dictionary data (`src/data/dictionary_oss`: `dictionary00–09.txt`, `id.def`, `README.txt`) | `google/mozc` tag 3.35.6354 | entries, readings, POS ids and costs for the cross-language lexicon (S5; build input, the generated lexicon is not shipped yet) | IPAdic-derived (mecab-ipadic-2.7.0-20070801, NAIST and ICOT terms), Okinawa dictionary data, Google additions | none | ship `README.txt`'s notices and disclaimers with any lexicon derived from it |
-| Unihan | Unicode 18.0.0 (`Unihan.zip`) | readings (`kMandarin`, attested by `kXHC1983`, `kTGHZ2013`, `kHanyuPinyin`), `kSimplifiedVariant`, `kJapaneseOldVariant` for the pinyin → Japanese mapping (S5) | Unicode License v3 | none | include the Unicode copyright and license notice |
-| CC-CEDICT | MDBG release 2026-11-04T07:19:40Z | word-level pinyin for the pinyin → Japanese mapping (S5) | CC BY-SA 4.0 (MDBG; based on CEDICT by Paul Andrew Denisowski) | none | attribution and a link to the license; derived readings stay CC BY-SA 4.0 |
+| Mozc dictionary data (`src/data/dictionary_oss`: `dictionary00–09.txt`, `id.def`, `README.txt`) | `google/mozc` tag 3.35.6354 | entries, readings, POS ids and costs for the cross-language lexicon (S5; build input, the generated lexicon is not shipped yet); kana readings of the Japanese keys of `emoji.tsv` (shipped) | IPAdic-derived (mecab-ipadic-2.7.0-20070801, NAIST and ICOT terms), Okinawa dictionary data, Google additions | none | ship `README.txt`'s notices and disclaimers with any lexicon derived from it |
+| Unihan | Unicode 18.0.0 (`Unihan.zip`) | readings (`kMandarin`, attested by `kXHC1983`, `kTGHZ2013`, `kHanyuPinyin`), `kSimplifiedVariant`, `kJapaneseOldVariant` for the pinyin → Japanese mapping (S5); `kMandarin` for the pinyin keys of `emoji.tsv` | Unicode License v3 | none | include the Unicode copyright and license notice |
+| CC-CEDICT | MDBG release 2026-11-04T07:19:40Z | word-level pinyin for the pinyin → Japanese mapping (S5) and for the pinyin keys of `emoji.tsv` (shipped) | CC BY-SA 4.0 (MDBG; based on CEDICT by Paul Andrew Denisowski) | none | attribution and a link to the license; derived readings stay CC BY-SA 4.0 |
+| Unicode Emoji data (`emoji-test.txt`) | Unicode Emoji 18.0 (`Public/18.0.0/emoji/`, dated 2026-04-30) | emoji order, groups and skin-tone variants of the emoji panel (`emoji.tsv`, generated, shipped in the APK) | Unicode License v3 | the Component group is left out | include the Unicode copyright and license notice |
+| CLDR annotations and derived annotations (cldr-json) | `unicode-org/cldr-json` 49.0.0 (`a4b67247`), `annotations` and `annotationsDerived` for en, zh, zh-Hant and ja | emoji keywords and names, the keys of `emoji.tsv` | Unicode License v3 | none; keys are normalized (NFKC, lower case) | include the Unicode copyright and license notice |
 | OpenCC Japanese Shinjitai tables (`JPShinjitaiCharacters.txt`, `JPShinjitaiPhrases.txt`) | `BYVoid/OpenCC` ver.1.4.2 | Shinjitai → old forms for the pinyin → Japanese mapping (S5) | Apache-2.0 | none | include the license and NOTICE |
 | JMdict (English), through jmdict-simplified | jmdict-simplified 3.6.2+20261102210542 (JMdict 2026-11-02) | glosses for the English → Japanese mapping (S5) | CC BY-SA 4.0 under the EDRDG licence | none | credit the EDRDG as copyright holder on a separate sources page reached from a menu, link the licence and the JMdict project page, keep the data updated; the derived mapping stays CC BY-SA 4.0 |
 | AOSP LatinIME native suggestion core, through HeliBoard | `HeliBorg/HeliBoard` v4.2 (`0c60dffb`), `app/src/main/jni/src` | English correction, completion and prediction (`libkotomo_english.so`, S4) | Apache-2.0 (AOSP files); HeliBoard as a whole GPL-3.0 | none; Kotomo's own JNI bridge replaces LatinIME's JNI files | ship the Apache-2.0 license text and keep the AOSP notices |
@@ -28,6 +30,13 @@ components.
 | Mozc | `google/mozc` 3.35.6354 (`0136c357`), submodule `third_party/mozc` | Japanese conversion (`libkotomo_mozc.so` and `mozc.data`, S3; not in the app yet) | BSD-3-Clause; dictionary data under the NAIST IPAdic notice with the ICOT terms, a public-domain Okinawa dictionary and Google's additions | none; Kotomo's glue is separate (`core/mozc`) | ship Mozc's LICENSE in full, including the NAIST notice and the ICOT "NO WARRANTY" section |
 | japanese-usage-dictionary, Abseil, Protocol Buffers | fetched by Mozc's Bazel build (usage dictionary 2025-01-25, abseil-cpp 20260107.1, protobuf 34.1) | compiled into `mozc.data` and `libkotomo_mozc.so` | BSD-2-Clause; Apache-2.0; BSD-3-Clause | none | notices and license texts |
 
+`emoji.tsv` is generated by `lexicon/EmojiData.java` (never committed) and ships in the APK. It
+keeps the licenses of what it derives from: Unicode License v3 for the emoji, the CLDR keys and the
+Unihan readings, CC BY-SA 4.0 for the pinyin taken from CC-CEDICT, and the notices of Mozc's
+`README.txt` for the Japanese readings; the in-app licenses page, when it is added, lists all of them
+before the first release. Emoji are drawn
+with the system font: no emoji images ship.
+
 ## Planned components
 
 Nothing below is included yet. Each component enters the inventory with its exact version, files,
@@ -35,7 +44,6 @@ modifications and obligations when P0 adds it; spike S8 completes the audit.
 
 | Component | License | Planned use | Notes |
 |---|---|---|---|
-| CLDR annotations | Unicode License v3 | emoji keywords in four languages | — |
 | SudachiDict | Apache-2.0 | extra Japanese names, places, stations and loanwords | optional |
 | Noto Emoji | images Apache-2.0, font OFL-1.1, flags public domain | emoji style pack | — |
 | Twemoji (jdecked) | graphics CC BY 4.0, code MIT | emoji style pack | attribution in About |

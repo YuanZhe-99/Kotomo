@@ -114,6 +114,28 @@
       "url": "https://www.unicode.org/Public/18.0.0/ucd/Unihan.zip",
       "sha256": "4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e"
     },
+    "unicode-emoji": {
+      "version": "18.0 (emoji-test.txt dated 2026-04-30)",
+      "url": "https://www.unicode.org/Public/18.0.0/emoji/emoji-test.txt",
+      "license": "Unicode-3.0",
+      "sha256": "8f3735cda1f92a779d78af67cf86066bb1f07143dc22f2ac29394d9bc57ab21a"
+    },
+    "cldr-annotations": {
+      "version": "49.0.0",
+      "commit": "a4b67247b446fd51b475991017a2481911210c60",
+      "base": "https://raw.githubusercontent.com/unicode-org/cldr-json/a4b67247b446fd51b475991017a2481911210c60/cldr-json/",
+      "license": "Unicode-3.0",
+      "sha256": {
+        "cldr-annotations-full/annotations/en/annotations.json": "6b6b6e0e5f211bc31cf3fa39f385d80dea6cd19ee19bbc6db9071fce3ae5d360",
+        "cldr-annotations-full/annotations/zh/annotations.json": "7d49968f977021fefe6ceea2613e0313de5ea416d8f3c0a8fe3032c9b7f2ebfb",
+        "cldr-annotations-full/annotations/zh-Hant/annotations.json": "38d8fc6cf4589cb55d24b0aa8becea2023ab83f3836b4c7a94ec8cacc66123e5",
+        "cldr-annotations-full/annotations/ja/annotations.json": "e42dacabf2eee0aab36c168c995efeaf8add896f8940c5ee86a809d85c2816e7",
+        "cldr-annotations-derived-full/annotationsDerived/en/annotations.json": "7aad034f689cb6553f8d7366bfee8c4ea2818c7776907bc5118aab575223dea3",
+        "cldr-annotations-derived-full/annotationsDerived/zh/annotations.json": "1b86f6dd0b295e64efddaf6028151b6c5c95616b8c98c15f5727cff2b2429d48",
+        "cldr-annotations-derived-full/annotationsDerived/zh-Hant/annotations.json": "57c0deca0cd81c4551c0724c586539a6d6f5c8dfcc61f4d798197ffc868a9551",
+        "cldr-annotations-derived-full/annotationsDerived/ja/annotations.json": "3d83cf7e4093f7fe77055dc21b1a3a65cd8f48a0249127552d58d3b058dbe4cd"
+      }
+    },
     "cc-cedict": {
       "version": "2026-11-04T07:19:40Z",
       "url": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip",
