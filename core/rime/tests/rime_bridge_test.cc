@@ -185,6 +185,34 @@ int main(int argc, char** argv) {
   for (const char c : std::string("nihao")) rb::ProcessKey(c, 0);
   Check(rb::ProcessKey(0x20, 0) && rb::TakeCommit() == "你好", "S2-prebuilt-space",
         "keys n i h a o + space commit 你好 on prebuilt data");
+
+  // T17: Kotomo's run-time dictionaries (luna_pinyin_simp.custom.yaml). Made-up words on codes no
+  // built-in word uses, plus one low-priority entry on a common code.
+  Check(RankOf("kaotuomo", "考拓莫") == -1 && RankOf("koutuomo", "蔻拓摩") == -1, "T17-rime-absent",
+        "before the files exist the test words are not offered");
+  const auto write = [&](const char* name, const std::string& lines) {
+    std::FILE* f = std::fopen((fresh_user / name).string().c_str(), "wb");
+    std::fputs(lines.c_str(), f);
+    std::fclose(f);
+  };
+  write("custom_phrase.txt", "考拓莫\tkaotuomo\t100\n");
+  write("kotomo_packs.txt", "蔻拓摩\tkoutuomo\t50\n");
+  write("kotomo_low.txt", "泥好\tnihao\t20\n");
+  Check(rb::SetLearning(true), "T17-rime-reload", "re-selecting the schema reloads the tables");
+  const int manual = RankOf("kaotuomo", "考拓莫");
+  Check(manual == 0, "T17-rime-manual", "a hand-added entry is first: rank " + std::to_string(manual));
+  const int pack = RankOf("koutuomo", "蔻拓摩");
+  Check(pack >= 0, "T17-rime-pack", "a downloaded entry is offered: rank " + std::to_string(pack));
+  const int low = RankOf("nihao", "泥好");
+  const int common = RankOf("nihao", "你好");
+  Check(low > 0 && common == 0, "T17-rime-low",
+        "a low-priority entry is offered (rank " + std::to_string(low) + ") but 你好 stays first (rank " +
+            std::to_string(common) + ")");
+  Check(rb::SetLearning(false) && RankOf("kaotuomo", "考拓莫") == 0, "T17-rime-private",
+        "sensitive fields see the same dictionaries");
+  write("custom_phrase.txt", "");
+  rb::SetLearning(true);
+  Check(RankOf("kaotuomo", "考拓莫") == -1, "T17-rime-removed", "an entry removed from the file is gone after a reload");
   rb::Shutdown();
 
   std::printf("%s: %d failure(s)\n", failures == 0 ? "PASS" : "FAIL", failures);

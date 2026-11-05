@@ -1,0 +1,32 @@
+# Kotomo: the dictionaries Kotomo's settings manage, read at run time (nothing compiles on the phone).
+#
+# Three plain-text tables in the user directory, one translator each, from most to least trusted:
+#   custom_phrase.txt  entries the person added by hand (luna_pinyin's own custom_phrase, quality 1)
+#   kotomo_packs.txt   downloaded dictionaries, hash-checked against the catalog (quality 0)
+#   kotomo_low.txt     imported files and LLM-generated entries, validated but untrusted (quality -1)
+# A missing file is an empty table. Each line is `word<TAB>code<TAB>weight`, the code being toneless
+# pinyin without spaces; the app writes them (doc/en-us/dictionaries.md) and re-selects the schema.
+# luna_pinyin_simp_private applies the same patch, so sensitive fields see the same words (these
+# tables are read-only; nothing is learned into them).
+patch:
+  engine/translators:
+    - punct_translator
+    - table_translator@custom_phrase
+    - table_translator@kotomo_packs
+    - table_translator@kotomo_low
+    - reverse_lookup_translator
+    - script_translator
+  kotomo_packs:
+    dictionary: ""
+    user_dict: kotomo_packs
+    db_class: stabledb
+    enable_completion: false
+    enable_sentence: false
+    initial_quality: 0
+  kotomo_low:
+    dictionary: ""
+    user_dict: kotomo_low
+    db_class: stabledb
+    enable_completion: false
+    enable_sentence: false
+    initial_quality: -1

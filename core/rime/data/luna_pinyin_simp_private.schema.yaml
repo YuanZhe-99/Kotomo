@@ -13,4 +13,5 @@ schema:
   dependencies:
     - stroke
 __patch:
-  translator/enable_user_dict: false
+  - translator/enable_user_dict: false
+  - luna_pinyin_simp.custom:/patch
