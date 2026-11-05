@@ -31,3 +31,4 @@
 | `.github/workflows/mozc.yml` | CI：主机测试，以及带哈希清单的 Android Mozc 库产物 | `mozc` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | 在独立进程中把 librime 部署到暂存目录、`filesDir/rime` 下的文件布局、构建的换入与部署报告 | `RimeDeployService`、`RimeFiles.promote` |
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
+| `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定 | — |

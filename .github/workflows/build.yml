@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   android:
@@ -38,6 +39,12 @@ jobs:
       - name: Fetch Boost headers (librime)
         run: scripts/fetch-boost.sh
 
+      # Mozc's Android libraries come from mozc.yml, pinned by run and hash in build-lock.json.
+      - name: Fetch prebuilt Mozc
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch-mozc.sh
+
       # The app ships compiled Chinese data, so the phone never compiles it on first use.
       - name: Prebuild Chinese data (librime on the host)
         run: |
@@ -65,6 +72,7 @@ jobs:
       - name: Build and check
         env:
           KOTOMO_REQUIRE_RIME_PREBUILT: "1"
+          KOTOMO_REQUIRE_MOZC: "1"
         run: ./gradlew --no-daemon check assembleDebug assembleRelease
 
       - name: Verify release signature

@@ -41,6 +41,20 @@ android {
     // Dictionaries are memory-mapped straight from the APK, so they must stay uncompressed.
     androidResources { noCompress += "dict" }
 
+    // Mozc is built on Linux CI (.github/workflows/mozc.yml); scripts/fetch-mozc.sh puts the
+    // hash-pinned libraries and data into build/mozc-prebuilt. Without them Japanese mode has no
+    // conversion; CI sets KOTOMO_REQUIRE_MOZC so a release never ships without it.
+    val mozcPrebuilt = rootProject.layout.projectDirectory.dir("build/mozc-prebuilt").asFile
+    if (mozcPrebuilt.resolve("assets/mozc.data").isFile) {
+        sourceSets["main"].jniLibs.directories += mozcPrebuilt.resolve("jniLibs").path
+        sourceSets["main"].assets.directories += mozcPrebuilt.resolve("assets").path
+    } else {
+        check(providers.environmentVariable("KOTOMO_REQUIRE_MOZC").orNull != "1") {
+            "no prebuilt Mozc in $mozcPrebuilt; run scripts/fetch-mozc.sh"
+        }
+        logger.warn("app: no prebuilt Mozc; Japanese mode will not convert")
+    }
+
     signingConfigs {
         if (keyProperties != null) {
             create("release") {

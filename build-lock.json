@@ -77,7 +77,17 @@
         "url": "https://dl.google.com/android/repository/android-ndk-r29-linux.zip",
         "sha256": "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf"
       },
-      "prebuilt": "not yet built: the first run of .github/workflows/mozc.yml records its artifact hashes here"
+      "prebuilt": {
+        "source": "GitHub Actions .github/workflows/mozc.yml, artifact kotomo-mozc",
+        "repository": "YuanZhe-99/Kotomo",
+        "run": "41931242062",
+        "commit": "0172e41",
+        "sha256": {
+          "arm64-v8a/libkotomo_mozc.so": "74db144424d7af3ec054cc77ebf4242d33000efb2c09c20937b4b976ee03a93a",
+          "x86_64/libkotomo_mozc.so": "b0d8d7f4f1b9a1d9969146cdf9773a37820a8cd1fe94ac9586c04d16632019cd",
+          "mozc.data": "7a47a2b3958baeb0796345aec2c3f380b1d783d6fa399c8a0c358a197bee6046"
+        }
+      }
     }
   },
   "dataSources": {

@@ -25,6 +25,7 @@ java tool/BuildEnglishDict.java         # S4 dictionary; assembleDebug and assem
 sh core/english/tests/run-host.sh       # S4 host test (Linux or WSL: CMake, Ninja, g++, JDK)
 scripts/fetch-boost.sh                  # Boost headers for librime; needed before any native build
 scripts/prebuild-rime.sh                # compiled Chinese data for the APK (Linux or WSL); CI requires it
+scripts/fetch-mozc.sh                   # Mozc libraries and data pinned in build-lock.json (gh); CI requires them
 scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test (Linux or WSL, Bazelisk)
 ```
 

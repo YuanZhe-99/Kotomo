@@ -39,6 +39,8 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.engine.English
+import com.yuanzhe.kotomo.engine.Mozc
+import java.io.File
 import com.yuanzhe.kotomo.engine.Rime
 import java.io.IOException
 
@@ -50,12 +52,14 @@ import java.io.IOException
  * thread ([engine]). Letters build a composition shown as composing text. In English mode the
  * candidates are the typed word first (space commits it; nothing is replaced automatically), then
  * the engine's corrections and completions, and after a committed word its next-word predictions.
+ * In Japanese mode Mozc converts the romaji: the composition shows kana, the first candidate is the
+ * whole sentence, Enter keeps the kana.
  * In Chinese mode librime owns the composition: every key goes to the engine thread in order,
  * librime decides whether it belongs to the composition, and the main thread applies the result;
  * librime opens on the data already deployed; when the bundled data changed, [RimeDeployService]
  * deploys it in its own process and the new build replaces the old one when it is done, so typing
- * goes on meanwhile. Only before the very first deploy has finished do letters type directly. Mixed and Japanese modes still
- * show placeholder candidates until their engines arrive. Each update carries a
+ * goes on meanwhile. Only before the very first deploy has finished do letters type directly. Mixed mode uses librime too until
+ * the mixed coordinator (S6) exists. Each update carries a
  * generation number and a stale engine result never replaces a newer one. Sensitive fields
  * (passwords, no-personalized-learning, e-mail and URL fields) get direct typing with no
  * composition and no candidates. The service is its own LifecycleOwner and SavedStateRegistryOwner
@@ -74,6 +78,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private val main = Handler(Looper.getMainLooper())
     /** Engine thread only. */
     private var english: English? = null
+    /** Engine thread only: Mozc, opened on first use of Japanese mode (null until then or without data). */
+    private var mozc: Mozc? = null
+    private var mozcTried = false
     /** Engine thread only: librime deployed and its session open. */
     private var rimeReady = false
 
@@ -91,6 +98,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private val composing = StringBuilder()
     private var candidates = emptyList<String>()
     private var generation = 0
+    /** Main thread: the kana reading Mozc gave for the current Japanese composition. */
+    private var japaneseReading = ""
     /** librime's latest preedit and candidates, as last applied on the main thread. */
     private var chinesePreedit = ""
     private var chineseCandidates = emptyList<String>()
@@ -346,6 +355,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (deployBound) unbindService(deployConnection)
         engine.post {
             english?.close()
+            mozc?.close()
             if (rimeReady) Rime.shutdown()
         }
         engineThread.quitSafely()
@@ -395,7 +405,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
             KeyAction.Enter -> {
                 previousWord = null
-                if (composing.isNotEmpty()) {
+                if (composing.isNotEmpty() && mode == Mode.JAPANESE && japaneseReading.isNotEmpty()) {
+                    // Enter keeps the kana as typed, as Japanese keyboards do.
+                    ic.commitText(japaneseReading, 1)
+                    composing.clear()
+                } else if (composing.isNotEmpty()) {
                     commitComposition()
                 } else {
                     editorEnter()
@@ -566,13 +580,70 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             direct -> emptyList()
             usesRime -> chineseCandidates
             mode == Mode.ENGLISH -> if (raw.isEmpty()) emptyList() else listOf(raw)
+            mode == Mode.JAPANESE -> if (raw.isEmpty()) emptyList() else listOf(raw)
             raw.isEmpty() -> emptyList()
             else -> listOf(raw, raw.replaceFirstChar(Char::uppercase), raw.uppercase()).distinct()
         }
         candidateBar.show(candidates, downTime)
         shownCandidates.value = candidates
         candidateBar.hint = notice ?: chineseHint()
+        if (raw.isEmpty()) japaneseReading = ""
         if (!direct && mode == Mode.ENGLISH && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
+        if (!direct && mode == Mode.JAPANESE && raw.isNotEmpty()) suggestJapanese(raw, gen)
+    }
+
+    /**
+     * Opens Mozc with its data set, copied from the APK to private storage once per app version
+     * (engine thread).
+     * Returns: Mozc, or null when the APK carries no Mozc data (a build without the CI libraries).
+     */
+    private fun openMozc(): Mozc? = runCatching {
+        val dir = File(filesDir, "mozc").apply { mkdirs() }
+        val data = File(dir, MOZC_DATA)
+        val stamp = File(dir, ".stamp")
+        val version = packageManager.getPackageInfo(packageName, 0).lastUpdateTime.toString()
+        if (!data.isFile || !stamp.isFile || stamp.readText() != version) {
+            assets.open(MOZC_DATA).use { input -> data.outputStream().use { input.copyTo(it) } }
+            stamp.writeText(version)
+        }
+        Mozc.open(data.path, File(dir, "profile").apply { mkdirs() }.path)
+    }.getOrNull()
+
+    /**
+     * Converts the romaji composition with Mozc on the engine thread and shows the result if still
+     * current: the composition becomes the kana reading; candidates are the whole sentence, the
+     * first segment's alternatives with the rest of the sentence, then hiragana and katakana.
+     */
+    private fun suggestJapanese(typed: String, gen: Int) {
+        engine.post {
+            if (!mozcTried) {
+                mozcTried = true
+                mozc = openMozc()
+            }
+            val segments = mozc?.sessionConvert(typed, incognito = false).orEmpty()
+            main.post {
+                if (gen != generation || segments.isEmpty()) return@post
+                val reading = segments.joinToString("") { it.reading }
+                val firsts = segments.map { s -> s.candidates.firstOrNull()?.value ?: s.reading }
+                val rest = firsts.drop(1).joinToString("")
+                val list = buildList {
+                    add(firsts.joinToString(""))
+                    segments.first().candidates.forEach { add(it.value + rest) }
+                    add(reading)
+                    add(toKatakana(reading))
+                }.distinct()
+                japaneseReading = reading
+                currentInputConnection?.setComposingText(reading, 1)
+                candidates = list
+                candidateBar.show(candidates, 0)
+                shownCandidates.value = candidates
+            }
+        }
+    }
+
+    /** Converts hiragana to katakana; other characters stay. */
+    private fun toKatakana(text: String) = buildString {
+        for (c in text) append(if (c in '\u3041'..'\u3096') c + 0x60 else c)
     }
 
     /**
@@ -638,6 +709,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val PREFS = "ime"
         const val KEY_MODE = "mode"
         const val ENGLISH_DICT = "main_en_us.dict"
+        const val MOZC_DATA = "mozc.data"
         const val NOTICE_MS = 1500L
         const val CHINESE_CANDIDATES = 30
         // X11 keysyms that librime takes.
