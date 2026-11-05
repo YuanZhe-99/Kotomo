@@ -229,4 +229,5 @@
     <string name="design_gji">Google 日本語入力と Mozc</string>
     <string name="design_gji_desc">ローマ字変換、かな漢字変換と長文変換、文節変換、日本語辞書と予測</string>
     <string name="quick_all_settings">すべての設定</string>
+    <string name="bar_forgotten">学習した内容から削除しました</string>
 </resources>

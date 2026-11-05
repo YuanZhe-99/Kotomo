@@ -6,7 +6,9 @@ those (AGENTS.md, "Documentation maintenance").
 
 ## In short
 
-- Typing works offline. Kotomo has no permission to use the internet.
+- Typing works offline. This version has no internet permission. When downloadable dictionaries
+  arrive, the network will be used only for downloads you start, disclosed before the first one,
+  and never to send what you type.
 - What you type stays on your device. Kotomo has no analytics, no advertising, no crash upload and
   no account.
 - In password fields, in fields that ask not to be learned from, and in incognito mode, Kotomo
@@ -46,8 +48,8 @@ above.
 
 ## Features that are not there yet
 
-Clipboard history, on-device AI (Gemini Nano), translation, downloadable dictionaries and sync are
-planned. Each will be described here, and disclosed in the app before its first use, in the same
+Clipboard history, on-device AI (Gemini Nano), translation, downloadable (online) dictionaries and
+sync are planned; online dictionaries will add the internet permission. Each will be described here, and disclosed in the app before its first use, in the same
 change that adds it; none of them will send what you type anywhere without your explicit choice.
 
 ## Contact

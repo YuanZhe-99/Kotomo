@@ -244,7 +244,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         val popups = PopupLayer(this)
         keyboard = KeyboardView(this, popups, ::onKey)
-        candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool)
+        candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::forget)
         panelHost = FrameLayout(this).apply { addView(keyboard) }
         keyboard.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
             override fun onDraw() {
@@ -350,19 +350,40 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     private val shownCandidates = androidx.compose.runtime.mutableStateOf(emptyList<String>())
 
+    /**
+     * Forgets what librime learned about Chinese candidate [index] (a long press on it); other
+     * modes learn nothing to forget. A short notice confirms it.
+     */
+    private fun forget(index: Int) {
+        if (!usesRime || direct) return
+        val rimeIndex = rimeIndexes.getOrElse(index) { index }
+        if (rimeIndex < 0) return
+        engine.post {
+            val removed = rimeReady && Rime.deleteCandidate(rimeIndex)
+            val state = rimeState(true)
+            main.post {
+                applyChinese(state, 0)
+                if (removed) showNotice(getString(R.string.bar_forgotten))
+            }
+        }
+    }
+
+    /** Shows [text] in the candidate bar for a moment. */
+    private fun showNotice(text: String) {
+        notice = text
+        refresh(0)
+        main.postDelayed({
+            notice = null
+            refresh(0)
+        }, NOTICE_MS)
+    }
+
     /** Runs a toolbar button: settings opens the app; the rest arrive with later phases. */
     private fun onTool(tool: Tool) {
         when (tool) {
             Tool.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Tool.MORE -> toggleQuickPanel()
-            Tool.CLIPBOARD, Tool.AI, Tool.TRANSLATE -> {
-                notice = getString(R.string.bar_not_yet)
-                refresh(0)
-                main.postDelayed({
-                    notice = null
-                    refresh(0)
-                }, NOTICE_MS)
-            }
+            Tool.CLIPBOARD, Tool.AI, Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
         }
     }
 

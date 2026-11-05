@@ -30,6 +30,8 @@ class CandidateBar(
     private val onPick: (index: Int) -> Unit,
     private val onExpand: () -> Unit,
     private val onTool: (Tool) -> Unit,
+    /** Receives a long press on candidate n (forget what was learned about it). */
+    private val onLongPick: (index: Int) -> Unit = {},
 ) : View(context) {
 
     private val res = context.resources
@@ -157,6 +159,15 @@ class CandidateBar(
     private var downX = 0f
     private var lastX = 0f
     private var dragging = false
+    private var longPressed = false
+    private val longPress = Runnable {
+        if (dragging || candidates.isEmpty() || downX >= listEnd) return@Runnable
+        val cx = downX + scroll
+        val index = candidates.indices.firstOrNull { cx >= bounds[it] && cx < bounds[it + 1] } ?: return@Runnable
+        longPressed = true
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        onLongPick(index)
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -165,9 +176,14 @@ class CandidateBar(
                 downX = event.x
                 lastX = event.x
                 dragging = false
+                longPressed = false
+                postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
             }
             MotionEvent.ACTION_MOVE -> if (candidates.isNotEmpty()) {
-                if (!dragging && kotlin.math.abs(event.x - downX) > touchSlop) dragging = true
+                if (!dragging && kotlin.math.abs(event.x - downX) > touchSlop) {
+                    dragging = true
+                    removeCallbacks(longPress)
+                }
                 if (dragging) {
                     val max = (bounds.last() + pad - listEnd).coerceAtLeast(0f)
                     scroll = (scroll - (event.x - lastX)).coerceIn(0f, max)
@@ -175,7 +191,11 @@ class CandidateBar(
                 }
                 lastX = event.x
             }
-            MotionEvent.ACTION_UP -> if (!dragging) tap(event.x)
+            MotionEvent.ACTION_UP -> {
+                removeCallbacks(longPress)
+                if (!dragging && !longPressed) tap(event.x)
+            }
+            MotionEvent.ACTION_CANCEL -> removeCallbacks(longPress)
         }
         return true
     }

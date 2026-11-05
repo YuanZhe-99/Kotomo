@@ -37,6 +37,11 @@ bool Initialize(const std::string& shared_data_dir, const std::string& user_data
 ///   fresh directory); librime refuses key input while it deploys.
 bool Deploy();
 
+/// Forgets what the person taught librime about candidate `index` (counted from the first).
+/// Returns: whether librime removed a learned entry; built-in dictionary words stay, only their
+///   learned rank goes.
+bool DeleteCandidate(std::size_t index);
+
 /// Returns the deploy tasks that failed in the last Deploy(), comma-separated, or "".
 std::string DeployFailures();
 

@@ -47,6 +47,11 @@ JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_deploy(JNIEnv*, j
   return rb::Deploy();
 }
 
+/// Forgets a learned candidate; see rime_bridge::DeleteCandidate.
+JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_deleteCandidate(JNIEnv*, jobject, jint index) {
+  return index >= 0 && rb::DeleteCandidate(static_cast<std::size_t>(index));
+}
+
 /// Probes the session; see rime_bridge::SelfCheck.
 JNIEXPORT jstring JNICALL Java_com_yuanzhe_kotomo_engine_Rime_selfCheck(JNIEnv* env, jobject) {
   return ToJava(env, rb::SelfCheck());

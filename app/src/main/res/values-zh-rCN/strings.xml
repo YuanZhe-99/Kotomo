@@ -229,4 +229,5 @@
     <string name="design_gji">Google 日本語入力与 Mozc</string>
     <string name="design_gji_desc">罗马字转换、假名汉字转换与长句转换、文节转换、日语词典与预测</string>
     <string name="quick_all_settings">全部设置</string>
+    <string name="bar_forgotten">已从学习记录中移除</string>
 </resources>

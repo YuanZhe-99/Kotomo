@@ -77,6 +77,12 @@ object Rime {
      */
     external fun selectCandidate(index: Int): Boolean
 
+    /**
+     * Forgets what librime learned about the candidate at [index] (counted from the first).
+     * Returns: whether a learned entry was removed; dictionary words keep their place.
+     */
+    external fun deleteCandidate(index: Int): Boolean
+
     /** Returns the text committed since the last call, or null; the text is consumed. */
     external fun getCommit(): String?
 

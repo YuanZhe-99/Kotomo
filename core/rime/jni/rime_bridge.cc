@@ -172,6 +172,10 @@ std::vector<Candidate> Candidates(std::size_t limit) {
   return result;
 }
 
+bool DeleteCandidate(std::size_t index) {
+  return session != 0 && api->delete_candidate(session, index);
+}
+
 bool SelectCandidate(std::size_t index) {
   return session != 0 && api->select_candidate(session, index);
 }

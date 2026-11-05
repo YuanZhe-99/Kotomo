@@ -50,7 +50,8 @@ Builds are not available yet. Requirements and commands:
 
 ## Privacy
 
-Typing works offline and stays on the device; Kotomo has no internet permission. See
+Typing works offline and stays on the device; the network is used only for downloads you start
+(online dictionaries, once they arrive). See
 [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
 
 ## Acknowledgements
