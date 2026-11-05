@@ -57,6 +57,7 @@ app and the keyboard run in the same process and share one `SettingsStore`
 | `clipboard.quick_paste` | boolean | `true` | Offer what was just copied, and codes in it, above the keys |
 | `theme.choice` | string: `system`, `light`, `dark`, `dynamic` | `system` | The keyboard's colors; `dynamic` is Material You (Android 12 and later) |
 | `theme.key_radius_dp` | int, 0–24 | `12` | Key corner radius in dp |
+| `ai.enabled` | boolean | `false` | Let the AI button use writing help ([ai.md](ai.md)) |
 
 ## Privacy
 

@@ -52,6 +52,7 @@
 | `clipboard.quick_paste` | boolean | `true` | 在键盘上方提供刚复制的内容和其中的验证码 |
 | `theme.choice` | string：`system`、`light`、`dark`、`dynamic` | `system` | 键盘配色；`dynamic` 即 Material You（Android 12 及以上） |
 | `theme.key_radius_dp` | int，0–24 | `12` | 按键圆角，单位 dp |
+| `ai.enabled` | boolean | `false` | 允许 AI 按钮使用写作助手（[ai.md](ai.md)） |
 
 ## 隐私
 

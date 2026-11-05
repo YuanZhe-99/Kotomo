@@ -44,6 +44,7 @@ about to change, verify against the code, then fix the docs in the same commit.
 | Toolchain, upstream commits, data-source versions and hashes each build uses | `build-lock.json` |
 | The settings file: keys, defaults, versioning | `doc/en-us/settings-format.md` |
 | The clipboard history: recording rules, encrypted file format, verification codes, quick paste | `doc/en-us/clipboard.md` |
+| Writing help (on-device AI): rules, the keyboard ↔ AI screen hand-off, actions, failures | `doc/en-us/ai.md` |
 
 `design/`
 (screens, wording and tokens from the design agent) and the concept docs added from P0 on (the

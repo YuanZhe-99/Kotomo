@@ -70,6 +70,15 @@ data class ClipboardSettings(
 )
 
 /**
+ * Holds the AI settings (PLAN §11): whether the keyboard's AI button may hand text to Gemini Nano.
+ *
+ * Notes: off by default; while off, Kotomo makes no GenAI call at all.
+ */
+data class AiSettings(
+    val enabled: Boolean = false,
+)
+
+/**
  * Holds every setting the person can change in the settings app, with the defaults a fresh
  * install starts from.
  *
@@ -96,6 +105,7 @@ data class Settings(
     val clipboard: ClipboardSettings = ClipboardSettings(),
     val theme: KeyboardTheme = KeyboardTheme.SYSTEM,
     val keyRadiusDp: Int = 12,
+    val ai: AiSettings = AiSettings(),
 ) {
     companion object {
         /** Allowed keyboard heights, in percent of the designed height. */
@@ -149,6 +159,7 @@ internal object SettingsFormat {
     private val clipQuickPaste = booleanPreferencesKey("clipboard.quick_paste")
     private val theme = stringPreferencesKey("theme.choice")
     private val keyRadius = intPreferencesKey("theme.key_radius_dp")
+    private val aiEnabled = booleanPreferencesKey("ai.enabled")
 
     /**
      * Reads the settings from a Preferences file.
@@ -188,6 +199,7 @@ internal object SettingsFormat {
             ),
             theme = p.enum(theme, KeyboardTheme.entries, d.theme),
             keyRadiusDp = p.int(keyRadius, Settings.RADIUS_RANGE, d.keyRadiusDp),
+            ai = AiSettings(enabled = p[aiEnabled] ?: d.ai.enabled),
         )
     }
 
@@ -227,6 +239,7 @@ internal object SettingsFormat {
         p.put(clipQuickPaste, old.clipboard.quickPaste, new.clipboard.quickPaste)
         p.put(theme, old.theme.key, new.theme.key)
         p.put(keyRadius, old.keyRadiusDp, new.keyRadiusDp)
+        p.put(aiEnabled, old.ai.enabled, new.ai.enabled)
         p[version] = maxOf(p[version] ?: 0, VERSION)
         p[updated] = nowUtcMs
     }

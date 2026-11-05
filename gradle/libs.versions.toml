@@ -9,6 +9,7 @@ savedstate = "1.5.0"
 datastore = "1.3.0"
 junit = "4.13.2"
 customview = "1.2.0"
+mlkitGenai = "1.0.0-beta1"
 
 [libraries]
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -22,6 +23,8 @@ androidx-savedstate-ktx = { module = "androidx.savedstate:savedstate-ktx", versi
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-customview = { module = "androidx.customview:customview", version.ref = "customview" }
+mlkit-genai-proofreading = { module = "com.google.mlkit:genai-proofreading", version.ref = "mlkitGenai" }
+mlkit-genai-rewriting = { module = "com.google.mlkit:genai-rewriting", version.ref = "mlkitGenai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

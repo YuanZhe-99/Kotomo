@@ -181,7 +181,7 @@
     <string name="dictionaries_later">辞書の管理と読み込みは今後のバージョンで追加されます。Kotomo はアプリに組み込まれた辞書を使い、何もダウンロードしません。</string>
     <string name="incognito_title">シークレットモード</string>
     <string name="incognito_desc">学習せず、履歴もクリップボードも記録しません</string>
-    <string name="privacy_offline">オフラインでも入力できます。Kotomo にはインターネットを使う権限がありません。</string>
+    <string name="privacy_offline">オフラインでも入力できます。入力した内容がネットワークで送信されることはありません。</string>
     <string name="privacy_local">入力した内容はこの端末から出ません。分析、広告、クラッシュレポートの送信はありません。</string>
     <string name="privacy_sensitive">パスワード欄、学習しないよう求める入力欄、シークレットモードでは、Kotomo は何も学習せず、履歴も残しません。</string>
     <string name="privacy_diagnostics">診断が記録するのは時間とメモリ使用量だけで、入力した内容は記録しません。</string>

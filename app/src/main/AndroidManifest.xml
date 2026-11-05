@@ -20,6 +20,15 @@
             </intent-filter>
         </activity>
 
+        <!-- The AI writing help: its own task, so closing it returns to the app being typed in. -->
+        <activity
+            android:name=".ai.AiActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:label="@string/ai_title"
+            android:taskAffinity=""
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
         <service
             android:name=".ime.KotomoService"
             android:exported="true"

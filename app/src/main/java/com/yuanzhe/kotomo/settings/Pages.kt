@@ -339,6 +339,24 @@ internal fun PrivacyPage(settings: Settings, store: SettingsStore) {
     }
 }
 
+/**
+ * Draws the AI page: the switch that lets the keyboard's AI button work (off by default) and what
+ * it does and never does.
+ */
+@Composable
+internal fun AiPage(settings: Settings, store: SettingsStore) {
+    Section(null) {
+        SwitchRow(R.string.ai_enable, R.string.ai_enable_desc, settings.ai.enabled) { on -> store.set { it.copy(ai = it.ai.copy(enabled = on)) } }
+    }
+    Section(null) {
+        Inset {
+            listOf(R.string.ai_note_how, R.string.ai_note_device, R.string.ai_note_fields, R.string.ai_note_languages).forEach {
+                Text(stringResource(it), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
 /** The clipboard retentions the Privacy page offers, in days. */
 private val RETENTION_CHOICES = listOf(1, 7, 30)
 

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The AI writing help screen. -->
+    <string name="ai_title">Writing help</string>
+    <string name="ai_original">Your text</string>
+    <string name="ai_language">Language</string>
+    <string name="ai_lang_english">English</string>
+    <string name="ai_lang_japanese">日本語</string>
+    <string name="ai_action">What to do</string>
+    <string name="ai_action_proofread">Proofread</string>
+    <string name="ai_action_rephrase">Rephrase</string>
+    <string name="ai_action_professional">More formal</string>
+    <string name="ai_action_friendly">Friendlier</string>
+    <string name="ai_action_elaborate">Longer</string>
+    <string name="ai_action_shorten">Shorter</string>
+    <string name="ai_pick">Choose what to do. Nothing runs until you do.</string>
+    <string name="ai_working">Working on it…</string>
+    <string name="ai_download_desc">This needs a Gemini Nano model on your device. Android downloads it from Google; your text is not sent and stays on this device.</string>
+    <string name="ai_download">Download</string>
+    <string name="ai_downloading">Downloading the model…</string>
+    <string name="ai_suggestions">Suggestions</string>
+    <string name="ai_no_change">Nothing to change.</string>
+    <string name="ai_replace">Replace</string>
+    <string name="ai_copy">Copy</string>
+    <string name="ai_copied">Copied</string>
+    <string name="ai_cancel">Cancel</string>
+    <string name="ai_retry">Try again</string>
+    <string name="ai_footer">Runs on this device with Gemini Nano. Your text replaces nothing until you tap Replace, and the keyboard offers Undo afterwards.</string>
+    <string name="ai_fail_unavailable">Gemini Nano is not available on this device. Every typing feature still works.</string>
+    <string name="ai_fail_background">AI runs only while this screen is open.</string>
+    <string name="ai_fail_busy">The AI is busy. Try again in a moment.</string>
+    <string name="ai_fail_quota">Android paused AI for Kotomo to save battery. Try again later.</string>
+    <string name="ai_fail_too_long">This text is too long. Select a shorter part.</string>
+    <string name="ai_fail_filtered">The AI did not work on this text.</string>
+    <string name="ai_fail_failed">Something went wrong. Try again.</string>
+
+    <!-- Keyboard notices for the AI button. -->
+    <string name="ai_off_notice">Turn on writing help in Kotomo settings</string>
+    <string name="ai_not_here">Writing help is off in this field</string>
+    <string name="ai_empty">Type or select some text first</string>
+    <string name="ai_select_shorter">Select a shorter part</string>
+    <string name="ai_chinese">Writing help works in English and Japanese</string>
+    <string name="ai_replaced">Replaced</string>
+    <string name="ai_undo">↶ Undo</string>
+    <string name="ai_undone">Restored</string>
+    <string name="ai_changed_copied">The text changed, so the suggestion was copied</string>
+
+    <!-- Settings: the AI page. -->
+    <string name="page_ai">Writing help</string>
+    <string name="page_ai_desc_on">On · proofreading and rewriting on this device</string>
+    <string name="page_ai_desc_off">Off · proofreading and rewriting with Gemini Nano</string>
+    <string name="badge_ai">AI</string>
+    <string name="ai_enable">Writing help</string>
+    <string name="ai_enable_desc">Lets the keyboard\'s AI button proofread and rewrite what you typed</string>
+    <string name="ai_note_how">Tap the AI button to work on the selected text, or the whole field. You see the suggestions first; your text changes only when you tap Replace, and Undo restores it.</string>
+    <string name="ai_note_device">It runs on this device with Gemini Nano through Android\'s AICore. Kotomo sends your text nowhere. Devices without Gemini Nano keep every typing feature.</string>
+    <string name="ai_note_fields">Writing help never runs in password fields, in fields that ask not to be learned from, or in incognito mode.</string>
+    <string name="ai_note_languages">It works in English and Japanese. Chinese is not supported yet.</string>
+</resources>

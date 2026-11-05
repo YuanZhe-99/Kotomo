@@ -6,9 +6,10 @@ those (AGENTS.md, "Documentation maintenance").
 
 ## In short
 
-- Typing works offline. This version has no internet permission. When downloadable dictionaries
-  arrive, the network will be used only for downloads you start, disclosed before the first one,
-  and never to send what you type.
+- Typing works offline, and what you type is never sent over the network. The app holds the
+  internet permission, which the ML Kit library for on-device AI declares; Kotomo itself uses the
+  network only for downloads you start (downloadable dictionaries, when they arrive), disclosed
+  before the first one.
 - What you type stays on your device. Kotomo has no analytics, no advertising, no crash upload and
   no account.
 - In password fields, in fields that ask not to be learned from, and in incognito mode, Kotomo
@@ -26,6 +27,7 @@ and device-to-device transfer are turned off for it.
 | Clipboard history: what you copy while Kotomo is the keyboard, encrypted with a key kept in Android's keystore, removed after the retention you set (7 days by default) unless you pin it; can be turned off and cleared in the settings | Pasting it back from the keyboard, and the quick-paste strip for something just copied (60 s) | Password fields, fields that ask not to be learned from, incognito mode, clips that apps mark sensitive |
 | Recently used emoji (up to 32) | The Recents group of the emoji panel | Sensitive fields, incognito mode |
 | The last input mode used in each app (the app's package name and the mode only) | The keyboard comes back in that mode | Sensitive fields, incognito mode |
+| Writing help (off by default): the text you hand to it, held in memory only while its screen is open; runs on the device with Gemini Nano, and Android's AICore downloads the model from Google when you tap Download | Proofreading and rewriting you ask for | Never stored or logged; never in sensitive fields or incognito mode |
 | Diagnostics: timings of key presses and drawing, memory use, the state of the dictionaries | The Diagnostics page, to find problems | Never what you type |
 
 Japanese conversion (Mozc) and English suggestions do not learn from what you type.
@@ -49,8 +51,8 @@ above.
 
 ## Features that are not there yet
 
-On-device AI (Gemini Nano), translation, downloadable (online) dictionaries and
-sync are planned; online dictionaries will add the internet permission. Each will be described here, and disclosed in the app before its first use, in the same
+Translation, downloadable (online) dictionaries and
+sync are planned. Each will be described here, and disclosed in the app before its first use, in the same
 change that adds it; none of them will send what you type anywhere without your explicit choice.
 
 ## Contact

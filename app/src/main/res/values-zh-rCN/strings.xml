@@ -181,7 +181,7 @@
     <string name="dictionaries_later">词库管理与导入将在之后的版本中提供。Kotomo 使用应用内置的词库，不下载任何内容。</string>
     <string name="incognito_title">无痕模式</string>
     <string name="incognito_desc">不学习、不记录历史与剪贴板</string>
-    <string name="privacy_offline">离线也能输入。Kotomo 没有使用网络的权限。</string>
+    <string name="privacy_offline">离线也能输入。你输入的内容从不经网络发送。</string>
     <string name="privacy_local">你输入的内容留在本机。没有统计分析、没有广告，也不上传崩溃信息。</string>
     <string name="privacy_sensitive">在密码框、要求不学习的输入框和无痕模式下，Kotomo 不学习，也不记录历史。</string>
     <string name="privacy_diagnostics">诊断只记录耗时和内存使用，从不记录你输入的内容。</string>

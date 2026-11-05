@@ -96,6 +96,7 @@ internal enum class Page(@StringRes val title: Int) {
     KEYS(R.string.page_keys),
     THEMES(R.string.page_themes),
     DICTIONARIES(R.string.page_dictionaries),
+    AI(R.string.page_ai),
     PRIVACY(R.string.page_privacy),
     DIAGNOSTICS(R.string.diag_title),
     ABOUT(R.string.page_about),
@@ -175,6 +176,7 @@ private fun PageContent(page: Page, settings: Settings, store: SettingsStore, op
         Page.KEYS -> KeysPage(settings, store)
         Page.THEMES -> ThemesPage(settings, store)
         Page.DICTIONARIES -> NotePage(R.string.dictionaries_later)
+        Page.AI -> AiPage(settings, store)
         Page.PRIVACY -> PrivacyPage(settings, store)
         Page.DIAGNOSTICS -> DiagnosticsPage()
         Page.ABOUT -> AboutPage(open)
@@ -246,6 +248,7 @@ private fun HomePage(settings: Settings, store: SettingsStore, open: (Page) -> U
     }
     Group(stringResource(R.string.section_data)) {
         LinkRow(stringResource(R.string.badge_dictionaries), Page.DICTIONARIES, stringResource(R.string.page_dictionaries_desc), open)
+        LinkRow(stringResource(R.string.badge_ai), Page.AI, stringResource(if (settings.ai.enabled) R.string.page_ai_desc_on else R.string.page_ai_desc_off), open)
         LinkRow(stringResource(R.string.badge_diagnostics), Page.DIAGNOSTICS, stringResource(R.string.page_diagnostics_desc), open, last = true)
     }
     Group(stringResource(R.string.section_privacy)) {
@@ -384,7 +387,7 @@ private fun LinkRow(badge: String, page: Page, desc: String, open: (Page) -> Uni
  * settings surfaces.
  */
 @Composable
-private fun KotomoTheme(content: @Composable () -> Unit) {
+internal fun KotomoTheme(content: @Composable () -> Unit) {
     val accent = colorResource(R.color.kb_accent)
     val onAccent = colorResource(R.color.kb_on_accent)
     val container = colorResource(R.color.kb_accent_container)

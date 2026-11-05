@@ -42,4 +42,6 @@ side effects and notes where non-trivial).
 | `core/rime/tools/prebuild.cc`, `scripts/prebuild-rime.sh` | Compile librime's data on a Linux host into the shared data the APK ships | `main` |
 | `scripts/fetch-mozc.sh` | Fetches the Mozc libraries and data built by mozc.yml, pinned by run and SHA-256 in build-lock.json | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | The toolbar's quick settings in the keyboard's place: one-handed side, split layout, Simplified/Traditional, incognito, settings app | `QuickPanel` |
+| `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | Gemini Nano proofreading and rewriting through ML Kit GenAI ([ai.md](../ai.md)): status, user-started download, splitting long text, error mapping | `GenAi`, `AiAction`, `AiFailure` |
+| `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`, `AiHandoff.kt` | The writing-help screen (language, action, suggestions, Replace, Copy) and the in-memory hand-off between it and the keyboard | `AiActivity`, `AiHandoff`, `AiRequest` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardColors.kt` | The keyboard's palette for the chosen theme (system, light, dark, Material You) for views and Compose panels | `apply`, `color`, `kbColor` |

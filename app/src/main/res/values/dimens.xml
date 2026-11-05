@@ -148,4 +148,6 @@
     <dimen name="settings_nav_item">52dp</dimen>
     <dimen name="settings_detail_pad">40dp</dimen>
     <dimen name="settings_columns_min">600dp</dimen>
+    <!-- The outline of the chosen AI suggestion. -->
+    <dimen name="ai_selected_border">2dp</dimen>
 </resources>

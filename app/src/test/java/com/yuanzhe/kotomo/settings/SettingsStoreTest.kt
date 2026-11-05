@@ -65,6 +65,7 @@ class SettingsStoreTest {
         keyHints = false,
         incognito = true,
         clipboard = ClipboardSettings(history = false, retentionDays = 30, quickPaste = false),
+        ai = AiSettings(enabled = true),
     )
 
     @Test
@@ -76,6 +77,8 @@ class SettingsStoreTest {
         assertEquals(CrossLanguage(), s.japanese)
         assertFalse(s.incognito)
         assertEquals(ClipboardSettings(history = true, retentionDays = 7, quickPaste = true), s.clipboard)
+        // The behavior contract: AI is off until the person turns it on (PLAN §11).
+        assertFalse(s.ai.enabled)
     }
 
     @Test

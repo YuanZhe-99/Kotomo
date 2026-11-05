@@ -195,7 +195,7 @@
     <string name="dictionaries_later">Managing and importing dictionaries arrives in a later version. Kotomo uses the dictionaries built into the app and downloads nothing.</string>
     <string name="incognito_title">Incognito mode</string>
     <string name="incognito_desc">No learning, no history, no clipboard recording</string>
-    <string name="privacy_offline">Typing works offline. Kotomo has no permission to use the internet.</string>
+    <string name="privacy_offline">Typing works offline. Nothing you type is ever sent over the network.</string>
     <string name="privacy_local">What you type stays on this device. There is no analytics, no advertising and no crash upload.</string>
     <string name="privacy_sensitive">In password fields, in fields that ask not to be learned from and in incognito mode, Kotomo learns nothing and keeps no history.</string>
     <string name="privacy_diagnostics">Diagnostics keep only timings and memory use, never what you type.</string>

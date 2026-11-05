@@ -19,6 +19,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
+import android.content.ClipData
+import com.yuanzhe.kotomo.ai.AiActivity
+import com.yuanzhe.kotomo.ai.AiHandoff
+import com.yuanzhe.kotomo.ai.AiLanguage
+import com.yuanzhe.kotomo.ai.AiRequest
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.yuanzhe.kotomo.settings.MainActivity
@@ -116,6 +122,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var rimeOpen = false
     /** Main thread: a toolbar notice shown for a moment, or null. */
     private var notice: String? = null
+    /** Main thread: the last AI replacement, offered as Undo until the next key, or null. */
+    private var aiUndo: AiUndo? = null
 
     private val composing = StringBuilder()
     private var candidates = emptyList<String>()
@@ -490,8 +498,100 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             Tool.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Tool.MORE -> toggleQuickPanel()
             Tool.CLIPBOARD -> showClipboard()
-            Tool.AI, Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
+            Tool.AI -> startAi()
+            Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
         }
+    }
+
+    /**
+     * Hands the selected text, or the whole field when nothing is selected, to the AI screen.
+     * Side effects: commits the composition; starts [AiActivity] in its own task.
+     * Notes: refuses (with a notice) while AI is off, in direct fields (the behavior contract's
+     * sensitive fields among them) and in incognito mode; Chinese-only text is refused because
+     * Gemini Nano's writing tools do not take Chinese (PLAN §11.1).
+     */
+    private fun startAi() {
+        val info = currentInputEditorInfo
+        when {
+            !settings.ai.enabled -> return showNotice(getString(R.string.ai_off_notice))
+            info == null || direct || settings.incognito -> return showNotice(getString(R.string.ai_not_here))
+        }
+        commitComposition()
+        val ic = currentInputConnection ?: return
+        val extracted = ic.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = AI_MAX_CHARS + 1 }, 0)
+            ?: return showNotice(getString(R.string.ai_not_here))
+        val all = extracted.text?.toString().orEmpty()
+        val selStart = minOf(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, all.length)
+        val selEnd = maxOf(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, all.length)
+        val (from, to) = when {
+            selEnd > selStart -> selStart to selEnd
+            extracted.startOffset == 0 && all.length <= AI_MAX_CHARS -> 0 to all.length
+            else -> return showNotice(getString(R.string.ai_select_shorter))
+        }
+        val text = all.substring(from, to)
+        when {
+            text.isBlank() -> return showNotice(getString(R.string.ai_empty))
+            text.length > AI_MAX_CHARS -> return showNotice(getString(R.string.ai_select_shorter))
+        }
+        val kana = text.any { it in '\u3040'..'\u30ff' }
+        val latin = text.any { it in 'a'..'z' || it in 'A'..'Z' }
+        val han = text.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.HAN }
+        val language = when {
+            kana || (mode == Mode.JAPANESE && !latin) -> AiLanguage.JAPANESE
+            han && !latin -> return showNotice(getString(R.string.ai_chinese))
+            else -> AiLanguage.ENGLISH
+        }
+        AiHandoff.begin(
+            AiRequest(info.packageName.orEmpty(), info.fieldId, text, extracted.startOffset + from, extracted.startOffset + to, language),
+        )
+        startActivity(Intent(this, AiActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /**
+     * Puts the suggestion the person confirmed in the AI screen into the field it came from.
+     * Side effects: replaces the original range and offers Undo; when the field is another one or
+     * its text changed meanwhile, copies the suggestion to the clipboard instead and says so.
+     */
+    private fun applyAiResult(info: EditorInfo) {
+        val (request, result) = AiHandoff.take() ?: return
+        val ic = currentInputConnection ?: return
+        val same = info.packageName == request.app && info.fieldId == request.fieldId &&
+            textAt(request.start, request.end) == request.text
+        if (!same) {
+            clipboard.setPrimaryClip(ClipData.newPlainText(null, result))
+            return showNotice(getString(R.string.ai_changed_copied))
+        }
+        ic.beginBatchEdit()
+        ic.setSelection(request.start, request.end)
+        ic.commitText(result, 1)
+        ic.endBatchEdit()
+        previousWord = null
+        aiUndo = AiUndo(request.start, request.start + result.length, request.text, result)
+        showNotice(getString(R.string.ai_replaced))
+    }
+
+    /** Restores the text an AI replacement took away, if the replacement is still there unchanged. */
+    private fun undoAi(undo: AiUndo) {
+        aiUndo = null
+        val ic = currentInputConnection ?: return
+        if (textAt(undo.start, undo.end) == undo.replacement) {
+            ic.beginBatchEdit()
+            ic.setSelection(undo.start, undo.end)
+            ic.commitText(undo.original, 1)
+            ic.endBatchEdit()
+            showNotice(getString(R.string.ai_undone))
+        } else {
+            refresh(0)
+        }
+    }
+
+    /** Reads the field's text between absolute offsets [start] and [end], or null if out of reach. */
+    private fun textAt(start: Int, end: Int): String? {
+        val extracted = currentInputConnection?.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = end + 1 }, 0) ?: return null
+        val text = extracted.text?.toString() ?: return null
+        val from = start - extracted.startOffset
+        val to = end - extracted.startOffset
+        return if (from >= 0 && to <= text.length && from <= to) text.substring(from, to) else null
     }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
@@ -514,9 +614,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         applyEngineSettings()
         showKeyboard()
         updateAutoCaps()
+        aiUndo = null
         refresh(0)
         // Clips copied while the keyboard was away; the clip's timestamp makes a seen one a no-op.
         onClip()
+        // Back from the AI screen with a confirmed suggestion; after the field's connection settles.
+        main.post { applyAiResult(info) }
     }
 
     override fun onWindowShown() {
@@ -570,6 +673,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     private fun onKey(action: KeyAction, longPress: Boolean, downTime: Long) {
         val ic = currentInputConnection ?: return
+        aiUndo = null
         if (action is KeyAction.SetMode) {
             commitComposition()
             previousWord = null
@@ -778,6 +882,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Side effects: in English mode also types a space and asks for next-word predictions.
      */
     private fun pick(index: Int) {
+        aiUndo?.let { return undoAi(it) }
         if (usesRime && !direct) {
             val rimeIndex = rimeIndexes.getOrElse(index) { index }
             if (rimeIndex < 0) {
@@ -865,6 +970,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val gen = ++generation
         candidates = when {
             direct -> emptyList()
+            aiUndo != null && raw.isEmpty() && chinesePreedit.isEmpty() -> listOf(getString(R.string.ai_undo))
             usesRime -> chineseCandidates
             mode == Mode.ENGLISH -> if (raw.isEmpty()) emptyList() else listOf(raw)
             mode == Mode.JAPANESE -> if (raw.isEmpty()) emptyList() else listOf(raw)
@@ -1023,6 +1129,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val ENGLISH_DICT = "main_en_us.dict"
         const val MOZC_DATA = "mozc.data"
         const val NOTICE_MS = 1500L
+        /** The most text handed to the AI screen at once. */
+        const val AI_MAX_CHARS = 2000
         const val EMOJI_SUGGESTIONS = 3
         const val EMOJI_POSITION = 2
         const val CHINESE_CANDIDATES = 30
@@ -1057,3 +1165,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
     }
 }
+
+/** One AI replacement that Undo can take back: the range it now fills and both texts. */
+private data class AiUndo(val start: Int, val end: Int, val original: String, val replacement: String)

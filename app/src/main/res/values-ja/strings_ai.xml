@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_title">文章アシスト</string>
+    <string name="ai_original">入力した文章</string>
+    <string name="ai_language">言語</string>
+    <string name="ai_lang_english">English</string>
+    <string name="ai_lang_japanese">日本語</string>
+    <string name="ai_action">操作</string>
+    <string name="ai_action_proofread">校正</string>
+    <string name="ai_action_rephrase">言い換え</string>
+    <string name="ai_action_professional">丁寧に</string>
+    <string name="ai_action_friendly">親しみやすく</string>
+    <string name="ai_action_elaborate">詳しく</string>
+    <string name="ai_action_shorten">短く</string>
+    <string name="ai_pick">操作を選んでください。選ぶまで何も実行されません。</string>
+    <string name="ai_working">処理中…</string>
+    <string name="ai_download_desc">端末上の Gemini Nano モデルが必要です。Android が Google からダウンロードします。文章は送信されず、この端末に残ります。</string>
+    <string name="ai_download">ダウンロード</string>
+    <string name="ai_downloading">モデルをダウンロード中…</string>
+    <string name="ai_suggestions">候補</string>
+    <string name="ai_no_change">直すところはありません。</string>
+    <string name="ai_replace">置き換え</string>
+    <string name="ai_copy">コピー</string>
+    <string name="ai_copied">コピーしました</string>
+    <string name="ai_cancel">キャンセル</string>
+    <string name="ai_retry">再試行</string>
+    <string name="ai_footer">Gemini Nano でこの端末上で実行します。「置き換え」をタップするまで文章は変わらず、置き換え後はキーボードで元に戻せます。</string>
+    <string name="ai_fail_unavailable">この端末では Gemini Nano を使えません。入力機能はすべてそのまま使えます。</string>
+    <string name="ai_fail_background">AI はこの画面を開いている間だけ動きます。</string>
+    <string name="ai_fail_busy">AI が混み合っています。少し待ってから再試行してください。</string>
+    <string name="ai_fail_quota">電池節約のため Android が Kotomo の AI を一時停止しました。あとで再試行してください。</string>
+    <string name="ai_fail_too_long">文章が長すぎます。短い部分を選んでください。</string>
+    <string name="ai_fail_filtered">AI はこの文章を処理しませんでした。</string>
+    <string name="ai_fail_failed">問題が発生しました。再試行してください。</string>
+
+    <string name="ai_off_notice">Kotomo の設定で文章アシストをオンにしてください</string>
+    <string name="ai_not_here">この入力欄では文章アシストはオフです</string>
+    <string name="ai_empty">先に文章を入力するか選択してください</string>
+    <string name="ai_select_shorter">短い部分を選択してください</string>
+    <string name="ai_chinese">文章アシストは英語と日本語に対応しています</string>
+    <string name="ai_replaced">置き換えました</string>
+    <string name="ai_undo">↶ 元に戻す</string>
+    <string name="ai_undone">元に戻しました</string>
+    <string name="ai_changed_copied">文章が変わっていたため、候補をコピーしました</string>
+
+    <string name="page_ai">文章アシスト</string>
+    <string name="page_ai_desc_on">オン · この端末で校正と書き換え</string>
+    <string name="page_ai_desc_off">オフ · Gemini Nano で校正と書き換え</string>
+    <string name="badge_ai">AI</string>
+    <string name="ai_enable">文章アシスト</string>
+    <string name="ai_enable_desc">キーボードの AI ボタンで入力した文章を校正・書き換えできるようにします</string>
+    <string name="ai_note_how">AI ボタンをタップすると、選択した文章（選択がなければ入力欄全体）を処理します。先に候補を表示し、「置き換え」をタップしたときだけ文章が変わります。元に戻すこともできます。</string>
+    <string name="ai_note_device">Android の AICore を通じて Gemini Nano でこの端末上で実行します。Kotomo は文章をどこにも送りません。Gemini Nano のない端末でも入力機能はすべて使えます。</string>
+    <string name="ai_note_fields">パスワード欄、学習しないよう求める入力欄、シークレットモードでは文章アシストは動きません。</string>
+    <string name="ai_note_languages">英語と日本語に対応しています。中国語にはまだ対応していません。</string>
+</resources>

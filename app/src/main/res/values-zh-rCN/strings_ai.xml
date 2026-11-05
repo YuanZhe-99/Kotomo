@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_title">写作助手</string>
+    <string name="ai_original">你的文字</string>
+    <string name="ai_language">语言</string>
+    <string name="ai_lang_english">English</string>
+    <string name="ai_lang_japanese">日本語</string>
+    <string name="ai_action">要做什么</string>
+    <string name="ai_action_proofread">校对</string>
+    <string name="ai_action_rephrase">换个说法</string>
+    <string name="ai_action_professional">更正式</string>
+    <string name="ai_action_friendly">更亲切</string>
+    <string name="ai_action_elaborate">更详细</string>
+    <string name="ai_action_shorten">更简短</string>
+    <string name="ai_pick">选择要做的事。在你选择之前不会运行。</string>
+    <string name="ai_working">正在处理…</string>
+    <string name="ai_download_desc">这需要设备上的 Gemini Nano 模型，由 Android 从 Google 下载；你的文字不会被发送，始终留在本机。</string>
+    <string name="ai_download">下载</string>
+    <string name="ai_downloading">正在下载模型…</string>
+    <string name="ai_suggestions">建议</string>
+    <string name="ai_no_change">无需修改。</string>
+    <string name="ai_replace">替换</string>
+    <string name="ai_copy">复制</string>
+    <string name="ai_copied">已复制</string>
+    <string name="ai_cancel">取消</string>
+    <string name="ai_retry">重试</string>
+    <string name="ai_footer">通过 Gemini Nano 在本机运行。点按“替换”之前不会改动你的文字，替换后键盘提供撤销。</string>
+    <string name="ai_fail_unavailable">此设备不支持 Gemini Nano。所有输入功能照常可用。</string>
+    <string name="ai_fail_background">AI 只在此页面打开时运行。</string>
+    <string name="ai_fail_busy">AI 正忙，请稍后再试。</string>
+    <string name="ai_fail_quota">Android 为省电暂停了 Kotomo 的 AI，请稍后再试。</string>
+    <string name="ai_fail_too_long">文字太长，请选择较短的一段。</string>
+    <string name="ai_fail_filtered">AI 未处理这段文字。</string>
+    <string name="ai_fail_failed">出了点问题，请重试。</string>
+
+    <string name="ai_off_notice">请先在 Kotomo 设置中开启写作助手</string>
+    <string name="ai_not_here">此输入框中写作助手已关闭</string>
+    <string name="ai_empty">请先输入或选择一些文字</string>
+    <string name="ai_select_shorter">请选择较短的一段</string>
+    <string name="ai_chinese">写作助手支持英语和日语</string>
+    <string name="ai_replaced">已替换</string>
+    <string name="ai_undo">↶ 撤销</string>
+    <string name="ai_undone">已恢复</string>
+    <string name="ai_changed_copied">文字已改动，建议已复制到剪贴板</string>
+
+    <string name="page_ai">写作助手</string>
+    <string name="page_ai_desc_on">已开启 · 在本机校对和改写</string>
+    <string name="page_ai_desc_off">已关闭 · 用 Gemini Nano 校对和改写</string>
+    <string name="badge_ai">AI</string>
+    <string name="ai_enable">写作助手</string>
+    <string name="ai_enable_desc">允许键盘的 AI 按钮校对和改写你输入的文字</string>
+    <string name="ai_note_how">点按 AI 按钮处理选中的文字，未选中时处理整个输入框。先显示建议；只有点按“替换”才会改动文字，撤销可恢复原文。</string>
+    <string name="ai_note_device">通过 Android 的 AICore 用 Gemini Nano 在本机运行。Kotomo 不会把你的文字发往任何地方。没有 Gemini Nano 的设备保留所有输入功能。</string>
+    <string name="ai_note_fields">写作助手不会在密码框、要求不学习的输入框或无痕模式中运行。</string>
+    <string name="ai_note_languages">支持英语和日语，暂不支持中文。</string>
+</resources>
