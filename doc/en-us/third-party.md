@@ -2,8 +2,9 @@
 
 Kotomo is licensed under GPL-3.0. This inventory lists every upstream it reuses or embeds — code,
 dictionary data, emoji assets and fonts — what it uses and what that obliges.
-`THIRD_PARTY_NOTICES.md` holds the notices themselves; the in-app licenses page lists the same
-components.
+`THIRD_PARTY_NOTICES.md` holds the notices themselves; the settings app's About and
+acknowledgements lists the same components (code on its open-source licenses page, dictionary data
+with its authors on its data sources page) and the design references below.
 
 ## Inventory
 
@@ -27,6 +28,7 @@ components.
 | rime-luna-pinyin, rime-prelude, rime-essay, rime-stroke | `rime/*` at `56b934b0`, `082425ea`, `054920de`, `1e8fff9b` | pinyin schema, dictionary, defaults, language model and stroke lookup | LGPL-3.0 | none; Kotomo adds `default.custom.yaml` and the schema `luna_pinyin_simp_private` | ship the LGPL-3.0 and GPL-3.0 texts and provide the data source |
 | Mozc | `google/mozc` 3.35.6354 (`0136c357`), submodule `third_party/mozc` | Japanese conversion (`libkotomo_mozc.so` and `mozc.data`, S3; not in the app yet) | BSD-3-Clause; dictionary data under the NAIST IPAdic notice with the ICOT terms, a public-domain Okinawa dictionary and Google's additions | none; Kotomo's glue is separate (`core/mozc`) | ship Mozc's LICENSE in full, including the NAIST notice and the ICOT "NO WARRANTY" section |
 | japanese-usage-dictionary, Abseil, Protocol Buffers | fetched by Mozc's Bazel build (usage dictionary 2025-01-25, abseil-cpp 20260107.1, protobuf 34.1) | compiled into `mozc.data` and `libkotomo_mozc.so` | BSD-2-Clause; Apache-2.0; BSD-3-Clause | none | notices and license texts |
+| AndroidX (Compose, Material 3, Activity, Lifecycle, Core, SavedState, DataStore), the Kotlin standard library, kotlinx.coroutines, okio | Google Maven and Maven Central at the versions in `gradle/libs.versions.toml` (Compose BOM 2026.09.00, DataStore 1.3.0, Kotlin 2.4.21) | the settings app, the keyboard's Compose panels, the settings file | Apache-2.0 | none | ship the Apache-2.0 license text |
 
 ## Planned components
 

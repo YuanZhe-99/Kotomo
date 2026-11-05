@@ -16,7 +16,6 @@
     <string name="setup_select_action">Choose keyboard</string>
     <string name="setup_done">Done</string>
     <string name="try_title">Try it</string>
-    <string name="try_hint">Type here</string>
     <string name="try_password_hint">Password field (nothing is learned here)</string>
 
     <string name="diag_title">Diagnostics</string>
@@ -54,4 +53,197 @@
     <string name="popup_half_width" translatable="false">半</string>
     <string name="diag_rime_prebuilt">Prebuilt · %1$d ms to unpack</string>
     <string name="diag_rime_check">Chinese engine check</string>
+
+    <!-- Settings app -->
+    <string name="nav_back">Back</string>
+    <string name="home_ready">Kotomo is on</string>
+    <string name="home_ready_note">Current keyboard · everything you type is processed on this device</string>
+    <string name="try_example">For example: chidai ni kai ni ikou</string>
+    <string name="section_input">Input</string>
+    <string name="section_keyboard">Keyboard</string>
+    <string name="section_data">Dictionaries and data</string>
+    <string name="section_privacy">Privacy</string>
+
+    <string name="page_setup">Set up and try</string>
+    <string name="page_modes">Input modes</string>
+    <string name="page_modes_desc">Chinese, English, Japanese and Mixed · the mode to start in</string>
+    <string name="page_mixed">Mixed mode</string>
+    <string name="page_mixed_desc">%1$s · cross-language conversion and language weights</string>
+    <string name="page_chinese">Chinese</string>
+    <string name="page_chinese_desc">Simplified or Traditional characters</string>
+    <string name="page_japanese">Japanese</string>
+    <string name="page_japanese_desc">Romaji · pinyin and English to Japanese · readings</string>
+    <string name="page_english">English</string>
+    <string name="page_english_desc">Suggestions · auto-capitalization</string>
+    <string name="page_layout">Layout and size</string>
+    <string name="page_layout_desc">Height · one-handed mode · tablets and foldables</string>
+    <string name="page_keys">Keys and gestures</string>
+    <string name="page_keys_desc">Long-press symbols · key hints · vibration</string>
+    <string name="page_themes">Themes</string>
+    <string name="page_themes_desc">Light and dark follow the system</string>
+    <string name="page_dictionaries">Dictionaries</string>
+    <string name="page_dictionaries_desc">The dictionaries built into Kotomo</string>
+    <string name="page_privacy">Privacy</string>
+    <string name="page_privacy_desc">What Kotomo keeps, and what it never sends</string>
+    <string name="page_diagnostics_desc">Timings and memory measured on this device</string>
+    <string name="page_about">About and acknowledgements</string>
+    <string name="page_licenses">Open-source licenses</string>
+    <string name="page_sources">Data sources</string>
+    <string name="page_design">Design acknowledgements</string>
+    <!-- One-glyph badges in front of the settings rows. -->
+    <string name="badge_modes">M</string>
+    <string name="badge_layout">L</string>
+    <string name="badge_keys">K</string>
+    <string name="badge_themes">T</string>
+    <string name="badge_dictionaries">D</string>
+    <string name="badge_privacy">P</string>
+    <string name="badge_diagnostics">✓</string>
+
+    <string name="mode_mixed">Mixed</string>
+    <string name="mode_mixed_desc">Pinyin, English and romaji together, converted as one sentence</string>
+    <string name="mode_chinese">Chinese</string>
+    <string name="mode_chinese_desc">Pinyin first; English words stay as typed</string>
+    <string name="mode_japanese">Japanese</string>
+    <string name="mode_japanese_desc">Romaji first; pinyin and English can become Japanese</string>
+    <string name="mode_english">English</string>
+    <string name="mode_english_desc">English with suggestions and corrections</string>
+    <string name="modes_default">Start in</string>
+    <string name="modes_default_note">The mode the keyboard uses when it first opens. Switch with the language key.</string>
+
+    <string name="mixed_level">Level</string>
+    <string name="level_conservative">Conservative</string>
+    <string name="level_balanced">Balanced</string>
+    <string name="level_aggressive">Aggressive</string>
+    <string name="level_conservative_desc">The language you typed in always comes first; other languages follow.</string>
+    <string name="level_balanced_desc">The language you typed in comes first, then context and your habits adjust the order. Recommended.</string>
+    <string name="level_aggressive_desc">Japanese conversions and whole-sentence predictions come earlier. Suits mixed typing that is mostly Japanese.</string>
+    <string name="mixed_preview_input">Input %1$s</string>
+    <string name="mixed_weights">Candidate weights</string>
+    <string name="weight_chinese">Chinese</string>
+    <string name="weight_english">English</string>
+    <string name="weight_japanese">Japanese</string>
+    <string name="weight_emoji">Emoji</string>
+    <string name="mixed_cross">Cross-language conversion</string>
+    <string name="cross_pinyin_kanji">Pinyin → Japanese kanji</string>
+    <string name="cross_pinyin_kanji_desc">chidai → 池袋, with the Japanese reading on the candidate</string>
+    <string name="cross_pinyin_katakana">Pinyin → Japanese katakana</string>
+    <string name="cross_pinyin_katakana_desc">For loanwords and proper names</string>
+    <string name="cross_english_kanji">English → Japanese kanji</string>
+    <string name="cross_english_kanji_desc">school → 学校</string>
+    <string name="cross_english_katakana">English → Japanese katakana</string>
+    <string name="cross_english_katakana_desc">coffee → コーヒー</string>
+    <string name="cross_sentence">Mixed-language sentences</string>
+    <string name="cross_sentence_desc">zailiucard → 在留カード</string>
+    <string name="cross_readings">Readings on candidates</string>
+    <string name="cross_readings_desc">Show the reading under Japanese candidates</string>
+    <string name="cross_emoji">Emoji suggestions</string>
+    <string name="cross_emoji_desc">neko, mao, cat → 🐱</string>
+    <string name="mixed_space">Space key while typing</string>
+    <string name="space_separate">Insert a break, keep typing</string>
+    <string name="space_separate_desc">Type chidai ni kai ni ikou with spaces; Enter or a tap on a candidate commits it</string>
+    <string name="space_commit">Commit the first candidate</string>
+    <string name="space_commit_desc">As in most Chinese keyboards</string>
+
+    <string name="japanese_cross">Cross-language conversion in Japanese mode</string>
+    <string name="japanese_cross_note">These apply in Japanese mode. Mixed mode has its own switches.</string>
+
+    <string name="chinese_script">Characters</string>
+    <string name="script_simplified">Simplified</string>
+    <string name="script_traditional">Traditional</string>
+    <string name="chinese_script_note">Chinese candidates are offered in these characters.</string>
+
+    <string name="english_suggestions">Suggestions</string>
+    <string name="english_suggestions_desc">Corrections and next-word predictions in the candidate bar</string>
+    <string name="english_autocap">Auto-capitalize</string>
+    <string name="english_autocap_desc">A capital letter at the start of each sentence</string>
+
+    <string name="layout_large">Large screens and foldables</string>
+    <string name="split_title">Split keyboard</string>
+    <string name="split_auto">By screen width</string>
+    <string name="split_always">Always</string>
+    <string name="split_never">Never</string>
+    <string name="thumb_title">Thumb zone width (each half)</string>
+    <string name="thumb_note">The same in portrait and landscape; only the gap in the middle changes</string>
+    <string name="value_dp">%1$d dp</string>
+    <string name="tabletop_title">Move to the lower half when half-folded</string>
+    <string name="tabletop_desc">Keys never sit on the hinge</string>
+    <string name="layout_phone">Phones and keys</string>
+    <string name="one_handed_title">One-handed mode</string>
+    <string name="one_handed_off">Off</string>
+    <string name="one_handed_left">Left hand</string>
+    <string name="one_handed_right">Right hand</string>
+    <string name="height_title">Keyboard height</string>
+    <string name="value_percent">%1$d%%</string>
+
+    <string name="keys_long_press">Long-press for symbols</string>
+    <string name="keys_long_press_desc">Hold a key to type its number or symbol</string>
+    <string name="keys_hints">Key corner hints</string>
+    <string name="keys_hints_desc">Show the long-press symbol in each key\'s corner</string>
+    <string name="keys_haptics">Vibrate on key press</string>
+    <string name="keys_haptics_desc">A short vibration with each key</string>
+
+    <string name="themes_later">Themes arrive in a later version. For now the keyboard and the settings follow the system\'s light or dark setting.</string>
+    <string name="dictionaries_later">Managing and importing dictionaries arrives in a later version. Kotomo uses the dictionaries built into the app and downloads nothing.</string>
+
+    <string name="incognito_title">Incognito mode</string>
+    <string name="incognito_desc">No learning, no history, no clipboard recording</string>
+    <string name="privacy_offline">Typing works offline. Kotomo has no permission to use the internet.</string>
+    <string name="privacy_local">What you type stays on this device. There is no analytics, no advertising and no crash upload.</string>
+    <string name="privacy_sensitive">In password fields, in fields that ask not to be learned from and in incognito mode, Kotomo learns nothing and keeps no history.</string>
+    <string name="privacy_diagnostics">Diagnostics keep only timings and memory use, never what you type.</string>
+
+    <string name="about_license">Kotomo is free software under the GNU General Public License, version 3.</string>
+    <string name="about_licenses_desc">The code Kotomo is built from</string>
+    <string name="about_sources_desc">Dictionary data and its authors</string>
+    <string name="about_design_desc">Products whose interaction design inspired Kotomo</string>
+    <string name="licenses_note">Each component keeps its own license. Tap one to open its project page.</string>
+    <string name="license_open">Read the license</string>
+    <string name="sources_note">Dictionary data keeps the license of its source, and so does data derived from it.</string>
+    <string name="design_note">Kotomo is independent. It is not affiliated with, endorsed or authorized by any of these products, and uses none of their code, dictionaries, images or other material. They are credited for inspiring its interaction design.</string>
+    <string name="design_special">Special thanks</string>
+
+    <string name="use_librime">Chinese input engine</string>
+    <string name="use_leveldb">Storage for librime\'s user dictionary</string>
+    <string name="use_marisa">Compact dictionary indexes</string>
+    <string name="use_yaml">librime\'s configuration</string>
+    <string name="use_opencc">Conversion between Simplified and Traditional Chinese</string>
+    <string name="use_boost">Support code for librime</string>
+    <string name="use_latinime">English corrections and predictions</string>
+    <string name="use_dicttool">Builds the English dictionary (a build tool, not part of the app)</string>
+    <string name="use_mozc">Japanese conversion (in development, not in the app yet)</string>
+    <string name="use_mozc_deps">Used by Mozc\'s build</string>
+    <string name="use_androidx">The app\'s interface and runtime</string>
+    <string name="use_myapps">Documentation checks and conventions (same author as Kotomo)</string>
+    <string name="use_rime_data">Pinyin schema, dictionary and language model</string>
+    <string name="use_mozc_dict">Japanese words for the cross-language dictionary</string>
+    <string name="use_unihan">Character readings and variants</string>
+    <string name="use_cedict">Word readings for pinyin → Japanese</string>
+    <string name="use_shinjitai">Japanese character forms</string>
+    <string name="use_jmdict">English meanings for English → Japanese</string>
+    <string name="use_wordlist">English vocabulary and word pairs</string>
+    <string name="note_converted">Converted to LatinIME\'s binary dictionary format.</string>
+    <string name="note_build_input">Used when building Kotomo\'s cross-language dictionary.</string>
+
+    <string name="design_madamada">Madamada (玛嗒玛嗒)</string>
+    <string name="design_madamada_desc">Japanese kanji from Chinese pinyin and katakana from English; mixed continuous typing of pinyin, English and romaji; whole-sentence conversion; readings on candidates; verb conjugation and keigo; categorized Japanese dictionaries; the vocabulary book; city themes</string>
+    <string name="design_gboard">Gboard</string>
+    <string name="design_gboard_desc">Layouts, touch interaction, the candidate bar, multilingual input, emoji, gesture typing, text field adaptation</string>
+    <string name="design_mspinyin">Microsoft Pinyin</string>
+    <string name="design_mspinyin_desc">Fuzzy pinyin, long-sentence conversion, frequency learning, double pinyin, the U and V modes, pinyin correction</string>
+    <string name="design_sogou">Sogou Pinyin</string>
+    <string name="design_sogou_desc">Smart prediction, long-sentence input, key correction, dictionary management, user-made words, candidate actions, keyboard skins</string>
+    <string name="design_swiftkey">Microsoft SwiftKey</string>
+    <string name="design_swiftkey_desc">Personalized and multilingual prediction, English correction, smart spacing, the clipboard, gestures</string>
+    <string name="design_gji">Google Japanese Input and Mozc</string>
+    <string name="design_gji_desc">Romaji conversion, kana–kanji and long-sentence conversion, bunsetsu conversion, Japanese dictionaries and prediction</string>
+
+    <!-- Mixed-mode level previews: example candidate orders, in the languages they show. -->
+    <string name="preview_input_diannao" translatable="false">diannao</string>
+    <string name="preview_input_ai" translatable="false">ai</string>
+    <string-array name="preview_diannao_conservative" translatable="false"><item>电脑</item><item>電腦</item><item>计算机</item><item>コンピューター</item><item>💻</item></string-array>
+    <string-array name="preview_diannao_balanced" translatable="false"><item>电脑</item><item>電腦</item><item>コンピューター</item><item>计算机</item><item>💻</item></string-array>
+    <string-array name="preview_diannao_aggressive" translatable="false"><item>电脑</item><item>コンピューター</item><item>電腦</item><item>💻</item><item>计算机</item></string-array>
+    <string-array name="preview_ai_conservative" translatable="false"><item>爱</item><item>哎</item><item>AI</item><item>愛</item><item>あい</item></string-array>
+    <string-array name="preview_ai_balanced" translatable="false"><item>爱</item><item>AI</item><item>愛</item><item>あい</item></string-array>
+    <string-array name="preview_ai_aggressive" translatable="false"><item>爱</item><item>愛</item><item>あい</item><item>AI</item></string-array>
 </resources>

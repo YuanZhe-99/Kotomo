@@ -10,7 +10,6 @@
     <string name="setup_select_action">キーボードを選ぶ</string>
     <string name="setup_done">完了</string>
     <string name="try_title">試してみる</string>
-    <string name="try_hint">ここに入力</string>
     <string name="try_password_hint">パスワード欄（ここでは何も学習しません）</string>
 
     <string name="diag_title">診断</string>
@@ -41,4 +40,186 @@
     <string name="diag_rime_partial">%1$d ms · 失敗した手順：%2$s</string>
     <string name="diag_rime_prebuilt">ビルド済み · 展開 %1$d ms</string>
     <string name="diag_rime_check">中国語エンジンの自己診断</string>
+
+    <!-- 設定アプリ -->
+    <string name="nav_back">戻る</string>
+    <string name="home_ready">Kotomo はオンです</string>
+    <string name="home_ready_note">現在のキーボード · 入力はすべてこの端末で処理します</string>
+    <string name="try_example">例：chidai ni kai ni ikou</string>
+    <string name="section_input">入力</string>
+    <string name="section_keyboard">キーボード</string>
+    <string name="section_data">辞書とデータ</string>
+    <string name="section_privacy">プライバシー</string>
+
+    <string name="page_setup">設定と試し入力</string>
+    <string name="page_modes">入力モード</string>
+    <string name="page_modes_desc">中国語、英語、日本語、ミックス · 起動時のモード</string>
+    <string name="page_mixed">ミックスモード</string>
+    <string name="page_mixed_desc">%1$s · 言語をまたぐ変換と言語ごとの重み</string>
+    <string name="page_chinese">中国語</string>
+    <string name="page_chinese_desc">簡体字または繁体字</string>
+    <string name="page_japanese">日本語</string>
+    <string name="page_japanese_desc">ローマ字 · ピンインと英語から日本語 · 読み</string>
+    <string name="page_english">英語</string>
+    <string name="page_english_desc">候補の提案 · 自動大文字</string>
+    <string name="page_layout">レイアウトとサイズ</string>
+    <string name="page_layout_desc">高さ · 片手モード · タブレットと折りたたみ端末</string>
+    <string name="page_keys">キーとジェスチャー</string>
+    <string name="page_keys_desc">長押しで記号 · キーのヒント · バイブレーション</string>
+    <string name="page_themes">テーマ</string>
+    <string name="page_themes_desc">ライトとダークはシステムに従います</string>
+    <string name="page_dictionaries">辞書</string>
+    <string name="page_dictionaries_desc">Kotomo に組み込まれた辞書</string>
+    <string name="page_privacy">プライバシー</string>
+    <string name="page_privacy_desc">Kotomo が保存するもの、決して送信しないもの</string>
+    <string name="page_diagnostics_desc">この端末で測定した時間とメモリ</string>
+    <string name="page_about">情報と謝辞</string>
+    <string name="page_licenses">オープンソースライセンス</string>
+    <string name="page_sources">データの出典</string>
+    <string name="page_design">デザインの謝辞</string>
+    <string name="badge_modes">モ</string>
+    <string name="badge_layout">配</string>
+    <string name="badge_keys">キ</string>
+    <string name="badge_themes">色</string>
+    <string name="badge_dictionaries">辞</string>
+    <string name="badge_privacy">秘</string>
+    <string name="badge_diagnostics">診</string>
+
+    <string name="mode_mixed">ミックス</string>
+    <string name="mode_mixed_desc">ピンイン、英語、ローマ字をまとめて入力し、文全体を変換</string>
+    <string name="mode_chinese">中国語</string>
+    <string name="mode_chinese_desc">ピンイン優先、英単語は入力したまま残ります</string>
+    <string name="mode_japanese">日本語</string>
+    <string name="mode_japanese_desc">ローマ字優先、ピンインや英語からも日本語に変換できます</string>
+    <string name="mode_english">英語</string>
+    <string name="mode_english_desc">候補の提案と修正つきの英語入力</string>
+    <string name="modes_default">起動時のモード</string>
+    <string name="modes_default_note">キーボードを最初に開いたときのモードです。言語キーで切り替えます。</string>
+
+    <string name="mixed_level">変換の積極さ</string>
+    <string name="level_conservative">控えめ</string>
+    <string name="level_balanced">標準</string>
+    <string name="level_aggressive">積極的</string>
+    <string name="level_conservative_desc">入力した言語を常に優先し、ほかの言語の候補は後ろに並べます。</string>
+    <string name="level_balanced_desc">入力した言語を優先し、文脈と使い方に合わせて順序を調整します。おすすめ。</string>
+    <string name="level_aggressive_desc">日本語への変換と文全体の予測を早めに出します。日本語が中心のミックス入力向けです。</string>
+    <string name="mixed_preview_input">入力 %1$s</string>
+    <string name="mixed_weights">候補の重み</string>
+    <string name="weight_chinese">中国語</string>
+    <string name="weight_english">英語</string>
+    <string name="weight_japanese">日本語</string>
+    <string name="weight_emoji">絵文字</string>
+    <string name="mixed_cross">言語をまたぐ変換</string>
+    <string name="cross_pinyin_kanji">中国語ピンイン → 日本語の漢字</string>
+    <string name="cross_pinyin_kanji_desc">chidai → 池袋、候補に日本語の読みを表示</string>
+    <string name="cross_pinyin_katakana">中国語ピンイン → カタカナ</string>
+    <string name="cross_pinyin_katakana_desc">外来語や固有名詞に</string>
+    <string name="cross_english_kanji">英語 → 日本語の漢字</string>
+    <string name="cross_english_kanji_desc">school → 学校</string>
+    <string name="cross_english_katakana">英語 → カタカナ</string>
+    <string name="cross_english_katakana_desc">coffee → コーヒー</string>
+    <string name="cross_sentence">言語が混ざった文の変換</string>
+    <string name="cross_sentence_desc">zailiucard → 在留カード</string>
+    <string name="cross_readings">候補に読みを表示</string>
+    <string name="cross_readings_desc">日本語の候補の下に読みを表示します</string>
+    <string name="cross_emoji">絵文字の候補</string>
+    <string name="cross_emoji_desc">neko、mao、cat → 🐱</string>
+    <string name="mixed_space">入力中のスペースキー</string>
+    <string name="space_separate">区切りを入れて入力を続ける</string>
+    <string name="space_separate_desc">chidai ni kai ni ikou をスペース入りで続けて入力。Enter か候補のタップで確定</string>
+    <string name="space_commit">最初の候補で確定</string>
+    <string name="space_commit_desc">一般的な中国語入力と同じ</string>
+
+    <string name="japanese_cross">日本語モードでの言語をまたぐ変換</string>
+    <string name="japanese_cross_note">日本語モードで使う設定です。ミックスモードには別の設定があります。</string>
+
+    <string name="chinese_script">字体</string>
+    <string name="script_simplified">簡体字</string>
+    <string name="script_traditional">繁体字</string>
+    <string name="chinese_script_note">中国語の候補はこの字体で表示されます。</string>
+
+    <string name="english_suggestions">候補の提案</string>
+    <string name="english_suggestions_desc">候補バーに修正と次の単語の予測を表示</string>
+    <string name="english_autocap">自動大文字</string>
+    <string name="english_autocap_desc">文頭を大文字にします</string>
+
+    <string name="layout_large">大画面と折りたたみ端末</string>
+    <string name="split_title">分割キーボード</string>
+    <string name="split_auto">画面の幅による</string>
+    <string name="split_always">常に</string>
+    <string name="split_never">しない</string>
+    <string name="thumb_title">親指エリアの幅（片側）</string>
+    <string name="thumb_note">縦向きでも横向きでも同じで、変わるのは中央のすき間だけです</string>
+    <string name="value_dp">%1$d dp</string>
+    <string name="tabletop_title">半分折りたたんだときは下半分に移動</string>
+    <string name="tabletop_desc">キーがヒンジにかかりません</string>
+    <string name="layout_phone">スマートフォンとキー</string>
+    <string name="one_handed_title">片手モード</string>
+    <string name="one_handed_off">オフ</string>
+    <string name="one_handed_left">左手</string>
+    <string name="one_handed_right">右手</string>
+    <string name="height_title">キーボードの高さ</string>
+    <string name="value_percent">%1$d%%</string>
+
+    <string name="keys_long_press">長押しで記号を入力</string>
+    <string name="keys_long_press_desc">キーを長押しして数字や記号を入力します</string>
+    <string name="keys_hints">キーの角のヒント</string>
+    <string name="keys_hints_desc">長押しで入力できる記号をキーの角に表示します</string>
+    <string name="keys_haptics">キーを押したときのバイブレーション</string>
+    <string name="keys_haptics_desc">キーごとに短く振動します</string>
+
+    <string name="themes_later">テーマは今後のバージョンで追加されます。今はキーボードと設定がシステムのライト・ダーク設定に従います。</string>
+    <string name="dictionaries_later">辞書の管理と読み込みは今後のバージョンで追加されます。Kotomo はアプリに組み込まれた辞書を使い、何もダウンロードしません。</string>
+
+    <string name="incognito_title">シークレットモード</string>
+    <string name="incognito_desc">学習せず、履歴もクリップボードも記録しません</string>
+    <string name="privacy_offline">オフラインでも入力できます。Kotomo にはインターネットを使う権限がありません。</string>
+    <string name="privacy_local">入力した内容はこの端末から出ません。分析、広告、クラッシュレポートの送信はありません。</string>
+    <string name="privacy_sensitive">パスワード欄、学習しないよう求める入力欄、シークレットモードでは、Kotomo は何も学習せず、履歴も残しません。</string>
+    <string name="privacy_diagnostics">診断が記録するのは時間とメモリ使用量だけで、入力した内容は記録しません。</string>
+
+    <string name="about_license">Kotomo は GNU 一般公衆利用許諾書 第 3 版のもとで配布されるフリーソフトウェアです。</string>
+    <string name="about_licenses_desc">Kotomo が使っているコード</string>
+    <string name="about_sources_desc">辞書データとその作者</string>
+    <string name="about_design_desc">Kotomo の操作デザインのヒントになった製品</string>
+    <string name="licenses_note">各コンポーネントはそれぞれのライセンスに従います。タップするとプロジェクトのページを開きます。</string>
+    <string name="license_open">ライセンスを読む</string>
+    <string name="sources_note">辞書データは出典のライセンスに従い、そこから作ったデータも同じライセンスです。</string>
+    <string name="design_note">Kotomo は独立したプロジェクトで、以下の製品とは提携しておらず、承認や許諾も受けていません。それらのコード、辞書、画像などの素材も使っていません。Kotomo の操作デザインのヒントになったことに感謝します。</string>
+    <string name="design_special">特別な感謝</string>
+
+    <string name="use_librime">中国語入力エンジン</string>
+    <string name="use_leveldb">librime のユーザー辞書の保存</string>
+    <string name="use_marisa">コンパクトな辞書インデックス</string>
+    <string name="use_yaml">librime の設定</string>
+    <string name="use_opencc">簡体字と繁体字の変換</string>
+    <string name="use_boost">librime の補助コード</string>
+    <string name="use_latinime">英語の修正と予測</string>
+    <string name="use_dicttool">英語辞書のビルド（ビルドツールで、アプリには含まれません）</string>
+    <string name="use_mozc">日本語変換（開発中で、まだアプリには入っていません）</string>
+    <string name="use_mozc_deps">Mozc のビルドで使用</string>
+    <string name="use_androidx">アプリの画面と実行環境</string>
+    <string name="use_myapps">ドキュメントのチェックと規約（Kotomo と同じ作者）</string>
+    <string name="use_rime_data">ピンインのスキーマ、辞書、言語モデル</string>
+    <string name="use_mozc_dict">言語をまたぐ辞書の日本語の語</string>
+    <string name="use_unihan">漢字の読みと異体字</string>
+    <string name="use_cedict">ピンイン → 日本語のための単語の読み</string>
+    <string name="use_shinjitai">日本語の字体</string>
+    <string name="use_jmdict">英語 → 日本語のための英語の語義</string>
+    <string name="use_wordlist">英語の語彙と単語の組</string>
+    <string name="note_converted">LatinIME のバイナリ辞書形式に変換しています。</string>
+    <string name="note_build_input">Kotomo の言語をまたぐ辞書を作るときに使います。</string>
+
+    <string name="design_madamada">マダマダ（Madamada）</string>
+    <string name="design_madamada_desc">中国語ピンインから日本語の漢字、英語からカタカナを直接入力；ピンイン、英語、ローマ字の混在した連続入力；文全体の変換；候補の読み表示；動詞の活用と敬語；分類された日本語辞書；自動単語帳；都市のテーマ</string>
+    <string name="design_gboard">Gboard</string>
+    <string name="design_gboard_desc">キー配列、タッチ操作、候補バー、多言語入力、絵文字、ジェスチャー入力、入力欄への対応</string>
+    <string name="design_mspinyin">Microsoft Pinyin</string>
+    <string name="design_mspinyin_desc">あいまいピンイン、長文変換、頻度の学習、双拼、U/V モード、ピンインの修正</string>
+    <string name="design_sogou">搜狗输入法（Sogou Pinyin）</string>
+    <string name="design_sogou_desc">予測入力、長文入力、キーの修正、辞書の管理、ユーザー登録語、候補の操作、キーボードの着せ替え</string>
+    <string name="design_swiftkey">Microsoft SwiftKey</string>
+    <string name="design_swiftkey_desc">個人に合わせた多言語の予測、英語の修正、スマートスペース、クリップボード、ジェスチャー</string>
+    <string name="design_gji">Google 日本語入力と Mozc</string>
+    <string name="design_gji_desc">ローマ字変換、かな漢字変換と長文変換、文節変換、日本語辞書と予測</string>
 </resources>

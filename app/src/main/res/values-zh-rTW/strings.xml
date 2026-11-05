@@ -10,7 +10,6 @@
     <string name="setup_select_action">選擇鍵盤</string>
     <string name="setup_done">已完成</string>
     <string name="try_title">試試看</string>
-    <string name="try_hint">在這裡輸入</string>
     <string name="try_password_hint">密碼欄（這裡不學習任何內容）</string>
 
     <string name="diag_title">診斷</string>
@@ -41,4 +40,186 @@
     <string name="diag_rime_partial">%1$d ms · 失敗的步驟：%2$s</string>
     <string name="diag_rime_prebuilt">預先編譯 · 解壓 %1$d ms</string>
     <string name="diag_rime_check">中文引擎自我檢查</string>
+
+    <!-- 設定應用程式 -->
+    <string name="nav_back">返回</string>
+    <string name="home_ready">Kotomo 已啟用</string>
+    <string name="home_ready_note">目前的鍵盤 · 所有輸入都在本機處理</string>
+    <string name="try_example">例如 chidai ni kai ni ikou</string>
+    <string name="section_input">輸入</string>
+    <string name="section_keyboard">鍵盤</string>
+    <string name="section_data">詞庫與資料</string>
+    <string name="section_privacy">隱私</string>
+
+    <string name="page_setup">設定與試用</string>
+    <string name="page_modes">輸入模式</string>
+    <string name="page_modes_desc">中文、英文、日文、混合 · 啟動時的模式</string>
+    <string name="page_mixed">混合模式</string>
+    <string name="page_mixed_desc">%1$s · 跨語言轉換與各語言權重</string>
+    <string name="page_chinese">中文</string>
+    <string name="page_chinese_desc">簡體或繁體</string>
+    <string name="page_japanese">日文</string>
+    <string name="page_japanese_desc">羅馬字 · 拼音與英文轉日文 · 讀音</string>
+    <string name="page_english">英文</string>
+    <string name="page_english_desc">建議 · 自動大寫</string>
+    <string name="page_layout">版面與尺寸</string>
+    <string name="page_layout_desc">高度 · 單手模式 · 平板與摺疊螢幕</string>
+    <string name="page_keys">按鍵與手勢</string>
+    <string name="page_keys_desc">長按符號 · 按鍵角標 · 震動</string>
+    <string name="page_themes">主題</string>
+    <string name="page_themes_desc">淺色與深色跟隨系統</string>
+    <string name="page_dictionaries">詞庫</string>
+    <string name="page_dictionaries_desc">Kotomo 內建的詞庫</string>
+    <string name="page_privacy">隱私</string>
+    <string name="page_privacy_desc">Kotomo 保存什麼，以及從不傳送什麼</string>
+    <string name="page_diagnostics_desc">在本機測得的耗時與記憶體</string>
+    <string name="page_about">關於與致謝</string>
+    <string name="page_licenses">開放原始碼授權</string>
+    <string name="page_sources">資料來源</string>
+    <string name="page_design">設計致謝</string>
+    <string name="badge_modes">模</string>
+    <string name="badge_layout">鍵</string>
+    <string name="badge_keys">勢</string>
+    <string name="badge_themes">色</string>
+    <string name="badge_dictionaries">詞</string>
+    <string name="badge_privacy">隱</string>
+    <string name="badge_diagnostics">診</string>
+
+    <string name="mode_mixed">混合</string>
+    <string name="mode_mixed_desc">拼音、英文與羅馬字一起輸入，整句轉換</string>
+    <string name="mode_chinese">中文</string>
+    <string name="mode_chinese_desc">拼音優先，英文單字照原樣保留</string>
+    <string name="mode_japanese">日文</string>
+    <string name="mode_japanese_desc">羅馬字優先，拼音和英文也可以轉成日文</string>
+    <string name="mode_english">英文</string>
+    <string name="mode_english_desc">帶有建議與修正的英文輸入</string>
+    <string name="modes_default">啟動時的模式</string>
+    <string name="modes_default_note">鍵盤第一次開啟時使用的模式。用語言鍵切換。</string>
+
+    <string name="mixed_level">智慧程度</string>
+    <string name="level_conservative">保守</string>
+    <string name="level_balanced">平衡</string>
+    <string name="level_aggressive">積極</string>
+    <string name="level_conservative_desc">原語言嚴格優先，其他語言的候選排在後面。</string>
+    <string name="level_balanced_desc">原語言優先，再結合上下文與你的使用習慣調整。推薦。</string>
+    <string name="level_aggressive_desc">更早提供日文轉換與整句預測，適合以日文為主的混合輸入。</string>
+    <string name="mixed_preview_input">輸入 %1$s</string>
+    <string name="mixed_weights">候選權重</string>
+    <string name="weight_chinese">中文</string>
+    <string name="weight_english">英文</string>
+    <string name="weight_japanese">日文</string>
+    <string name="weight_emoji">Emoji</string>
+    <string name="mixed_cross">跨語言轉換</string>
+    <string name="cross_pinyin_kanji">中文拼音 → 日語漢字</string>
+    <string name="cross_pinyin_kanji_desc">chidai → 池袋，候選顯示日文讀音</string>
+    <string name="cross_pinyin_katakana">中文拼音 → 日語片假名</string>
+    <string name="cross_pinyin_katakana_desc">用於外來語與專有名詞</string>
+    <string name="cross_english_kanji">英文 → 日語漢字</string>
+    <string name="cross_english_kanji_desc">school → 学校</string>
+    <string name="cross_english_katakana">英文 → 日語片假名</string>
+    <string name="cross_english_katakana_desc">coffee → コーヒー</string>
+    <string name="cross_sentence">跨語言整句辨識</string>
+    <string name="cross_sentence_desc">zailiucard → 在留カード</string>
+    <string name="cross_readings">候選詞注音</string>
+    <string name="cross_readings_desc">在日文候選下方顯示讀音</string>
+    <string name="cross_emoji">Emoji 聯想</string>
+    <string name="cross_emoji_desc">neko、mao、cat → 🐱</string>
+    <string name="mixed_space">輸入中的空白鍵</string>
+    <string name="space_separate">插入分隔，不送出</string>
+    <string name="space_separate_desc">chidai ni kai ni ikou 可以帶空格連續輸入；Enter 或點選候選送出</string>
+    <string name="space_commit">選擇首選並送出</string>
+    <string name="space_commit_desc">與常見中文輸入法一致</string>
+
+    <string name="japanese_cross">日文模式中的跨語言轉換</string>
+    <string name="japanese_cross_note">這些開關用於日文模式。混合模式有自己的開關。</string>
+
+    <string name="chinese_script">字形</string>
+    <string name="script_simplified">簡體</string>
+    <string name="script_traditional">繁體</string>
+    <string name="chinese_script_note">中文候選以所選字形提供。</string>
+
+    <string name="english_suggestions">建議</string>
+    <string name="english_suggestions_desc">候選列中的修正與下一個字預測</string>
+    <string name="english_autocap">自動大寫</string>
+    <string name="english_autocap_desc">每句開頭自動大寫</string>
+
+    <string name="layout_large">大螢幕與摺疊螢幕</string>
+    <string name="split_title">分離鍵盤</string>
+    <string name="split_auto">依螢幕寬度</string>
+    <string name="split_always">一律</string>
+    <string name="split_never">從不</string>
+    <string name="thumb_title">拇指區寬度（每半邊）</string>
+    <string name="thumb_note">橫向與直向保持一致，只改變中間空隙</string>
+    <string name="value_dp">%1$d dp</string>
+    <string name="tabletop_title">半摺疊時移到下半螢幕</string>
+    <string name="tabletop_desc">按鍵不落在轉軸上</string>
+    <string name="layout_phone">手機與按鍵</string>
+    <string name="one_handed_title">單手模式</string>
+    <string name="one_handed_off">關閉</string>
+    <string name="one_handed_left">左手</string>
+    <string name="one_handed_right">右手</string>
+    <string name="height_title">鍵盤高度</string>
+    <string name="value_percent">%1$d%%</string>
+
+    <string name="keys_long_press">長按輸入符號</string>
+    <string name="keys_long_press_desc">按住按鍵輸入它的數字或符號</string>
+    <string name="keys_hints">按鍵角標</string>
+    <string name="keys_hints_desc">在按鍵角落顯示長按符號</string>
+    <string name="keys_haptics">按鍵震動</string>
+    <string name="keys_haptics_desc">每次按鍵短暫震動</string>
+
+    <string name="themes_later">主題將在之後的版本提供。目前鍵盤與設定跟隨系統的淺色或深色設定。</string>
+    <string name="dictionaries_later">詞庫管理與匯入將在之後的版本提供。Kotomo 使用應用程式內建的詞庫，不下載任何內容。</string>
+
+    <string name="incognito_title">無痕模式</string>
+    <string name="incognito_desc">不學習、不記錄歷史與剪貼簿</string>
+    <string name="privacy_offline">離線也能輸入。Kotomo 沒有使用網路的權限。</string>
+    <string name="privacy_local">你輸入的內容留在本機。沒有統計分析、沒有廣告，也不上傳當機資訊。</string>
+    <string name="privacy_sensitive">在密碼欄、要求不學習的輸入框和無痕模式下，Kotomo 不學習，也不記錄歷史。</string>
+    <string name="privacy_diagnostics">診斷只記錄耗時與記憶體用量，從不記錄你輸入的內容。</string>
+
+    <string name="about_license">Kotomo 是自由軟體，以 GNU 通用公共授權條款第 3 版發布。</string>
+    <string name="about_licenses_desc">Kotomo 所用的程式碼</string>
+    <string name="about_sources_desc">詞庫資料及其作者</string>
+    <string name="about_design_desc">啟發了 Kotomo 互動設計的產品</string>
+    <string name="licenses_note">每個元件保留自己的授權。點按可開啟它的專案頁面。</string>
+    <string name="license_open">閱讀授權條款</string>
+    <string name="sources_note">詞庫資料保留其來源的授權，由它衍生的資料也一樣。</string>
+    <string name="design_note">Kotomo 是獨立專案，與以下產品沒有隸屬關係，也未獲得它們的認可或授權，不使用它們的程式碼、詞庫、圖像或其他素材。在此感謝它們對 Kotomo 互動設計的啟發。</string>
+    <string name="design_special">特別致謝</string>
+
+    <string name="use_librime">中文輸入引擎</string>
+    <string name="use_leveldb">librime 使用者詞庫的儲存</string>
+    <string name="use_marisa">精簡的詞庫索引</string>
+    <string name="use_yaml">librime 的設定</string>
+    <string name="use_opencc">簡繁轉換</string>
+    <string name="use_boost">librime 的支援程式碼</string>
+    <string name="use_latinime">英文修正與預測</string>
+    <string name="use_dicttool">建構英文字典（建構工具，不在應用程式中）</string>
+    <string name="use_mozc">日文轉換（開發中，尚未進入應用程式）</string>
+    <string name="use_mozc_deps">Mozc 的建構使用</string>
+    <string name="use_androidx">應用程式的介面與執行環境</string>
+    <string name="use_myapps">文件檢查與慣例（與 Kotomo 同一作者）</string>
+    <string name="use_rime_data">拼音方案、詞典與語言模型</string>
+    <string name="use_mozc_dict">跨語言詞庫中的日文詞條</string>
+    <string name="use_unihan">漢字讀音與異體字</string>
+    <string name="use_cedict">拼音 → 日文的詞語讀音</string>
+    <string name="use_shinjitai">日文字形</string>
+    <string name="use_jmdict">英文 → 日文的英文釋義</string>
+    <string name="use_wordlist">英文詞彙與詞對</string>
+    <string name="note_converted">已轉換為 LatinIME 的二進位字典格式。</string>
+    <string name="note_build_input">在建構 Kotomo 的跨語言詞庫時使用。</string>
+
+    <string name="design_madamada">瑪嗒瑪嗒（Madamada）</string>
+    <string name="design_madamada_desc">中文拼音直接輸入日語漢字、英文輸入日語片假名；拼音、英文與日語羅馬字混合連打；整句轉換；候選詞讀音標註；動詞變化與敬語；分類日語詞庫；自動生詞本；城市主題</string>
+    <string name="design_gboard">Gboard</string>
+    <string name="design_gboard_desc">鍵盤版面、觸控操作、候選列、多語言、Emoji、滑動輸入、輸入框適配</string>
+    <string name="design_mspinyin">微軟拼音</string>
+    <string name="design_mspinyin_desc">模糊音、長句轉換、詞頻學習、雙拼、U/V 模式、拼音修正</string>
+    <string name="design_sogou">搜狗輸入法</string>
+    <string name="design_sogou_desc">智慧聯想、長句輸入、按鍵修正、詞庫管理、使用者造詞、候選操作、鍵盤外觀</string>
+    <string name="design_swiftkey">Microsoft SwiftKey</string>
+    <string name="design_swiftkey_desc">個人化與多語言預測、英文修正、智慧空格、剪貼簿、輸入手勢</string>
+    <string name="design_gji">Google 日本語入力與 Mozc</string>
+    <string name="design_gji_desc">羅馬字轉換、假名漢字轉換與長句轉換、文節轉換、日語字典與預測</string>
 </resources>

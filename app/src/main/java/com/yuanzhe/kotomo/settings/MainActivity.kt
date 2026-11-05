@@ -1,207 +1,416 @@
 package com.yuanzhe.kotomo.settings
 
 import android.content.Intent
-import android.content.pm.ApplicationInfo
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
+import android.provider.Settings as SystemSettings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.StringRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yuanzhe.kotomo.R
-import com.yuanzhe.kotomo.ime.Probe
-import com.yuanzhe.kotomo.ime.RimeFiles
 
 /**
- * Hosts the Kotomo settings app: keyboard setup, a field to try typing, and spike S1's
- * diagnostics.
+ * Hosts the Kotomo settings app: the home with keyboard setup and a field to try typing, and one
+ * page per group of settings; on wide windows a navigation list beside the page.
  *
- * Notes: the setup state and the diagnostics are re-read whenever the screen resumes, since both
- * change in other windows (system settings, the keyboard).
+ * Notes: settings come from the process's [SettingsStore], which the keyboard shares.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { KotomoTheme { SettingsScreen() } }
-    }
-
-    @Composable
-    private fun SettingsScreen() {
-        var enabled by remember { mutableStateOf(false) }
-        var selected by remember { mutableStateOf(false) }
-        var summary by remember { mutableStateOf(Probe.load(this)) }
-        LifecycleResumeEffect(Unit) {
-            val imm = getSystemService(InputMethodManager::class.java)
-            enabled = imm.enabledInputMethodList.any { it.packageName == packageName }
-            selected = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
-                ?.startsWith("$packageName/") == true
-            summary = Probe.load(this@MainActivity)
-            onPauseOrDispose {}
-        }
-
-        Column(
-            Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-
-            Section(stringResource(R.string.setup_title)) {
-                Step(stringResource(R.string.setup_enable), enabled, stringResource(R.string.setup_enable_action)) {
-                    startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
-                }
-                Step(stringResource(R.string.setup_select), selected, stringResource(R.string.setup_select_action)) {
-                    getSystemService(InputMethodManager::class.java).showInputMethodPicker()
-                }
-            }
-
-            Section(stringResource(R.string.try_title)) {
-                var text by remember { mutableStateOf("") }
-                var password by remember { mutableStateOf("") }
-                OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.try_hint)) })
-                OutlinedTextField(
-                    password, { password = it }, Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.try_password_hint)) },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    singleLine = true,
-                )
-            }
-
-            Section(stringResource(R.string.diag_title)) {
-                Text(stringResource(R.string.diag_note), style = MaterialTheme.typography.bodySmall)
-                val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
-                Text(
-                    stringResource(
-                        R.string.diag_device, Build.MODEL, Build.VERSION.RELEASE,
-                        stringResource(if (debuggable) R.string.build_debug else R.string.build_release),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Measure(stringResource(R.string.diag_key), summary.keyDraw?.let { stringResource(R.string.diag_series, it.p50, it.p95, it.max, it.count) })
-                Measure(stringResource(R.string.diag_candidates), summary.candidateDraw?.let { stringResource(R.string.diag_series, it.p50, it.p95, it.max, it.count) })
-                Measure(stringResource(R.string.diag_cold), summary.coldStartMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
-                Measure(stringResource(R.string.diag_compose), summary.composeFirstFrameMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
-                RimeFiles(this@MainActivity).readCheck()?.let { Measure(stringResource(R.string.diag_rime_check), it) }
-                val rimeStatus = RimeFiles(this@MainActivity).readStatus()
-                Measure(
-                    stringResource(R.string.diag_rime),
-                    when (rimeStatus) {
-                        RimeFiles.Status.Running -> stringResource(R.string.diag_rime_running)
-                        RimeFiles.Status.Prebuilt -> stringResource(R.string.diag_rime_prebuilt, summary.rimeDeployMs?.toInt() ?: 0)
-                        is RimeFiles.Status.Failed -> stringResource(R.string.diag_rime_failed, rimeStatus.reason)
-                        is RimeFiles.Status.Partial -> stringResource(R.string.diag_rime_partial, summary.rimeDeployMs?.toInt() ?: 0, rimeStatus.tasks)
-                        else -> summary.rimeDeployMs?.let { stringResource(R.string.diag_ms_mb, it.toInt(), (summary.rimeDeployPeakKb ?: 0) / 1024.0) }
-                    },
-                )
-                Measure(stringResource(R.string.diag_memory), summary.pssKb?.let { stringResource(R.string.diag_mb, it / 1024.0) })
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { summary = Probe.load(this@MainActivity) }) { Text(stringResource(R.string.diag_refresh)) }
-                    OutlinedButton(onClick = {
-                        Probe.clear(this@MainActivity)
-                        summary = Probe.load(this@MainActivity)
-                    }) { Text(stringResource(R.string.diag_clear)) }
-                }
-            }
-
-            val version = packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
-            Text(stringResource(R.string.about_version, version), style = MaterialTheme.typography.bodySmall)
-        }
-    }
-
-    @Composable
-    private fun Section(title: String, content: @Composable () -> Unit) {
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                content()
-            }
-        }
-    }
-
-    @Composable
-    private fun Step(text: String, done: Boolean, action: String, onClick: () -> Unit) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.width(12.dp))
-            if (done) {
-                Text(stringResource(R.string.setup_done), color = MaterialTheme.colorScheme.primary)
-            } else {
-                Button(onClick = onClick) { Text(action) }
-            }
-        }
-    }
-
-    @Composable
-    private fun Measure(label: String, value: String?) {
-        val shown = value ?: stringResource(R.string.diag_none)
-        // A long value (an error report) goes under its label rather than squeezing it.
-        if (shown.length > LONG_VALUE) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(label, style = MaterialTheme.typography.bodyMedium)
-                Text(shown, style = MaterialTheme.typography.bodySmall)
-            }
-        } else {
-            Row {
-                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                Text(shown, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-    }
-
-    private companion object {
-        const val LONG_VALUE = 40
+        val store = SettingsStore.get(this)
+        setContent { KotomoTheme { SettingsApp(store) } }
     }
 }
 
-/** Applies Kotomo's colors (the keyboard's accent tokens) to Material 3, light or dark. */
+/**
+ * Names every settings page and the title it shows.
+ * Notes: [LICENSES], [SOURCES] and [DESIGN] open from [ABOUT]; [SETUP] is a page only in the
+ * two-pane layout, where the home's setup card has no home to sit on.
+ */
+internal enum class Page(@StringRes val title: Int) {
+    SETUP(R.string.page_setup),
+    MODES(R.string.page_modes),
+    MIXED(R.string.page_mixed),
+    CHINESE(R.string.page_chinese),
+    JAPANESE(R.string.page_japanese),
+    ENGLISH(R.string.page_english),
+    LAYOUT(R.string.page_layout),
+    KEYS(R.string.page_keys),
+    THEMES(R.string.page_themes),
+    DICTIONARIES(R.string.page_dictionaries),
+    PRIVACY(R.string.page_privacy),
+    DIAGNOSTICS(R.string.diag_title),
+    ABOUT(R.string.page_about),
+    LICENSES(R.string.page_licenses),
+    SOURCES(R.string.page_sources),
+    DESIGN(R.string.page_design),
+}
+
+/**
+ * Lays out the settings app: one pane with a back stack on phones, the navigation list and the
+ * page side by side from `settings_two_pane_min` on.
+ * Side effects: system back pops the page stack before leaving the app.
+ */
+@Composable
+private fun SettingsApp(store: SettingsStore) {
+    val settings by store.flow.collectAsStateWithLifecycle()
+    val stack = rememberSaveable(saver = listSaver(save = { it.map(Page::name) }, restore = { it.map(Page::valueOf).toMutableStateList() })) {
+        mutableStateListOf<Page>()
+    }
+    BackHandler(enabled = stack.isNotEmpty()) { stack.removeAt(stack.lastIndex) }
+    val open: (Page) -> Unit = { stack.add(it) }
+    val back: () -> Unit = { stack.removeAt(stack.lastIndex) }
+
+    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+        if (maxWidth >= dimensionResource(R.dimen.settings_two_pane_min)) {
+            val page = stack.lastOrNull() ?: Page.SETUP
+            Row(Modifier.fillMaxSize()) {
+                NavList(page.root) { stack.clear(); if (it != Page.SETUP) stack.add(it) }
+                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())
+                        .padding(horizontal = dimensionResource(R.dimen.settings_detail_pad), vertical = dimensionResource(R.dimen.settings_nav_pad)),
+                    verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_section_gap)),
+                ) {
+                    // A sub-page (a licenses list) keeps its back button; a top-level page has none.
+                    PageHeader(page.title, if (page.root != page) back else null)
+                    PageContent(page, settings, store, open)
+                }
+            }
+        } else {
+            val page = stack.lastOrNull()
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = dimensionResource(R.dimen.settings_gutter))
+                    .padding(bottom = dimensionResource(R.dimen.settings_nav_pad)),
+                verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_section_gap)),
+            ) {
+                if (page == null) {
+                    HomePage(settings, store, open)
+                } else {
+                    Spacer(Modifier)
+                    PageHeader(page.title, back)
+                    PageContent(page, settings, store, open)
+                }
+            }
+        }
+    }
+}
+
+/** Returns the top-level page a sub-page belongs to, for the navigation list's highlight. */
+private val Page.root get() = when (this) {
+    Page.LICENSES, Page.SOURCES, Page.DESIGN -> Page.ABOUT
+    else -> this
+}
+
+/** Draws a page's content by its [Page]. */
+@Composable
+private fun PageContent(page: Page, settings: Settings, store: SettingsStore, open: (Page) -> Unit) {
+    when (page) {
+        Page.SETUP -> SetupCard()
+        Page.MODES -> ModesPage(settings, store)
+        Page.MIXED -> MixedPage(settings, store)
+        Page.CHINESE -> ChinesePage(settings, store)
+        Page.JAPANESE -> JapanesePage(settings, store)
+        Page.ENGLISH -> EnglishPage(settings, store)
+        Page.LAYOUT -> LayoutPage(settings, store)
+        Page.KEYS -> KeysPage(settings, store)
+        Page.THEMES -> NotePage(R.string.themes_later)
+        Page.DICTIONARIES -> NotePage(R.string.dictionaries_later)
+        Page.PRIVACY -> PrivacyPage(settings, store)
+        Page.DIAGNOSTICS -> DiagnosticsPage()
+        Page.ABOUT -> AboutPage(open)
+        Page.LICENSES -> LicensesPage()
+        Page.SOURCES -> SourcesPage()
+        Page.DESIGN -> DesignPage()
+    }
+}
+
+/**
+ * Draws the two-pane navigation list (every top-level page) with [current] highlighted.
+ * Inputs: select opens a top-level page in the detail pane.
+ */
+@Composable
+private fun NavList(current: Page, select: (Page) -> Unit) {
+    Column(
+        Modifier.width(dimensionResource(R.dimen.settings_nav_width)).fillMaxHeight().verticalScroll(rememberScrollState())
+            .padding(horizontal = dimensionResource(R.dimen.settings_gutter), vertical = dimensionResource(R.dimen.settings_nav_pad)),
+    ) {
+        Text(
+            stringResource(R.string.app_name),
+            Modifier.padding(horizontal = dimensionResource(R.dimen.settings_row_pad)).padding(bottom = dimensionResource(R.dimen.settings_gutter)),
+            style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
+        )
+        Page.entries.filter { it.root == it }.forEach { page ->
+            val on = page == current
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_nav_item))
+                    .clip(CircleShape)
+                    .background(if (on) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background)
+                    .clickable { select(page) }
+                    .padding(horizontal = dimensionResource(R.dimen.settings_gutter)),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(page.title),
+                    color = if (on) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (on) FontWeight.Medium else FontWeight.Normal,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Draws the phone home: the title, the setup card, the grouped links to every page and the
+ * incognito switch, as in SettingsHome.
+ */
+@Composable
+private fun HomePage(settings: Settings, store: SettingsStore, open: (Page) -> Unit) {
+    Text(
+        stringResource(R.string.app_name),
+        Modifier.padding(top = dimensionResource(R.dimen.settings_home_top), start = dimensionResource(R.dimen.settings_group_title_pad)),
+        style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
+    )
+    SetupCard()
+    Group(stringResource(R.string.section_input)) {
+        LinkRow(stringResource(R.string.badge_modes), Page.MODES, stringResource(R.string.page_modes_desc), open)
+        LinkRow(stringResource(R.string.mode_badge_mixed), Page.MIXED, stringResource(R.string.page_mixed_desc, stringResource(settings.mixed.level.label)), open)
+        LinkRow(stringResource(R.string.mode_badge_chinese), Page.CHINESE, stringResource(R.string.page_chinese_desc), open)
+        LinkRow(stringResource(R.string.mode_badge_japanese), Page.JAPANESE, stringResource(R.string.page_japanese_desc), open)
+        LinkRow(stringResource(R.string.mode_badge_english), Page.ENGLISH, stringResource(R.string.page_english_desc), open, last = true)
+    }
+    Group(stringResource(R.string.section_keyboard)) {
+        LinkRow(stringResource(R.string.badge_layout), Page.LAYOUT, stringResource(R.string.page_layout_desc), open)
+        LinkRow(stringResource(R.string.badge_keys), Page.KEYS, stringResource(R.string.page_keys_desc), open)
+        LinkRow(stringResource(R.string.badge_themes), Page.THEMES, stringResource(R.string.page_themes_desc), open, last = true)
+    }
+    Group(stringResource(R.string.section_data)) {
+        LinkRow(stringResource(R.string.badge_dictionaries), Page.DICTIONARIES, stringResource(R.string.page_dictionaries_desc), open)
+        LinkRow(stringResource(R.string.badge_diagnostics), Page.DIAGNOSTICS, stringResource(R.string.page_diagnostics_desc), open, last = true)
+    }
+    Group(stringResource(R.string.section_privacy)) {
+        SwitchRow(R.string.incognito_title, R.string.incognito_desc, settings.incognito) { on -> store.set { it.copy(incognito = on) } }
+        RowDivider()
+        LinkRow(stringResource(R.string.badge_privacy), Page.PRIVACY, stringResource(R.string.page_privacy_desc), open, last = true)
+    }
+    TextButton(onClick = { open(Page.ABOUT) }) { Text(stringResource(R.string.page_about)) }
+}
+
+/**
+ * Draws the setup card: the two setup steps until Kotomo is enabled and selected, then the
+ * "Kotomo is on" note; below either, the fields to try typing.
+ * Notes: the setup state is re-read whenever the screen resumes, since it changes in system
+ * settings and the input method picker.
+ */
+@Composable
+private fun SetupCard() {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf(false) }
+    LifecycleResumeEffect(Unit) {
+        val imm = context.getSystemService(InputMethodManager::class.java)
+        enabled = imm.enabledInputMethodList.any { it.packageName == context.packageName }
+        selected = SystemSettings.Secure.getString(context.contentResolver, SystemSettings.Secure.DEFAULT_INPUT_METHOD)
+            ?.startsWith("${context.packageName}/") == true
+        onPauseOrDispose {}
+    }
+    val pad = dimensionResource(R.dimen.settings_hero_pad)
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(dimensionResource(R.dimen.settings_card_radius)))
+            .background(MaterialTheme.colorScheme.primaryContainer).padding(pad),
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_card_gap)),
+    ) {
+        val onContainer = MaterialTheme.colorScheme.onPrimaryContainer
+        if (enabled && selected) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_card_gap))) {
+                Icon(
+                    painterResource(R.drawable.ic_settings_check), null,
+                    Modifier.size(dimensionResource(R.dimen.settings_badge)).clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary).padding((dimensionResource(R.dimen.settings_badge) - dimensionResource(R.dimen.settings_icon)) / 2),
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                )
+                Column {
+                    Text(stringResource(R.string.home_ready), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = onContainer)
+                    Text(stringResource(R.string.home_ready_note), style = MaterialTheme.typography.bodySmall, color = onContainer)
+                }
+            }
+        } else {
+            Text(stringResource(R.string.setup_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = onContainer)
+            Step(stringResource(R.string.setup_enable), enabled, stringResource(R.string.setup_enable_action)) {
+                context.startActivity(Intent(SystemSettings.ACTION_INPUT_METHOD_SETTINGS))
+            }
+            Step(stringResource(R.string.setup_select), selected, stringResource(R.string.setup_select_action)) {
+                context.getSystemService(InputMethodManager::class.java).showInputMethodPicker()
+            }
+        }
+        var text by remember { mutableStateOf("") }
+        var password by remember { mutableStateOf("") }
+        val shape = RoundedCornerShape(dimensionResource(R.dimen.settings_field_radius))
+        val colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+        )
+        Text(stringResource(R.string.try_title), style = MaterialTheme.typography.bodySmall, color = onContainer)
+        OutlinedTextField(
+            text, { text = it }, Modifier.fillMaxWidth(), shape = shape, colors = colors,
+            placeholder = { Text(stringResource(R.string.try_example)) },
+        )
+        OutlinedTextField(
+            password, { password = it }, Modifier.fillMaxWidth(), shape = shape, colors = colors,
+            placeholder = { Text(stringResource(R.string.try_password_hint)) },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true,
+        )
+    }
+}
+
+/** Draws one setup step: its text, then "Done" or the button that does it. */
+@Composable
+private fun Step(text: String, done: Boolean, action: String, onClick: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Spacer(Modifier.width(dimensionResource(R.dimen.settings_card_gap)))
+        if (done) {
+            Text(stringResource(R.string.setup_done), color = MaterialTheme.colorScheme.primary)
+        } else {
+            Button(onClick = onClick) { Text(action) }
+        }
+    }
+}
+
+/** Draws a page's title row, with a back button when [onBack] is given. */
+@Composable
+private fun PageHeader(@StringRes title: Int, onBack: (() -> Unit)?) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_group_gap))) {
+        if (onBack != null) {
+            Icon(
+                painterResource(R.drawable.ic_settings_back), stringResource(R.string.nav_back),
+                Modifier.size(dimensionResource(R.dimen.settings_touch)).clip(CircleShape).clickable(onClick = onBack)
+                    .padding((dimensionResource(R.dimen.settings_touch) - dimensionResource(R.dimen.settings_icon)) / 2),
+            )
+        }
+        Text(stringResource(title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+    }
+}
+
+/**
+ * Draws one link row of the home: a badge, the page's title and a description, and a chevron.
+ * Inputs: last leaves out the divider under the group's final row.
+ */
+@Composable
+private fun LinkRow(badge: String, page: Page, desc: String, open: (Page) -> Unit, last: Boolean = false) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_row_min)).clickable { open(page) }
+            .padding(horizontal = dimensionResource(R.dimen.settings_card_pad), vertical = dimensionResource(R.dimen.settings_row_pad)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_row_gap)),
+    ) {
+        Badge(badge)
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(page.title), style = MaterialTheme.typography.bodyLarge)
+            Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(
+            painterResource(R.drawable.ic_settings_chevron), null, Modifier.size(dimensionResource(R.dimen.settings_chevron)),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (!last) RowDivider()
+}
+
+/**
+ * Applies Kotomo's colors to Material 3, light or dark: the keyboard's accent tokens and the
+ * settings surfaces.
+ */
 @Composable
 private fun KotomoTheme(content: @Composable () -> Unit) {
     val accent = colorResource(R.color.kb_accent)
     val onAccent = colorResource(R.color.kb_on_accent)
     val container = colorResource(R.color.kb_accent_container)
     val onContainer = colorResource(R.color.kb_on_accent_container)
+    val background = colorResource(R.color.settings_background)
+    val card = colorResource(R.color.settings_card)
+    val badge = colorResource(R.color.settings_badge)
+    val divider = colorResource(R.color.settings_divider)
+    val ink = colorResource(R.color.kb_ink)
+    val inkSecondary = colorResource(R.color.kb_ink_secondary)
     val scheme = if (isSystemInDarkTheme()) {
-        darkColorScheme(primary = accent, onPrimary = onAccent, primaryContainer = container, onPrimaryContainer = onContainer)
+        darkColorScheme(
+            primary = accent, onPrimary = onAccent, primaryContainer = container, onPrimaryContainer = onContainer,
+            secondaryContainer = container, onSecondaryContainer = onContainer,
+            background = background, onBackground = ink, surface = card, onSurface = ink,
+            surfaceVariant = badge, onSurfaceVariant = inkSecondary, outlineVariant = divider,
+        )
     } else {
-        lightColorScheme(primary = accent, onPrimary = onAccent, primaryContainer = container, onPrimaryContainer = onContainer)
+        lightColorScheme(
+            primary = accent, onPrimary = onAccent, primaryContainer = container, onPrimaryContainer = onContainer,
+            secondaryContainer = container, onSecondaryContainer = onContainer,
+            background = background, onBackground = ink, surface = card, onSurface = ink,
+            surfaceVariant = badge, onSurfaceVariant = inkSecondary, outlineVariant = divider,
+        )
     }
-    MaterialTheme(colorScheme = scheme) { Surface(Modifier.fillMaxSize(), content = content) }
+    MaterialTheme(colorScheme = scheme) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, content = content)
+    }
 }

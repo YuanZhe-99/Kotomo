@@ -12,6 +12,11 @@
     <color name="kb_accent_container">#E3E8FF</color>
     <color name="kb_on_accent_container">#1F3596</color>
     <color name="kb_key_shadow">#2416181C</color>
+    <!-- Settings app surfaces (SettingsHome, SettingsMixed, SettingsTablet). -->
+    <color name="settings_background">#F6F7F9</color>
+    <color name="settings_card">#FFFFFF</color>
+    <color name="settings_badge">#EEF0F3</color>
+    <color name="settings_divider">#EEF0F3</color>
     <!-- The launcher icon keeps the light accent in both themes. -->
     <color name="icon_background">#3451C7</color>
 </resources>
