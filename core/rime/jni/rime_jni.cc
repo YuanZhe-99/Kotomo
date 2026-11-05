@@ -5,12 +5,11 @@
 
 #include <jni.h>
 
-#include <iterator>
 #include <string>
 
-#include <utf8.h>
 
 #include "rime_bridge.h"
+#include "utf.h"
 
 namespace rb = kotomo::rime_bridge;
 
@@ -22,24 +21,15 @@ std::string ToUtf8(JNIEnv* env, jstring value) {
   const jsize length = env->GetStringLength(value);
   const jchar* chars = env->GetStringChars(value, nullptr);
   if (chars == nullptr) return {};
-  std::u16string utf16(reinterpret_cast<const char16_t*>(chars), static_cast<size_t>(length));
+  std::string utf8 = kotomo::utf::Utf16ToUtf8(reinterpret_cast<const char16_t*>(chars), static_cast<size_t>(length));
   env->ReleaseStringChars(value, chars);
-  // Encode without checks, then repair: a malformed string from another app never throws.
-  std::string raw;
-  utf8::unchecked::utf16to8(utf16.begin(), utf16.end(), std::back_inserter(raw));
-  std::string utf8;
-  utf8::replace_invalid(raw.begin(), raw.end(), std::back_inserter(utf8));
   return utf8;
 }
 
 /// Converts UTF-8 from librime to a Java string; invalid bytes become U+FFFD.
 jstring ToJava(JNIEnv* env, const std::string& value) {
-  std::string valid;
-  utf8::replace_invalid(value.begin(), value.end(), std::back_inserter(valid));
-  std::u16string utf16;
-  utf8::unchecked::utf8to16(valid.begin(), valid.end(), std::back_inserter(utf16));
-  return env->NewString(reinterpret_cast<const jchar*>(utf16.data()),
-                        static_cast<jsize>(utf16.size()));
+  const std::u16string utf16 = kotomo::utf::Utf8ToUtf16(value);
+  return env->NewString(reinterpret_cast<const jchar*>(utf16.data()), static_cast<jsize>(utf16.size()));
 }
 
 }  // namespace

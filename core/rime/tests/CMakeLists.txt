@@ -14,3 +14,8 @@ add_dependencies(kotomo_rime_test kotomo_rime_data)
 # The test empties and reuses this user directory inside the build tree on every run.
 add_test(NAME kotomo_rime_test
          COMMAND kotomo_rime_test "${rime_data}" "${CMAKE_CURRENT_BINARY_DIR}/rime-user")
+
+# The JNI bridge's string conversion (header only).
+add_executable(kotomo_utf_test utf_test.cc)
+target_include_directories(kotomo_utf_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../jni")
+add_test(NAME kotomo_utf_test COMMAND kotomo_utf_test)
