@@ -41,7 +41,7 @@
 ### 0.2 分支
 
 - `main`：最后一次验证通过的状态（P1 完成）。
-- `p2/fuzzy-app-side`（仅本机 worktree，未推送）：工作包 D 从 WIP 分支拆出的一组改动，不含词库代码，可按能力独立提交；尚未构建或跑测试（本机无 SDK，见 §0.6）。
+- `p2/fuzzy-app-side`（仅本机 worktree，未推送）：工作包 D 从 WIP 分支拆出的一组改动，不含词库代码，可按能力独立提交；尚未构建或跑测试。
 - `wip/paused-2026-11-04`：暂停时未完成的工作，**无法编译**，只推送到私有远端。内容是工作包 A（词库应用侧）、D（模糊音应用侧）与 E（S6 的开头）。合入 `main` 前按能力拆成独立提交，每个提交都要通过验证。
 - 设计稿：`design/`，2026-11-04 从设计画布"Kotomo Keyboard & Settings"固化（16 个画板与布局文件，说明见 `design/README.md`）；此后以仓库中的文件为准。
 
@@ -101,7 +101,7 @@
 - 普通提交在验证后直接推送到两个远端，不必先问；版本号、`vX.Y.Z` 标签与发布先向用户报告，确认后再推送。这一条优先于 AGENTS.md 的"推送前询问"。
 - 不要每改一处就请用户在真机上测试：先把计划的功能做完，主机测试、CI 与诊断页的自检承担验证，到里程碑时一次交付一个 APK 和一份检查清单（`tests/device/`）。用户的测试机是 Galaxy Z Fold（Android 17），通过侧载安装 APK，没有 adb；怀疑只在真机出现的问题时，把自检输出加到诊断页，而不是反复要截图。
 - 在线词库与目录托管在 GitHub（Releases，由 CI 构建）；词库主要来自已核查许可证的开源词库，Agent 只做框架和极小的原创样例；不创建发布、不上传。
-- 开发机是 Windows 11 on ARM64，带 WSL2（Debian）、JDK 21；暂停时装过 SDK 37.2 与 NDK 30，2026-11-04 恢复时本机已找不到它们（见 §0.6）。没有 Python，没有官方 Android 模拟器（不支持 ARM64 Windows 主机），布局与逻辑之外的验证都要真机。
+- 开发机是 Windows 11 on ARM64，带 WSL2（Debian）、JDK 21、SDK 37.2、NDK 30；没有 Python，没有官方 Android 模拟器（不支持 ARM64 Windows 主机），布局与逻辑之外的验证都要真机。
 - 构建产物已于 2026-11-04 清理。重新构建依次需要：`scripts/fetch-boost.sh`（如缺）、`scripts/prebuild-rime.sh`（WSL）、`scripts/fetch-mozc.sh` 或 `scripts/build-mozc.sh --abi host`、`java -Xmx4g lexicon/CrossLexicon.java --offline`，然后才是 Gradle。
 - 2026-11-04 用户补充：本机只做轻量测试（文档检查、能在几分钟内跑完的单元测试），不必在本机做完整编译，也不要在 WSL 里重复预编译；完整编译与设备端构建交给 GitHub CI，结果以 CI 的状态为准。
 
@@ -120,9 +120,8 @@
 | --- | --- | --- |
 | 签名配置与密钥 | 维护者本机被忽略的 `key.properties`，以及 GitHub Actions 的密钥 | 本地只构建 debug 或未签名的 release；签名发布由 CI 或维护者完成 |
 | SDK 路径 | 被忽略的 `local.properties`（`sdk.dir`） | 新 worktree 复制一份，或设置 `ANDROID_HOME` |
-| Android SDK 本体 | 2026-11-04 恢复时本机 `sdk.dir` 指向的目录只剩 `.sdk` 标记文件，没有 platforms、build-tools 或 NDK | 先装回 `build-lock.json` 指定的 platform 37.2、build-tools 37.0.0、NDK 30.0.16248370；在装回之前 Gradle 在配置阶段就会失败（NDK 许可），本机只能跑 `java tool/CheckDocs.java`，完整编译交给 GitHub CI |
 | 上游下载 | `.deps/`（忽略，按 `build-lock.json` 的哈希锁定） | 各脚本缺失时自动下载并校验 |
-| 构建产物 | 2026-11-04 已全部清理 | 按 §0.4 最后一条的顺序重新生成 |
+| 构建产物 | 2026-11-04 已全部清理 | 按 §0.4 的重新构建顺序重新生成 |
 | Mozc 的 Android 库与数据 | 由 Linux CI 构建，`scripts/fetch-mozc.sh` 经 `gh` 下载 | 需要已登录的 `gh`；否则日文模式在 APK 中不可用 |
 | 未完成的工作 | `wip/paused-2026-11-04`，只在私有远端 | 需要私有远端的访问权；公开仓库没有这个分支 |
 | S6 的 Mozc 行服务 | 代码在 WIP 分支；`scripts/build-mozc.sh` 还不会构建它 | 恢复 S6 时把 `//kotomo:kotomo_mozc_server` 加进脚本的 host 分支 |

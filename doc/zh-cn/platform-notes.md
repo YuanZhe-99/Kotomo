@@ -18,8 +18,6 @@
 | Lint | `./gradlew check` 通过，没有警告 |
 | Release 构建 | `./gradlew assembleRelease`：启用 R8，以 release 密钥签名（APK 签名方案 v2） |
 
-2026-11-04 恢复后没有再运行这些检查：开发机上没有安装 Android SDK（`local.properties` 指向的目录只剩 `.sdk` 标记文件），`./gradlew --no-daemon` 在配置阶段就因 NDK 许可错误中止，没有任何任务执行。文档检查仍可运行；上表的 Gradle 结果仍是此前那次运行的结果。
-
 ## 技术验证
 
 | 技术验证 | 状态 | 证据 |

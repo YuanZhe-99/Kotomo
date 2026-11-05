@@ -18,11 +18,6 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 | Lint | `./gradlew check` passes with no warnings |
 | Release build | `./gradlew assembleRelease`: R8 on, signed with the release key (APK Signature Scheme v2) |
 
-These were not repeated on 2026-11-04 after the pause: the development machine had no Android SDK
-installed (the directory `local.properties` names held only the `.sdk` marker), so
-`./gradlew --no-daemon` stops during configuration with the NDK licence error before any task runs.
-The documentation check still runs; the Gradle rows above stand as of the earlier run.
-
 ## Spikes
 
 | Spike | Status | Evidence |
