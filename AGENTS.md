@@ -42,6 +42,7 @@ about to change, verify against the code, then fix the docs in the same commit.
 | Past releases and the upstream versions they used | `doc/en-us/version-history.md` |
 | Per-module and per-file roles | `doc/en-us/functions/INDEX.md` |
 | Toolchain, upstream commits, data-source versions and hashes each build uses | `build-lock.json` |
+| The settings file: keys, defaults, versioning | `doc/en-us/settings-format.md` |
 
 `design/`
 (screens, wording and tokens from the design agent) and the concept docs added from P0 on (the

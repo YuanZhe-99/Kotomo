@@ -1,0 +1,238 @@
+package com.yuanzhe.kotomo.settings
+
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import com.yuanzhe.kotomo.ime.Mode
+
+/** Chooses when the keyboard splits into two thumb-zone halves. */
+enum class SplitLayout { AUTO, ALWAYS, NEVER }
+
+/** Chooses one-handed mode: off, or the keys pushed toward the left or right thumb. */
+enum class OneHanded { OFF, LEFT, RIGHT }
+
+/** Chooses the script Chinese is committed in. */
+enum class ChineseScript { SIMPLIFIED, TRADITIONAL }
+
+/** Chooses how strongly Mixed mode offers cross-language candidates (PLAN §2.3). */
+enum class MixedLevel { CONSERVATIVE, BALANCED, AGGRESSIVE }
+
+/** Chooses what the space key does while a Mixed-mode composition is open. */
+enum class CompositionSpace { SEPARATE, COMMIT_FIRST }
+
+/**
+ * Holds the cross-language conversion switches of one input mode (PLAN §9.10); every switch is
+ * on by default.
+ *
+ * Notes: Japanese mode and Mixed mode each keep their own copy.
+ */
+data class CrossLanguage(
+    val pinyinToKanji: Boolean = true,
+    val pinyinToKatakana: Boolean = true,
+    val englishToKanji: Boolean = true,
+    val englishToKatakana: Boolean = true,
+    val wholeSentence: Boolean = true,
+    val readings: Boolean = true,
+    val emoji: Boolean = true,
+)
+
+/**
+ * Holds Mixed mode's settings: the level, the cross-language switches, the per-language candidate
+ * weights (0–100) and the space key's behavior during composition.
+ */
+data class Mixed(
+    val level: MixedLevel = MixedLevel.BALANCED,
+    val cross: CrossLanguage = CrossLanguage(),
+    val weightChinese: Int = 70,
+    val weightEnglish: Int = 60,
+    val weightJapanese: Int = 60,
+    val weightEmoji: Int = 30,
+    val space: CompositionSpace = CompositionSpace.SEPARATE,
+)
+
+/**
+ * Holds every setting the person can change in the settings app, with the defaults a fresh
+ * install starts from.
+ *
+ * Notes: immutable; change it with `copy` through [SettingsStore.set]. Stored as a versioned
+ * Preferences DataStore file (see [SettingsFormat]); the format is documented in
+ * `doc/en-us/settings-format.md`.
+ */
+data class Settings(
+    val defaultMode: Mode = Mode.MIXED,
+    val mixed: Mixed = Mixed(),
+    val japanese: CrossLanguage = CrossLanguage(),
+    val chineseScript: ChineseScript = ChineseScript.SIMPLIFIED,
+    val englishSuggestions: Boolean = true,
+    val englishAutoCapitalize: Boolean = true,
+    val split: SplitLayout = SplitLayout.AUTO,
+    val thumbZoneDp: Int = 268,
+    val tabletopLowerHalf: Boolean = true,
+    val oneHanded: OneHanded = OneHanded.OFF,
+    val heightPercent: Int = 100,
+    val longPressSymbols: Boolean = true,
+    val keyHints: Boolean = true,
+    val haptics: Boolean = true,
+    val incognito: Boolean = false,
+) {
+    companion object {
+        /** Allowed keyboard heights, in percent of the designed height. */
+        val HEIGHT_RANGE = 80..120
+        /** Allowed widths of one split half, in dp. */
+        val THUMB_RANGE = 200..340
+        /** Allowed Mixed-mode candidate weights. */
+        val WEIGHT_RANGE = 0..100
+    }
+}
+
+/**
+ * Maps [Settings] to and from the keys of its Preferences file.
+ *
+ * Notes: enum values are stored by their lowercase constant name, so renaming a constant is a
+ * format change. Values out of range or unknown (from a newer version) read as the default and
+ * stay untouched in the file until the person changes that setting; keys this version does not
+ * know are never removed.
+ */
+internal object SettingsFormat {
+    /** The format version this build writes. */
+    const val VERSION = 1
+
+    val version = intPreferencesKey("format_version")
+    val updated = longPreferencesKey("updated_utc_ms")
+    private val defaultMode = stringPreferencesKey("default_mode")
+    private val mixedLevel = stringPreferencesKey("mixed.level")
+    private val mixedWeightChinese = intPreferencesKey("mixed.weight_chinese")
+    private val mixedWeightEnglish = intPreferencesKey("mixed.weight_english")
+    private val mixedWeightJapanese = intPreferencesKey("mixed.weight_japanese")
+    private val mixedWeightEmoji = intPreferencesKey("mixed.weight_emoji")
+    private val mixedSpace = stringPreferencesKey("mixed.space")
+    private val chineseScript = stringPreferencesKey("chinese.script")
+    private val englishSuggestions = booleanPreferencesKey("english.suggestions")
+    private val englishAutoCapitalize = booleanPreferencesKey("english.auto_capitalize")
+    private val split = stringPreferencesKey("layout.split")
+    private val thumbZone = intPreferencesKey("layout.thumb_zone_dp")
+    private val tabletop = booleanPreferencesKey("layout.tabletop_lower_half")
+    private val oneHanded = stringPreferencesKey("layout.one_handed")
+    private val height = intPreferencesKey("layout.height_percent")
+    private val longPress = booleanPreferencesKey("keys.long_press_symbols")
+    private val keyHints = booleanPreferencesKey("keys.corner_hints")
+    private val haptics = booleanPreferencesKey("keys.haptics")
+    private val incognito = booleanPreferencesKey("privacy.incognito")
+
+    /**
+     * Reads the settings from a Preferences file.
+     * Returns: the stored values, with defaults for anything missing, unknown or out of range.
+     * Notes: an empty file (a fresh install, no file yet) gives [Settings]'s defaults.
+     */
+    fun read(p: Preferences): Settings {
+        val d = Settings()
+        return Settings(
+            defaultMode = p.enum(defaultMode, Mode.entries, d.defaultMode),
+            mixed = Mixed(
+                level = p.enum(mixedLevel, MixedLevel.entries, d.mixed.level),
+                cross = readCross(p, "mixed"),
+                weightChinese = p.int(mixedWeightChinese, Settings.WEIGHT_RANGE, d.mixed.weightChinese),
+                weightEnglish = p.int(mixedWeightEnglish, Settings.WEIGHT_RANGE, d.mixed.weightEnglish),
+                weightJapanese = p.int(mixedWeightJapanese, Settings.WEIGHT_RANGE, d.mixed.weightJapanese),
+                weightEmoji = p.int(mixedWeightEmoji, Settings.WEIGHT_RANGE, d.mixed.weightEmoji),
+                space = p.enum(mixedSpace, CompositionSpace.entries, d.mixed.space),
+            ),
+            japanese = readCross(p, "japanese"),
+            chineseScript = p.enum(chineseScript, ChineseScript.entries, d.chineseScript),
+            englishSuggestions = p[englishSuggestions] ?: d.englishSuggestions,
+            englishAutoCapitalize = p[englishAutoCapitalize] ?: d.englishAutoCapitalize,
+            split = p.enum(split, SplitLayout.entries, d.split),
+            thumbZoneDp = p.int(thumbZone, Settings.THUMB_RANGE, d.thumbZoneDp),
+            tabletopLowerHalf = p[tabletop] ?: d.tabletopLowerHalf,
+            oneHanded = p.enum(oneHanded, OneHanded.entries, d.oneHanded),
+            heightPercent = p.int(height, Settings.HEIGHT_RANGE, d.heightPercent),
+            longPressSymbols = p[longPress] ?: d.longPressSymbols,
+            keyHints = p[keyHints] ?: d.keyHints,
+            haptics = p[haptics] ?: d.haptics,
+            incognito = p[incognito] ?: d.incognito,
+        )
+    }
+
+    /**
+     * Writes the settings that differ between [old] and [new] into [p].
+     * Inputs: old is what [read] gives for the file as it is now.
+     * Side effects: sets only the changed keys, stamps [version] (never lowering a newer one) and
+     * [updated] (UTC milliseconds) when anything changed.
+     * Notes: writing only changes keeps a newer version's values in settings this version reads as
+     * defaults.
+     */
+    fun write(p: MutablePreferences, old: Settings, new: Settings, nowUtcMs: Long) {
+        if (old == new) return
+        p.put(defaultMode, old.defaultMode.key, new.defaultMode.key)
+        p.put(mixedLevel, old.mixed.level.key, new.mixed.level.key)
+        writeCross(p, "mixed", old.mixed.cross, new.mixed.cross)
+        p.put(mixedWeightChinese, old.mixed.weightChinese, new.mixed.weightChinese)
+        p.put(mixedWeightEnglish, old.mixed.weightEnglish, new.mixed.weightEnglish)
+        p.put(mixedWeightJapanese, old.mixed.weightJapanese, new.mixed.weightJapanese)
+        p.put(mixedWeightEmoji, old.mixed.weightEmoji, new.mixed.weightEmoji)
+        p.put(mixedSpace, old.mixed.space.key, new.mixed.space.key)
+        writeCross(p, "japanese", old.japanese, new.japanese)
+        p.put(chineseScript, old.chineseScript.key, new.chineseScript.key)
+        p.put(englishSuggestions, old.englishSuggestions, new.englishSuggestions)
+        p.put(englishAutoCapitalize, old.englishAutoCapitalize, new.englishAutoCapitalize)
+        p.put(split, old.split.key, new.split.key)
+        p.put(thumbZone, old.thumbZoneDp, new.thumbZoneDp)
+        p.put(tabletop, old.tabletopLowerHalf, new.tabletopLowerHalf)
+        p.put(oneHanded, old.oneHanded.key, new.oneHanded.key)
+        p.put(height, old.heightPercent, new.heightPercent)
+        p.put(longPress, old.longPressSymbols, new.longPressSymbols)
+        p.put(keyHints, old.keyHints, new.keyHints)
+        p.put(haptics, old.haptics, new.haptics)
+        p.put(incognito, old.incognito, new.incognito)
+        p[version] = maxOf(p[version] ?: 0, VERSION)
+        p[updated] = nowUtcMs
+    }
+
+    /** Reads one mode's cross-language switches under the key prefix [mode]. */
+    private fun readCross(p: Preferences, mode: String): CrossLanguage {
+        val d = CrossLanguage()
+        return CrossLanguage(
+            pinyinToKanji = p[crossKey(mode, "pinyin_to_kanji")] ?: d.pinyinToKanji,
+            pinyinToKatakana = p[crossKey(mode, "pinyin_to_katakana")] ?: d.pinyinToKatakana,
+            englishToKanji = p[crossKey(mode, "english_to_kanji")] ?: d.englishToKanji,
+            englishToKatakana = p[crossKey(mode, "english_to_katakana")] ?: d.englishToKatakana,
+            wholeSentence = p[crossKey(mode, "whole_sentence")] ?: d.wholeSentence,
+            readings = p[crossKey(mode, "readings")] ?: d.readings,
+            emoji = p[crossKey(mode, "emoji")] ?: d.emoji,
+        )
+    }
+
+    /** Writes the changed cross-language switches of one mode under the key prefix [mode]. */
+    private fun writeCross(p: MutablePreferences, mode: String, old: CrossLanguage, new: CrossLanguage) {
+        if (old == new) return
+        p.put(crossKey(mode, "pinyin_to_kanji"), old.pinyinToKanji, new.pinyinToKanji)
+        p.put(crossKey(mode, "pinyin_to_katakana"), old.pinyinToKatakana, new.pinyinToKatakana)
+        p.put(crossKey(mode, "english_to_kanji"), old.englishToKanji, new.englishToKanji)
+        p.put(crossKey(mode, "english_to_katakana"), old.englishToKatakana, new.englishToKatakana)
+        p.put(crossKey(mode, "whole_sentence"), old.wholeSentence, new.wholeSentence)
+        p.put(crossKey(mode, "readings"), old.readings, new.readings)
+        p.put(crossKey(mode, "emoji"), old.emoji, new.emoji)
+    }
+
+    /** Names the key of one cross-language switch, `<mode>.cross.<name>`. */
+    private fun crossKey(mode: String, name: String) = booleanPreferencesKey("$mode.cross.$name")
+
+    /** Names an enum value as stored: its lowercase constant name. */
+    private val Enum<*>.key get() = name.lowercase()
+
+    /** Reads an enum stored by [key], or [default] when missing or unknown. */
+    private fun <E : Enum<E>> Preferences.enum(key: Preferences.Key<String>, values: List<E>, default: E): E =
+        this[key]?.let { raw -> values.firstOrNull { it.key == raw } } ?: default
+
+    /** Reads an int, or [default] when missing or outside [range]. */
+    private fun Preferences.int(key: Preferences.Key<Int>, range: IntRange, default: Int): Int =
+        this[key]?.takeIf { it in range } ?: default
+
+    /** Sets [key] to [new] only when it differs from [old]. */
+    private fun <T> MutablePreferences.put(key: Preferences.Key<T>, old: T, new: T) {
+        if (old != new) this[key] = new
+    }
+}
