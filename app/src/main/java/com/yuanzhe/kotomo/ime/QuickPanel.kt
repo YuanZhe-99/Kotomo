@@ -36,16 +36,19 @@ import com.yuanzhe.kotomo.settings.ChineseScript
 import com.yuanzhe.kotomo.settings.OneHanded
 import com.yuanzhe.kotomo.settings.SettingsStore
 import com.yuanzhe.kotomo.settings.SplitLayout
+import com.yuanzhe.kotomo.settings.label
 
 /**
  * Shows the toolbar's quick settings in the keyboard's place: one-handed side, split layout,
- * Simplified or Traditional Chinese, incognito, and a way into the settings app.
+ * the Chinese script (Mainland, Traditional, Taiwan, Hong Kong), incognito, and a way into the settings app.
  *
- * Inputs: [store] is read and changed directly (the keyboard follows it at once); [onOpenSettings]
+ * Inputs: [store] is read and changed directly (the keyboard follows it at once); [script] is the
+ * Chinese script remembered for the current app (null: the settings' one) and [onScript] changes
+ * it (for the app and the settings); [onOpenSettings]
  * opens the settings app; [onBack] returns to the keys.
  */
 @Composable
-fun QuickPanel(store: SettingsStore, onOpenSettings: () -> Unit, onBack: () -> Unit) {
+fun QuickPanel(store: SettingsStore, script: ChineseScript?, onScript: (ChineseScript) -> Unit, onOpenSettings: () -> Unit, onBack: () -> Unit) {
     val settings by store.flow.collectAsState()
     val back = stringResource(R.string.candidates_collapse)
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
@@ -65,9 +68,10 @@ fun QuickPanel(store: SettingsStore, onOpenSettings: () -> Unit, onBack: () -> U
             ) { value -> store.set { it.copy(split = value) } }
             Choice(
                 stringResource(R.string.chinese_script),
-                listOf(ChineseScript.SIMPLIFIED to R.string.script_simplified, ChineseScript.TRADITIONAL to R.string.script_traditional),
-                settings.chineseScript,
-            ) { value -> store.set { it.copy(chineseScript = value) } }
+                ChineseScript.entries.map { it to it.label },
+                script ?: settings.chineseScript,
+                onPick = onScript,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.incognito_title), fontSize = 15.sp, color = kbColor(R.color.kb_ink))

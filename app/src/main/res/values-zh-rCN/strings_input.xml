@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="key_enter_search">搜索</string>
+    <string name="key_enter_send">发送</string>
+    <string name="key_enter_go">前往</string>
+    <string name="key_enter_next">下一项</string>
+    <string name="key_enter_previous">上一项</string>
+    <string name="key_enter_done">完成</string>
+
+    <string name="keys_sound">按键音</string>
+    <string name="keys_sound_desc">每次按键播放系统按键音</string>
+    <string name="gestures_section">手势</string>
+    <string name="gesture_space_cursor">空格键滑动</string>
+    <string name="gesture_space_cursor_desc">沿空格键左右滑动移动光标</string>
+    <string name="gesture_delete_swipe">删除键滑动</string>
+    <string name="gesture_delete_swipe_desc">从删除键向左滑动，按词删除</string>
+    <string name="gesture_double_space">双击空格输入句号</string>
+    <string name="gesture_double_space_desc">在词语后快速按两次空格输入句号</string>
+    <string name="gesture_space_language">长按空格切换语言</string>
+    <string name="gesture_space_language_desc">按住空格键选择输入语言</string>
+    <string name="gesture_smart_space">智能空格</string>
+    <string name="gesture_smart_space_desc">在建议的英文单词后输入标点时，标点放在空格之前</string>
+
+    <string name="script_taiwan">台湾</string>
+    <string name="script_hong_kong">香港</string>
+
+    <string name="candidate_details">%1$s · %2$s</string>
+    <string name="candidate_forget">忘记</string>
+    <string name="source_chinese">中文词库</string>
+    <string name="source_japanese">日语词库</string>
+    <string name="source_english">英语词库</string>
+    <string name="source_learned">从你的输入中学习</string>
+    <string name="source_your_dictionaries">你的词库</string>
+    <string name="source_sentence">整句</string>
+    <string name="source_prediction">联想</string>
+    <string name="source_symbol">符号</string>
+    <string name="source_emoji">Emoji</string>
+    <string name="source_typed">原样输入</string>
+
+    <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
+    <string name="locked_notice">解锁设备后才能使用</string>
+</resources>

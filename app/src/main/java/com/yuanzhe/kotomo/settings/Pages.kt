@@ -64,6 +64,15 @@ internal val Mode.label get() = when (this) {
     Mode.ENGLISH -> R.string.mode_english
 }
 
+/** Names each Chinese script in the settings and the quick panel. */
+@get:StringRes
+internal val ChineseScript.label get() = when (this) {
+    ChineseScript.SIMPLIFIED -> R.string.script_simplified
+    ChineseScript.TRADITIONAL -> R.string.script_traditional
+    ChineseScript.TAIWAN -> R.string.script_taiwan
+    ChineseScript.HONG_KONG -> R.string.script_hong_kong
+}
+
 /** Names each Mixed-mode level in the settings. */
 @get:StringRes
 internal val MixedLevel.label get() = when (this) {
@@ -192,12 +201,12 @@ private fun CrossSwitches(cross: CrossLanguage, change: ((CrossLanguage) -> Cros
     SwitchRow(R.string.cross_emoji, R.string.cross_emoji_desc, cross.emoji) { on -> change { it.copy(emoji = on) } }
 }
 
-/** Draws the Chinese page: Simplified or Traditional output. */
+/** Draws the Chinese page: Mainland Simplified, Traditional, Taiwan or Hong Kong output. */
 @Composable
 internal fun ChinesePage(settings: Settings, store: SettingsStore) {
     Section(stringResource(R.string.chinese_script)) {
         Inset {
-            val labels = listOf(stringResource(R.string.script_simplified), stringResource(R.string.script_traditional))
+            val labels = ChineseScript.entries.map { stringResource(it.label) }
             Choice(labels, settings.chineseScript.ordinal) { i -> store.set { it.copy(chineseScript = ChineseScript.entries[i]) } }
             Note(stringResource(R.string.chinese_script_note))
         }
@@ -266,13 +275,26 @@ internal fun LayoutPage(settings: Settings, store: SettingsStore) {
     }
 }
 
-/** Draws the Keys and gestures page: long-press symbols, corner hints and vibration. */
+/**
+ * Draws the Keys and gestures page: long-press symbols, corner hints, vibration and sound, and a
+ * switch for every gesture (PLAN §8.1).
+ */
 @Composable
 internal fun KeysPage(settings: Settings, store: SettingsStore) {
     Section(null) {
         SwitchRow(R.string.keys_long_press, R.string.keys_long_press_desc, settings.longPressSymbols) { on -> store.set { it.copy(longPressSymbols = on) } }
         SwitchRow(R.string.keys_hints, R.string.keys_hints_desc, settings.keyHints) { on -> store.set { it.copy(keyHints = on) } }
         SwitchRow(R.string.keys_haptics, R.string.keys_haptics_desc, settings.haptics) { on -> store.set { it.copy(haptics = on) } }
+        SwitchRow(R.string.keys_sound, R.string.keys_sound_desc, settings.keySound) { on -> store.set { it.copy(keySound = on) } }
+    }
+    val g = settings.gestures
+    fun gesture(change: (Gestures) -> Gestures) = store.set { it.copy(gestures = change(it.gestures)) }
+    Section(stringResource(R.string.gestures_section)) {
+        SwitchRow(R.string.gesture_space_cursor, R.string.gesture_space_cursor_desc, g.spaceCursor) { on -> gesture { it.copy(spaceCursor = on) } }
+        SwitchRow(R.string.gesture_delete_swipe, R.string.gesture_delete_swipe_desc, g.deleteSwipe) { on -> gesture { it.copy(deleteSwipe = on) } }
+        SwitchRow(R.string.gesture_double_space, R.string.gesture_double_space_desc, g.doubleSpacePeriod) { on -> gesture { it.copy(doubleSpacePeriod = on) } }
+        SwitchRow(R.string.gesture_space_language, R.string.gesture_space_language_desc, g.spaceLanguage) { on -> gesture { it.copy(spaceLanguage = on) } }
+        SwitchRow(R.string.gesture_smart_space, R.string.gesture_smart_space_desc, g.smartSpace) { on -> gesture { it.copy(smartSpace = on) } }
     }
 }
 

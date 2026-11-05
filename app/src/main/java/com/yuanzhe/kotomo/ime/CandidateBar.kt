@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime
 
+import androidx.core.content.res.ResourcesCompat
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
@@ -30,8 +31,10 @@ class CandidateBar(
     private val onPick: (index: Int) -> Unit,
     private val onExpand: () -> Unit,
     private val onTool: (Tool) -> Unit,
-    /** Receives a long press on candidate n (forget what was learned about it). */
+    /** Receives a long press on candidate n (show its details). */
     private val onLongPick: (index: Int) -> Unit = {},
+    /** Receives a tap on the details: the Forget button (its index), or elsewhere (null: close). */
+    private val onDetails: (forget: Int?) -> Unit = {},
 ) : View(context) {
 
     private val res = context.resources
@@ -61,7 +64,7 @@ class CandidateBar(
     private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_accent_container) }
     private val inkColor = KeyboardColors.color(context, R.color.kb_ink)
 
-    private fun icon(id: Int) = context.getDrawable(id)!!.mutate().apply { setTint(inkColor) }
+    private fun icon(id: Int) = ResourcesCompat.getDrawable(context.resources, id, context.theme)!!.mutate().apply { setTint(inkColor) }
     private val expandIcon = icon(R.drawable.ic_bar_expand)
     private val tools = listOf(
         Tool.MORE to icon(R.drawable.ic_tool_more),
@@ -80,6 +83,16 @@ class CandidateBar(
 
     /** A short status line shown in place of the toolbar when there are no candidates, or null. */
     var hint: String? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /**
+     * The details of one candidate (its reading and where it comes from), shown in place of the
+     * row after a long press, or null; [CandidateDetails.forget] labels the Forget button.
+     */
+    var details: CandidateDetails? = null
         set(value) {
             field = value
             invalidate()
@@ -105,7 +118,9 @@ class CandidateBar(
     private val listEnd get() = width - expandWidth
 
     override fun onDraw(canvas: Canvas) {
+        val shownDetails = details
         when {
+            shownDetails != null -> drawDetails(canvas, shownDetails)
             candidates.isNotEmpty() -> drawCandidates(canvas)
             hint != null -> {
                 val baseline = height / 2 - (hintPaint.descent() + hintPaint.ascent()) / 2
@@ -117,6 +132,23 @@ class CandidateBar(
         if (pendingProbe != 0L) {
             Probe.candidateDraw.add(SystemClock.uptimeMillis() - pendingProbe)
             pendingProbe = 0L
+        }
+    }
+
+    /** The width of the details' Forget button, or 0 without one. */
+    private fun forgetWidth(d: CandidateDetails) = d.forget?.let { firstPaint.measureText(it) + pad * 2 } ?: 0f
+
+    /** Draws a candidate's details: the text at the start, the Forget button at the end. */
+    private fun drawDetails(canvas: Canvas, d: CandidateDetails) {
+        val baseline = height / 2 - (hintPaint.descent() + hintPaint.ascent()) / 2
+        val forget = forgetWidth(d)
+        val shown = android.text.TextUtils.ellipsize(d.text, hintPaint, width - (padStart + pad) * 2 - forget, android.text.TextUtils.TruncateAt.END)
+        canvas.drawText(shown, 0, shown.length, padStart + pad, baseline, hintPaint)
+        if (d.forget != null) {
+            val top = (height - pillHeight) / 2
+            box.set(width - forget - padStart, top, width - padStart, top + pillHeight)
+            canvas.drawRoundRect(box, pillHeight / 2, pillHeight / 2, pillPaint)
+            canvas.drawText(d.forget, box.left + pad, height / 2 - (firstPaint.descent() + firstPaint.ascent()) / 2, firstPaint)
         }
     }
 
@@ -161,7 +193,7 @@ class CandidateBar(
     private var dragging = false
     private var longPressed = false
     private val longPress = Runnable {
-        if (dragging || candidates.isEmpty() || downX >= listEnd) return@Runnable
+        if (dragging || details != null || candidates.isEmpty() || downX >= listEnd) return@Runnable
         val cx = downX + scroll
         val index = candidates.indices.firstOrNull { cx >= bounds[it] && cx < bounds[it + 1] } ?: return@Runnable
         longPressed = true
@@ -201,6 +233,10 @@ class CandidateBar(
     }
 
     private fun tap(x: Float) {
+        details?.let { d ->
+            onDetails(if (d.forget != null && x >= width - padStart - forgetWidth(d)) d.index else null)
+            return
+        }
         when {
             candidates.isNotEmpty() -> if (x >= listEnd) {
                 onExpand()
@@ -217,3 +253,9 @@ class CandidateBar(
         }
     }
 }
+
+/**
+ * Holds what the candidate bar shows after a long press on candidate [index]: [text] (its reading
+ * and source) and, for a word librime learned, the Forget button's label [forget].
+ */
+data class CandidateDetails(val index: Int, val text: String, val forget: String?)

@@ -20,7 +20,10 @@
     <dimen name="kb_icon">22dp</dimen>
     <!-- Split layout: each half keeps the phone's thumb zone; it starts at this window width. -->
     <dimen name="kb_split_half">268dp</dimen>
-    <dimen name="kb_split_min_width">600dp</dimen>
+    <!-- The widest the full-width keyboard grows on large windows (tablets, split off); centred. -->
+    <dimen name="kb_max_width">680dp</dimen>
+    <!-- In a short window (landscape phones) the keys take at most this share of its height. -->
+    <item name="kb_short_window_share" format="float" type="dimen">0.45</item>
     <!-- Long-press popup -->
     <dimen name="kb_popup_cell">44dp</dimen>
     <dimen name="kb_popup_height">52dp</dimen>

@@ -12,7 +12,9 @@ import java.io.File
 /**
  * Lays out librime's files under filesDir/rime and records what was deployed.
  *
- * Notes: `shared/` holds the data extracted from the assets, `user/` the deployed `build/` the
+ * Notes: `shared/` holds the data extracted from the assets, in device-protected storage so the
+ * keyboard can read it before the first unlock (Direct Boot, PLAN §8.1); [lockedUser] is the
+ * throwaway user directory librime uses until then. `user/` the deployed `build/` the
  * keyboard reads plus the user dictionary, `staging/` a deploy in progress. `deployed` names the
  * app version whose data `user/build` holds; `deploy.txt` the last deploy's time and memory;
  * `status.txt` what the deploy process is doing or why it failed (no typed text, only step
@@ -20,7 +22,10 @@ import java.io.File
  */
 class RimeFiles(context: Context) {
     val root = File(context.filesDir, "rime")
-    val shared = File(root, "shared")
+    private val deviceRoot = File(context.createDeviceProtectedStorageContext().filesDir, "rime")
+    val shared = File(deviceRoot, "shared")
+    /** librime's user directory before the first unlock: device-protected, emptied each time, nothing learned. */
+    val lockedUser = File(deviceRoot, "locked-user")
     val user = File(root, "user")
     val staging = File(root, "staging")
     private val deployed = File(root, "deployed")
@@ -89,6 +94,8 @@ class RimeFiles(context: Context) {
         if (sharedStamp.isFile && sharedStamp.readText() == stamp) return 0
         val start = android.os.SystemClock.uptimeMillis()
         shared.deleteRecursively()
+        // Builds before Direct Boot kept the shared data in credential-protected storage.
+        File(root, "shared").deleteRecursively()
         copyAssets(context, "rime", shared)
         sharedStamp.writeText(stamp)
         if (prebuilt) {

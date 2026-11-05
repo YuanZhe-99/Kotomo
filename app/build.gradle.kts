@@ -235,5 +235,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.savedstate.ktx)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.window)
+    implementation(libs.androidx.window.core)
     testImplementation(libs.junit)
 }

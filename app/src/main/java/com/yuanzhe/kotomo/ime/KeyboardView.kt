@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime
 
+import androidx.core.content.res.ResourcesCompat
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
@@ -7,6 +8,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
+import android.media.AudioManager
 import android.os.SystemClock
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -21,15 +23,19 @@ import com.yuanzhe.kotomo.R
 /** Shift states: off, one capital, or locked capitals. */
 enum class Shift { OFF, ONCE, LOCKED }
 
+/** Keys never shrink below this share of their height to fit a height limit. */
+private const val MIN_FIT = 0.6f
+
 /**
  * Draws one keyboard page as in the design and turns touches into key actions.
  *
  * Notes: main thread. A tap reports the key's action on release. A long press on a key with
- * choices ([Key.more], or the Emoji key's languages) opens a popup on [popupLayer]: sliding picks a
- * choice and releasing types it, as on Gboard. Holding Backspace repeats. A second finger
- * finishes the first key at once, so fast typing never drops a key. Every touch down is timed to
- * the next onDraw for [Probe.keyDraw]. In [split] mode the rows are two halves of fixed width at
- * the edges (the design's thumb zones) and the keys are lower.
+ * choices ([Key.more], or the languages on the Emoji key and the space bar) opens a popup on
+ * [popupLayer]: sliding picks a choice and releasing types it, as on Gboard. Holding Backspace
+ * repeats. A second finger finishes the first key at once, so fast typing never drops a key. Every
+ * touch down is timed to the next onDraw for [Probe.keyDraw]. In [split] mode the rows are two
+ * halves of fixed width at the edges (the design's thumb zones), clear of a [hinge], and the keys
+ * are lower; elsewhere the keys keep within [maxWidth] and shrink to [heightLimit].
  */
 @SuppressLint("ViewConstructor")
 class KeyboardView(
@@ -67,6 +73,36 @@ class KeyboardView(
             requestLayout()
         }
 
+    /**
+     * The most height the keys may take, in pixels (0: no limit): the space below the hinge in
+     * tabletop posture, or a share of a short landscape window. Keys and gaps shrink to fit.
+     */
+    var heightLimit = 0
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            requestLayout()
+        }
+
+    /** The widest the keys may be outside the split layout, in pixels (0: full width); centred. */
+    var maxWidth = 0f
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            invalidate()
+        }
+
+    /** The hinge's horizontal extent in view pixels when it divides the window, or null; split halves stay clear of it. */
+    var hinge: ClosedFloatingPointRange<Float>? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            invalidate()
+        }
+
     /** Width of each split half in pixels (Settings.thumbZoneDp). */
     var thumbHalf = 0f
         set(value) {
@@ -97,6 +133,25 @@ class KeyboardView(
 
     /** Long press on a letter offers its symbol and accents. */
     var longPressSymbols = true
+
+    /** The system's key click on each press (off by default). */
+    var sound = false
+
+    /** Sliding along the space bar moves the cursor. */
+    var spaceCursor = true
+
+    /** Sliding left from backspace deletes whole words. */
+    var deleteSwipe = true
+
+    /** A long press on the space bar opens the language choice. */
+    var spaceLanguage = true
+
+    /** What the Enter key shows: a new line or the field's action (search, send, …). */
+    var enterStyle = EnterStyle.NEWLINE
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     var shift = Shift.OFF
         set(value) {
@@ -150,11 +205,20 @@ class KeyboardView(
     private val functionText = res.getDimension(R.dimen.kb_function_text)
     private val spaceText = res.getDimension(R.dimen.kb_space_text)
 
-    private fun icon(id: Int) = context.getDrawable(id)!!.mutate()
+    private fun icon(id: Int) = ResourcesCompat.getDrawable(context.resources, id, context.theme)!!.mutate()
     private val shiftIcon = icon(R.drawable.ic_key_shift)
     private val shiftOnIcon = icon(R.drawable.ic_key_shift_on)
     private val backspaceIcon = icon(R.drawable.ic_key_backspace)
-    private val enterIcon = icon(R.drawable.ic_key_enter)
+    private val enterIcons = mapOf(
+        EnterStyle.NEWLINE to icon(R.drawable.ic_key_enter),
+        EnterStyle.SEARCH to icon(R.drawable.ic_key_search),
+        EnterStyle.SEND to icon(R.drawable.ic_key_send),
+        EnterStyle.GO to icon(R.drawable.ic_key_go),
+        EnterStyle.NEXT to icon(R.drawable.ic_key_next),
+        EnterStyle.PREVIOUS to icon(R.drawable.ic_key_previous),
+        EnterStyle.DONE to icon(R.drawable.ic_key_done),
+    )
+    private val audio = context.getSystemService(AudioManager::class.java)
     private val emojiIcon = icon(R.drawable.ic_key_emoji)
 
     private val badges = mapOf(
@@ -196,11 +260,18 @@ class KeyboardView(
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val repeatInterval = 50L
 
-    private val keyHeight get() = (if (split) keyHeightLarge else keyHeightPhone) * heightScale
+    /** The height scale in force: the person's choice, shrunk to fit [heightLimit]. */
+    private var fit = 1f
+    private val scale get() = heightScale * fit
+    private val keyHeight get() = (if (split) keyHeightLarge else keyHeightPhone) * scale
     private val oneHandedActive get() = !split && oneHanded != com.yuanzhe.kotomo.settings.OneHanded.OFF
     /** Share of the width the one-handed keyboard keeps. */
     private val oneHandedShare = 0.82f
-    private val side get() = if (split) width * 0.05f else sidePhone
+    private val side get() = when {
+        split -> width * 0.05f
+        maxWidth > 0f && width - sidePhone * 2 > maxWidth -> (width - maxWidth) / 2
+        else -> sidePhone
+    }
 
     private val longPress = Runnable {
         val key = pressed ?: return@Runnable
@@ -209,7 +280,8 @@ class KeyboardView(
                 longPressed = true
                 repeatBackspace.run()
             }
-            KeyAction.Emoji -> openPopup(key, Mode.entries.map { badges.getValue(it) }, Mode.entries.map(KeyAction::SetMode), Mode.entries.indexOf(mode))
+            KeyAction.Emoji -> openModes(key)
+            KeyAction.Space -> if (spaceLanguage) openModes(key)
             else -> {
                 val letter = key.key.label.singleOrNull()?.isLetter() == true
                 if (key.key.more.isNotEmpty() && (longPressSymbols || !letter)) {
@@ -225,6 +297,10 @@ class KeyboardView(
             postDelayed(this, repeatInterval)
         }
     }
+
+    /** Opens the language choice over [key] (the Emoji key's or the space bar's long press). */
+    private fun openModes(key: PlacedKey) =
+        openPopup(key, Mode.entries.map { badges.getValue(it) }, Mode.entries.map(KeyAction::SetMode), Mode.entries.indexOf(mode))
 
     private fun openPopup(key: PlacedKey, labels: List<String>, actions: List<KeyAction>, selected: Int) {
         longPressed = true
@@ -283,7 +359,17 @@ class KeyboardView(
     private fun describe(key: Key): String = when (key.action) {
         KeyAction.Shift -> context.getString(if (shift == Shift.LOCKED) R.string.key_caps_lock else R.string.key_shift)
         KeyAction.Backspace -> context.getString(R.string.key_backspace)
-        KeyAction.Enter -> context.getString(R.string.key_enter)
+        KeyAction.Enter -> context.getString(
+            when (enterStyle) {
+                EnterStyle.NEWLINE -> R.string.key_enter
+                EnterStyle.SEARCH -> R.string.key_enter_search
+                EnterStyle.SEND -> R.string.key_enter_send
+                EnterStyle.GO -> R.string.key_enter_go
+                EnterStyle.NEXT -> R.string.key_enter_next
+                EnterStyle.PREVIOUS -> R.string.key_enter_previous
+                EnterStyle.DONE -> R.string.key_enter_done
+            },
+        )
         KeyAction.Space -> context.getString(R.string.key_space, spaceLabels.getValue(mode))
         KeyAction.Emoji -> context.getString(R.string.key_emoji)
         is KeyAction.Symbols -> context.getString(R.string.key_symbols)
@@ -296,7 +382,10 @@ class KeyboardView(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rows = layout.rows.size
-        val height = padTop + rows * keyHeight + (rows - 1) * rowGap * heightScale + padBottom
+        fit = 1f
+        val natural = padTop + rows * keyHeight + (rows - 1) * rowGap * scale + padBottom
+        if (heightLimit in 1 until natural.toInt()) fit = ((heightLimit - padTop - padBottom) / (natural - padTop - padBottom)).coerceIn(MIN_FIT, 1f)
+        val height = padTop + rows * keyHeight + (rows - 1) * rowGap * scale + padBottom
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), height.toInt())
     }
 
@@ -309,8 +398,10 @@ class KeyboardView(
             val full = width - side * 2
             val inner = if (oneHandedActive) full * oneHandedShare else full
             val x0 = side + if (oneHandedActive && oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) full - inner else 0f
-            val splitHalf = if (split) minOf(if (thumbHalf > 0) thumbHalf else half, (inner - gap) / 2) else 0f
-            placed = layout.place(inner, keyHeight, rowGap * heightScale, gap, splitHalf).map {
+            var splitHalf = if (split) minOf(if (thumbHalf > 0) thumbHalf else half, (inner - gap) / 2) else 0f
+            // A hinge between the halves: each half ends before it.
+            hinge?.let { h -> if (split) splitHalf = minOf(splitHalf, h.start - x0 - gap, x0 + inner - h.endInclusive - gap).coerceAtLeast(0f) }
+            placed = layout.place(inner, keyHeight, rowGap * scale, gap, splitHalf).map {
                 it.copy(left = it.left + x0, top = it.top + padTop, right = it.right + x0, bottom = it.bottom + padTop)
             }
         }
@@ -335,7 +426,7 @@ class KeyboardView(
             val icon: Drawable? = when (k.key.action) {
                 KeyAction.Shift -> if (shift == Shift.OFF) shiftIcon else shiftOnIcon
                 KeyAction.Backspace -> backspaceIcon
-                KeyAction.Enter -> enterIcon
+                KeyAction.Enter -> enterIcons.getValue(enterStyle)
                 KeyAction.Emoji -> emojiIcon
                 else -> null
             }
@@ -422,6 +513,7 @@ class KeyboardView(
                 swiping = false
                 pendingDrawProbe = event.eventTime
                 buzz(HapticFeedbackConstants.KEYBOARD_TAP)
+                click(key.key.action)
                 postDelayed(longPress, longPressTimeout)
                 if (key.key.action is KeyAction.Text && !key.key.function) showPreview(key)
                 invalidate()
@@ -462,7 +554,7 @@ class KeyboardView(
         val dx = x - downX
         when (key.key.action) {
             KeyAction.Space -> {
-                if (!swiping && kotlin.math.abs(dx) < touchSlop) return
+                if (!spaceCursor || !swiping && kotlin.math.abs(dx) < touchSlop) return
                 startSwipe()
                 val steps = (dx / cursorStep).toInt()
                 if (steps != movedSteps) {
@@ -472,7 +564,7 @@ class KeyboardView(
                 }
             }
             KeyAction.Backspace -> {
-                if (!swiping && -dx < touchSlop) return
+                if (!deleteSwipe || !swiping && -dx < touchSlop) return
                 startSwipe()
                 val words = (-dx / wordStep).toInt().coerceAtLeast(0)
                 if (words != deleteWords) {
@@ -488,6 +580,18 @@ class KeyboardView(
     /** Plays haptic feedback [type] when the person has it on. */
     private fun buzz(type: Int) {
         if (haptics) performHapticFeedback(type)
+    }
+
+    /** Plays the system key click for [action] when the person has key sounds on. */
+    private fun click(action: KeyAction) {
+        if (!sound) return
+        val effect = when (action) {
+            KeyAction.Backspace -> AudioManager.FX_KEYPRESS_DELETE
+            KeyAction.Space -> AudioManager.FX_KEYPRESS_SPACEBAR
+            KeyAction.Enter -> AudioManager.FX_KEYPRESS_RETURN
+            else -> AudioManager.FX_KEYPRESS_STANDARD
+        }
+        audio.playSoundEffect(effect, -1f)
     }
 
     /** Centres of the one-handed side buttons (swap side, full width) in the empty strip, or null. */

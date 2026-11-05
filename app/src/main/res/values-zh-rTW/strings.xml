@@ -75,7 +75,7 @@
     <string name="page_mixed">混合模式</string>
     <string name="page_mixed_desc">%1$s · 跨語言轉換與各語言權重</string>
     <string name="page_chinese">中文</string>
-    <string name="page_chinese_desc">簡體或繁體</string>
+    <string name="page_chinese_desc">簡體、繁體、台灣或香港</string>
     <string name="page_japanese">日文</string>
     <string name="page_japanese_desc">羅馬字 · 拼音與英文轉日文 · 讀音</string>
     <string name="page_english">英文</string>
@@ -83,7 +83,7 @@
     <string name="page_layout">版面與尺寸</string>
     <string name="page_layout_desc">高度 · 單手模式 · 平板與摺疊螢幕</string>
     <string name="page_keys">按鍵與手勢</string>
-    <string name="page_keys_desc">長按符號 · 按鍵角標 · 震動</string>
+    <string name="page_keys_desc">長按符號 · 手勢 · 聲音與震動</string>
     <string name="page_themes">主題</string>
     <string name="page_themes_desc">淺色與深色跟隨系統</string>
     <string name="page_dictionaries">詞庫</string>

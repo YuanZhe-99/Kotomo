@@ -8,11 +8,13 @@ import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.inputmethodservice.InputMethodService
 import android.os.IBinder
+import android.os.Build
 import android.os.Debug
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
+import android.os.UserManager
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.View
@@ -20,6 +22,7 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
+import android.view.inputmethod.TextAttribute
 import android.content.ClipData
 import com.yuanzhe.kotomo.ai.AiActivity
 import com.yuanzhe.kotomo.ai.AiHandoff
@@ -30,6 +33,8 @@ import android.widget.LinearLayout
 import com.yuanzhe.kotomo.settings.MainActivity
 import android.content.ClipboardManager
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
 import com.yuanzhe.kotomo.ime.clipboard.ClipboardPanel
 import com.yuanzhe.kotomo.ime.clipboard.QuickPaste
@@ -40,8 +45,10 @@ import com.yuanzhe.kotomo.settings.SettingsStore
 import com.yuanzhe.kotomo.settings.SplitLayout
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -58,6 +65,9 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Mozc
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import androidx.window.layout.WindowMetricsCalculator
 import java.io.File
 import com.yuanzhe.kotomo.engine.Rime
 import java.io.IOException
@@ -146,8 +156,29 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var symbolPage = 0
     private var shift = Shift.OFF
     private var direct = false
+    /** Main thread: what the current field is for (e-mail, web address, phone, code, …). */
+    private var field = Field.TEXT
+    /** Main thread: the Chinese script remembered for the current app, or null to follow the settings (Compose state, so the quick panel follows it). */
+    private var appScript by androidx.compose.runtime.mutableStateOf<ChineseScript?>(null)
+    /** Main thread: when the last plain space was typed (uptime), for the double-space full stop; 0 after other keys. */
+    private var lastSpaceAt = 0L
+    /** Main thread: a space was typed after a picked English word, which smart space may move. */
+    private var autoSpaced = false
+    /** Main thread: the details shown after a long press on a candidate, or null. */
+    private var details: CandidateDetails? = null
+    /** Main thread: librime's latest candidates with their spelling and type. */
+    private var rimeCandidates = emptyList<Rime.Candidate>()
+    /** Main thread: the window's fold (hinge position and state), or null on devices without one. */
+    private var fold: FoldingFeature? = null
     private var createdAt = 0L
     private lateinit var store: SettingsStore
+    /** The job applying the store's changes; replaced when the store changes at the first unlock. */
+    private var settingsWatch: Job? = null
+    /**
+     * Before the first unlock (Direct Boot, PLAN §8.1): only read-only built-in data, no personal
+     * data read or written. Set on the main thread, read on the engine thread too.
+     */
+    @Volatile private var locked = false
     /** The theme and key radius the current views were built with. */
     private var appliedLook: Pair<com.yuanzhe.kotomo.settings.KeyboardTheme, Int>? = null
     /** Main thread: the settings in force (the store's latest value; no I/O to read). */
@@ -157,68 +188,133 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         super.onCreate()
         savedState.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        store = SettingsStore.get(this)
+        locked = !getSystemService(UserManager::class.java).isUserUnlocked
+        store = if (locked) SettingsStore.forDirectBoot(this) else SettingsStore.get(this)
         lifecycleScope.launch { emojiIndex = runCatching { EmojiIndex.load(this@KotomoService) }.getOrNull() }
-        history = ClipboardHistory.get(this)
         clipboard = getSystemService(ClipboardManager::class.java)
-        clipboard.addPrimaryClipChangedListener(clipListener)
-        // Changes made in the settings app apply at once: relayout and the engines' options.
+        if (locked) {
+            ContextCompat.registerReceiver(this, unlocked, IntentFilter(Intent.ACTION_USER_UNLOCKED), ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else {
+            history = ClipboardHistory.get(this)
+            clipboard.addPrimaryClipChangedListener(clipListener)
+        }
+        // Folding, unfolding and half-folding relayout at once; the composition stays as it is.
         lifecycleScope.launch {
-            store.flow.collect {
-                // A new theme repaints everything: rebuild the views and drop the cached panels.
-                if (appliedLook != null && appliedLook != (it.theme to it.keyRadiusDp)) {
-                    emojiPanel = null
-                    candidatesPanel = null
-                    quickPanel = null
-                    clipboardPanel = null
-                    setInputView(onCreateInputView())
+            runCatching {
+                WindowInfoTracker.getOrCreate(this@KotomoService).windowLayoutInfo(this@KotomoService).collect { info ->
+                    fold = info.displayFeatures.filterIsInstance<FoldingFeature>().firstOrNull()
+                    refresh(0)
                 }
-                refresh(0)
-                applyEngineSettings()
             }
         }
-        mode = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_MODE, null)
-            ?.let { name -> Mode.entries.firstOrNull { it.name == name } } ?: Mode.MIXED
+        settingsWatch = watchSettings()
+        mode = prefs()?.getString(KEY_MODE, null)?.let { name -> Mode.entries.firstOrNull { it.name == name } } ?: Mode.MIXED
         ContextCompat.registerReceiver(
             this, deployDone, IntentFilter(RimeDeployService.ACTION_DONE), ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         engine.post {
             english = openEnglish()
-            val files = RimeFiles(this)
-            // The app ships compiled data; it only needs unpacking (once per version). Without it
-            // (a build made without the Linux prebuild) the phone compiles in RimeDeployService.
-            // Every step is recorded for the diagnostics page: what was unpacked, whether
-            // librime opened, and what it does with a fixed probe.
-            val check = StringBuilder()
-            try {
-                val unpackMs = files.unpack(this)
-                check.append("unpack=").append(if (unpackMs > 0) "${unpackMs}ms" else "kept")
-                files.user.mkdirs()
-                check.append(" prebuilt=").append(files.prebuilt).append(" userBuild=").append(files.hasBuild)
-                if (files.prebuilt) {
-                    rimeReady = Rime.initialize(files.shared.path, files.user.path)
-                    if (unpackMs > 0) {
-                        files.writeReport(unpackMs, 0, rimeReady)
-                        files.writeStatus(if (rimeReady) RimeFiles.Status.Prebuilt else RimeFiles.Status.Failed("prebuilt data did not open"))
-                    }
-                } else if (files.hasBuild) {
-                    rimeReady = Rime.initialize(files.shared.path, files.user.path)
+            openRime()
+        }
+    }
+
+    /**
+     * Returns the keyboard's own preferences (the mode per app, the script per app), or null
+     * before the first unlock, when credential-protected storage cannot be read (Direct Boot).
+     */
+    private fun prefs() = if (locked) null else getSharedPreferences(PREFS, MODE_PRIVATE)
+
+    /** Receives the first unlock and leaves Direct Boot. */
+    private val unlocked = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = leaveDirectBoot()
+    }
+
+    /**
+     * Switches from Direct Boot to the person's data after the first unlock: their settings, the
+     * clipboard history and their mode, and librime reopened on their user directory.
+     * Notes: main thread; the cached panels are rebuilt, since they were made without personal data.
+     */
+    private fun leaveDirectBoot() {
+        if (!locked) return
+        locked = false
+        unregisterReceiver(unlocked)
+        settingsWatch?.cancel()
+        store = SettingsStore.get(this)
+        settingsWatch = watchSettings()
+        history = ClipboardHistory.get(this)
+        clipboard.addPrimaryClipChangedListener(clipListener)
+        mode = prefs()?.getString(KEY_MODE, null)?.let { name -> Mode.entries.firstOrNull { it.name == name } } ?: mode
+        emojiPanel = null
+        quickPanel = null
+        clipboardPanel = null
+        engine.post {
+            if (rimeReady) Rime.shutdown()
+            rimeReady = false
+            openRime()
+        }
+    }
+
+    /**
+     * Opens librime on the engine thread and reports the result to the main thread.
+     * Notes: the app ships compiled data; it only needs unpacking (once per version). Without it
+     * (a build made without the Linux prebuild) the phone compiles in RimeDeployService. Every
+     * step is recorded for the diagnostics page: what was unpacked, whether librime opened, and
+     * what it does with a fixed probe. Before the first unlock librime opens on the
+     * device-protected shared data with a throwaway user directory, records nothing and starts
+     * no deploy.
+     */
+    private fun openRime() {
+        val files = RimeFiles(this)
+        val beforeUnlock = locked
+        val check = StringBuilder()
+        try {
+            val unpackMs = files.unpack(this)
+            check.append("unpack=").append(if (unpackMs > 0) "${unpackMs}ms" else "kept")
+            val user = if (beforeUnlock) files.lockedUser.apply { deleteRecursively() } else files.user
+            user.mkdirs()
+            check.append(" prebuilt=").append(files.prebuilt).append(" userBuild=").append(files.hasBuild)
+            if (files.prebuilt) {
+                rimeReady = Rime.initialize(files.shared.path, user.path)
+                if (unpackMs > 0 && !beforeUnlock) {
+                    files.writeReport(unpackMs, 0, rimeReady)
+                    files.writeStatus(if (rimeReady) RimeFiles.Status.Prebuilt else RimeFiles.Status.Failed("prebuilt data did not open"))
                 }
-                check.append(" open=").append(rimeReady)
-                if (rimeReady) check.append(" | ").append(Rime.selfCheck())
-            } catch (e: Throwable) {
-                rimeReady = false
-                check.append(" error=").append(e.javaClass.simpleName).append(": ").append(e.message.orEmpty())
+            } else if (files.hasBuild && !beforeUnlock) {
+                rimeReady = Rime.initialize(files.shared.path, user.path)
             }
-            runCatching { files.writeCheck(check.toString()) }
-            val open = rimeReady
-            val deploy = !files.prebuilt && !files.current
-            main.post {
-                rimeOpen = open
-                applyEngineSettings()
-                if (deploy) startDeploy()
-                refresh(0)
+            check.append(" open=").append(rimeReady)
+            if (rimeReady) check.append(" | ").append(Rime.selfCheck())
+        } catch (e: Throwable) {
+            rimeReady = false
+            check.append(" error=").append(e.javaClass.simpleName).append(": ").append(e.message.orEmpty())
+        }
+        if (!beforeUnlock) runCatching { files.writeCheck(check.toString()) }
+        val open = rimeReady
+        val deploy = !beforeUnlock && !files.prebuilt && !files.current
+        main.post {
+            rimeOpen = open
+            applyEngineSettings()
+            if (deploy) startDeploy()
+            refresh(0)
+        }
+    }
+
+    /**
+     * Applies changes made in the settings app at once: relayout and the engines' options.
+     * Returns: the collecting job (cancelled when the store changes after the first unlock).
+     */
+    private fun watchSettings() = lifecycleScope.launch {
+        store.flow.collect {
+            // A new theme repaints everything: rebuild the views and drop the cached panels.
+            if (appliedLook != null && appliedLook != (it.theme to it.keyRadiusDp)) {
+                emojiPanel = null
+                candidatesPanel = null
+                quickPanel = null
+                clipboardPanel = null
+                setInputView(onCreateInputView())
             }
+            refresh(0)
+            applyEngineSettings()
         }
     }
 
@@ -282,7 +378,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         val popups = PopupLayer(this)
         keyboard = KeyboardView(this, popups, ::onKey)
-        candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::forget)
+        candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::showDetails, ::onDetails)
         panelHost = FrameLayout(this).apply { addView(keyboard) }
         keyboard.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
             override fun onDraw() {
@@ -338,27 +434,59 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         insets.getInsets(Type.tappableElement()).bottom,
     )
 
-    /** Whether the window is wide enough for the split layout (unfolded foldables, tablets). */
-    private fun isSplit() = when (settings.split) {
-        SplitLayout.ALWAYS -> true
-        SplitLayout.NEVER -> false
-        SplitLayout.AUTO ->
-            resources.configuration.screenWidthDp * resources.displayMetrics.density >= resources.getDimension(R.dimen.kb_split_min_width)
+    /**
+     * Reads the window's size and the fold's position for the layout (PLAN §8.10).
+     * Notes: main thread; the fold comes from the WindowManager flow collected in onCreate, in
+     * the same window coordinates as the window metrics.
+     */
+    private fun posture(): Posture {
+        val bounds = WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this).bounds
+        val density = resources.displayMetrics.density
+        val f = fold
+        val hinge = f?.bounds
+        return Posture(
+            bounds.width() / density, bounds.height() / density,
+            hingeX = if (hinge != null && f.orientation == FoldingFeature.Orientation.VERTICAL && f.isSeparating) {
+                hinge.left.toFloat()..hinge.right.toFloat()
+            } else null,
+            tabletopBottom = if (hinge != null && f.orientation == FoldingFeature.Orientation.HORIZONTAL && f.state == FoldingFeature.State.HALF_OPENED) {
+                hinge.bottom.toFloat()
+            } else null,
+        )
     }
 
     /**
-     * Passes the settings the engines hold to the engine thread: Simplified or Traditional
-     * output, and no learning in incognito mode (sensitive fields never reach librime).
+     * Passes the settings the engines hold to the engine thread: the Chinese script (the app's
+     * remembered one first) and no learning in incognito mode (sensitive fields never reach
+     * librime).
+     * Notes: setLearning re-selects the schema, which resets its options, so the script options
+     * are set after it; exactly one of them is on, or none for OpenCC standard Traditional.
      */
     private fun applyEngineSettings() {
-        val simplified = settings.chineseScript == ChineseScript.SIMPLIFIED
-        val learning = !settings.incognito
+        val script = appScript ?: settings.chineseScript
+        val learning = !settings.incognito && !locked
         engine.post {
             if (rimeReady) {
-                Rime.setOption("zh_hans", simplified)
                 Rime.setLearning(learning)
+                Rime.setOption("zh_hans", script == ChineseScript.SIMPLIFIED)
+                Rime.setOption("zh_hant_tw", script == ChineseScript.TAIWAN)
+                Rime.setOption("zh_hant_hk", script == ChineseScript.HONG_KONG)
             }
         }
+    }
+
+    /**
+     * Changes the Chinese script from the quick panel: for every app, and remembered for the
+     * current one (not in incognito mode or direct fields).
+     */
+    private fun setScript(script: ChineseScript) {
+        val app = currentInputEditorInfo?.packageName
+        if (app != null && !direct && !settings.incognito) {
+            appScript = script
+            prefs()?.edit { putString("$KEY_SCRIPT.$app", script.name) }
+        }
+        store.set { it.copy(chineseScript = script) }
+        applyEngineSettings()
     }
 
     /** Opens or closes the page of every candidate in the keyboard's place. */
@@ -416,6 +544,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** Opens the clipboard history in the keyboard's place (the toolbar's clipboard button). */
     private fun showClipboard() {
+        if (locked) return showNotice(getString(R.string.locked_notice))
         commitComposition()
         history.expire()
         val height = keyboard.height
@@ -453,6 +582,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             view.setContent {
                 QuickPanel(
                     store = store,
+                    script = appScript,
+                    onScript = ::setScript,
                     onOpenSettings = { onTool(Tool.SETTINGS) },
                     onBack = ::showKeyboard,
                 )
@@ -465,7 +596,53 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private val shownCandidates = androidx.compose.runtime.mutableStateOf(emptyList<String>())
 
     /**
-     * Forgets what librime learned about Chinese candidate [index] (a long press on it); other
+     * Shows candidate [index]'s details in the bar (a long press on it): its reading and where it
+     * comes from, with Forget for a word librime learned (PLAN §8.5).
+     * Notes: main thread, from what the last engine update carried; no engine call.
+     */
+    private fun showDetails(index: Int) {
+        val text = candidates.getOrNull(index) ?: return
+        val rimeIndex = rimeIndexes.getOrElse(index) { index }
+        val chinese = usesRime && !direct
+        val rime = if (chinese && rimeIndex >= 0) rimeCandidates.getOrNull(rimeIndex) else null
+        val emoji = text in emojiShown || (chinese && rimeIndex < 0)
+        val reading = when {
+            emoji -> ""
+            rime != null -> rime.comment.trim()
+            mode == Mode.JAPANESE -> japaneseReading
+            else -> ""
+        }
+        val source = getString(
+            when {
+                emoji -> R.string.source_emoji
+                rime != null -> when (rime.type) {
+                    "user_phrase" -> R.string.source_learned
+                    "user_table" -> R.string.source_your_dictionaries
+                    "sentence" -> R.string.source_sentence
+                    "completion" -> R.string.source_prediction
+                    "punct" -> R.string.source_symbol
+                    else -> R.string.source_chinese
+                }
+                mode == Mode.JAPANESE -> R.string.source_japanese
+                mode == Mode.ENGLISH && index == 0 && text == composing.toString() -> R.string.source_typed
+                mode == Mode.ENGLISH -> R.string.source_english
+                else -> R.string.source_typed
+            },
+        )
+        val forget = if (rime?.type == "user_phrase") getString(R.string.candidate_forget) else null
+        details = CandidateDetails(index, if (reading.isEmpty()) source else getString(R.string.candidate_details, reading, source), forget)
+        candidateBar.details = details
+    }
+
+    /** Closes the details, or forgets the learned word they show when [forget] is its index. */
+    private fun onDetails(forget: Int?) {
+        details = null
+        candidateBar.details = null
+        if (forget != null) forget(forget)
+    }
+
+    /**
+     * Forgets what librime learned about Chinese candidate [index] (Forget in its details); other
      * modes learn nothing to forget. A short notice confirms it.
      */
     private fun forget(index: Int) {
@@ -513,6 +690,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun startAi() {
         val info = currentInputEditorInfo
         when {
+            locked -> return showNotice(getString(R.string.locked_notice))
             !settings.ai.enabled -> return showNotice(getString(R.string.ai_off_notice))
             info == null || direct || settings.incognito -> return showNotice(getString(R.string.ai_not_here))
         }
@@ -597,20 +775,24 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         direct = isDirect(info)
+        field = Fields.of(info.inputType, info.hintText ?: info.label)
         symbolPage = 0
-        symbols = when (info.inputType and InputType.TYPE_MASK_CLASS) {
-            InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME -> true
-            else -> false
-        }
+        symbols = false
+        lastSpaceAt = 0L
+        autoSpaced = false
+        details = null
         shift = Shift.OFF
         composing.clear()
         clearChinese()
         previousWord = null
         // Each app comes back in the mode last used in it (only the package name is stored).
-        mode = info.packageName?.takeIf { !direct }?.let { app ->
-            getSharedPreferences(PREFS, MODE_PRIVATE).getString("$KEY_MODE.$app", null)
-                ?.let { name -> Mode.entries.firstOrNull { it.name == name } }
-        } ?: settings.defaultMode
+        val prefs = prefs()
+        val app = info.packageName?.takeIf { !direct }
+        mode = app?.let { prefs?.getString("$KEY_MODE.$it", null) }?.let { name -> Mode.entries.firstOrNull { it.name == name } }
+            ?: if (field == Field.CODE) Mode.ENGLISH else settings.defaultMode
+        // Code-like fields start in English even where the app remembers another mode.
+        if (field == Field.CODE) mode = Mode.ENGLISH
+        appScript = app?.let { prefs?.getString("$KEY_SCRIPT.$it", null) }?.let { name -> ChineseScript.entries.firstOrNull { it.name == name } }
         applyEngineSettings()
         showKeyboard()
         updateAutoCaps()
@@ -635,7 +817,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     override fun onWindowHidden() {
         super.onWindowHidden()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        Probe.save(this)
+        if (!locked) Probe.save(this)
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -660,6 +842,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         unregisterReceiver(deployDone)
+        if (locked) unregisterReceiver(unlocked)
         clipboard.removePrimaryClipChangedListener(clipListener)
         if (deployBound) unbindService(deployConnection)
         engine.post {
@@ -674,12 +857,16 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun onKey(action: KeyAction, longPress: Boolean, downTime: Long) {
         val ic = currentInputConnection ?: return
         aiUndo = null
+        details = null
+        if (action != KeyAction.Space) lastSpaceAt = 0L
+        val spaced = autoSpaced
+        autoSpaced = false
         if (action is KeyAction.SetMode) {
             commitComposition()
             previousWord = null
             mode = action.mode
             val app = currentInputEditorInfo?.packageName
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit {
+            prefs()?.edit {
                 putString(KEY_MODE, mode.name)
                 if (app != null && !direct && !settings.incognito) putString("$KEY_MODE.$app", mode.name)
             }
@@ -697,6 +884,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 if (letter && !direct && !longPress) {
                     composing.append(action.text)
                     ic.setComposingText(composing, 1)
+                } else if (spaced && composing.isEmpty() && settings.gestures.smartSpace && Fields.attaches(action.text) &&
+                    ic.getTextBeforeCursor(1, 0)?.toString() == " "
+                ) {
+                    // Smart space: "word ." becomes "word. ", ready for the next word.
+                    ic.deleteSurroundingText(1, 0)
+                    ic.commitText(action.text + " ", 1)
+                    autoSpaced = true
+                    previousWord = null
                 } else {
                     commitComposition()
                     ic.commitText(action.text, 1)
@@ -708,7 +903,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 pick(0)
                 return
             } else {
-                ic.commitText(" ", 1)
+                typeSpace(downTime)
                 previousWord = null
             }
             KeyAction.Backspace -> if (composing.isNotEmpty()) {
@@ -782,7 +977,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 }
                 if (shift == Shift.ONCE) shift = Shift.OFF
             }
-            KeyAction.Space -> rimeKey(SPACE, downTime) { ic.commitText(" ", 1) }
+            KeyAction.Space -> rimeKey(SPACE, downTime) { typeSpace(downTime) }
             KeyAction.Backspace -> rimeKey(BACKSPACE, downTime) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
             KeyAction.Enter -> rimeKey(RETURN, downTime) { editorEnter() }
             else -> return false
@@ -811,10 +1006,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /** librime's state after one call, read on the engine thread. */
-    private class RimeState(val handled: Boolean, val commit: String?, val preedit: String, val candidates: List<String>)
+    private class RimeState(val handled: Boolean, val commit: String?, val preedit: String, val candidates: List<Rime.Candidate>)
 
     private fun rimeState(handled: Boolean) = if (rimeReady) {
-        RimeState(handled, Rime.getCommit(), Rime.getComposition(), Rime.getCandidates(CHINESE_CANDIDATES).map { it.text })
+        RimeState(handled, Rime.getCommit(), Rime.getComposition(), Rime.getCandidates(CHINESE_CANDIDATES))
     } else {
         RimeState(false, null, "", emptyList())
     }
@@ -826,11 +1021,26 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             state.commit != null -> ic.commitText(state.commit, 1)
             state.preedit.isEmpty() && chinesePreedit.isNotEmpty() -> ic.commitText("", 1)
         }
-        if (state.preedit.isNotEmpty()) ic.setComposingText(state.preedit, 1)
+        if (state.preedit.isNotEmpty()) {
+            // API 37: the field learns the conversion candidates and that the composition shows the
+            // reading, not a selected conversion (PLAN §8.2); segments that hold a chosen
+            // conversion arrive with segment editing (P2).
+            if (Build.VERSION.SDK_INT >= API_TEXT_SUGGESTION_SELECTED) {
+                val attribute = TextAttribute.Builder()
+                    .setTextConversionSuggestions(state.candidates.take(CONVERSION_HINTS).map { it.text })
+                    .setTextSuggestionSelected(false)
+                    .build()
+                ic.setComposingText(state.preedit, 1, attribute)
+            } else {
+                ic.setComposingText(state.preedit, 1)
+            }
+        }
         chinesePreedit = state.preedit
+        rimeCandidates = state.candidates
+        val texts = state.candidates.map { it.text }
         val emoji = emojiFor(state.preedit)
-        val at = minOf(EMOJI_POSITION, state.candidates.size)
-        chineseCandidates = withEmoji(state.candidates, emoji)
+        val at = minOf(EMOJI_POSITION, texts.size)
+        chineseCandidates = withEmoji(texts, emoji)
         rimeIndexes = if (emoji.isEmpty()) state.candidates.indices.toList()
         else (0 until at).toList() + List(chineseCandidates.size - state.candidates.size) { -1 } + (at until state.candidates.size).toList()
         if (usesRime) {
@@ -871,10 +1081,27 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun editorEnter() {
         val ic = currentInputConnection ?: return
         val info = currentInputEditorInfo
-        val editorAction = info.imeOptions and EditorInfo.IME_MASK_ACTION
-        val useAction = info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION == 0 &&
-            editorAction != EditorInfo.IME_ACTION_NONE && editorAction != EditorInfo.IME_ACTION_UNSPECIFIED
-        if (useAction) ic.performEditorAction(editorAction) else sendKeyChar('\n')
+        if (Fields.enter(info.imeOptions) == EnterStyle.NEWLINE) sendKeyChar('\n')
+        else ic.performEditorAction(info.imeOptions and EditorInfo.IME_MASK_ACTION)
+    }
+
+    /**
+     * Types a space, or turns a second quick space after a word into a full stop (". " or "。")
+     * when that gesture is on.
+     * Inputs: downTime is the touch's uptime.
+     */
+    private fun typeSpace(downTime: Long) {
+        val ic = currentInputConnection ?: return
+        if (settings.gestures.doubleSpacePeriod && lastSpaceAt != 0L && downTime - lastSpaceAt < DOUBLE_SPACE_MS) {
+            Fields.period(ic.getTextBeforeCursor(2, 0), mode)?.let {
+                ic.deleteSurroundingText(1, 0)
+                ic.commitText(it, 1)
+                lastSpaceAt = 0L
+                return
+            }
+        }
+        ic.commitText(" ", 1)
+        lastSpaceAt = downTime
     }
 
     /**
@@ -915,6 +1142,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         } else if (mode == Mode.ENGLISH) {
             ic.commitText("$text ", 1)
             previousWord = text
+            autoSpaced = true
         } else {
             ic.commitText(text, 1)
         }
@@ -953,8 +1181,21 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun refresh(downTime: Long) {
         if (!::keyboard.isInitialized) return
-        val split = isSplit()
+        val pad = field == Field.PHONE || field == Field.NUMBER || field == Field.DATETIME
         val s = settings
+        val posture = posture()
+        val split = posture.split(s.split) && !pad
+        val density = resources.displayMetrics.density
+        keyboard.hinge = posture.hingeX?.takeIf { split }?.let { h ->
+            val at = IntArray(2).also(keyboard::getLocationInWindow)[0]
+            (h.start - at)..(h.endInclusive - at)
+        }
+        keyboard.maxWidth = if (posture.wide && !split) resources.getDimension(R.dimen.kb_max_width) else 0f
+        keyboard.heightLimit = posture.heightLimit(
+            WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this).bounds.height(),
+            (candidateBar.height.takeIf { it > 0 } ?: resources.getDimensionPixelSize(R.dimen.bar_height)) + content.paddingBottom,
+            density, ResourcesCompat.getFloat(resources, R.dimen.kb_short_window_share), s.tabletopLowerHalf,
+        )
         keyboard.split = split
         keyboard.heightScale = s.heightPercent / 100f
         keyboard.thumbHalf = s.thumbZoneDp * resources.displayMetrics.density
@@ -963,7 +1204,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.haptics = s.haptics
         keyboard.longPressSymbols = s.longPressSymbols
         keyboard.radius = s.keyRadiusDp * resources.displayMetrics.density
-        keyboard.layout = if (symbols) Layout.symbols(mode, split, symbolPage) else Layout.letters(mode, shift != Shift.OFF, split)
+        keyboard.sound = s.keySound
+        keyboard.spaceCursor = s.gestures.spaceCursor
+        keyboard.deleteSwipe = s.gestures.deleteSwipe
+        keyboard.spaceLanguage = s.gestures.spaceLanguage
+        keyboard.enterStyle = Fields.enter(currentInputEditorInfo?.imeOptions ?: 0)
+        // E-mail, web-address and code-like fields take ASCII symbols whatever the mode.
+        val symbolMode = if (field == Field.EMAIL || field == Field.URL || field == Field.CODE) Mode.ENGLISH else mode
+        keyboard.layout = when {
+            pad -> Layout.pad(field)
+            symbols -> Layout.symbols(symbolMode, split, symbolPage, hinge = keyboard.hinge != null)
+            else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null)
+        }
         keyboard.shift = shift
         keyboard.mode = mode
         val raw = composing.toString()
@@ -979,6 +1231,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         candidateBar.show(candidates, downTime)
         shownCandidates.value = candidates
+        candidateBar.details = details
         candidateBar.hint = notice ?: chineseHint()
         updateQuickStrip()
         if (raw.isEmpty()) japaneseReading = ""
@@ -1011,7 +1264,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun suggestJapanese(typed: String, gen: Int) {
         val incognito = settings.incognito
         engine.post {
-            if (!mozcTried) {
+            if (!mozcTried && !locked) {
                 mozcTried = true
                 mozc = openMozc()
             }
@@ -1115,7 +1368,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onBack = ::showKeyboard,
                     // Sensitive fields record nothing, recent emoji included.
-                    recordRecents = !settings.incognito && (currentInputEditorInfo?.let { !isDirect(it) } ?: false),
+                    recordRecents = !locked && !settings.incognito && (currentInputEditorInfo?.let { !isDirect(it) } ?: false),
+                    personal = !locked,
                 )
             }
         }
@@ -1129,6 +1383,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val ENGLISH_DICT = "main_en_us.dict"
         const val MOZC_DATA = "mozc.data"
         const val NOTICE_MS = 1500L
+        const val KEY_SCRIPT = "script"
+        /** The API level that added TextAttribute.Builder.setTextSuggestionSelected. */
+        const val API_TEXT_SUGGESTION_SELECTED = 37
+        /** Conversion candidates passed to the field with the composition. */
+        const val CONVERSION_HINTS = 5
+        /** Two spaces closer than this make a full stop. */
+        const val DOUBLE_SPACE_MS = 400L
         /** The most text handed to the AI screen at once. */
         const val AI_MAX_CHARS = 2000
         const val EMOJI_SUGGESTIONS = 3

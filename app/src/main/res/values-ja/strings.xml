@@ -75,7 +75,7 @@
     <string name="page_mixed">ミックスモード</string>
     <string name="page_mixed_desc">%1$s · 言語をまたぐ変換と言語ごとの重み</string>
     <string name="page_chinese">中国語</string>
-    <string name="page_chinese_desc">簡体字または繁体字</string>
+    <string name="page_chinese_desc">簡体字・繁体字・台湾・香港</string>
     <string name="page_japanese">日本語</string>
     <string name="page_japanese_desc">ローマ字 · ピンインと英語から日本語 · 読み</string>
     <string name="page_english">英語</string>
@@ -83,7 +83,7 @@
     <string name="page_layout">レイアウトとサイズ</string>
     <string name="page_layout_desc">高さ · 片手モード · タブレットと折りたたみ端末</string>
     <string name="page_keys">キーとジェスチャー</string>
-    <string name="page_keys_desc">長押しで記号 · キーのヒント · バイブレーション</string>
+    <string name="page_keys_desc">長押しで記号 · ジェスチャー · 音とバイブレーション</string>
     <string name="page_themes">テーマ</string>
     <string name="page_themes_desc">ライトとダークはシステムに従います</string>
     <string name="page_dictionaries">辞書</string>

@@ -88,7 +88,7 @@
     <string name="page_mixed">Mixed mode</string>
     <string name="page_mixed_desc">%1$s · cross-language conversion and language weights</string>
     <string name="page_chinese">Chinese</string>
-    <string name="page_chinese_desc">Simplified or Traditional characters</string>
+    <string name="page_chinese_desc">Simplified, Traditional, Taiwan or Hong Kong</string>
     <string name="page_japanese">Japanese</string>
     <string name="page_japanese_desc">Romaji · pinyin and English to Japanese · readings</string>
     <string name="page_english">English</string>
@@ -96,7 +96,7 @@
     <string name="page_layout">Layout and size</string>
     <string name="page_layout_desc">Height · one-handed mode · tablets and foldables</string>
     <string name="page_keys">Keys and gestures</string>
-    <string name="page_keys_desc">Long-press symbols · key hints · vibration</string>
+    <string name="page_keys_desc">Long-press symbols · gestures · sound and vibration</string>
     <string name="page_themes">Themes</string>
     <string name="page_themes_desc">Light and dark follow the system</string>
     <string name="page_dictionaries">Dictionaries</string>

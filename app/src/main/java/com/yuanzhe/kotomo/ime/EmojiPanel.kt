@@ -102,7 +102,7 @@ private class Recents(private val prefs: SharedPreferences) {
 }
 
 /** What the panel needs before it can draw: the emoji data and the stored recents. */
-private class PanelData(val index: EmojiIndex, val recents: Recents, val shownRecents: List<String>)
+private class PanelData(val index: EmojiIndex, val recents: Recents?, val shownRecents: List<String>)
 
 /** One cell of the emoji grid: a section title, the empty-recents hint or an emoji. */
 private sealed interface Cell {
@@ -135,7 +135,8 @@ private fun groupTitle(id: String): Int = when (id) {
  *
  * Inputs: [onEmoji] commits one emoji (a base emoji or a chosen tone); [onBackspace] deletes
  * before the cursor; [onBack] returns to the keyboard; [recordRecents] adds sent emoji to Recents
- * and must be false in sensitive fields and incognito (passwords, IME_FLAG_NO_PERSONALIZED_LEARNING).
+ * and must be false in sensitive fields and incognito (passwords, IME_FLAG_NO_PERSONALIZED_LEARNING);
+ * [personal] false (before the first unlock) neither reads nor shows Recents.
  * Side effects: reads the emoji asset and the recents file on an I/O thread; writes the recents
  * file when [recordRecents] is true.
  * Notes: built with Compose inside the input method window (S1's Compose check); the first frame
@@ -149,12 +150,14 @@ fun EmojiPanel(
     onBackspace: () -> Unit,
     onBack: () -> Unit,
     recordRecents: Boolean = false,
+    personal: Boolean = true,
 ) {
     val context = LocalContext.current
     val data by produceState<PanelData?>(null) {
         value = withContext(Dispatchers.IO) {
-            val recents = Recents(context.getSharedPreferences(Recents.FILE, Context.MODE_PRIVATE))
-            PanelData(EmojiIndex.load(context), recents, recents.items.toList())
+            // Before the first unlock (Direct Boot) the recents file cannot be read: no Recents.
+            val recents = if (personal) Recents(context.getSharedPreferences(Recents.FILE, Context.MODE_PRIVATE)) else null
+            PanelData(EmojiIndex.load(context), recents, recents?.items?.toList().orEmpty())
         }
     }
     val grid = rememberLazyGridState()

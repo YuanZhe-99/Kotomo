@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="key_enter_search">検索</string>
+    <string name="key_enter_send">送信</string>
+    <string name="key_enter_go">移動</string>
+    <string name="key_enter_next">次へ</string>
+    <string name="key_enter_previous">前へ</string>
+    <string name="key_enter_done">完了</string>
+
+    <string name="keys_sound">キーを押したときの音</string>
+    <string name="keys_sound_desc">キーごとにシステムのクリック音を鳴らします</string>
+    <string name="gestures_section">ジェスチャー</string>
+    <string name="gesture_space_cursor">スペースキーのスライド</string>
+    <string name="gesture_space_cursor_desc">スペースキーを左右にスライドしてカーソルを移動します</string>
+    <string name="gesture_delete_swipe">削除キーのスライド</string>
+    <string name="gesture_delete_swipe_desc">削除キーから左にスライドして単語ごとに削除します</string>
+    <string name="gesture_double_space">スペース 2 回で句点</string>
+    <string name="gesture_double_space_desc">単語のあとにスペースを素早く 2 回押すと句点を入力します</string>
+    <string name="gesture_space_language">スペース長押しで言語切り替え</string>
+    <string name="gesture_space_language_desc">スペースキーを長押しして入力言語を選びます</string>
+    <string name="gesture_smart_space">スマートスペース</string>
+    <string name="gesture_smart_space_desc">候補の英単語のあとの句読点は、スペースの前に入ります</string>
+
+    <string name="script_taiwan">台湾</string>
+    <string name="script_hong_kong">香港</string>
+
+    <string name="candidate_details">%1$s · %2$s</string>
+    <string name="candidate_forget">忘れる</string>
+    <string name="source_chinese">中国語辞書</string>
+    <string name="source_japanese">日本語辞書</string>
+    <string name="source_english">英語辞書</string>
+    <string name="source_learned">入力から学習</string>
+    <string name="source_your_dictionaries">ユーザー辞書</string>
+    <string name="source_sentence">文全体</string>
+    <string name="source_prediction">予測</string>
+    <string name="source_symbol">記号</string>
+    <string name="source_emoji">絵文字</string>
+    <string name="source_typed">入力どおり</string>
+
+    <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
+    <string name="locked_notice">デバイスのロックを解除すると使えます</string>
+</resources>

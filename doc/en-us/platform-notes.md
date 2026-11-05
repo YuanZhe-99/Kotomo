@@ -4,7 +4,7 @@
 |---|---|
 | Android phones (`arm64-v8a`) | P0 spikes: the keyboard with English (S4) and Chinese (S2) engines; not yet run on a device. |
 | Android emulator (`x86_64`) | The development target for layouts and instrumentation tests where the host supports it; never evidence for latency or on-device AI. |
-| Android tablets and foldables | Planned for P1 together with one-handed mode; layouts never assume a phone screen size. |
+| Android tablets and foldables | P1 code in place (not yet run on a device): window size classes, a centred maximum width, keys below the hinge when half-folded, split halves and two space bars beside a vertical hinge (unit-tested). |
 | Desktop hosts (Windows, Linux, macOS) | Build and test the engine core from P0; never a product target. |
 
 ## Repository
@@ -47,5 +47,6 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
   compiled at build time; Mixed mode does the same until the mixed coordinator (S6) exists. Japanese
   mode converts romaji through Mozc (S3, libraries from Linux CI): the composition shows kana, the
   first candidate is the whole sentence, Enter keeps the kana; editing single segments comes in P2.
+- P1's gestures, field adaptation, Taiwan and Hong Kong output, candidate details, Direct Boot and the API 37 composition attribute are unit- or host-tested only; device checks wait for the P1 milestone APK. Before the first unlock the keyboard types with the defaults and built-in data only: Chinese with nothing learned, English, no Japanese (Mozc needs its data in credential-protected storage), no clipboard, AI or emoji recents.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.

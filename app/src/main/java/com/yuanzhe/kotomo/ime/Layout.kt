@@ -144,9 +144,12 @@ data class Layout(val rows: List<Row>) {
 
         /**
          * Builds the letter page for [mode]; [shifted] shows capitals; [split] marks the rows for
-         * the split layout (g and v appear on both halves, as on the design).
+         * the split layout (g and v appear on both halves, as on the design); [field] adapts the
+         * bottom row (PLAN §8.7): e-mail fields put @ in the comma's place, web addresses / and a
+         * .com key in place of Emoji; both, and code-like fields, use ASCII punctuation. [hinge]
+         * (split only) gives the bottom row a space bar on each side of a vertical hinge.
          */
-        fun letters(mode: Mode, shifted: Boolean, split: Boolean = false): Layout {
+        fun letters(mode: Mode, shifted: Boolean, split: Boolean = false, field: Field = Field.TEXT, hinge: Boolean = false): Layout {
             val rows = if (split) {
                 listOf(
                     Row(letters("qwertyuiop", shifted), splitAt = 5),
@@ -160,7 +163,30 @@ data class Layout(val rows: List<Row>) {
                     Row(listOf(shift()) + letters("zxcvbnm", shifted) + backspace()),
                 )
             }
-            return Layout(rows + bottomRow(mode, split, KeyAction.Symbols(0), "?123"))
+            return Layout(rows + bottomRow(mode, split, KeyAction.Symbols(0), "?123", field).aroundHinge(split && hinge))
+        }
+
+        /**
+         * Builds the keypad of a phone (digits, * # +, separators) or number field (digits, sign,
+         * comma and decimal point; a date or time field gets / and : instead).
+         * Notes: one layout for every width; the last column holds the function keys.
+         */
+        fun pad(field: Field): Layout {
+            fun k(s: String, vararg more: String) = Key(s, KeyAction.Text(s), more = if (more.isEmpty()) emptyList() else listOf(s, *more))
+            val (bottomLeft, bottomRight) = when (field) {
+                Field.PHONE -> k("*", "#", ";", ",") to k("#")
+                Field.DATETIME -> k("/", "-", ".") to k(":")
+                else -> k(",") to k(".")
+            }
+            val dash = if (field == Field.PHONE) k("-", "(", ")", "/", ".", ",", "N") else k("-", "+")
+            return Layout(
+                listOf(
+                    Row(listOf(k("1"), k("2"), k("3"), dash.copy(function = true))),
+                    Row(listOf(k("4"), k("5"), k("6"), Key("", KeyAction.Space, function = true))),
+                    Row(listOf(k("7"), k("8"), k("9"), backspace().copy(width = 1f))),
+                    Row(listOf(bottomLeft, if (field == Field.PHONE) k("0", "+") else k("0"), bottomRight, Key("⏎", KeyAction.Enter, function = true))),
+                ),
+            )
         }
 
         /** Long-press variants of symbols, the symbol itself first. */
@@ -183,7 +209,7 @@ data class Layout(val rows: List<Row>) {
          * own marks, English ASCII. The third row's first key switches page; the bottom row returns
          * to letters. Many symbols offer variants on long press.
          */
-        fun symbols(mode: Mode, split: Boolean = false, page: Int = 0): Layout {
+        fun symbols(mode: Mode, split: Boolean = false, page: Int = 0, hinge: Boolean = false): Layout {
             val (row2, row3) = when (mode) {
                 Mode.ENGLISH -> if (page == 0) "@#\$_&-+()/" to "*\"':;!?" else "~`|•√π÷×¶∆" to "%©®™✓[]<>"
                 Mode.JAPANESE -> if (page == 0) "@#￥&-+（）「」" to "、；：・？！…" else "『』【】〈〉《》～｜" to "%^=\\{}<>"
@@ -204,7 +230,7 @@ data class Layout(val rows: List<Row>) {
             } else {
                 listOf(Row(symbolKeys(row1)), Row(symbolKeys(row2)), Row(third))
             }
-            return Layout(rows + bottomRow(mode, split, KeyAction.Letters, "ABC"))
+            return Layout(rows + bottomRow(mode, split, KeyAction.Letters, "ABC").aroundHinge(split && hinge))
         }
 
         /**
@@ -212,7 +238,28 @@ data class Layout(val rows: List<Row>) {
          * Notes: on the phone the comma and full stop are light keys and Emoji a dark one; split,
          * the other way round.
          */
-        private fun bottomRow(mode: Mode, split: Boolean, page: KeyAction, pageLabel: String): Row {
+        private fun bottomRow(mode: Mode, split: Boolean, page: KeyAction, pageLabel: String, field: Field = Field.TEXT): Row {
+            val emoji = Key("☺", KeyAction.Emoji, function = !split)
+            when (field) {
+                Field.EMAIL, Field.URL -> {
+                    val email = field == Field.EMAIL
+                    val first = if (email) Key("@", KeyAction.Text("@"), more = listOf("@", "-", "_", "+"), function = split)
+                    else Key("/", KeyAction.Text("/"), more = listOf("/", ":", "-", "_", "?", "=", "&", "#"), function = split)
+                    val domains = listOf(".com", ".net", ".org", ".cn", ".jp", ".io")
+                    return Row(
+                        listOf(
+                            Key(pageLabel, page, if (split) 1.5f else 1.4f, function = true),
+                            first,
+                            if (email) emoji else Key(".com", KeyAction.Text(".com"), more = domains, function = !split),
+                            Key("", KeyAction.Space, 4.6f),
+                            Key(".", KeyAction.Text("."), more = if (email) domains else listOf(".", "-", "_"), function = split),
+                            Key("⏎", KeyAction.Enter, 1.5f, function = true),
+                        ),
+                    )
+                }
+                Field.CODE -> return bottomRow(Mode.ENGLISH, split, page, pageLabel)
+                else -> Unit
+            }
             val (comma, stop) = punctuation(mode)
             val (commaMore, stopMore) = when (mode) {
                 Mode.ENGLISH -> listOf(",", ";", ":", "'", "\"") to listOf(".", "…", "?", "!")
@@ -223,13 +270,27 @@ data class Layout(val rows: List<Row>) {
                 listOf(
                     Key(pageLabel, page, if (split) 1.5f else 1.4f, function = true),
                     Key(comma, KeyAction.Text(comma), more = commaMore, function = split),
-                    Key("☺", KeyAction.Emoji, function = !split),
+                    emoji,
                     Key("", KeyAction.Space, 4.6f),
                     Key(stop, KeyAction.Text(stop), more = stopMore, function = split),
                     Key("⏎", KeyAction.Enter, 1.5f, function = true),
                 ),
             )
         }
+
+        /**
+         * Splits a whole-width bottom row around a hinge when [apply] is set: the space bar becomes
+         * one bar on each side, so no key spans the hinge (PLAN §8.10).
+         */
+        private fun Row.aroundHinge(apply: Boolean): Row {
+            val i = keys.indexOfFirst { it.action == KeyAction.Space }
+            if (!apply || i < 0) return this
+            val bar = keys[i].copy(width = HINGE_SPACE)
+            return Row(keys.subList(0, i) + bar + bar + keys.subList(i + 1, keys.size), splitAt = i + 1)
+        }
+
+        /** The width of each space bar beside a hinge, in key units. */
+        private const val HINGE_SPACE = 2.3f
 
         /**
          * Marks which popup choices are full-width (true) or half-width (false), for a popup that

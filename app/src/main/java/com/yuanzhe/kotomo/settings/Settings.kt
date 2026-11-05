@@ -14,8 +14,11 @@ enum class SplitLayout { AUTO, ALWAYS, NEVER }
 /** Chooses one-handed mode: off, or the keys pushed toward the left or right thumb. */
 enum class OneHanded { OFF, LEFT, RIGHT }
 
-/** Chooses the script Chinese is committed in. */
-enum class ChineseScript { SIMPLIFIED, TRADITIONAL }
+/**
+ * Chooses the script Chinese is committed in: Mainland Simplified, OpenCC standard Traditional, or
+ * Taiwan or Hong Kong Traditional with their regional phrases (PLAN §8.4).
+ */
+enum class ChineseScript { SIMPLIFIED, TRADITIONAL, TAIWAN, HONG_KONG }
 
 /** The keyboard's colors: following the system, always light, always dark, or Material You. */
 enum class KeyboardTheme { SYSTEM, LIGHT, DARK, DYNAMIC }
@@ -70,6 +73,23 @@ data class ClipboardSettings(
 )
 
 /**
+ * Holds the switch of every keyboard gesture (PLAN §8.1); all on by default.
+ *
+ * Notes: [spaceCursor] moves the cursor by sliding along the space bar; [deleteSwipe] deletes
+ * whole words by sliding left from backspace; [doubleSpacePeriod] turns two quick spaces after a
+ * word into a full stop; [spaceLanguage] opens the language choice on a long press of the space
+ * bar; [smartSpace] drops the space typed after a picked English word before punctuation and adds
+ * one after it.
+ */
+data class Gestures(
+    val spaceCursor: Boolean = true,
+    val deleteSwipe: Boolean = true,
+    val doubleSpacePeriod: Boolean = true,
+    val spaceLanguage: Boolean = true,
+    val smartSpace: Boolean = true,
+)
+
+/**
  * Holds the AI settings (PLAN §11): whether the keyboard's AI button may hand text to Gemini Nano.
  *
  * Notes: off by default; while off, Kotomo makes no GenAI call at all.
@@ -101,6 +121,8 @@ data class Settings(
     val longPressSymbols: Boolean = true,
     val keyHints: Boolean = true,
     val haptics: Boolean = true,
+    val keySound: Boolean = false,
+    val gestures: Gestures = Gestures(),
     val incognito: Boolean = false,
     val clipboard: ClipboardSettings = ClipboardSettings(),
     val theme: KeyboardTheme = KeyboardTheme.SYSTEM,
@@ -153,6 +175,12 @@ internal object SettingsFormat {
     private val longPress = booleanPreferencesKey("keys.long_press_symbols")
     private val keyHints = booleanPreferencesKey("keys.corner_hints")
     private val haptics = booleanPreferencesKey("keys.haptics")
+    private val keySound = booleanPreferencesKey("keys.sound")
+    private val spaceCursor = booleanPreferencesKey("gestures.space_cursor")
+    private val deleteSwipe = booleanPreferencesKey("gestures.delete_swipe")
+    private val doubleSpace = booleanPreferencesKey("gestures.double_space_period")
+    private val spaceLanguage = booleanPreferencesKey("gestures.space_language")
+    private val smartSpace = booleanPreferencesKey("gestures.smart_space")
     private val incognito = booleanPreferencesKey("privacy.incognito")
     private val clipHistory = booleanPreferencesKey("clipboard.history")
     private val clipRetention = intPreferencesKey("clipboard.retention_days")
@@ -191,6 +219,14 @@ internal object SettingsFormat {
             longPressSymbols = p[longPress] ?: d.longPressSymbols,
             keyHints = p[keyHints] ?: d.keyHints,
             haptics = p[haptics] ?: d.haptics,
+            keySound = p[keySound] ?: d.keySound,
+            gestures = Gestures(
+                spaceCursor = p[spaceCursor] ?: d.gestures.spaceCursor,
+                deleteSwipe = p[deleteSwipe] ?: d.gestures.deleteSwipe,
+                doubleSpacePeriod = p[doubleSpace] ?: d.gestures.doubleSpacePeriod,
+                spaceLanguage = p[spaceLanguage] ?: d.gestures.spaceLanguage,
+                smartSpace = p[smartSpace] ?: d.gestures.smartSpace,
+            ),
             incognito = p[incognito] ?: d.incognito,
             clipboard = ClipboardSettings(
                 history = p[clipHistory] ?: d.clipboard.history,
@@ -233,6 +269,12 @@ internal object SettingsFormat {
         p.put(longPress, old.longPressSymbols, new.longPressSymbols)
         p.put(keyHints, old.keyHints, new.keyHints)
         p.put(haptics, old.haptics, new.haptics)
+        p.put(keySound, old.keySound, new.keySound)
+        p.put(spaceCursor, old.gestures.spaceCursor, new.gestures.spaceCursor)
+        p.put(deleteSwipe, old.gestures.deleteSwipe, new.gestures.deleteSwipe)
+        p.put(doubleSpace, old.gestures.doubleSpacePeriod, new.gestures.doubleSpacePeriod)
+        p.put(spaceLanguage, old.gestures.spaceLanguage, new.gestures.spaceLanguage)
+        p.put(smartSpace, old.gestures.smartSpace, new.gestures.smartSpace)
         p.put(incognito, old.incognito, new.incognito)
         p.put(clipHistory, old.clipboard.history, new.clipboard.history)
         p.put(clipRetention, old.clipboard.retentionDays, new.clipboard.retentionDays)

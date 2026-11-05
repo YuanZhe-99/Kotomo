@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gestures, field adaptation, regional Chinese and candidate details (PLAN §8.1, §8.4, §8.5, §8.7). -->
+<resources>
+    <string name="key_enter_search">Search</string>
+    <string name="key_enter_send">Send</string>
+    <string name="key_enter_go">Go</string>
+    <string name="key_enter_next">Next</string>
+    <string name="key_enter_previous">Previous</string>
+    <string name="key_enter_done">Done</string>
+
+    <string name="keys_sound">Sound on key press</string>
+    <string name="keys_sound_desc">The system\'s key click with each key</string>
+    <string name="gestures_section">Gestures</string>
+    <string name="gesture_space_cursor">Slide on the space bar</string>
+    <string name="gesture_space_cursor_desc">Move the cursor by sliding along the space bar</string>
+    <string name="gesture_delete_swipe">Slide from delete</string>
+    <string name="gesture_delete_swipe_desc">Delete whole words by sliding left from the delete key</string>
+    <string name="gesture_double_space">Double-space full stop</string>
+    <string name="gesture_double_space_desc">Two quick spaces after a word type a full stop</string>
+    <string name="gesture_space_language">Long-press space for languages</string>
+    <string name="gesture_space_language_desc">Hold the space bar to switch the input language</string>
+    <string name="gesture_smart_space">Smart space</string>
+    <string name="gesture_smart_space_desc">Punctuation after a suggested English word goes before its space</string>
+
+    <string name="script_taiwan">Taiwan</string>
+    <string name="script_hong_kong">Hong Kong</string>
+
+    <string name="candidate_details">%1$s · %2$s</string>
+    <string name="candidate_forget">Forget</string>
+    <string name="source_chinese">Chinese dictionary</string>
+    <string name="source_japanese">Japanese dictionary</string>
+    <string name="source_english">English dictionary</string>
+    <string name="source_learned">Learned from your typing</string>
+    <string name="source_your_dictionaries">Your dictionaries</string>
+    <string name="source_sentence">Whole sentence</string>
+    <string name="source_prediction">Prediction</string>
+    <string name="source_symbol">Symbol</string>
+    <string name="source_emoji">Emoji</string>
+    <string name="source_typed">As typed</string>
+
+    <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
+    <string name="locked_notice">Unlock your device to use this</string>
+</resources>
