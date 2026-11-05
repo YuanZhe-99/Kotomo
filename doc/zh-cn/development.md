@@ -46,7 +46,7 @@ debug 密钥，因此安装的 release 版本始终由 release 密钥签名。�
 ## 持续集成
 
 `.github/workflows/build.yml` 在 GitHub 上对每次推送到 `main`、每个拉取请求和每个 `v*` 标签运行：文档检查、
-`./gradlew check`，以及 debug 与 release 构建，产物上传为 `kotomo-apk`。仓库机密 `KEYSTORE_BASE64`、
+`./gradlew check`，以及 debug 与 release 构建，产物上传为 `kotomo-arm64-v8a` 与 `kotomo-x86_64`。仓库机密 `KEYSTORE_BASE64`、
 `STORE_PASSWORD`、`KEY_ALIAS` 和 `KEY_PASSWORD` 会生成临时的密钥库和 `key.properties`；没有它们时（来自分叉的拉取
 请求），release APK 保持未签名。`v*` 标签还会把签名的 APK 发布为 GitHub Release。Dependabot 每周提出 Gradle 与
 Actions 的更新。

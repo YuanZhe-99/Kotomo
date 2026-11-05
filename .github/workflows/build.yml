@@ -78,12 +78,21 @@ jobs:
       - name: Verify release signature
         if: ${{ env.HAS_KEYSTORE == 'true' }}
         run: |
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
+          for apk in app/build/outputs/apk/release/app-*-release.apk; do
+            echo "$apk"
+            "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "$apk"
+          done
+
+      # One artifact per ABI, so the phone build downloads without the emulator one.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kotomo-arm64-v8a
+          path: app/build/outputs/apk/*/app-arm64-v8a-*.apk
 
       - uses: actions/upload-artifact@v7
         with:
-          name: kotomo-apk
-          path: app/build/outputs/apk/*/*.apk
+          name: kotomo-x86_64
+          path: app/build/outputs/apk/*/app-x86_64-*.apk
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
@@ -92,13 +101,15 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: kotomo-apk
+          pattern: kotomo-*
           path: artifacts
 
       - name: Name the release APK
         run: |
           mkdir -p release
-          cp artifacts/release/app-release.apk "release/Kotomo-${GITHUB_REF_NAME}.apk"
+          for abi in arm64-v8a x86_64; do
+            cp "artifacts/kotomo-$abi/release/app-$abi-release.apk" "release/Kotomo-${GITHUB_REF_NAME}-$abi.apk"
+          done
 
       - uses: softprops/action-gh-release@v3
         with:

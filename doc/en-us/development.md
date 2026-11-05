@@ -52,7 +52,7 @@ always signed by the release key. The keystore itself never enters the repositor
 
 `.github/workflows/build.yml` runs on GitHub for every push to `main`, every pull request and every
 `v*` tag: the documentation check, `./gradlew check`, and the debug and release builds, uploaded
-as the `kotomo-apk` artifact. The repository secrets `KEYSTORE_BASE64`, `STORE_PASSWORD`,
+as the `kotomo-arm64-v8a` and `kotomo-x86_64` artifacts. The repository secrets `KEYSTORE_BASE64`, `STORE_PASSWORD`,
 `KEY_ALIAS` and `KEY_PASSWORD` become a temporary keystore and `key.properties`; without them (pull
 requests from forks) the release APK stays unsigned. A `v*` tag also publishes the signed APK as a
 GitHub Release. Dependabot proposes Gradle and Actions updates weekly.

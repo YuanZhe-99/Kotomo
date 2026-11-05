@@ -27,8 +27,12 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
-        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
-        externalNativeBuild { cmake { arguments += listOf("-DANDROID_STL=c++_static") } }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_static")
+                abiFilters += listOf("arm64-v8a", "x86_64")
+            }
+        }
     }
 
     externalNativeBuild {
@@ -63,6 +67,21 @@ android {
                 keyAlias = keyProperties.getProperty("keyAlias")
                 keyPassword = keyProperties.getProperty("keyPassword")
             }
+        }
+    }
+
+    // Native libraries are stored compressed (the installer unpacks them): about 3 MB less to
+    // download, at the cost of unpacked copies on the phone.
+    packaging { jniLibs { useLegacyPackaging = true } }
+
+    // One APK per ABI: phones take arm64-v8a, emulators and ChromeOS x86_64; each carries only its
+    // own native libraries.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = false
         }
     }
 
@@ -132,6 +151,11 @@ abstract class RimeDataTask : DefaultTask() {
             files.sync {
                 from(compiled)
                 into(outputDir.dir("rime"))
+                // The compiled build/ replaces these sources on the phone; they are only read when
+                // the data is compiled again, which prebuilt data never needs (about 10 MB). The
+                // stroke data serves only librime's backquote stroke lookup, which Kotomo does not
+                // offer; without it the reverse-lookup translator is skipped (about 9.5 MB).
+                exclude("essay.txt", "*.dict.yaml", "stroke.*", "build/stroke.*")
             }
             return
         }
