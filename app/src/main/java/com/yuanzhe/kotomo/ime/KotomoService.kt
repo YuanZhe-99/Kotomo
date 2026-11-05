@@ -698,6 +698,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onEmoji = { currentInputConnection?.commitText(it, 1) },
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onBack = ::showKeyboard,
+                    // Sensitive fields record nothing, recent emoji included.
+                    recordRecents = currentInputEditorInfo?.let { !isDirect(it) } ?: false,
                 )
             }
         }
