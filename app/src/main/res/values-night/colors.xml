@@ -12,4 +12,9 @@
     <color name="kb_accent_container">#2A3570</color>
     <color name="kb_on_accent_container">#DDE3FF</color>
     <color name="kb_key_shadow">#66000000</color>
+    <!-- Settings app surfaces (dark). -->
+    <color name="settings_background">#101215</color>
+    <color name="settings_card">#1C1F24</color>
+    <color name="settings_badge">#2C2F36</color>
+    <color name="settings_divider">#2C2F36</color>
 </resources>

@@ -17,7 +17,10 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`load` |
 | `lexicon/EmojiData.java` | Emoji 数据管线：下载并校验 Unicode Emoji 与 CLDR 数据，生成 `emoji.tsv`（分组、肤色、键；拼音取自 CC-CEDICT 与 Unihan，假名取自 Mozc，罗马字为平文式）；由应用的 `emojiData` 任务调用 | `main`、`SOURCES`、`index` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Probe.kt` | S1 的测量（只有耗时和内存）及其保存的摘要 | `Probe`、`LatencyStats` |
-| `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用：键盘设置引导、试打框、诊断 | `SettingsScreen` |
+| `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用的外壳：带设置引导卡片和试打框的首页、页面导航（单栏加返回栈；840 dp 起导航列表与页面并排）、由 Kotomo 令牌生成的 Material 3 主题 | `SettingsApp`、`Page`、`SetupCard` |
+| `app/src/main/java/com/yuanzhe/kotomo/settings/Pages.kt` | 各设置页（输入模式、混合模式、中文、日文、英文、布局与尺寸、按键与手势、隐私、之后提供的页面）与诊断页；共用的行与控件 | `MixedPage`、`LayoutPage`、`DiagnosticsPage`、`Section` |
+| `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |
+| `app/src/main/java/com/yuanzhe/kotomo/settings/Settings.kt`、`SettingsStore.kt` | 设置模型、带版本的 Preferences DataStore 文件（[settings-format.md](../settings-format.md)），以及进程内共用、无需 I/O 即可读取快照的存储 | `Settings`、`SettingsFormat`、`SettingsStore.current` |
 | `lexicon/CrossLexicon.java` | 跨语言词库流水线（S5）：获取并校验数据源，在 `build/lexicon/` 中生成拼音 → 日文与英文 → 日文表 | `main`、`SOURCES` |
 | `lexicon/CheckSamples.java` | 用 `tests/lexicon/samples.tsv`（正例与反例）检查生成的表 | `main` |
 | `core/CMakeLists.txt` | 应用的顶层原生构建；每个引擎库一个子目录 | — |

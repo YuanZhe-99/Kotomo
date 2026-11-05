@@ -1,0 +1,54 @@
+# 设置格式
+
+用户在设置应用中修改的设置保存在一个 Preferences DataStore 文件中：应用凭据加密存储区内的
+`files/datastore/settings.preferences_pb`。设置应用和键盘运行在同一进程中，共用一个 `SettingsStore`
+（`app/src/main/java/com/yuanzhe/kotomo/settings/SettingsStore.kt`）。
+
+## 读取与写入
+
+- `SettingsStore.flow` 是一个 `StateFlow<Settings>`，文件每次变化时发出新值；它从默认值开始，在
+  `SettingsStore.get` 之后几毫秒内变为文件中的值。
+- `SettingsStore.current` 不做 I/O 即返回最新值，键盘可以在主线程和按键路径上读取。
+- `SettingsStore.set`（不等待，按调用顺序排队）和 `SettingsStore.update`（挂起直到写入完成）应用
+  `Settings` 的一个 `copy`，只写入值发生变化的键。
+- 损坏的文件被替换为空文件，读出的就是默认值。
+
+## 版本与兼容
+
+| 键 | 类型 | 含义 |
+|---|---|---|
+| `format_version` | int | 最后写入该文件的格式版本；本版本写入 `1`，从不降低更新版本写入的值 |
+| `updated_utc_ms` | long | 最后一次修改的时间，自纪元起的 UTC 毫秒数 |
+
+- 文件或某个键不存在时读出默认值；第一次修改时才创建文件。因此从"没有文件"到版本 1 不需要迁移步骤。
+- 本版本不认识的键从不删除。
+- 本版本不理解的值（未知的枚举名、超出范围的数字）读作默认值，并保留在文件中，直到用户修改这一项设置；
+  因此更新版本写入的值在运行旧版本后仍然保留。
+- 枚举值以小写的常量名保存（`balanced`、`left`）；重命名常量即是格式变更。
+
+## 键
+
+| 键 | 类型 | 默认值 | 设置 |
+|---|---|---|---|
+| `default_mode` | string | `mixed` | 键盘启动时的模式：`mixed`、`chinese`、`japanese`、`english` |
+| `mixed.level` | string | `balanced` | 混合模式的智能程度：`conservative`、`balanced`、`aggressive` |
+| `mixed.weight_chinese`、`mixed.weight_english`、`mixed.weight_japanese`、`mixed.weight_emoji` | int 0–100 | 70、60、60、30 | 混合模式中各语言的候选权重 |
+| `mixed.space` | string | `separate` | 混合模式组合中的空格：`separate`（插入分隔）或 `commit_first`（提交首选） |
+| `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`、`pinyin_to_katakana`、`english_to_kanji`、`english_to_katakana`、`whole_sentence`、`readings`、`emoji` |
+| `chinese.script` | string | `simplified` | 中文输出：`simplified`、`traditional` |
+| `english.suggestions` | boolean | `true` | 候选栏中的英文纠错与预测 |
+| `english.auto_capitalize` | boolean | `true` | 句首自动大写 |
+| `layout.split` | string | `auto` | 分离键盘：`auto`（按窗口宽度）、`always`、`never` |
+| `layout.thumb_zone_dp` | int 200–340 | 268 | 分离键盘每半边的宽度（dp） |
+| `layout.tabletop_lower_half` | boolean | `true` | 半折叠时把键盘移到铰链下方 |
+| `layout.one_handed` | string | `off` | 单手模式：`off`、`left`、`right` |
+| `layout.height_percent` | int 80–120 | 100 | 键盘高度，相对设计高度的百分比 |
+| `keys.long_press_symbols` | boolean | `true` | 长按按键输入符号 |
+| `keys.corner_hints` | boolean | `true` | 在按键角上显示长按符号 |
+| `keys.haptics` | boolean | `true` | 按键震动 |
+| `privacy.incognito` | boolean | `false` | 无痕模式：不学习、不记录历史与剪贴板 |
+
+## 隐私
+
+该文件只保存在设置应用中做出的选择：不含输入的文字、候选或剪贴板内容。清单关闭了 Android 备份
+（`allowBackup="false"`），因此该文件只留在本机。

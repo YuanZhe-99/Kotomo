@@ -1,7 +1,8 @@
 # 第三方代码、数据与素材
 
 Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游——代码、词库数据、Emoji 素材和字体——用在哪里，以及由此产生的
-义务。`THIRD_PARTY_NOTICES.md` 收录声明本身；应用内的许可证页面列出同样的组件。
+义务。`THIRD_PARTY_NOTICES.md` 收录声明本身；设置应用的"关于与致谢"列出同样的组件（代码在开源许可证页面，词库数据及其作者在
+数据来源页面），以及下文的设计参考。
 
 ## 清单
 
@@ -27,6 +28,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | rime-luna-pinyin、rime-prelude、rime-essay、rime-stroke | `rime/*`，分别在 `56b934b0`、`082425ea`、`054920de`、`1e8fff9b` | 拼音方案、词典、默认设置与语言模型；笔画数据参与编译但不随应用分发 | LGPL-3.0 | 无；Kotomo 增加 `default.custom.yaml` 与方案 `luna_pinyin_simp_private` | 随附 LGPL-3.0 与 GPL-3.0 文本，并提供数据来源 |
 | Mozc | `google/mozc` 3.35.6354（`0136c357`），子模块 `third_party/mozc` | 日文转换（`libkotomo_mozc.so` 与 `mozc.data`，S3；尚未进入应用） | BSD-3-Clause；词典数据适用 NAIST IPAdic 声明与 ICOT 条款，另有公有领域的冲绳词典与 Google 增补 | 无；Kotomo 的胶水层独立存放（`core/mozc`） | 完整随附 Mozc 的 LICENSE，包括 NAIST 声明与 ICOT 的 "NO WARRANTY" 一节 |
 | japanese-usage-dictionary、Abseil、Protocol Buffers | 由 Mozc 的 Bazel 构建获取（用法词典 2025-01-25、abseil-cpp 20260107.1、protobuf 34.1） | 编入 `mozc.data` 与 `libkotomo_mozc.so` | BSD-2-Clause；Apache-2.0；BSD-3-Clause | 无 | 声明与许可文本 |
+| AndroidX（Compose、Material 3、Activity、Lifecycle、Core、SavedState、DataStore）、Kotlin 标准库、kotlinx.coroutines、okio | Google Maven 与 Maven Central，版本见 `gradle/libs.versions.toml`（Compose BOM 2026.09.00、DataStore 1.3.0、Kotlin 2.4.21） | 设置应用、键盘的 Compose 面板、设置文件 | Apache-2.0 | 无 | 随附 Apache-2.0 许可文本 |
 
 `emoji.tsv` 由 `lexicon/EmojiData.java` 生成（从不提交），随 APK 分发。它保留其来源的许可证：Emoji、CLDR 关键词与
 Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0，日文读音随附 Mozc `README.txt` 中的声明；

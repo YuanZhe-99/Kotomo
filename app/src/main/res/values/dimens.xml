@@ -60,4 +60,37 @@
     <dimen name="emoji_picker_radius">16dp</dimen>
     <dimen name="emoji_picker_elevation">6dp</dimen>
     <integer name="emoji_picker_columns">6</integer>
+    <!-- Settings app tokens (SettingsHome, SettingsMixed, SettingsTablet). -->
+    <dimen name="settings_gutter">16dp</dimen>
+    <dimen name="settings_home_top">28dp</dimen>
+    <dimen name="settings_section_gap">20dp</dimen>
+    <dimen name="settings_group_gap">8dp</dimen>
+    <dimen name="settings_group_title_pad">8dp</dimen>
+    <dimen name="settings_card_radius">24dp</dimen>
+    <dimen name="settings_card_pad">16dp</dimen>
+    <dimen name="settings_card_gap">12dp</dimen>
+    <dimen name="settings_row_min">72dp</dimen>
+    <dimen name="settings_row_min_small">64dp</dimen>
+    <dimen name="settings_row_pad">12dp</dimen>
+    <dimen name="settings_row_gap">14dp</dimen>
+    <dimen name="settings_badge">40dp</dimen>
+    <dimen name="settings_badge_text">15sp</dimen>
+    <dimen name="settings_icon">22dp</dimen>
+    <dimen name="settings_chevron">20dp</dimen>
+    <dimen name="settings_touch">48dp</dimen>
+    <dimen name="settings_hero_pad">18dp</dimen>
+    <dimen name="settings_field_radius">14dp</dimen>
+    <dimen name="settings_preview_radius">16dp</dimen>
+    <dimen name="settings_preview_pad">12dp</dimen>
+    <dimen name="settings_chip_height">30dp</dimen>
+    <dimen name="settings_chip_pad">10dp</dimen>
+    <dimen name="settings_chip_gap">6dp</dimen>
+    <dimen name="settings_chip_rank_text">11sp</dimen>
+    <!-- Two-pane layout: the navigation list beside the page, from this window width. -->
+    <dimen name="settings_two_pane_min">840dp</dimen>
+    <dimen name="settings_nav_width">340dp</dimen>
+    <dimen name="settings_nav_pad">28dp</dimen>
+    <dimen name="settings_nav_item">52dp</dimen>
+    <dimen name="settings_detail_pad">40dp</dimen>
+    <dimen name="settings_columns_min">600dp</dimen>
 </resources>

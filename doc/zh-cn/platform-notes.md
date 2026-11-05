@@ -14,7 +14,7 @@
 | 检查 | 结果 |
 |---|---|
 | 文档镜像与链接 | `java tool/CheckDocs.java` 通过 |
-| 单元测试（S1：布局与命中判定、延迟百分位） | `./gradlew testDebugUnitTest`：11 个测试通过 |
+| 单元测试（S1：布局与命中判定、延迟百分位；设置格式：默认值、往返、未知键、无文件） | `./gradlew testDebugUnitTest`：23 个测试通过（设置格式的 6 个测试目前只在 Windows 主机上运行过） |
 | Lint | `./gradlew check` 通过，没有警告 |
 | Release 构建 | `./gradlew assembleRelease`：启用 R8，以 release 密钥签名（APK 签名方案 v2） |
 
