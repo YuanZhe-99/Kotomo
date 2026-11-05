@@ -1,5 +1,5 @@
 # Assembles librime's shared data directory for Kotomo: the luna_pinyin_simp schema with its
-# dependencies, Kotomo's own schema patches and the OpenCC Traditional -> Simplified tables.
+# dependencies, Kotomo's own schema patches and the OpenCC tables for Simplified, Taiwan and Hong Kong output.
 #
 # Usage: cmake -DKOTOMO_ROOT=<repository> -DOUT=<directory> -P core/rime/stage-data.cmake
 #
@@ -36,7 +36,16 @@ set(rime_files
 set(opencc_files
   "${tp}/opencc/data/dictionary/CJK_Compatibility_Ideographs.txt"
   "${tp}/opencc/data/dictionary/TSPhrases.txt"
-  "${tp}/opencc/data/dictionary/TSCharacters.txt")
+  "${tp}/opencc/data/dictionary/TSCharacters.txt"
+  "${tp}/opencc/data/dictionary/TWPhrases.txt"
+  "${tp}/opencc/data/dictionary/TWVariants.txt"
+  "${tp}/opencc/data/dictionary/TWVariantsPhrases.txt"
+  "${tp}/opencc/data/dictionary/HKPhrases.txt"
+  "${tp}/opencc/data/dictionary/HKVariants.txt"
+  "${tp}/opencc/data/dictionary/HKVariantsPhrases.txt"
+  # Kotomo's configs for Taiwan and Hong Kong output (text dictionaries, regional phrases first).
+  "${KOTOMO_ROOT}/core/rime/data/t2twp.json"
+  "${KOTOMO_ROOT}/core/rime/data/t2hkp.json")
 
 foreach(file IN LISTS rime_files opencc_files)
   if(NOT EXISTS "${file}")

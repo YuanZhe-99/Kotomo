@@ -12,10 +12,14 @@
 
 namespace kotomo::rime_bridge {
 
-/// Pairs a candidate's text with librime's comment for it (often empty).
+/// Holds one candidate: its text, librime's comment for it (the spelling for pinyin candidates,
+/// from the schema's spelling hints) and the type of the translation that produced it (for example
+/// `phrase` for the built-in dictionary, `user_phrase` for learned words, `user_table` for Kotomo's
+/// run-time dictionaries, `sentence`, `completion`, `punct`).
 struct Candidate {
   std::string text;
   std::string comment;
+  std::string type;
 };
 
 /// Starts librime on the given data directories and opens the session.
@@ -64,7 +68,8 @@ bool ProcessKey(int keycode, int mask);
 /// Returns: the preedit text of the composition, or empty when nothing is being composed.
 std::string Composition();
 
-/// Returns: up to `limit` candidates of the current segment, best first, across pages.
+/// Returns: up to `limit` candidates of the current segment, best first, across pages, each with
+///   its comment and the type of its translation.
 std::vector<Candidate> Candidates(std::size_t limit);
 
 /// Selects the candidate at `index` (counted from the first candidate, not the page).

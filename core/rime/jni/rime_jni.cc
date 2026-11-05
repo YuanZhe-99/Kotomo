@@ -81,17 +81,17 @@ JNIEXPORT jstring JNICALL Java_com_yuanzhe_kotomo_engine_Rime_getComposition(JNI
   return ToJava(env, rb::Composition());
 }
 
-/// Returns up to `limit` candidates flattened as [text0, comment0, text1, comment1, …].
+/// Returns up to `limit` candidates flattened as [text0, comment0, type0, text1, comment1, type1, …].
 JNIEXPORT jobjectArray JNICALL Java_com_yuanzhe_kotomo_engine_Rime_nativeCandidates(
     JNIEnv* env, jobject, jint limit) {
   const auto candidates = rb::Candidates(limit > 0 ? static_cast<size_t>(limit) : 0);
   jclass string_class = env->FindClass("java/lang/String");
   jobjectArray result =
-      env->NewObjectArray(static_cast<jsize>(candidates.size() * 2), string_class, nullptr);
+      env->NewObjectArray(static_cast<jsize>(candidates.size() * 3), string_class, nullptr);
   if (result == nullptr) return nullptr;  // OutOfMemoryError is pending
   jsize i = 0;
   for (const auto& candidate : candidates) {
-    for (const std::string* value : {&candidate.text, &candidate.comment}) {
+    for (const std::string* value : {&candidate.text, &candidate.comment, &candidate.type}) {
       jstring item = ToJava(env, *value);
       env->SetObjectArrayElement(result, i++, item);
       env->DeleteLocalRef(item);

@@ -30,3 +30,11 @@ patch:
     enable_completion: false
     enable_sentence: false
     initial_quality: -1
+  # Each candidate's spelling as its comment, for the candidate details (long press on a candidate);
+  # librime hides a spelling equal to the preedit unless always_show_comments is set.
+  translator/spelling_hints: 8
+  translator/always_show_comments: true
+  # Taiwan and Hong Kong output with regional phrases (軟件 -> 軟體 in Taiwan): Kotomo's OpenCC
+  # configs (core/rime/data) chain the regional phrase tables before the variant tables.
+  zh_hant_tw/opencc_config: t2twp.json
+  zh_hant_hk/opencc_config: t2hkp.json

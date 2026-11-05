@@ -3,6 +3,11 @@
 #include "rime_bridge.h"
 
 #include <rime_api.h>
+#include <rime/candidate.h>
+#include <rime/composition.h>
+#include <rime/context.h>
+#include <rime/menu.h>
+#include <rime/service.h>
 
 #include <sys/stat.h>
 
@@ -166,9 +171,23 @@ std::vector<Candidate> Candidates(std::size_t limit) {
   if (!api->candidate_list_begin(session, &iterator)) return result;
   while (result.size() < limit && api->candidate_list_next(&iterator)) {
     const RimeCandidate& c = iterator.candidate;
-    result.push_back({c.text ? c.text : "", c.comment ? c.comment : ""});
+    result.push_back({c.text ? c.text : "", c.comment ? c.comment : "", {}});
   }
   api->candidate_list_end(&iterator);
+  // The C API carries no candidate type; read it from the session's menu (the same candidates, in
+  // the same order). A filter's wrapper (the simplifier's) is looked through to the translation.
+  if (auto s = rime::Service::instance().GetSession(session)) {
+    rime::Context* context = s->context();
+    if (context != nullptr && !context->composition().empty()) {
+      if (auto menu = context->composition().back().menu) {
+        for (std::size_t i = 0; i < result.size(); ++i) {
+          if (auto cand = menu->GetCandidateAt(i)) {
+            result[i].type = rime::Candidate::GetGenuineCandidate(cand)->type();
+          }
+        }
+      }
+    }
+  }
   return result;
 }
 

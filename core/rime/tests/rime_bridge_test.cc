@@ -91,6 +91,29 @@ int main(int argc, char** argv) {
         "with zh_hans off, zhongguo -> 中國 at rank 0");
   rb::SetOption("zh_hans", true);
 
+  // T11: regional output. Taiwan uses its own phrase (軟體), Hong Kong and the Mainland do not; the
+  // app sets these options again after every schema re-select (SetLearning resets them).
+  Check(RankOf("ruanjian", "软件") == 0, "T11-mainland", "ruanjian -> 软件 at rank 0");
+  rb::SetOption("zh_hans", false);
+  rb::SetOption("zh_hant_tw", true);
+  Check(RankOf("ruanjian", "軟體") == 0, "T11-taiwan", "with zh_hant_tw, ruanjian -> 軟體 at rank 0");
+  Check(RankOf("ruanjian", "軟件") == -1, "T11-taiwan-no-mainland-phrase", "with zh_hant_tw, no 軟件");
+  rb::SetOption("zh_hant_tw", false);
+  rb::SetOption("zh_hant_hk", true);
+  Check(RankOf("ruanjian", "軟件") == 0, "T11-hongkong", "with zh_hant_hk, ruanjian -> 軟件 at rank 0");
+  Check(RankOf("ruanjian", "軟體") == -1, "T11-hongkong-no-taiwan-phrase", "with zh_hant_hk, no 軟體");
+  rb::SetOption("zh_hant_hk", false);
+  rb::SetOption("zh_hans", true);
+  // T14: candidate details (long press): the spelling and the translation type.
+  {
+    rb::SetInput("nihao");
+    const auto details = rb::Candidates(1);
+    Check(!details.empty() && details[0].comment.find("ni") != std::string::npos && !details[0].type.empty(),
+          "T14-candidate-details", "first candidate has spelling and type (" +
+                                       (details.empty() ? std::string("none") : details[0].type) + ")");
+    rb::Clear();
+  }
+
   Check(rb::SetInput("nihao") && rb::Composition() == "ni hao", "S2-composition",
         "preedit for nihao is \"" + rb::Composition() + "\"");
   Check(rb::ProcessKey(0xff08, 0) && rb::Composition() == "ni ha", "S2-backspace",

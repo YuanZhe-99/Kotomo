@@ -1,0 +1,30 @@
+{
+  "name": "Kotomo: Traditional Chinese (OpenCC Standard) to Traditional Chinese (Taiwan), with Taiwan phrases",
+  "normalization": [
+    { "dict": { "type": "text", "file": "CJK_Compatibility_Ideographs.txt" } }
+  ],
+  "segmentation": {
+    "type": "mmseg",
+    "dict": {
+      "type": "group",
+      "match_policy": "union",
+      "dicts": [
+        { "type": "text", "file": "TWPhrases.txt" },
+        { "type": "text", "file": "TWVariantsPhrases.txt" }
+      ]
+    }
+  },
+  "conversion_chain": [
+    {
+      "dict": {
+        "type": "group",
+        "match_policy": "short_circuit",
+        "dicts": [
+          { "type": "text", "file": "TWPhrases.txt" },
+          { "type": "text", "file": "TWVariantsPhrases.txt" },
+          { "type": "text", "file": "TWVariants.txt" }
+        ]
+      }
+    }
+  ]
+}

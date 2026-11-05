@@ -14,8 +14,13 @@ object Rime {
         System.loadLibrary("kotomo_rime")
     }
 
-    /** Pairs a candidate's [text] with librime's [comment] for it (often empty). */
-    data class Candidate(val text: String, val comment: String)
+    /**
+     * Holds one candidate: its [text], librime's [comment] (the pinyin spelling for dictionary
+     * candidates, else often empty) and the [type] of the translation that produced it
+     * (`phrase`, `user_phrase` for learned words, `user_table` for Kotomo's run-time dictionaries,
+     * `sentence`, `completion`, `punct`, …).
+     */
+    data class Candidate(val text: String, val comment: String, val type: String)
 
     /**
      * Starts librime and opens the session.
@@ -64,10 +69,10 @@ object Rime {
     /** Returns up to [limit] candidates of the current segment, best first. */
     fun getCandidates(limit: Int): List<Candidate> {
         val flat = nativeCandidates(limit)
-        return List(flat.size / 2) { Candidate(flat[2 * it], flat[2 * it + 1]) }
+        return List(flat.size / 3) { Candidate(flat[3 * it], flat[3 * it + 1], flat[3 * it + 2]) }
     }
 
-    /** Returns up to [limit] candidates flattened as text, comment, text, comment, …. */
+    /** Returns up to [limit] candidates flattened as text, comment, type, text, comment, type, …. */
     private external fun nativeCandidates(limit: Int): Array<String>
 
     /**
