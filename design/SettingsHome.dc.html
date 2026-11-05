@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设置 · 首页</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3451C7}a:hover{color:#1F3596}
+</style>
+</helmet>
+<div style="width: 412px; min-height: 1360px; box-sizing: border-box; padding: 0 16px 32px; display: flex; flex-direction: column; gap: 20px; background: #F6F7F9; font-family: 'Noto Sans SC', 'Noto Sans JP', system-ui, sans-serif; color: #16181C">
+  <div style="padding: 28px 8px 0; display: flex; align-items: center; justify-content: space-between">
+    <h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 0.5px">Kotomo</h1>
+    <button type="button" aria-label="搜索设置" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: #FFFFFF; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
+  </div>
+  <div style="padding: 18px; border-radius: 24px; background: #E3E8FF; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div style="width: 40px; height: 40px; border-radius: 20px; background: #3451C7; color: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg></div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 17px; font-weight: 700; color: #1F3596">Kotomo 已启用</div>
+        <div style="font-size: 13px; color: #2B3D8F">当前输入法 · 全部输入都在本机处理</div>
+      </div>
+    </div>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #2B3D8F">在这里试试
+      <input type="text" placeholder="例如 chidai ni kai ni ikou" style="height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #B9C5F5; border-radius: 14px; background: #FFFFFF; font-family: inherit; font-size: 16px; color: #16181C">
+    </label>
+  </div>
+  <section style="display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 0; padding: 0 8px; font-size: 14px; font-weight: 500; color: #3451C7">输入</h2>
+    <div style="border-radius: 24px; background: #FFFFFF; overflow: hidden">
+      <sc-for list="{{input}}" as="r" hint-placeholder-count="4">
+        <a href="{{r.href}}" style="min-height: 72px; box-sizing: border-box; padding: 12px 16px; display: flex; align-items: center; gap: 14px; text-decoration: none; color: #16181C; border-bottom: 1px solid #EEF0F3">
+          <span style="flex: 0 0 40px; height: 40px; border-radius: 20px; background: #EEF0F3; color: #3451C7; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700">{{r.icon}}</span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px">{{r.title}}</span><span style="font-size: 13px; color: #5A6070">{{r.desc}}</span></span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6070" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+  <section style="display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 0; padding: 0 8px; font-size: 14px; font-weight: 500; color: #3451C7">键盘</h2>
+    <div style="border-radius: 24px; background: #FFFFFF; overflow: hidden">
+      <sc-for list="{{keyboard}}" as="r" hint-placeholder-count="4">
+        <a href="{{r.href}}" style="min-height: 72px; box-sizing: border-box; padding: 12px 16px; display: flex; align-items: center; gap: 14px; text-decoration: none; color: #16181C; border-bottom: 1px solid #EEF0F3">
+          <span style="flex: 0 0 40px; height: 40px; border-radius: 20px; background: #EEF0F3; color: #3451C7; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700">{{r.icon}}</span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px">{{r.title}}</span><span style="font-size: 13px; color: #5A6070">{{r.desc}}</span></span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6070" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+  <section style="display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 0; padding: 0 8px; font-size: 14px; font-weight: 500; color: #3451C7">词库、AI 与数据</h2>
+    <div style="border-radius: 24px; background: #FFFFFF; overflow: hidden">
+      <sc-for list="{{data}}" as="r" hint-placeholder-count="5">
+        <a href="{{r.href}}" style="min-height: 72px; box-sizing: border-box; padding: 12px 16px; display: flex; align-items: center; gap: 14px; text-decoration: none; color: #16181C; border-bottom: 1px solid #EEF0F3">
+          <span style="flex: 0 0 40px; height: 40px; border-radius: 20px; background: #EEF0F3; color: #3451C7; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700">{{r.icon}}</span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px">{{r.title}}</span><span style="font-size: 13px; color: #5A6070">{{r.desc}}</span></span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5A6070" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+  <section style="display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 0; padding: 0 8px; font-size: 14px; font-weight: 500; color: #3451C7">隐私</h2>
+    <div style="border-radius: 24px; background: #FFFFFF; padding: 4px 0">
+      <label style="min-height: 72px; box-sizing: border-box; padding: 12px 16px; display: flex; align-items: center; gap: 14px">
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 16px">无痕模式</span><span style="font-size: 13px; color: #5A6070">不学习、不记录历史与剪贴板</span></span>
+        <input type="checkbox" role="switch" style="width: 52px; height: 32px; accent-color: #3451C7">
+      </label>
+      <a href="#clear" style="min-height: 56px; box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; font-size: 16px; color: #B3261E; text-decoration: none">清除全部学习数据…</a>
+    </div>
+  </section>
+  <a href="#about" style="padding: 8px; font-size: 14px; color: #3451C7">关于与致谢 · 开源许可证 · 隐私政策</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":1360}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      input: [
+        { icon: '模', title: '输入模式', desc: '中文、英文、日文、混合 · 切换顺序与按 App 记忆', href: '#modes' },
+        { icon: '混', title: '混合模式', desc: '平衡 · 跨语言转换与各语言权重', href: 'SettingsMixed.dc.html' },
+        { icon: '中', title: '中文', desc: '全拼 · 模糊音 · 简体（大陆）', href: '#zh' },
+        { icon: '日', title: '日文', desc: '罗马字 · 拼音转日文 · 候选注音', href: '#ja' },
+        { icon: 'A', title: '英文', desc: '纠错 · 自动大写 · 下一词预测', href: '#en' },
+      ],
+      keyboard: [
+        { icon: '键', title: '布局与尺寸', desc: '高度 · 单手模式 · 平板与折叠屏', href: 'SettingsTablet.dc.html' },
+        { icon: '势', title: '按键与手势', desc: '长按符号 · 空格滑动光标 · 震动与音效', href: '#gestures' },
+        { icon: '色', title: '主题', desc: '跟随系统 · Material You', href: '#themes' },
+        { icon: '☺', title: 'Emoji', desc: '系统样式 · 联想', href: '#emoji' },
+      ],
+      data: [
+        { icon: '词', title: '词库', desc: '已启用 6 个 · 导入与更新', href: '#dicts' },
+        { icon: '学', title: '用户词库与学习', desc: '查看、降权或删除学到的词', href: '#learning' },
+        { icon: '贴', title: '剪贴板与快捷短语', desc: '历史保留 7 天 · 本机加密', href: '#clipboard' },
+        { icon: 'AI', title: 'AI', desc: '关闭 · 英文与日文的校对和重写、翻译', href: '#ai' },
+        { icon: '备', title: '备份与同步', desc: '手动备份 · WebDAV 未开启', href: '#backup' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

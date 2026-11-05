@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设置 · 平板双栏</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3451C7}a:hover{color:#1F3596}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; display: flex; background: #F6F7F9; font-family: 'Noto Sans SC', 'Noto Sans JP', system-ui, sans-serif; color: #16181C; overflow: hidden">
+  <nav aria-label="设置分类" style="flex: 0 0 340px; box-sizing: border-box; padding: 28px 16px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #E4E7EC">
+    <div style="padding: 0 12px 16px; font-size: 28px; font-weight: 700">Kotomo</div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="10">
+      <a href="#{{n.id}}" aria-current="{{n.current}}" style="min-height: 52px; box-sizing: border-box; padding: 0 16px; border-radius: 26px; display: flex; align-items: center; gap: 12px; text-decoration: none; background: {{n.bg}}; color: {{n.fg}}; font-size: 15px; font-weight: {{n.weight}}">{{n.label}}</a>
+    </sc-for>
+  </nav>
+  <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; gap: 18px; overflow: hidden">
+    <h1 style="margin: 0; font-size: 24px; font-weight: 700">布局与尺寸</h1>
+    <section style="padding: 16px; border-radius: 24px; background: #EEF0F3; display: flex; flex-direction: column; align-items: center; gap: 8px">
+      <dc-import name="Keyboard" w="{{ 760 }}" key-h="{{ 40 }}" mode="mix" split="{{ true }}" half="{{ 268 }}" side="{{ 24 }}" hint-size="760px,198px"></dc-import>
+      <div style="font-size: 12px; color: #5A6070">预览：每半边 268 dp，中间空隙随屏幕宽度变化</div>
+    </section>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+      <section style="padding: 16px; border-radius: 24px; background: #FFFFFF; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 500">大屏与折叠屏</h2>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 14px">分离键盘</div>
+          <div role="radiogroup" aria-label="分离键盘" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 22px; background: #EEF0F3">
+            <button type="button" role="radio" aria-checked="true" style="height: 38px; border: 0; border-radius: 19px; background: #FFFFFF; color: #1F3596; font-family: inherit; font-size: 14px; font-weight: 500">按屏幕宽度</button>
+            <button type="button" role="radio" aria-checked="false" style="height: 38px; border: 0; border-radius: 19px; background: transparent; color: #16181C; font-family: inherit; font-size: 14px">总是</button>
+            <button type="button" role="radio" aria-checked="false" style="height: 38px; border: 0; border-radius: 19px; background: transparent; color: #16181C; font-family: inherit; font-size: 14px">从不</button>
+          </div>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">拇指区宽度（每半边）<input type="range" min="200" max="340" value="268" style="accent-color: #3451C7"><span style="font-size: 12px; color: #5A6070">横向与竖向保持一致，只改变中间空隙</span></label>
+        <label style="display: flex; align-items: center; gap: 12px; font-size: 14px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px">半折叠时移到下半屏<span style="font-size: 12px; color: #5A6070">按键不落在铰链上</span></span><input type="checkbox" role="switch" checked style="width: 52px; height: 32px; accent-color: #3451C7"></label>
+      </section>
+      <section style="padding: 16px; border-radius: 24px; background: #FFFFFF; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 500">手机与按键</h2>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 14px">单手模式</div>
+          <div role="radiogroup" aria-label="单手模式" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 22px; background: #EEF0F3">
+            <button type="button" role="radio" aria-checked="true" style="height: 38px; border: 0; border-radius: 19px; background: #FFFFFF; color: #1F3596; font-family: inherit; font-size: 14px; font-weight: 500">关闭</button>
+            <button type="button" role="radio" aria-checked="false" style="height: 38px; border: 0; border-radius: 19px; background: transparent; color: #16181C; font-family: inherit; font-size: 14px">左手</button>
+            <button type="button" role="radio" aria-checked="false" style="height: 38px; border: 0; border-radius: 19px; background: transparent; color: #16181C; font-family: inherit; font-size: 14px">右手</button>
+          </div>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">键盘高度<input type="range" min="80" max="120" value="100" style="accent-color: #3451C7"></label>
+        <label style="display: flex; align-items: center; gap: 12px; font-size: 14px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px">长按输入符号<span style="font-size: 12px; color: #5A6070">按键角上显示数字与符号</span></span><input type="checkbox" role="switch" checked style="width: 52px; height: 32px; accent-color: #3451C7"></label>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const items = [
+      ['modes', '输入模式'], ['mixed', '混合模式'], ['zh', '中文'], ['ja', '日文'], ['en', '英文'],
+      ['layout', '布局与尺寸'], ['gestures', '按键与手势'], ['themes', '主题'], ['dicts', '词库'], ['privacy', '隐私'], ['about', '关于与致谢'],
+    ];
+    const nav = items.map(([id, label]) => {
+      const on = id === 'layout';
+      return { id, label, current: on ? 'page' : 'false', bg: on ? '#E3E8FF' : 'transparent', fg: on ? '#1F3596' : '#16181C', weight: on ? 500 : 400 };
+    });
+    return { nav };
+  }
+}
+</script>
+</body>
+</html>

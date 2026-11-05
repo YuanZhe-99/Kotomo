@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Fold 8 · 外屏</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 475px; height: 751px; display: flex; flex-direction: column; background: #FFFFFF; font-family: 'Noto Sans SC', 'Noto Sans JP', system-ui, sans-serif; color: #16181C; overflow: hidden">
+  <div style="flex: 1 1 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: 16px; background: #F6F7F9">
+    <div style="font-size: 13px; color: #5A6070">备忘录</div>
+    <div lang="ja" style="font-family: 'Noto Sans JP', sans-serif; font-size: 17px; line-height: 1.6">区役所で<span style="text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; text-decoration-color: #3451C7">在留カード</span><span style="display: inline-block; width: 2px; height: 20px; margin-left: 1px; vertical-align: -4px; background: #3451C7"></span></div>
+  </div>
+  <div style="flex: 0 0 auto; background: #EEF0F3; border-top: 1px solid #D3D7DE">
+    <div style="height: 40px; box-sizing: border-box; padding: 6px 8px 0; display: flex; align-items: center; gap: 6px">
+      <button type="button" style="height: 30px; padding: 0 10px 0 4px; border: 0; border-radius: 15px; background: #FFFFFF; display: flex; align-items: center; gap: 6px; font-family: inherit; color: #16181C">
+        <span style="height: 22px; min-width: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 11px; background: #F6DCC4; color: #7A3E0B; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">拼</span>
+        <span lang="ja" style="font-family: 'Noto Sans JP', sans-serif; font-size: 15px">在留</span>
+        <span style="font-size: 11px; color: #5A6070">zailiu</span>
+      </button>
+      <button type="button" style="height: 30px; padding: 0 10px 0 4px; border: 0; border-radius: 15px; background: #FFFFFF; display: flex; align-items: center; gap: 6px; font-family: inherit; color: #16181C">
+        <span style="height: 22px; min-width: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 11px; background: #E4E6EA; color: #3A3F4A; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">英</span>
+        <span lang="ja" style="font-family: 'Noto Sans JP', sans-serif; font-size: 15px">カード</span>
+        <span style="font-size: 11px; color: #5A6070">card</span>
+      </button>
+    </div>
+    <div style="height: 48px; box-sizing: border-box; padding: 4px 4px 4px 8px; display: flex; align-items: center; gap: 4px">
+      <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; overflow: hidden">
+        <button type="button" lang="ja" style="flex: 0 0 auto; height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: #E3E8FF; color: #1F3596; font-family: 'Noto Sans JP', sans-serif; font-size: 18px; font-weight: 500">在留カード</button>
+        <button type="button" style="flex: 0 0 auto; height: 40px; padding: 0 12px; border: 0; border-radius: 20px; background: transparent; color: #16181C; font-family: inherit; font-size: 18px">在留card</button>
+        <button type="button" style="flex: 0 0 auto; height: 40px; padding: 0 12px; border: 0; border-radius: 20px; background: transparent; color: #5A6070; font-family: inherit; font-size: 15px">原文 zailiucard</button>
+      </div>
+      <button type="button" aria-label="展开全部候选" style="flex: 0 0 44px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <dc-import name="Keyboard" w="{{ 475 }}" key-h="{{ 50 }}" mode="mix" hint-size="475px,240px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":475,"height":751}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>手机 · 单手模式（右手）</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 412px; height: 915px; display: flex; flex-direction: column; background: #FFFFFF; font-family: 'Noto Sans SC', 'Noto Sans JP', system-ui, sans-serif; color: #16181C; overflow: hidden">
+  <div style="flex: 1 1 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: 16px; background: #F6F7F9">
+    <div style="align-self: flex-start; max-width: 260px; padding: 10px 14px; border-radius: 18px 18px 18px 6px; background: #FFFFFF; font-size: 16px; line-height: 1.5; box-shadow: 0 1px 0 rgba(22,24,28,0.08)">Are you free on Saturday?</div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <div style="flex: 1; min-height: 48px; box-sizing: border-box; padding: 12px 16px; border-radius: 24px; background: #FFFFFF; border: 1px solid #D3D7DE; font-size: 16px; line-height: 1.5; display: flex; align-items: center">
+        <span>Sure, </span><span style="display: inline-block; width: 2px; height: 20px; margin-left: 2px; background: #3451C7"></span>
+      </div>
+      <button type="button" aria-label="发送" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: #3451C7; color: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button>
+    </div>
+  </div>
+  <div style="flex: 0 0 auto; display: flex; background: #EEF0F3; border-top: 1px solid #D3D7DE">
+    <div style="flex: 0 0 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #E4E7EC">
+      <button type="button" aria-label="改为左手模式" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: #FFFFFF; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+      <button type="button" aria-label="恢复全宽键盘" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: #FFFFFF; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button type="button" aria-label="拖动调整键盘宽度" style="width: 48px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #5A6070; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></button>
+    </div>
+    <div style="flex: 0 0 340px; display: flex; flex-direction: column">
+      <div role="toolbar" aria-label="工具栏" style="height: 48px; box-sizing: border-box; padding: 2px 4px; display: flex; align-items: center; justify-content: space-between">
+        <button type="button" aria-label="剪贴板" style="width: 48px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/></svg></button>
+        <button type="button" aria-label="翻译" style="width: 48px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8"/><path d="m13 21 4-9 4 9M14.5 18h5"/></svg></button>
+        <button type="button" aria-label="AI 校对与重写" style="width: 48px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/></svg></button>
+        <button type="button" aria-label="光标与文本编辑" style="width: 48px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M9 4h6M9 20h6"/></svg></button>
+        <button type="button" aria-label="设置" style="width: 48px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: #16181C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+      </div>
+      <dc-import name="Keyboard" w="{{ 340 }}" key-h="{{ 52 }}" mode="en" hint-size="340px,248px"></dc-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

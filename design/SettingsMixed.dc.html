@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设置 · 混合模式</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3451C7}a:hover{color:#1F3596}
+</style>
+</helmet>
+<div style="width: 412px; min-height: 1480px; box-sizing: border-box; padding: 0 16px 32px; display: flex; flex-direction: column; gap: 20px; background: #F6F7F9; font-family: 'Noto Sans SC', 'Noto Sans JP', system-ui, sans-serif; color: #16181C">
+  <div style="padding: 16px 0 0; display: flex; align-items: center; gap: 8px">
+    <a href="SettingsHome.dc.html" aria-label="返回" style="width: 48px; height: 48px; border-radius: 24px; display: flex; align-items: center; justify-content: center; color: #16181C"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></a>
+    <h1 style="margin: 0; font-size: 24px; font-weight: 700">混合模式</h1>
+  </div>
+  <section style="display: flex; flex-direction: column; gap: 10px; padding: 18px 16px; border-radius: 24px; background: #FFFFFF">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 500">智能程度</h2>
+    <div role="radiogroup" aria-label="智能程度" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 22px; background: #EEF0F3">
+      <sc-for list="{{levels}}" as="l" hint-placeholder-count="3">
+        <button type="button" role="radio" aria-checked="{{l.checked}}" onClick="{{l.pick}}" style="height: 40px; border: 0; border-radius: 20px; background: {{l.bg}}; color: {{l.fg}}; font-family: inherit; font-size: 15px; font-weight: {{l.weight}}">{{l.label}}</button>
+      </sc-for>
+    </div>
+    <div style="font-size: 13px; line-height: 1.6; color: #5A6070">{{levelDesc}}</div>
+    <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 16px; background: #F6F7F9">
+      <sc-for list="{{previews}}" as="p" hint-placeholder-count="2">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 12px; color: #5A6070">输入 <span style="color: #16181C; font-weight: 500">{{p.input}}</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <sc-for list="{{p.items}}" as="c" hint-placeholder-count="5">
+              <span style="height: 30px; padding: 0 10px; border-radius: 15px; background: {{c.bg}}; color: {{c.fg}}; font-size: 15px; display: inline-flex; align-items: center; gap: 6px"><span style="font-size: 11px; color: {{c.tagFg}}">{{c.rank}}</span>{{c.text}}</span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+  <section style="display: flex; flex-direction: column; gap: 14px; padding: 18px 16px; border-radius: 24px; background: #FFFFFF">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 500">候选权重</h2>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">中文<input type="range" min="0" max="100" value="70" style="accent-color: #3451C7"></label>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">英文<input type="range" min="0" max="100" value="60" style="accent-color: #3451C7"></label>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">日文<input type="range" min="0" max="100" value="60" style="accent-color: #3451C7"></label>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px">Emoji<input type="range" min="0" max="100" value="30" style="accent-color: #3451C7"></label>
+  </section>
+  <section style="display: flex; flex-direction: column; padding: 8px 0; border-radius: 24px; background: #FFFFFF">
+    <h2 style="margin: 0; padding: 10px 16px 6px; font-size: 16px; font-weight: 500">跨语言转换</h2>
+    <sc-for list="{{switches}}" as="s" hint-placeholder-count="7">
+      <label style="min-height: 64px; box-sizing: border-box; padding: 10px 16px; display: flex; align-items: center; gap: 14px">
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">{{s.title}}</span><span style="font-size: 12px; color: #5A6070">{{s.desc}}</span></span>
+        <input type="checkbox" role="switch" checked="{{s.on}}" onChange="{{s.toggle}}" style="width: 52px; height: 32px; accent-color: #3451C7">
+      </label>
+    </sc-for>
+  </section>
+  <section style="display: flex; flex-direction: column; gap: 10px; padding: 18px 16px; border-radius: 24px; background: #FFFFFF">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 500">输入中的空格键</h2>
+    <label style="display: flex; align-items: flex-start; gap: 12px; font-size: 15px"><input type="radio" name="space" checked style="margin-top: 4px; accent-color: #3451C7"><span style="display: flex; flex-direction: column; gap: 2px">插入分隔，不上屏<span style="font-size: 12px; color: #5A6070">chidai ni kai ni ikou 可以带空格连续输入；回车或点选候选上屏</span></span></label>
+    <label style="display: flex; align-items: flex-start; gap: 12px; font-size: 15px"><input type="radio" name="space" style="margin-top: 4px; accent-color: #3451C7"><span style="display: flex; flex-direction: column; gap: 2px">选择首选并上屏<span style="font-size: 12px; color: #5A6070">与常见中文输入法一致</span></span></label>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":1480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { level: 'balanced', off: {} };
+  }
+  renderVals() {
+    const L = {
+      conservative: { label: '保守', desc: '原语言严格优先，其他语言的候选排在后面。', diannao: ['电脑', '電腦', '计算机', 'コンピューター', '💻'], ai: ['爱', '哎', 'AI', '愛', 'あい'] },
+      balanced: { label: '平衡', desc: '原语言优先，再结合上下文与你的使用习惯调整。推荐。', diannao: ['电脑', '電腦', 'コンピューター', '计算机', '💻'], ai: ['爱', 'AI', '愛', 'あい'] },
+      aggressive: { label: '积极', desc: '更早给出日文转换与整句预测，适合以日文为主的混合输入。', diannao: ['电脑', 'コンピューター', '電腦', '💻', '计算机'], ai: ['爱', '愛', 'あい', 'AI'] },
+    };
+    const lv = this.state.level;
+    const levels = ['conservative', 'balanced', 'aggressive'].map((id) => ({
+      label: L[id].label,
+      checked: id === lv ? 'true' : 'false',
+      bg: id === lv ? '#FFFFFF' : 'transparent',
+      fg: id === lv ? '#1F3596' : '#16181C',
+      weight: id === lv ? 500 : 400,
+      pick: () => this.setState({ level: id }),
+    }));
+    const chip = (text, i) => ({ text, rank: String(i + 1), bg: i === 0 ? '#E3E8FF' : '#FFFFFF', fg: i === 0 ? '#1F3596' : '#16181C', tagFg: i === 0 ? '#1F3596' : '#5A6070' });
+    const previews = [
+      { input: 'diannao', items: L[lv].diannao.map(chip) },
+      { input: 'ai', items: L[lv].ai.map(chip) },
+    ];
+    const defs = [
+      ['pyKanji', '中文拼音 → 日语汉字', 'chidai → 池袋，候选显示日文读音'],
+      ['pyKana', '中文拼音 → 日语片假名', '用于外来语与专有名词'],
+      ['enKanji', '英文 → 日语汉字', 'school → 学校'],
+      ['enKana', '英文 → 日语片假名', 'coffee → コーヒー'],
+      ['sentence', '跨语言整句识别', 'zailiucard → 在留カード'],
+      ['ruby', '候选词注音', '在日文候选下方显示读音'],
+      ['emoji', 'Emoji 联想', 'neko、mao、cat → 🐱'],
+    ];
+    const off = this.state.off;
+    const switches = defs.map(([id, title, desc]) => ({
+      title, desc,
+      on: !off[id],
+      toggle: () => this.setState({ off: { ...off, [id]: !off[id] } }),
+    }));
+    return { levels, levelDesc: L[lv].desc, previews, switches };
+  }
+}
+</script>
+</body>
+</html>

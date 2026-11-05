@@ -1,0 +1,37 @@
+# Kotomo design drafts
+
+The keyboard, candidate bar, panels and settings screens from the design agent (AGENTS.md,
+"Division of work"), frozen into the repository on 2026-11-04 from the design canvas
+"Kotomo Keyboard & Settings" (version 1793842804-3671). They are the reference for layout, wording
+and tokens; the app's own resources (`app/src/main/res/values*/`) stay authoritative where the
+app has deliberately moved on.
+
+Each `*.dc.html` file is one artboard. The markup and inline styles are readable as they are; to
+render them as on the canvas they need the canvas runtime (`support.js`), which belongs to the
+design tool and is not part of this repository. `Keyboard.dc.html` is the shared key-area component
+the other artboards import, with its parameters (`w`, `keyH`, `mode`, `split`, `half`, `side`).
+`canvas.json` places the artboards and gives their titles and sizes.
+
+| Artboard | Title on the canvas | Size (dp) |
+|---|---|---|
+| `Main.dc.html` | 手机 · 混合整句 | 412×915 |
+| `PhoneSegment.dc.html` | 手机 · 修改片段 | 412×915 |
+| `PhoneChinese.dc.html` | 手机 · 中文整句与简繁 | 412×915 |
+| `PhoneJapanese.dc.html` | 手机 · 日文变形与敬语 | 412×915 |
+| `PhoneOneHanded.dc.html` | 手机 · 单手模式（右手） | 412×915 |
+| `PhoneQuickPaste.dc.html` | 手机 · 快捷输入（刚复制与验证码） | 412×915 |
+| `PhoneClipboard.dc.html` | 手机 · 剪贴板历史 | 412×915 |
+| `FoldCover.dc.html` | Fold 8 · 外屏 | 475×751 |
+| `FoldMain.dc.html` | Fold 8 · 展开横向 | 933×704 |
+| `FoldMainPortrait.dc.html` | Fold 8 · 展开竖向 | 704×933 |
+| `FoldTabletop.dc.html` | Fold 8 · 半折叠桌面姿态 | 704×933 |
+| `Tablet.dc.html` | 平板 · 横屏 | 1280×800 |
+| `SettingsHome.dc.html` | 设置 · 首页 | 412×1360 |
+| `SettingsMixed.dc.html` | 设置 · 混合模式 | 412×1480 |
+| `SettingsTablet.dc.html` | 设置 · 平板双栏 · 键盘布局与尺寸 | 1280×800 |
+| `Keyboard.dc.html` | 组件 · 键盘按键区 | 412×248 |
+
+Rules (AGENTS.md): no screenshots, icons or assets of other keyboards here; Gboard and MyApps-UI
+inspire the interaction and the settings presentation only. Fonts are loaded from Google Fonts
+(Noto Sans SC and JP, SIL Open Font License). A change to these drafts replaces the files here in
+the same commit as the matching app or doc change.

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>手机 · 快捷输入（刚复制与验证码）</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 412px; height: 915px; display: flex; flex-direction: column; background: #FFFFFF; font-family: 'Noto Sans SC', 'Noto Sans JP', system-ui, sans-serif; color: #16181C; overflow: hidden">
+  <div style="flex: 1 1 auto; box-sizing: border-box; padding: 32px 24px; display: flex; flex-direction: column; gap: 16px; background: #F6F7F9">
+    <div style="font-size: 22px; font-weight: 700">登录</div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; color: #5A6070">手机号</div>
+      <div style="height: 52px; box-sizing: border-box; padding: 0 16px; border-radius: 14px; background: #FFFFFF; border: 1px solid #D3D7DE; display: flex; align-items: center; font-size: 16px">138 0000 0000</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; color: #5A6070">验证码</div>
+      <div style="height: 52px; box-sizing: border-box; padding: 0 16px; border-radius: 14px; background: #FFFFFF; border: 2px solid #3451C7; display: flex; align-items: center"><span style="display: inline-block; width: 2px; height: 22px; background: #3451C7"></span></div>
+    </div>
+  </div>
+  <div style="flex: 0 0 auto; background: #EEF0F3; border-top: 1px solid #D3D7DE">
+    <div role="region" aria-label="快捷输入" style="box-sizing: border-box; padding: 8px 8px 4px; display: flex; flex-direction: column; gap: 6px">
+      <div style="padding: 0 4px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5A6070">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+        <span style="flex: 1">来自 1 分钟前的短信 · 无法确定哪个是验证码，全部列出</span>
+        <button type="button" aria-label="关闭快捷输入" style="width: 32px; height: 32px; border: 0; border-radius: 16px; background: transparent; color: #5A6070; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div style="display: flex; gap: 6px; overflow: hidden">
+        <button type="button" style="flex: 0 0 168px; height: 60px; box-sizing: border-box; padding: 6px 12px; border: 0; border-radius: 14px; background: #E3E8FF; color: #1F3596; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; font-family: inherit; text-align: left">
+          <span style="display: flex; align-items: baseline; gap: 6px"><span style="font-size: 20px; font-weight: 700; letter-spacing: 1.5px">482913</span><span style="font-size: 11px">更可能</span></span>
+          <span style="max-width: 144px; font-size: 11px; color: #2B3D8F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">…验证码 482913，5 分钟内有效…</span>
+        </button>
+        <button type="button" style="flex: 0 0 150px; height: 60px; box-sizing: border-box; padding: 6px 12px; border: 0; border-radius: 14px; background: #FFFFFF; color: #16181C; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; font-family: inherit; text-align: left">
+          <span style="font-size: 20px; font-weight: 700; letter-spacing: 1.5px">7731</span>
+          <span style="max-width: 126px; font-size: 11px; color: #5A6070; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">…尾号 7731 的账户登录…</span>
+        </button>
+        <button type="button" style="flex: 0 0 150px; height: 60px; box-sizing: border-box; padding: 6px 12px; border: 0; border-radius: 14px; background: #FFFFFF; color: #16181C; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; font-family: inherit; text-align: left">
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/></svg>刚复制</span>
+          <span lang="ja" style="max-width: 126px; font-size: 11px; color: #5A6070; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Noto Sans JP', sans-serif">東京都豊島区南池袋 1-28-1</span>
+        </button>
+      </div>
+    </div>
+    <dc-import name="Keyboard" w="{{ 412 }}" key-h="{{ 52 }}" mode="zh" hint-size="412px,248px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
