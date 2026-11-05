@@ -23,6 +23,7 @@ and device-to-device transfer are turned off for it.
 |---|---|---|
 | Your settings | So the keyboard behaves as you chose | — |
 | Chinese learning data (librime's user dictionary: words and how often you chose them) | Better candidates over time | Sensitive fields, incognito mode |
+| Clipboard history: what you copy while Kotomo is the keyboard, encrypted with a key kept in Android's keystore, removed after the retention you set (7 days by default) unless you pin it; can be turned off and cleared in the settings | Pasting it back from the keyboard, and the quick-paste strip for something just copied (60 s) | Password fields, fields that ask not to be learned from, incognito mode, clips that apps mark sensitive |
 | Recently used emoji (up to 32) | The Recents group of the emoji panel | Sensitive fields, incognito mode |
 | The last input mode used in each app (the app's package name and the mode only) | The keyboard comes back in that mode | Sensitive fields, incognito mode |
 | Diagnostics: timings of key presses and drawing, memory use, the state of the dictionaries | The Diagnostics page, to find problems | Never what you type |
@@ -48,7 +49,7 @@ above.
 
 ## Features that are not there yet
 
-Clipboard history, on-device AI (Gemini Nano), translation, downloadable (online) dictionaries and
+On-device AI (Gemini Nano), translation, downloadable (online) dictionaries and
 sync are planned; online dictionaries will add the internet permission. Each will be described here, and disclosed in the app before its first use, in the same
 change that adds it; none of them will send what you type anywhere without your explicit choice.
 

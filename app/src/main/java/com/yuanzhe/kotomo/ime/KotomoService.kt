@@ -22,6 +22,12 @@ import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import com.yuanzhe.kotomo.settings.MainActivity
+import android.content.ClipboardManager
+import androidx.compose.runtime.collectAsState
+import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
+import com.yuanzhe.kotomo.ime.clipboard.ClipboardPanel
+import com.yuanzhe.kotomo.ime.clipboard.QuickPaste
+import com.yuanzhe.kotomo.ime.clipboard.QuickPasteStrip
 import com.yuanzhe.kotomo.settings.ChineseScript
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
@@ -97,6 +103,15 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var emojiPanel: ComposeView? = null
     private var candidatesPanel: ComposeView? = null
     private var quickPanel: ComposeView? = null
+    private var clipboardPanel: ComposeView? = null
+    /** The quick-paste strip above the keys (shown in the candidate bar's place). */
+    private lateinit var quickStrip: ComposeView
+    private lateinit var clipboard: ClipboardManager
+    private lateinit var history: ClipboardHistory
+    private val quickPaste = QuickPaste()
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { onClip() }
+    /** Hides the strip when the offer runs out; one pending at a time. */
+    private val quickStripTimeout = Runnable { updateQuickStrip() }
     /** Main thread: librime has a session (mirrors the engine thread's rimeReady). */
     private var rimeOpen = false
     /** Main thread: a toolbar notice shown for a moment, or null. */
@@ -134,6 +149,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         store = SettingsStore.get(this)
         lifecycleScope.launch { emojiIndex = runCatching { EmojiIndex.load(this@KotomoService) }.getOrNull() }
+        history = ClipboardHistory.get(this)
+        clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard.addPrimaryClipChangedListener(clipListener)
         // Changes made in the settings app apply at once: relayout and the engines' options.
         lifecycleScope.launch {
             store.flow.collect {
@@ -253,9 +271,30 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
         })
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        quickStrip = ComposeView(this).apply {
+            visibility = View.GONE
+            setContent {
+                quickPaste.offer.collectAsState().value?.let { copied ->
+                    QuickPasteStrip(
+                        copied,
+                        numberField = (currentInputEditorInfo?.inputType ?: 0) and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_NUMBER,
+                        onPaste = { text ->
+                            currentInputConnection?.commitText(text, 1)
+                            quickPaste.done()
+                            updateQuickStrip()
+                        },
+                        onClose = {
+                            quickPaste.done()
+                            updateQuickStrip()
+                        },
+                    )
+                }
+            }
+        }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(candidateBar)
+            addView(quickStrip, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(panelHost)
         }
         val root = InputRoot(this, content, popups).apply { setBackgroundColor(getColor(R.color.kb_background)) }
@@ -327,6 +366,61 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
     }
 
+    /**
+     * Records a new clip when the field allows it (not sensitive, not incognito, history on) and
+     * offers it on the quick-paste strip (main thread).
+     */
+    private fun onClip() {
+        if (!::history.isInitialized) return
+        val copied = history.onPrimaryClip(clipboard.primaryClip, ClipboardHistory.allowedIn(currentInputEditorInfo, settings)) ?: return
+        if (settings.clipboard.quickPaste) {
+            quickPaste.offer(copied)
+            updateQuickStrip()
+        }
+    }
+
+    /**
+     * Shows the quick-paste strip in the candidate bar's place while a fresh clip is on offer and
+     * nothing is being composed, and hides it when the offer runs out.
+     */
+    private fun updateQuickStrip() {
+        if (!::quickStrip.isInitialized) return
+        val now = System.currentTimeMillis()
+        val composingNow = composing.isNotEmpty() || chinesePreedit.isNotEmpty()
+        val show = quickPaste.current(now) != null && !composingNow && panelHost.getChildAt(0) === keyboard
+        quickStrip.visibility = if (show) View.VISIBLE else View.GONE
+        candidateBar.visibility = if (show) View.GONE else View.VISIBLE
+        main.removeCallbacks(quickStripTimeout)
+        if (show) main.postDelayed(quickStripTimeout, quickPaste.remainingMs(now))
+    }
+
+    /** Opens the clipboard history in the keyboard's place (the toolbar's clipboard button). */
+    private fun showClipboard() {
+        commitComposition()
+        history.expire()
+        val height = keyboard.height
+        val panel = clipboardPanel ?: ComposeView(this).also { view ->
+            clipboardPanel = view
+            view.setContent {
+                val c = store.flow.collectAsState().value.clipboard
+                ClipboardPanel(
+                    history.items.collectAsState(), c.retentionDays, c.history,
+                    onPaste = {
+                        currentInputConnection?.commitText(it, 1)
+                        showKeyboard()
+                    },
+                    onPin = { clip, on -> history.pin(clip.id, on) },
+                    onDelete = { history.delete(it.id) },
+                    onBack = ::showKeyboard,
+                    onManage = { onTool(Tool.SETTINGS) },
+                )
+            }
+        }
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+        updateQuickStrip()
+    }
+
     /** Opens or closes the quick settings (the toolbar's first button) in the keyboard's place. */
     private fun toggleQuickPanel() {
         if (panelHost.getChildAt(0) === quickPanel) {
@@ -383,7 +477,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         when (tool) {
             Tool.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Tool.MORE -> toggleQuickPanel()
-            Tool.CLIPBOARD, Tool.AI, Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
+            Tool.CLIPBOARD -> showClipboard()
+            Tool.AI, Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
         }
     }
 
@@ -408,6 +503,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         showKeyboard()
         updateAutoCaps()
         refresh(0)
+        // Clips copied while the keyboard was away; the clip's timestamp makes a seen one a no-op.
+        onClip()
     }
 
     override fun onWindowShown() {
@@ -448,6 +545,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         unregisterReceiver(deployDone)
+        clipboard.removePrimaryClipChangedListener(clipListener)
         if (deployBound) unbindService(deployConnection)
         engine.post {
             english?.close()
@@ -763,6 +861,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         candidateBar.show(candidates, downTime)
         shownCandidates.value = candidates
         candidateBar.hint = notice ?: chineseHint()
+        updateQuickStrip()
         if (raw.isEmpty()) japaneseReading = ""
         if (!direct && mode == Mode.ENGLISH && s.englishSuggestions && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
         if (!direct && mode == Mode.JAPANESE && raw.isNotEmpty()) suggestJapanese(raw, gen)
@@ -877,6 +976,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (!::panelHost.isInitialized || panelHost.getChildAt(0) === keyboard) return
         panelHost.removeAllViews()
         panelHost.addView(keyboard)
+        updateQuickStrip()
     }
 
     private fun showEmoji() {
