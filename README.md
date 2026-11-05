@@ -48,6 +48,11 @@ Builds are not available yet. Requirements and commands:
 
 - [English documentation](doc/en-us/README.md) · [中文文档](doc/zh-cn/README.md)
 
+## Privacy
+
+Typing works offline and stays on the device; Kotomo has no internet permission. See
+[PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+
 ## Acknowledgements
 
 Kotomo's design draws on these input methods. It is an independent project, not affiliated with,
