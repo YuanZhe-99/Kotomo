@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Clipboard panel, quick-paste strip and clipboard settings (PhoneClipboard, PhoneQuickPaste). -->
+<resources>
+    <string name="clip_back">Back to keyboard</string>
+    <string name="clip_tab_all">All</string>
+    <string name="clip_tab_pinned">Pinned and phrases</string>
+    <string name="clip_tab_codes">Codes</string>
+    <string name="clip_tag_address">Address</string>
+    <string name="clip_tag_phone">Phone</string>
+    <string name="clip_tag_link">Link</string>
+    <string name="clip_tag_code">Code</string>
+    <string name="clip_tag_phrase">Phrase</string>
+    <string name="clip_pinned">Pinned</string>
+    <string name="clip_time_phrase">Quick phrase</string>
+    <string name="clip_time_now">Just now</string>
+    <plurals name="clip_time_minutes">
+        <item quantity="one">%d minute ago</item>
+        <item quantity="other">%d minutes ago</item>
+    </plurals>
+    <plurals name="clip_time_hours">
+        <item quantity="one">%d hour ago</item>
+        <item quantity="other">%d hours ago</item>
+    </plurals>
+    <string name="clip_time_yesterday">Yesterday</string>
+    <plurals name="clip_time_days">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+    <string name="clip_footer">Only on this device, encrypted · %1$s · Passwords and sensitive content are not recorded</string>
+    <plurals name="clip_kept_days">
+        <item quantity="one">kept %d day</item>
+        <item quantity="other">kept %d days</item>
+    </plurals>
+    <string name="clip_footer_off">Clipboard history is off. Nothing you copy is kept.</string>
+    <string name="clip_manage">Manage</string>
+    <string name="clip_empty_all">Text you copy shows up here</string>
+    <string name="clip_empty_pinned">Pin a clip to keep it here</string>
+    <string name="clip_empty_codes">Verification codes you copy show up here</string>
+    <string name="clip_actions">Pin or delete</string>
+    <string name="clip_pin">Pin</string>
+    <string name="clip_unpin">Unpin</string>
+    <string name="clip_paste_all">Paste the whole text</string>
+    <string name="clip_delete">Delete</string>
+    <string name="quick_region">Quick paste</string>
+    <string name="quick_close">Close quick paste</string>
+    <string name="quick_copied">Just copied</string>
+    <string name="quick_copied_hint">Tap to paste what you just copied</string>
+    <string name="quick_code_one">A verification code in what you just copied</string>
+    <string name="quick_codes_many">From what you just copied · Not sure which is the code, so all are listed</string>
+    <string name="quick_more_likely">more likely</string>
+    <string name="clip_settings_section">Clipboard</string>
+    <string name="clip_settings_history">Clipboard history</string>
+    <string name="clip_settings_history_desc">Keep text you copy on this device, encrypted. Passwords and sensitive content are never kept.</string>
+    <string name="clip_settings_keep">Keep unpinned items for</string>
+    <plurals name="clip_settings_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="clip_settings_quick">Quick paste</string>
+    <string name="clip_settings_quick_desc">Offer what you just copied, and codes in it, above the keys for a minute</string>
+    <string name="clip_settings_clear">Clear unpinned items</string>
+</resources>

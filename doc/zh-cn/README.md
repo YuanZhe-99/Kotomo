@@ -11,6 +11,7 @@ librime（中文）、Mozc（日文）、AOSP LatinIME 的建议引擎（英文�
 |---|---|
 | [upstream.md](upstream.md) | 上游契约与特殊行为：各引擎、Android 输入法平台、ML Kit、数据集 |
 | [settings-format.md](settings-format.md) | 设置文件：键、默认值、版本，以及键盘如何读取 |
+| [clipboard.md](clipboard.md) | 剪贴板历史：记录什么、加密文件、验证码、快捷输入条 |
 | [third-party.md](third-party.md) | 复用的代码、数据与素材，许可证与义务；设计致谢 |
 | [platform-notes.md](platform-notes.md) | 各设备与 Android 版本上已实现与已验证的内容、关卡状态 |
 | [development.md](development.md) | 环境、命令、开发流程 |

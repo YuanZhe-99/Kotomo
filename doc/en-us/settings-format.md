@@ -52,6 +52,9 @@ app and the keyboard run in the same process and share one `SettingsStore`
 | `keys.corner_hints` | boolean | `true` | Show the long-press symbol in the key's corner |
 | `keys.haptics` | boolean | `true` | Vibrate on key press |
 | `privacy.incognito` | boolean | `false` | Incognito mode: no learning, history or clipboard recording |
+| `clipboard.history` | boolean | `true` | Keep copied text in the clipboard history ([clipboard.md](clipboard.md)) |
+| `clipboard.retention_days` | int 1–90 | 7 | Days unpinned clipboard items are kept (the Privacy page offers 1, 7 and 30) |
+| `clipboard.quick_paste` | boolean | `true` | Offer what was just copied, and codes in it, above the keys |
 
 ## Privacy
 

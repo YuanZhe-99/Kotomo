@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="clip_back">返回键盘</string>
+    <string name="clip_tab_all">全部</string>
+    <string name="clip_tab_pinned">固定与短语</string>
+    <string name="clip_tab_codes">验证码</string>
+    <string name="clip_tag_address">地址</string>
+    <string name="clip_tag_phone">电话</string>
+    <string name="clip_tag_link">链接</string>
+    <string name="clip_tag_code">验证码</string>
+    <string name="clip_tag_phrase">短语</string>
+    <string name="clip_pinned">已固定</string>
+    <string name="clip_time_phrase">快捷短语</string>
+    <string name="clip_time_now">刚刚</string>
+    <plurals name="clip_time_minutes">
+        <item quantity="other">%d 分钟前</item>
+    </plurals>
+    <plurals name="clip_time_hours">
+        <item quantity="other">%d 小时前</item>
+    </plurals>
+    <string name="clip_time_yesterday">昨天</string>
+    <plurals name="clip_time_days">
+        <item quantity="other">%d 天前</item>
+    </plurals>
+    <string name="clip_footer">仅存于本机并加密 · %1$s · 密码与敏感内容不记录</string>
+    <plurals name="clip_kept_days">
+        <item quantity="other">保留 %d 天</item>
+    </plurals>
+    <string name="clip_footer_off">剪贴板历史已关闭，复制的内容不会保存</string>
+    <string name="clip_manage">管理</string>
+    <string name="clip_empty_all">复制的文字会显示在这里</string>
+    <string name="clip_empty_pinned">固定一条内容，它就会一直保留在这里</string>
+    <string name="clip_empty_codes">复制的验证码会显示在这里</string>
+    <string name="clip_actions">固定或删除</string>
+    <string name="clip_pin">固定</string>
+    <string name="clip_unpin">取消固定</string>
+    <string name="clip_paste_all">粘贴全文</string>
+    <string name="clip_delete">删除</string>
+    <string name="quick_region">快捷输入</string>
+    <string name="quick_close">关闭快捷输入</string>
+    <string name="quick_copied">刚复制</string>
+    <string name="quick_copied_hint">点按即可输入刚复制的内容</string>
+    <string name="quick_code_one">刚复制的内容中有验证码</string>
+    <string name="quick_codes_many">来自刚复制的内容 · 无法确定哪个是验证码，全部列出</string>
+    <string name="quick_more_likely">更可能</string>
+    <string name="clip_settings_section">剪贴板</string>
+    <string name="clip_settings_history">剪贴板历史</string>
+    <string name="clip_settings_history_desc">把复制的文字加密保存在本机；密码与敏感内容从不保存</string>
+    <string name="clip_settings_keep">未固定的内容保留</string>
+    <plurals name="clip_settings_days">
+        <item quantity="other">%d 天</item>
+    </plurals>
+    <string name="clip_settings_quick">快捷输入</string>
+    <string name="clip_settings_quick_desc">复制后一分钟内，在键盘上方提供刚复制的内容和其中的验证码</string>
+    <string name="clip_settings_clear">清除未固定的内容</string>
+</resources>

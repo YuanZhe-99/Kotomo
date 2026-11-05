@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -51,6 +52,7 @@ import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.Mode
 import com.yuanzhe.kotomo.ime.Probe
 import com.yuanzhe.kotomo.ime.RimeFiles
+import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
 import kotlin.math.roundToInt
 
 /** Names each input mode in the settings. */
@@ -274,11 +276,31 @@ internal fun KeysPage(settings: Settings, store: SettingsStore) {
     }
 }
 
-/** Draws the Privacy page: the incognito switch and what Kotomo keeps and sends. */
+/**
+ * Draws the Privacy page: the incognito switch, the clipboard settings (history, how long it
+ * keeps unpinned items, quick paste, clearing) and what Kotomo keeps and sends.
+ */
 @Composable
 internal fun PrivacyPage(settings: Settings, store: SettingsStore) {
+    val context = LocalContext.current
+    val clip = settings.clipboard
     Section(null) {
         SwitchRow(R.string.incognito_title, R.string.incognito_desc, settings.incognito) { on -> store.set { it.copy(incognito = on) } }
+    }
+    Section(stringResource(R.string.clip_settings_section)) {
+        SwitchRow(R.string.clip_settings_history, R.string.clip_settings_history_desc, clip.history) { on ->
+            store.set { it.copy(clipboard = it.clipboard.copy(history = on)) }
+        }
+        Inset {
+            Label(stringResource(R.string.clip_settings_keep))
+            Choice(RETENTION_CHOICES.map { pluralStringResource(R.plurals.clip_settings_days, it, it) }, RETENTION_CHOICES.indexOf(clip.retentionDays)) { i ->
+                store.set { it.copy(clipboard = it.clipboard.copy(retentionDays = RETENTION_CHOICES[i])) }
+            }
+            OutlinedButton(onClick = { ClipboardHistory.get(context).clearUnpinned() }) { Text(stringResource(R.string.clip_settings_clear)) }
+        }
+        SwitchRow(R.string.clip_settings_quick, R.string.clip_settings_quick_desc, clip.quickPaste) { on ->
+            store.set { it.copy(clipboard = it.clipboard.copy(quickPaste = on)) }
+        }
     }
     Section(null) {
         Inset {
@@ -288,6 +310,9 @@ internal fun PrivacyPage(settings: Settings, store: SettingsStore) {
         }
     }
 }
+
+/** The clipboard retentions the Privacy page offers, in days. */
+private val RETENTION_CHOICES = listOf(1, 7, 30)
 
 /** Draws a page that only explains what arrives later. */
 @Composable

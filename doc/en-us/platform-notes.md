@@ -14,7 +14,7 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 | Check | Result |
 |---|---|
 | Documentation mirror and links | `java tool/CheckDocs.java` passes |
-| Unit tests (S1: layout and hit testing, latency percentiles; settings format: defaults, round trip, unknown keys, no file) | `./gradlew testDebugUnitTest`: 23 tests pass (the 6 settings-format tests have run on the Windows host only so far) |
+| Unit tests (S1: layout and hit testing, latency percentiles; settings format: defaults, round trip, unknown keys, no file; clipboard: recording rules, the encrypted file, verification codes, quick paste) | `./gradlew testDebugUnitTest`: 62 tests, 61 pass and 1 is skipped (the settings-format and clipboard tests have run on the Windows host only so far) |
 | Lint | `./gradlew check` passes with no warnings |
 | Release build | `./gradlew assembleRelease`: R8 on, signed with the release key (APK Signature Scheme v2) |
 

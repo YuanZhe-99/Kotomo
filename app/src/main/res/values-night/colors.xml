@@ -12,6 +12,10 @@
     <color name="kb_accent_container">#2A3570</color>
     <color name="kb_on_accent_container">#DDE3FF</color>
     <color name="kb_key_shadow">#66000000</color>
+    <color name="clip_tag_neutral">#40444D</color>
+    <color name="clip_on_tag_neutral">#D5D9E0</color>
+    <color name="clip_tag_phrase">#5A3412</color>
+    <color name="clip_on_tag_phrase">#F6DCC4</color>
     <!-- Settings app surfaces (dark). -->
     <color name="settings_background">#101215</color>
     <color name="settings_card">#1C1F24</color>

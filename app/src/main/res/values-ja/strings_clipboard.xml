@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="clip_back">キーボードに戻る</string>
+    <string name="clip_tab_all">すべて</string>
+    <string name="clip_tab_pinned">固定とフレーズ</string>
+    <string name="clip_tab_codes">認証コード</string>
+    <string name="clip_tag_address">住所</string>
+    <string name="clip_tag_phone">電話</string>
+    <string name="clip_tag_link">リンク</string>
+    <string name="clip_tag_code">コード</string>
+    <string name="clip_tag_phrase">フレーズ</string>
+    <string name="clip_pinned">固定済み</string>
+    <string name="clip_time_phrase">クイックフレーズ</string>
+    <string name="clip_time_now">たった今</string>
+    <plurals name="clip_time_minutes">
+        <item quantity="other">%d 分前</item>
+    </plurals>
+    <plurals name="clip_time_hours">
+        <item quantity="other">%d 時間前</item>
+    </plurals>
+    <string name="clip_time_yesterday">昨日</string>
+    <plurals name="clip_time_days">
+        <item quantity="other">%d 日前</item>
+    </plurals>
+    <string name="clip_footer">この端末にのみ暗号化して保存 · %1$s · パスワードと機密情報は記録しません</string>
+    <plurals name="clip_kept_days">
+        <item quantity="other">%d 日間保存</item>
+    </plurals>
+    <string name="clip_footer_off">クリップボード履歴はオフです。コピーした内容は保存されません</string>
+    <string name="clip_manage">管理</string>
+    <string name="clip_empty_all">コピーしたテキストがここに表示されます</string>
+    <string name="clip_empty_pinned">固定した項目はここに残ります</string>
+    <string name="clip_empty_codes">コピーした認証コードがここに表示されます</string>
+    <string name="clip_actions">固定または削除</string>
+    <string name="clip_pin">固定</string>
+    <string name="clip_unpin">固定を解除</string>
+    <string name="clip_paste_all">全文を貼り付け</string>
+    <string name="clip_delete">削除</string>
+    <string name="quick_region">クイック入力</string>
+    <string name="quick_close">クイック入力を閉じる</string>
+    <string name="quick_copied">コピーした内容</string>
+    <string name="quick_copied_hint">タップして、コピーしたばかりの内容を入力</string>
+    <string name="quick_code_one">コピーした内容に認証コードがあります</string>
+    <string name="quick_codes_many">コピーした内容から · どれが認証コードか判断できないため、すべて表示します</string>
+    <string name="quick_more_likely">有力</string>
+    <string name="clip_settings_section">クリップボード</string>
+    <string name="clip_settings_history">クリップボード履歴</string>
+    <string name="clip_settings_history_desc">コピーしたテキストをこの端末に暗号化して保存します。パスワードと機密情報は保存しません</string>
+    <string name="clip_settings_keep">固定していない項目の保存期間</string>
+    <plurals name="clip_settings_days">
+        <item quantity="other">%d 日</item>
+    </plurals>
+    <string name="clip_settings_quick">クイック入力</string>
+    <string name="clip_settings_quick_desc">コピーしてから 1 分間、コピーした内容と認証コードをキーの上に表示します</string>
+    <string name="clip_settings_clear">固定していない項目を消去</string>
+</resources>

@@ -14,6 +14,7 @@ settings app; a C++ engine reached through JNI carries the mixed-input coordinat
 |---|---|
 | [upstream.md](upstream.md) | Upstream contracts and quirks: the engines, the Android IME platform, ML Kit, the data sets |
 | [settings-format.md](settings-format.md) | The settings file: keys, defaults, versioning and how the keyboard reads it |
+| [clipboard.md](clipboard.md) | The clipboard history: what is recorded, its encrypted file, verification codes, the quick-paste strip |
 | [third-party.md](third-party.md) | Reused code, data and assets, licenses and obligations; design acknowledgements |
 | [platform-notes.md](platform-notes.md) | What is implemented and verified on each device and Android version, gate status |
 | [development.md](development.md) | Environment, commands, the dev loop |
