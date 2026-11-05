@@ -2,7 +2,7 @@
 
 | Platform | Status |
 |---|---|
-| Android phones (`arm64-v8a`) | P0 spikes: the keyboard with English (S4) and Chinese (S2) engines; not yet run on a device. |
+| Android phones (`arm64-v8a`) | Run on a Galaxy Z Fold (Android 17, release build): S1 and S2 pass there. P1's device checklist is not recorded line by line yet; only what appears on the screen could be checked. |
 | Android emulator (`x86_64`) | The development target for layouts and instrumentation tests where the host supports it; never evidence for latency or on-device AI. |
 | Android tablets and foldables | P1 code in place (not yet run on a device): window size classes, a centred maximum width, keys below the hinge when half-folded, split halves and two space bars beside a vertical hinge (unit-tested). |
 | Desktop hosts (Windows, Linux, macOS) | Build and test the engine core from P0; never a product target. |
@@ -17,6 +17,11 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 | Unit tests (S1: layout and hit testing, latency percentiles; settings format: defaults, round trip, unknown keys, no file; clipboard: recording rules, the encrypted file, verification codes, quick paste) | `./gradlew testDebugUnitTest`: 62 tests, 61 pass and 1 is skipped (the settings-format and clipboard tests have run on the Windows host only so far) |
 | Lint | `./gradlew check` passes with no warnings |
 | Release build | `./gradlew assembleRelease`: R8 on, signed with the release key (APK Signature Scheme v2) |
+
+These were not repeated on 2026-11-04 after the pause: the development machine had no Android SDK
+installed (the directory `local.properties` names held only the `.sdk` marker), so
+`./gradlew --no-daemon` stops during configuration with the NDK licence error before any task runs.
+The documentation check still runs; the Gradle rows above stand as of the earlier run.
 
 ## Spikes
 
@@ -47,6 +52,6 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
   compiled at build time; Mixed mode does the same until the mixed coordinator (S6) exists. Japanese
   mode converts romaji through Mozc (S3, libraries from Linux CI): the composition shows kana, the
   first candidate is the whole sentence, Enter keeps the kana; editing single segments comes in P2.
-- P1's gestures, field adaptation, Taiwan and Hong Kong output, candidate details, Direct Boot and the API 37 composition attribute are unit- or host-tested only; device checks wait for the P1 milestone APK. Before the first unlock the keyboard types with the defaults and built-in data only: Chinese with nothing learned, English, no Japanese (Mozc needs its data in credential-protected storage), no clipboard, AI or emoji recents.
+- P1's gestures, field adaptation, Taiwan and Hong Kong output, candidate details, Direct Boot and the API 37 composition attribute are unit- or host-tested only. The P1 checklist (`tests/device/p1-checklist.md`) is judged from the screen, and no line has been recorded yet, so G1 stays NOT_RUN. Before the first unlock the keyboard types with the defaults and built-in data only: Chinese with nothing learned, English, no Japanese (Mozc needs its data in credential-protected storage), no clipboard, AI or emoji recents.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.

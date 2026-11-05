@@ -31,9 +31,9 @@
 | S7 输入法中的 Gemini Nano | NOT_RUN | 需要支持 Gemini Nano 的真机；写作助手代码已在 `142af4e`，未在真机验证 |
 | S8 许可证与数据源审查 | NOT_RUN | 已用上游大多记录在 `third-party.md` 与 `build-lock.json`，尚未逐项结论化；另需核实 Google Play 对读取通知的政策（§10.7） |
 | G0 | NOT_RUN | 等 S3/S4 真机、S6、S7、S8 与基线 |
-| P1 | 代码完成，真机验证进行中 | §8.1–§8.10 全部实现并推送（`21cd65c`）：手势与开关、输入框适配、大陆/繁体/台湾/香港与地区用词、候选详情（读音、来源、忘记）、平板与折叠屏、Direct Boot、API 37 组合属性、主题 JSON 文件。`./gradlew check` 通过（79 个单元测试、lint 无问题）。用户已拿到 release APK 与检查清单，结果未回报 |
-| G1 | NOT_RUN | 等真机检查结果；通过后按 MyApps 里程碑规则升补丁版本号 |
-| P2 | 刚开始 | 模糊音（§9.6）引擎侧完成并通过主机测试 T08，应用侧在 WIP 分支（工作包 D）；其余 §9 各项未开始 |
+| P1 | 代码完成，真机验证未记录 | §8.1–§8.10 全部实现并推送（`21cd65c`）：手势与开关、输入框适配、大陆/繁体/台湾/香港与地区用词、候选详情（读音、来源、忘记）、平板与折叠屏、Direct Boot、API 37 组合属性、主题 JSON 文件。`./gradlew check` 通过（79 个单元测试、lint 无问题）。用户已拿到 release APK 与检查清单；2026-11-04 回复只能看到界面、无法逐项验证，清单条目尚未回报 |
+| G1 | NOT_RUN | 等真机检查结果；清单按屏幕所见判定，尚未逐条记录，未判定通过前不升版本号 |
+| P2 | 刚开始 | 模糊音（§9.6）引擎侧完成并通过主机测试 T08，应用侧已拆到 `p2/fuzzy-app-side`（工作包 D，未构建）；其余 §9 各项未开始 |
 | P3 | 部分提前 | 剪贴板历史、验证码、快捷输入条（§10.7）已完成；词库系统引擎侧（librime 运行时词表）已完成，应用侧在 WIP 分支（工作包 A） |
 | P4 | 部分提前 | 写作助手（校对、重写，默认关闭）已实现，未在真机验证 |
 | P5 | 未开始 | — |
@@ -41,6 +41,7 @@
 ### 0.2 分支
 
 - `main`：最后一次验证通过的状态（P1 完成）。
+- `p2/fuzzy-app-side`（仅本机 worktree，未推送）：工作包 D 从 WIP 分支拆出的一组改动，不含词库代码，可按能力独立提交；尚未构建或跑测试（本机无 SDK，见 §0.6）。
 - `wip/paused-2026-11-04`：暂停时未完成的工作，**无法编译**，只推送到私有远端。内容是工作包 A（词库应用侧）、D（模糊音应用侧）与 E（S6 的开头）。合入 `main` 前按能力拆成独立提交，每个提交都要通过验证。
 - 设计稿：`design/`，2026-11-04 从设计画布"Kotomo Keyboard & Settings"固化（16 个画板与布局文件，说明见 `design/README.md`）；此后以仓库中的文件为准。
 
@@ -83,7 +84,7 @@
 
 **C. 剪贴板与验证码的剩余部分（§10.7）。** 已完成：加密历史、固定与快捷短语、过期与上限、复制文本中的验证码识别、面板与快捷输入条。待做：经 `NotificationListenerService` 从通知读取验证码（默认关闭，开启前说明读取范围，只在本机识别，通知原文不保存，验证码只在快捷输入条短暂显示、不进入历史，多个候选数字全部列出并标出最可能的一个）；按 App 控制是否记录；§10.7 中尚未实现的搜索、编辑、分类、批量删除。每条规则都有正例和反例测试（CLIP-xx）；更新 `clipboard.md`、`PRIVACY_POLICY.md` 与 INDEX。
 
-**D. 模糊音应用侧（§9.6）。** 引擎侧已完成：方案补丁可选地引入 `kotomo_fuzzy.yaml`，主机测试 T08（z/zh 开启后 `zongguo` → 中国，关闭时不出现，`zhongguo` 与 `nihao` 不受影响）通过。应用侧已在 WIP 分支写好：`FuzzyRule` 与设置键 `chinese.fuzzy.*`、中文页每条规则一个开关、生成补丁文件并在后台部署进程中重新部署、全部关闭时回到预编译数据。待做：运行 `FuzzyPatchTest` 与 `SettingsStoreTest`、更新 settings-format 与 INDEX、重新生成预编译数据、真机验证。
+**D. 模糊音应用侧（§9.6）。** 引擎侧已完成：方案补丁可选地引入 `kotomo_fuzzy.yaml`，主机测试 T08（z/zh 开启后 `zongguo` → 中国，关闭时不出现，`zhongguo` 与 `nihao` 不受影响）通过。应用侧已在 `p2/fuzzy-app-side`（§0.2）从 WIP 分支拆出：`FuzzyRule` 与设置键 `chinese.fuzzy.*`、中文页每条规则一个开关、生成补丁文件并在后台部署进程中重新部署、全部关闭时回到预编译数据。待做：构建并运行 `FuzzyPatchTest` 与 `SettingsStoreTest`、更新 settings-format 与 INDEX、重新生成预编译数据、真机验证。
 
 **E. S6 混合整句原型。** 已有：`core/mixed/mixed.h`（接口）、供主机工具使用的 Mozc 行服务（`core/mozc/tools/kotomo_mozc_server.cc`，固定「池袋」+ `にかいにいこう` → 池袋に買いに行こう）。设计：`core/mixed/` 中与引擎无关的 C++ 协调层，网格边包括拼音片段、英文词、假名片段、按读音命中的日文词、拼音 → 日文与英文 → 日文的跨语言词（S5 词表，按键排序）；每种目标语言做 k-best；收尾通过回调交给 librime（直接链接）和 Mozc（行服务）。语料按 §13.3 放在 `tests/conversion/`，含 §13.2 的用例、反例与 §2.3 的示例（sakura、neko、apple、diannao、ai）。已发现的差距：Mozc 的会话转换把 `watashiwanihonjin` 转成「私羽日本人」（わ 被当作「羽」），协调层需要处理助词（wa → は、o → を、e → へ）。**需要用户决定（写 ADR）：** 设备上三个引擎是只导出 JNI 的独立共享库，C++ 协调层无法在进程内直接调用它们；可选 Kotlin 协调层（每键多次跨 JNI，偏离 §4.4）或让各引擎库额外导出窄的 C 接口。
 
@@ -100,12 +101,13 @@
 - 普通提交在验证后直接推送到两个远端，不必先问；版本号、`vX.Y.Z` 标签与发布先向用户报告，确认后再推送。这一条优先于 AGENTS.md 的"推送前询问"。
 - 不要每改一处就请用户在真机上测试：先把计划的功能做完，主机测试、CI 与诊断页的自检承担验证，到里程碑时一次交付一个 APK 和一份检查清单（`tests/device/`）。用户的测试机是 Galaxy Z Fold（Android 17），通过侧载安装 APK，没有 adb；怀疑只在真机出现的问题时，把自检输出加到诊断页，而不是反复要截图。
 - 在线词库与目录托管在 GitHub（Releases，由 CI 构建）；词库主要来自已核查许可证的开源词库，Agent 只做框架和极小的原创样例；不创建发布、不上传。
-- 开发机是 Windows 11 on ARM64，带 WSL2（Debian）、JDK 21、SDK 37.2、NDK 30；没有 Python，没有官方 Android 模拟器（不支持 ARM64 Windows 主机），布局与逻辑之外的验证都要真机。
+- 开发机是 Windows 11 on ARM64，带 WSL2（Debian）、JDK 21；暂停时装过 SDK 37.2 与 NDK 30，2026-11-04 恢复时本机已找不到它们（见 §0.6）。没有 Python，没有官方 Android 模拟器（不支持 ARM64 Windows 主机），布局与逻辑之外的验证都要真机。
 - 构建产物已于 2026-11-04 清理。重新构建依次需要：`scripts/fetch-boost.sh`（如缺）、`scripts/prebuild-rime.sh`（WSL）、`scripts/fetch-mozc.sh` 或 `scripts/build-mozc.sh --abi host`、`java -Xmx4g lexicon/CrossLexicon.java --offline`，然后才是 Gradle。
+- 2026-11-04 用户补充：本机只做轻量测试（文档检查、能在几分钟内跑完的单元测试），不必在本机做完整编译，也不要在 WSL 里重复预编译；完整编译与设备端构建交给 GitHub CI，结果以 CI 的状态为准。
 
 ### 0.5 恢复后的顺序
 
-1. 收集 P1 真机检查结果，修复失败项；G1 通过后升版本号（发布由用户决定）。
+1. 收集 P1 真机检查结果，修复失败项；G1 通过后升版本号（发布由用户决定）。用户只能观察界面，条目按 `tests/device/p1-checklist.md` 的屏幕判据逐条确认；需要计时或日志的结论另记，绝不代填。
 2. 在 WIP 分支上完成并提交工作包 D；工作包 A 先修到能编译、测试通过，再按能力提交。
 3. 完成 S6（协调层、语料运行器、差距报告），并就协调层位置向用户提出 ADR 问题。
 4. S8 审查。
@@ -118,6 +120,7 @@
 | --- | --- | --- |
 | 签名配置与密钥 | 维护者本机被忽略的 `key.properties`，以及 GitHub Actions 的密钥 | 本地只构建 debug 或未签名的 release；签名发布由 CI 或维护者完成 |
 | SDK 路径 | 被忽略的 `local.properties`（`sdk.dir`） | 新 worktree 复制一份，或设置 `ANDROID_HOME` |
+| Android SDK 本体 | 2026-11-04 恢复时本机 `sdk.dir` 指向的目录只剩 `.sdk` 标记文件，没有 platforms、build-tools 或 NDK | 先装回 `build-lock.json` 指定的 platform 37.2、build-tools 37.0.0、NDK 30.0.16248370；在装回之前 Gradle 在配置阶段就会失败（NDK 许可），本机只能跑 `java tool/CheckDocs.java`，完整编译交给 GitHub CI |
 | 上游下载 | `.deps/`（忽略，按 `build-lock.json` 的哈希锁定） | 各脚本缺失时自动下载并校验 |
 | 构建产物 | 2026-11-04 已全部清理 | 按 §0.4 最后一条的顺序重新生成 |
 | Mozc 的 Android 库与数据 | 由 Linux CI 构建，`scripts/fetch-mozc.sh` 经 `gh` 下载 | 需要已登录的 `gh`；否则日文模式在 APK 中不可用 |

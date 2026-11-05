@@ -3,7 +3,11 @@
 Install the arm64 release APK built from the commit above (debug builds check functions only;
 latency and memory need the release build). Open Kotomo, enable it and select it on the home card.
 
-Mark each line PASS / FAIL, and note the device, Android version and anything odd.
+Mark each line PASS / FAIL, and note the device, Android version and anything odd. Every line is
+judged by what the screen shows. Two exceptions: the "nothing learned" half of the privacy line
+cannot be seen yet (the screen that lists learned items arrives with P2, PLAN §9.9), and this
+checklist makes no claim about latency or memory (the diagnostics page shows those numbers, but
+they are read there, not judged here).
 
 ## Gestures (Settings → Keys and gestures; each has its own switch)
 - [ ] Two quick spaces after an English word type ". "; after Chinese text "。"; off → two spaces
