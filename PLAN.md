@@ -93,6 +93,7 @@
 - 每个 Agent 使用自己的 git worktree，并复制一份 `local.properties`；共用工作目录会互相破坏构建。
 - Gradle 若报告 SDK 中"没有包"或许可证缺失，多半是复用了另一个受沙箱限制的守护进程：使用 `./gradlew --no-daemon`。Gradle 在 Windows 的 Git Bash 或 PowerShell 中运行，不在 WSL 中运行；WSL 只用于 librime 与 Mozc 的主机构建。
 - 从 Git Bash 调用 WSL 时设置 `MSYS_NO_PATHCONV=1`，多行命令写成脚本再执行。
+- 不读取 `key.properties`（签名配置）；不把私有远端的地址写进任何文件或对话。
 - 构建产物已于 2026-11-04 清理。重新构建依次需要：`scripts/fetch-boost.sh`（如缺）、`scripts/prebuild-rime.sh`（WSL）、`scripts/fetch-mozc.sh` 或 `scripts/build-mozc.sh --abi host`、`java -Xmx4g lexicon/CrossLexicon.java --offline`，然后才是 Gradle。
 
 ### 0.5 恢复后的顺序
