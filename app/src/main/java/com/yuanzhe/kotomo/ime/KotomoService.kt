@@ -96,6 +96,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private lateinit var content: LinearLayout
     private var emojiPanel: ComposeView? = null
     private var candidatesPanel: ComposeView? = null
+    private var quickPanel: ComposeView? = null
     /** Main thread: librime has a session (mirrors the engine thread's rimeReady). */
     private var rimeOpen = false
     /** Main thread: a toolbar notice shown for a moment, or null. */
@@ -104,6 +105,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private val composing = StringBuilder()
     private var candidates = emptyList<String>()
     private var generation = 0
+    /** Main thread: the emoji index (loaded off the main thread at start), for emoji suggestions. */
+    private var emojiIndex: EmojiIndex? = null
+    /** Main thread: the emoji among the shown candidates (picked as emoji, not as words). */
+    private var emojiShown = emptySet<String>()
+    /** Main thread: for each shown Chinese candidate, librime's index, or -1 for an emoji. */
+    private var rimeIndexes = emptyList<Int>()
     /** Main thread: the kana reading Mozc gave for the current Japanese composition. */
     private var japaneseReading = ""
     /** librime's latest preedit and candidates, as last applied on the main thread. */
@@ -126,6 +133,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         savedState.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         store = SettingsStore.get(this)
+        lifecycleScope.launch { emojiIndex = runCatching { EmojiIndex.load(this@KotomoService) }.getOrNull() }
         // Changes made in the settings app apply at once: relayout and the engines' options.
         lifecycleScope.launch {
             store.flow.collect {
@@ -319,13 +327,35 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
     }
 
+    /** Opens or closes the quick settings (the toolbar's first button) in the keyboard's place. */
+    private fun toggleQuickPanel() {
+        if (panelHost.getChildAt(0) === quickPanel) {
+            showKeyboard()
+            return
+        }
+        val height = keyboard.height
+        val panel = quickPanel ?: ComposeView(this).also { view ->
+            quickPanel = view
+            view.setContent {
+                QuickPanel(
+                    store = store,
+                    onOpenSettings = { onTool(Tool.SETTINGS) },
+                    onBack = ::showKeyboard,
+                )
+            }
+        }
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
     private val shownCandidates = androidx.compose.runtime.mutableStateOf(emptyList<String>())
 
     /** Runs a toolbar button: settings opens the app; the rest arrive with later phases. */
     private fun onTool(tool: Tool) {
         when (tool) {
             Tool.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            Tool.MORE, Tool.CLIPBOARD, Tool.AI, Tool.TRANSLATE -> {
+            Tool.MORE -> toggleQuickPanel()
+            Tool.CLIPBOARD, Tool.AI, Tool.TRANSLATE -> {
                 notice = getString(R.string.bar_not_yet)
                 refresh(0)
                 main.postDelayed({
@@ -563,7 +593,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         if (state.preedit.isNotEmpty()) ic.setComposingText(state.preedit, 1)
         chinesePreedit = state.preedit
-        chineseCandidates = state.candidates
+        val emoji = emojiFor(state.preedit)
+        val at = minOf(EMOJI_POSITION, state.candidates.size)
+        chineseCandidates = withEmoji(state.candidates, emoji)
+        rimeIndexes = if (emoji.isEmpty()) state.candidates.indices.toList()
+        else (0 until at).toList() + List(chineseCandidates.size - state.candidates.size) { -1 } + (at until state.candidates.size).toList()
         if (usesRime) {
             candidates = chineseCandidates
             candidateBar.show(candidates, downTime)
@@ -614,8 +648,24 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun pick(index: Int) {
         if (usesRime && !direct) {
+            val rimeIndex = rimeIndexes.getOrElse(index) { index }
+            if (rimeIndex < 0) {
+                // An emoji: it replaces the whole composition.
+                val emoji = candidates.getOrNull(index) ?: return
+                engine.post {
+                    if (rimeReady) Rime.clear()
+                    main.post {
+                        currentInputConnection?.commitText(emoji, 1)
+                        chinesePreedit = ""
+                        chineseCandidates = emptyList()
+                        rimeIndexes = emptyList()
+                        refresh(0)
+                    }
+                }
+                return
+            }
             engine.post {
-                val handled = rimeReady && Rime.selectCandidate(index)
+                val handled = rimeReady && Rime.selectCandidate(rimeIndex)
                 val state = rimeState(handled)
                 main.post { applyChinese(state, 0) }
             }
@@ -623,7 +673,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         val text = candidates.getOrNull(index) ?: return
         val ic = currentInputConnection ?: return
-        if (mode == Mode.ENGLISH) {
+        if (text in emojiShown) {
+            ic.commitText(text, 1)
+            previousWord = null
+        } else if (mode == Mode.ENGLISH) {
             ic.commitText("$text ", 1)
             previousWord = text
         } else {
@@ -737,7 +790,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 }.distinct()
                 japaneseReading = reading
                 currentInputConnection?.setComposingText(reading, 1)
-                candidates = list
+                candidates = withEmoji(list, emojiFor(typed))
                 candidateBar.show(candidates, 0)
                 shownCandidates.value = candidates
             }
@@ -754,6 +807,25 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * mixed coordinator (spike S6) handles pinyin, romaji and English in one string.
      */
     private val usesRime get() = mode == Mode.CHINESE || mode == Mode.MIXED
+
+    /**
+     * Finds emoji for what is being typed (English words, pinyin, romaji; CLDR keywords), when
+     * emoji suggestions are on and the field is not sensitive.
+     * Returns: up to three emoji, best first.
+     */
+    private fun emojiFor(typed: String): List<String> {
+        val key = typed.lowercase().filter { it in 'a'..'z' }
+        if (direct || key.length < 2 || !settings.mixed.cross.emoji) return emptyList()
+        return emojiIndex?.lookup(key, EMOJI_SUGGESTIONS).orEmpty()
+    }
+
+    /** Puts [emoji] into [list] at the third place (after the most likely words), marking them. */
+    private fun withEmoji(list: List<String>, emoji: List<String>): List<String> {
+        emojiShown = emoji.toSet()
+        if (emoji.isEmpty()) return list
+        val at = minOf(EMOJI_POSITION, list.size)
+        return (list.take(at) + emoji + list.drop(at)).distinct()
+    }
 
     /** Says why Chinese mode cannot convert yet (dictionary being prepared or failed), or null. */
     private fun chineseHint(): String? {
@@ -772,7 +844,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 if (gen != generation) return@post
                 val capital = typed.firstOrNull()?.isUpperCase() == true
                 val shown = words.map { if (capital) it.replaceFirstChar(Char::uppercase) else it }
-                candidates = if (typed.isEmpty()) shown.distinct() else (listOf(typed) + shown).distinct()
+                val words = if (typed.isEmpty()) shown.distinct() else (listOf(typed) + shown).distinct()
+                candidates = withEmoji(words, emojiFor(typed))
                 candidateBar.show(candidates, 0)
                 shownCandidates.value = candidates
             }
@@ -816,6 +889,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val ENGLISH_DICT = "main_en_us.dict"
         const val MOZC_DATA = "mozc.data"
         const val NOTICE_MS = 1500L
+        const val EMOJI_SUGGESTIONS = 3
+        const val EMOJI_POSITION = 2
         const val CHINESE_CANDIDATES = 30
         // X11 keysyms that librime takes.
         const val SPACE = 0x20

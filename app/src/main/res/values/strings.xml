@@ -251,4 +251,5 @@
     <string-array name="preview_ai_conservative" translatable="false"><item>爱</item><item>哎</item><item>AI</item><item>愛</item><item>あい</item></string-array>
     <string-array name="preview_ai_balanced" translatable="false"><item>爱</item><item>AI</item><item>愛</item><item>あい</item></string-array>
     <string-array name="preview_ai_aggressive" translatable="false"><item>爱</item><item>愛</item><item>あい</item><item>AI</item></string-array>
+    <string name="quick_all_settings">All settings</string>
 </resources>

@@ -228,4 +228,5 @@
     <string name="design_swiftkey_desc">個人化與多語言預測、英文修正、智慧空格、剪貼簿、輸入手勢</string>
     <string name="design_gji">Google 日本語入力與 Mozc</string>
     <string name="design_gji_desc">羅馬字轉換、假名漢字轉換與長句轉換、文節轉換、日語字典與預測</string>
+    <string name="quick_all_settings">全部設定</string>
 </resources>

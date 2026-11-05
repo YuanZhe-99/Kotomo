@@ -38,3 +38,4 @@ side effects and notes where non-trivial).
 | `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | librime deploy in its own process into a staging directory, the file layout under `filesDir/rime`, the swap and the deploy report | `RimeDeployService`, `RimeFiles.promote` |
 | `core/rime/tools/prebuild.cc`, `scripts/prebuild-rime.sh` | Compile librime's data on a Linux host into the shared data the APK ships | `main` |
 | `scripts/fetch-mozc.sh` | Fetches the Mozc libraries and data built by mozc.yml, pinned by run and SHA-256 in build-lock.json | — |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | The toolbar's quick settings in the keyboard's place: one-handed side, split layout, Simplified/Traditional, incognito, settings app | `QuickPanel` |
