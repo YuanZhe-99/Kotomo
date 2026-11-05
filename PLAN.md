@@ -13,6 +13,95 @@
 - 核查范围：上游仓库、源码、官方文档与许可证的定向阅读；没有构建或运行任何引擎，也没有在真机上验证任何结论。
 - 产品名称为 **Kotomo**；应用 ID 建议为 `com.yuanzhe.kotomo`（与 MyApps 系列的 `com.yuanzhe.*` 一致）。
 
+## 0. 进度与交接（2026-11-04 暂停时的状态）
+
+> 本节记录实施进度和尚未完成的工作包，供下一位 Agent 接手；后续每次暂停或完成阶段时更新。计划的设计决定仍以 §1–§18 为准。设备、命令与环境细节见 `doc/en-us/platform-notes.md` 与 `development.md`。
+
+### 0.1 各阶段状态
+
+| 阶段 | 状态 | 说明 |
+| --- | --- | --- |
+| P0 工具链 | 完成 | Gradle 工程、`build-lock.json`、CI、子模块均已就位 |
+| S1 IME 骨架 | PASS（真机） | Galaxy Z Fold，Android 17，release 构建；延迟数据见 platform-notes |
+| S2 librime | PASS（真机与主机） | 构建时预编译中文数据；主机测试 35/35（含 T11 地区用词、候选详情） |
+| S3 Mozc | 主机 PASS | 胶水层与固定片段转换在主机通过；Android 库由 CI 构建并按哈希锁定，真机日文转换尚未记录为 PASS |
+| S4 英文引擎 | 主机 PASS | 真机 NOT_RUN |
+| S5 跨语言词库 | 主机 PASS | 样本 34/34 达到名次 |
+| S6 混合整句原型 | 进行中 | 见 §0.3 工作包 E |
+| S7 输入法中的 Gemini Nano | NOT_RUN | 需要支持 Gemini Nano 的真机；写作助手代码已在 `142af4e`，未在真机验证 |
+| S8 许可证与数据源审查 | NOT_RUN | 已用上游大多记录在 `third-party.md` 与 `build-lock.json`，尚未逐项结论化；另需核实 Google Play 对读取通知的政策（§10.7） |
+| G0 | NOT_RUN | 等 S3/S4 真机、S6、S7、S8 与基线 |
+| P1 | 代码完成，真机验证进行中 | §8.1–§8.10 全部实现并推送（`21cd65c`）：手势与开关、输入框适配、大陆/繁体/台湾/香港与地区用词、候选详情（读音、来源、忘记）、平板与折叠屏、Direct Boot、API 37 组合属性、主题 JSON 文件。`./gradlew check` 通过（79 个单元测试、lint 无问题）。用户已拿到 release APK 与检查清单，结果未回报 |
+| G1 | NOT_RUN | 等真机检查结果；通过后按 MyApps 里程碑规则升补丁版本号 |
+| P2 | 刚开始 | 模糊音（§9.6）引擎侧完成并通过主机测试 T08，应用侧在 WIP 分支（工作包 D）；其余 §9 各项未开始 |
+| P3 | 部分提前 | 剪贴板历史、验证码、快捷输入条（§10.7）已完成；词库系统引擎侧（librime 运行时词表）已完成，应用侧在 WIP 分支（工作包 A） |
+| P4 | 部分提前 | 写作助手（校对、重写，默认关闭）已实现，未在真机验证 |
+| P5 | 未开始 | — |
+
+### 0.2 分支
+
+- `main`：最后一次验证通过的状态（P1 完成）。
+- `wip/paused-2026-11-04`：暂停时未完成的工作，**无法编译**，只推送到私有远端。内容是工作包 A（词库应用侧）、D（模糊音应用侧）与 E（S6 的开头）。合入 `main` 前按能力拆成独立提交，每个提交都要通过验证。
+
+### 0.3 未完成的工作包
+
+每个工作包都可以交给单独的 Agent；接手的 Agent 使用自己的 git worktree，不与其他 Agent 共用工作目录（§0.4）。
+
+**A. 词库系统应用侧（§10.5，T17）。** 设计已由用户确定：
+
+- 包 `com.yuanzhe.kotomo.dictionary`，少量内聚的文件：模型、读音、格式与校验（纯 Kotlin，JVM 测试）；存储；在线客户端；`settings/` 中的词库页。
+- 条目：语言（zh/ja/en）、词、读音（无调拼音 / 平假名 / 无）、权重 0–100、来源（手动、导入、生成、下载），保留未知字段。
+- 读音：拼音小写，ü/u: → v，去掉声调数字和调号，允许空格与隔音符，必须能切分成合法音节；日文只收假名（片假名转平假名，保留长音符）；英文无读音。
+- 导入：TSV、CSV（RFC 4180，可有表头）、JSON（附录 B 的字段，`word` 也视为 `text`，拒绝更新的 `format_version`）、Rime `*.dict.yaml`（`...` 之后的行）。严格 UTF-8 解码，去 BOM，拒绝 U+FFFD 与控制字符。文件内重复与已有条目冲突都计数并预览（默认保留已有）。权重缺省 50；最大值超过 100 时按对数缩放到 0–100；LLM 生成的条目封顶 20。预览显示数量和带行号的前几条错误。导出支持同样的格式。
+- 存储：`user.json` 带版本（`format_version`、`updated_utc_ms`，保留未知键），上一版保存为 `user.prev.json` 以便回滚，不覆盖更新版本的文件；词库包放在 `packs/<id>/`，回滚用 `<id>.prev`；`state.json` 保存启用状态；所有 I/O 在 Dispatchers.IO 上并由 Mutex 保护；每次变化后原子写出三份 Rime 表并发出 `changes`，键盘收到后重新选择方案以重新加载。
+- Rime 表（引擎侧已完成并测试）：`custom_phrase.txt`（手动，质量 1）、`kotomo_packs.txt`（下载，质量 0）、`kotomo_low.txt`（导入与 LLM，质量 −1），行格式 `词<TAB>无调拼音（无空格）<TAB>权重`，位于 librime 的用户目录。
+- 在线：目录 JSON（`format_version`，packs 含 id、各语言标题、语言、分类、许可证、来源署名、版本、大小、url、sha256、格式），保留未知字段，拒绝未知版本；词库包是 gzip 压缩的规范化 TSV，安装时再次校验，丢弃坏行并计数。托管在 GitHub（用户决定），目录地址是一个常量；Agent 不创建发布、不上传。只有在用户打开"获取词库"并接受写明 github.com 的说明后才联网，接受状态记为 `dictionaries.online_accepted`。传输层是 `(url) -> InputStream`（测试用假实现）。下载有进度，校验大小与 sha256，支持安装、卸载、更新、回滚。§10.5 要求的签名尚未设计，需向用户提问。
+- 日文与英文条目先存储并标注"尚未使用"，直到接入 Mozc 用户词典和英文引擎。
+- 设置页：内置、自定义、下载词库的来源与开关；条目编辑（增、改、删、搜索）；带预览与确认的导入；导出；回滚；带说明的"获取词库"；附录 B 提示词与复制按钮，并说明 LLM 条目排序靠后。四种界面语言。
+- 文档：新增 `doc/en-us/dictionaries.md` 及中文镜像；INDEX、settings-format、`PRIVACY_POLICY.md`、AGENTS.md 的"Where to read what"一行。
+- 一个小型原创样例包：每种语言十来个手写的常用词，按在线格式打包，只用于测试。
+- 现状：WIP 分支上已有子 Agent 写的 `Entry.kt`、`Formats.kt`、`DictionaryStore.kt`、`Online.kt`、`settings/Dictionaries.kt`、`dict_*` 字符串和测试，但从未编译成功。已知问题：`MainActivity` 仍引用已删除的 `dictionaries_later`；缺少 `R.raw.llm_dictionary_prompt`（把附录 B 用脚本原样复制到 `app/src/main/res/raw/`，不要读取或打印）；缺少 `dict_export_done`；`Dictionaries.kt` 有类型错误。文档未写。
+
+**B. 词库数据（词库包与目录，由 CI 生成）。** 只做数据，不改应用代码；格式需要变化时写给用户。
+
+- 用户批准的来源：
+
+| 来源 | 数据许可证 | 用途 |
+| --- | --- | --- |
+| iDvel/rime-ice | GPL-3.0 | 中文常用与扩展；其英文词表作为技术与编程英文 |
+| gaboolic/rime-frost | GPL-3.0 | 中文基础词库的替代或补充 |
+| felixonmars/fcitx5-pinyin-zhwiki | Wikimedia（CC BY-SA） | 中文专有名词 |
+| thunlp/THUOCL | 允许商用，要求引用 | 中文领域词库（IT、医学、法律、财经、成语、地名） |
+| WorksApplications/SudachiDict | Apache-2.0 | 日文大词库 |
+| neologd/mecab-ipadic-neologd | Apache-2.0 | 日文新词（2023 年后未更新） |
+| utuhiro78/merge-ut-dictionaries | 各来源不同（jawiki 为 CC BY-SA） | 日文地名、人名 |
+| en-wl/wordlist（SCOWL） | 类 MIT | 已用作英文基础词表 |
+| outloudvi/mw2fcitx（萌娘百科） | 数据许可证未核实 | 不采用 |
+
+- 交付：`lexicon/` 下的 Java 生成器（拉取锁定版本并校验哈希，转换为 `词<TAB>读音<TAB>权重` 的 gzip TSV，丢弃校验失败的行并计数，写出 `catalog.json`）；按分类的词库包；构建为 CI 产物（不发布）的工作流；每个包的校验报告；双语文档与 `version-history.md` 一行。rime-ice 的 `tencent.dict.yaml` 在采用前先核实来源。CC BY-SA 的包保持 CC BY-SA；THUOCL 附引用说明；`third-party.md` 两种语言各加一行。
+
+**C. 剪贴板与验证码的剩余部分（§10.7）。** 已完成：加密历史、固定与快捷短语、过期与上限、复制文本中的验证码识别、面板与快捷输入条。待做：经 `NotificationListenerService` 从通知读取验证码（默认关闭，开启前说明读取范围，只在本机识别，通知原文不保存，验证码只在快捷输入条短暂显示、不进入历史，多个候选数字全部列出并标出最可能的一个）；按 App 控制是否记录；§10.7 中尚未实现的搜索、编辑、分类、批量删除。每条规则都有正例和反例测试（CLIP-xx）；更新 `clipboard.md`、`PRIVACY_POLICY.md` 与 INDEX。
+
+**D. 模糊音应用侧（§9.6）。** 引擎侧已完成：方案补丁可选地引入 `kotomo_fuzzy.yaml`，主机测试 T08（z/zh 开启后 `zongguo` → 中国，关闭时不出现，`zhongguo` 与 `nihao` 不受影响）通过。应用侧已在 WIP 分支写好：`FuzzyRule` 与设置键 `chinese.fuzzy.*`、中文页每条规则一个开关、生成补丁文件并在后台部署进程中重新部署、全部关闭时回到预编译数据。待做：运行 `FuzzyPatchTest` 与 `SettingsStoreTest`、更新 settings-format 与 INDEX、重新生成预编译数据、真机验证。
+
+**E. S6 混合整句原型。** 已有：`core/mixed/mixed.h`（接口）、供主机工具使用的 Mozc 行服务（`core/mozc/tools/kotomo_mozc_server.cc`，固定「池袋」+ `にかいにいこう` → 池袋に買いに行こう）。设计：`core/mixed/` 中与引擎无关的 C++ 协调层，网格边包括拼音片段、英文词、假名片段、按读音命中的日文词、拼音 → 日文与英文 → 日文的跨语言词（S5 词表，按键排序）；每种目标语言做 k-best；收尾通过回调交给 librime（直接链接）和 Mozc（行服务）。语料按 §13.3 放在 `tests/conversion/`，含 §13.2 的用例、反例与 §2.3 的示例（sakura、neko、apple、diannao、ai）。已发现的差距：Mozc 的会话转换把 `watashiwanihonjin` 转成「私羽日本人」（わ 被当作「羽」），协调层需要处理助词（wa → は、o → を、e → へ）。**需要用户决定（写 ADR）：** 设备上三个引擎是只导出 JNI 的独立共享库，C++ 协调层无法在进程内直接调用它们；可选 Kotlin 协调层（每键多次跨 JNI，偏离 §4.4）或让各引擎库额外导出窄的 C 接口。
+
+### 0.4 Agent 工作规则（来自实施中的教训）
+
+- 不要把附录 B、词表、词库内容或上游数据文件打印到工具输出或对话中：之前的会话因此被内容过滤中止。只看行数、哈希、计数和测试结果；用脚本复制数据，不回显。测试数据只用少量编造的词。
+- 不要整段打印剪贴板与验证码的源码；需要参考写法时看 `settings/Themes.kt` 的原子写入与版本化文件。
+- 每个 Agent 使用自己的 git worktree，并复制一份 `local.properties`；共用工作目录会互相破坏构建。
+- Gradle 若报告 SDK 中"没有包"或许可证缺失，多半是复用了另一个受沙箱限制的守护进程：使用 `./gradlew --no-daemon`。Gradle 在 Windows 的 Git Bash 或 PowerShell 中运行，不在 WSL 中运行；WSL 只用于 librime 与 Mozc 的主机构建。
+- 从 Git Bash 调用 WSL 时设置 `MSYS_NO_PATHCONV=1`，多行命令写成脚本再执行。
+- 构建产物已于 2026-11-04 清理。重新构建依次需要：`scripts/fetch-boost.sh`（如缺）、`scripts/prebuild-rime.sh`（WSL）、`scripts/fetch-mozc.sh` 或 `scripts/build-mozc.sh --abi host`、`java -Xmx4g lexicon/CrossLexicon.java --offline`，然后才是 Gradle。
+
+### 0.5 恢复后的顺序
+
+1. 收集 P1 真机检查结果，修复失败项；G1 通过后升版本号（发布由用户决定）。
+2. 在 WIP 分支上完成并提交工作包 D；工作包 A 先修到能编译、测试通过，再按能力提交。
+3. 完成 S6（协调层、语料运行器、差距报告），并就协调层位置向用户提出 ADR 问题。
+4. S8 审查；工作包 B 与 C 可由其他 Agent 并行；随后按顺序推进 P2（§9.1–§9.10）。
+
 ## 1. 给 Coding Agent 的执行要求
 
 1. 先完成 P0 的技术验证（S1–S8），再以小范围提交推进；每一步都能说明修改位置、行为变化和验证证据。
@@ -348,12 +437,12 @@ P0 技术验证与工具链
 
 ### 工作项
 
-- [ ] 工具链：选定并锁定 AGP、Kotlin、Gradle、NDK、CMake、`compileSdk`/`targetSdk`；创建 Gradle 工程（`app/`）、`build-lock.json`、CI（主机测试与 Android 构建）和 Dependabot；`.gitmodules` 只写上游的公开地址。
-- [ ] **S1 IME 骨架**：`InputMethodService` + 自定义 View 的 QWERTY 键盘 + 候选栏（假数据）；测量按下到绘制的延迟、输入法冷启动到首帧的时间、内存；验证 Compose 能否用于面板（ViewTree 所有者、首帧、内存）。
-- [ ] **S2 librime**：参考 Trime，以子模块从源码构建 librime 及其依赖，打通 JNI，在真机上部署一个拼音方案；记录部署时间、内存、体积、每键延迟；比较候选方案与词库（§3.3）在中文语料上的表现；判断 §5.4 的调用深度；确认在敏感输入框中关闭其用户词典写入的方式。
+- [x] 工具链：选定并锁定 AGP、Kotlin、Gradle、NDK、CMake、`compileSdk`/`targetSdk`；创建 Gradle 工程（`app/`）、`build-lock.json`、CI（主机测试与 Android 构建）和 Dependabot；`.gitmodules` 只写上游的公开地址。
+- [x] **S1 IME 骨架**：`InputMethodService` + 自定义 View 的 QWERTY 键盘 + 候选栏（假数据）；测量按下到绘制的延迟、输入法冷启动到首帧的时间、内存；验证 Compose 能否用于面板（ViewTree 所有者、首帧、内存）。
+- [x] **S2 librime**：参考 Trime，以子模块从源码构建 librime 及其依赖，打通 JNI，在真机上部署一个拼音方案；记录部署时间、内存、体积、每键延迟；比较候选方案与词库（§3.3）在中文语料上的表现；判断 §5.4 的调用深度；确认在敏感输入框中关闭其用户词典写入的方式。
 - [ ] **S3 Mozc**：在 Linux/macOS 主机或 CI 上用 Bazel 构建 Mozc，写 Kotomo 自己的 C++ 胶水层（会话命令 + 转换器层的固定片段转换），产出各 ABI 的共享库并锁定哈希；真机上转换 `わたしはにほんじん` → 私は日本人；验证固定片段转换 [池袋（固定）] + `にかいにいこう` → 池袋に買いに行こう；记录体积、内存、延迟；确认其历史学习在敏感输入框中关闭的方式。
 - [ ] **S4 英文引擎**：构建 AOSP LatinIME 的原生建议代码（参考 HeliBoard 的维护版本），用许可明确的词表生成二进制词典；验证按键纠错、拼写纠错与下一词预测；记录体积与延迟。
-- [ ] **S5 跨语言词库原型**：按 §5.9 从 JMdict、Unihan、OpenCC 与 Mozc 词典生成拼音 → 日文与英文 → 日文映射；统计样本清单的覆盖率与错误，至少覆盖池袋、東京、面接、在留、日本、桜、猫、カード、コーヒー、コンピューター、チョコレート、スケジュール、学校。
+- [x] **S5 跨语言词库原型**：按 §5.9 从 JMdict、Unihan、OpenCC 与 Mozc 词典生成拼音 → 日文与英文 → 日文映射；统计样本清单的覆盖率与错误，至少覆盖池袋、東京、面接、在留、日本、桜、猫、カード、コーヒー、コンピューター、チョコレート、スケジュール、学校。
 - [ ] **S6 混合整句原型（主机）**：用 S2–S5 的组件实现 §5.2–§5.4 的最小协调层，在桌面上运行 §13.2 的用例与单语基线，输出前 k 名与差距分析。
 - [ ] **S7 输入法中的 Gemini Nano**：在支持的真机上，(1) 从 `InputMethodService` 直接调用 ML Kit GenAI 的校对 API，在目标 App 位于前台时记录结果（§3.2 的报告预期为 `BACKGROUND_USE_BLOCKED`）；(2) 验证默认设计：用户在键盘上点 AI 后打开 Kotomo 的前台界面完成推理，返回后把结果作为替换建议交给输入法，并测量原输入框的文本与选区能否可靠恢复（§11.1）；(3) 从输入法服务直接调用 ML Kit 设备端翻译，确认它不受前台限制。
 - [ ] **S8 许可证与数据源审查**：为每个候选上游与数据源记录版本、来源、哈希、许可证、义务和是否采用（中文方案与词库、英文词表、日文词典、JMdict、Unihan、CLDR、Emoji 素材、字体、ML Kit 的数据处理条款）。
