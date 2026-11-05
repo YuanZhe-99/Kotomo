@@ -89,8 +89,7 @@
 
 ### 0.4 Agent 工作规则（来自实施中的教训）
 
-- 不要把附录 B、词表、词库内容或上游数据文件打印到工具输出或对话中：之前的会话因此被内容过滤中止。只看行数、哈希、计数和测试结果；用脚本复制数据，不回显。测试数据只用少量编造的词。
-- 不要整段打印剪贴板与验证码的源码；需要参考写法时看 `settings/Themes.kt` 的原子写入与版本化文件。
+- 仅针对带内容过滤的 Agent（例如 Claude）：此前的 Claude 会话在把附录 B、长词表或剪贴板与验证码源码整段打印到输出后被内容过滤中止。这类 Agent 只看行数、哈希、计数和测试结果，用脚本处理数据，参考原子写入与版本化文件时看 `settings/Themes.kt`。没有这种过滤的 Agent 不受此限制。
 - 每个 Agent 使用自己的 git worktree，并复制一份 `local.properties`；共用工作目录会互相破坏构建。
 - Gradle 若报告 SDK 中"没有包"或许可证缺失，多半是复用了另一个受沙箱限制的守护进程：使用 `./gradlew --no-daemon`。Gradle 在 Windows 的 Git Bash 或 PowerShell 中运行，不在 WSL 中运行；WSL 只用于 librime 与 Mozc 的主机构建。
 - 从 Git Bash 调用 WSL 时设置 `MSYS_NO_PATHCONV=1`，多行命令写成脚本再执行。
