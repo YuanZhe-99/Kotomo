@@ -310,7 +310,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         composing.clear()
         clearChinese()
         previousWord = null
+        // Each app comes back in the mode last used in it (only the package name is stored).
+        if (!direct) info.packageName?.let { app ->
+            getSharedPreferences(PREFS, MODE_PRIVATE).getString("$KEY_MODE.$app", null)
+                ?.let { name -> Mode.entries.firstOrNull { it.name == name } }?.let { mode = it }
+        }
         showKeyboard()
+        updateAutoCaps()
         refresh(0)
     }
 
@@ -368,7 +374,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             commitComposition()
             previousWord = null
             mode = action.mode
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit { putString(KEY_MODE, mode.name) }
+            val app = currentInputEditorInfo?.packageName
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit {
+                putString(KEY_MODE, mode.name)
+                if (app != null && !direct) putString("$KEY_MODE.$app", mode.name)
+            }
+            updateAutoCaps()
             refresh(downTime)
             return
         }
@@ -431,7 +442,19 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 showEmoji()
             }
             is KeyAction.SetMode -> Unit
+            is KeyAction.MoveCursor -> {
+                commitComposition()
+                val code = if (action.steps < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+                repeat(kotlin.math.abs(action.steps)) { sendDownUpKeyEvents(code) }
+            }
+            is KeyAction.DeleteWords -> {
+                commitComposition()
+                deleteWordsBefore(action.count)
+                previousWord = null
+            }
         }
+        // Not after Shift itself: that would undo the Shift the person just set.
+        if (composing.isEmpty() && action != KeyAction.Shift) updateAutoCaps()
         refresh(downTime)
     }
 
@@ -516,6 +539,25 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         engine.post { if (rimeReady) Rime.clear() }
     }
 
+    /**
+     * Deletes [count] words before the cursor (dragging left from backspace).
+     * Notes: ICU's word iterator also finds words in Chinese and Japanese text without spaces;
+     * whitespace before a word goes with it. Reads at most 256 characters of the field.
+     */
+    private fun deleteWordsBefore(count: Int) {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(256, 0)?.toString().orEmpty()
+        if (before.isEmpty()) return
+        val words = android.icu.text.BreakIterator.getWordInstance().apply { setText(before) }
+        var pos = before.length
+        repeat(count) {
+            while (pos > 0 && before[pos - 1].isWhitespace()) pos--
+            if (pos == 0) return@repeat
+            pos = words.preceding(pos).coerceAtLeast(0)
+        }
+        ic.deleteSurroundingText(before.length - pos, 0)
+    }
+
     /** Performs the field's editor action, or types a newline when it has none. */
     private fun editorEnter() {
         val ic = currentInputConnection ?: return
@@ -548,7 +590,20 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             ic.commitText(text, 1)
         }
         composing.clear()
+        updateAutoCaps()
         refresh(0)
+    }
+
+    /**
+     * Sets a one-letter Shift where the field asks for a capital (sentence or word start) in
+     * English mode, and clears one the field no longer asks for; a locked Shift stays.
+     * Notes: one InputConnection call, made only after commits, not per letter.
+     */
+    private fun updateAutoCaps() {
+        if (mode != Mode.ENGLISH || symbols || shift == Shift.LOCKED) return
+        val info = currentInputEditorInfo ?: return
+        val caps = (currentInputConnection?.getCursorCapsMode(info.inputType) ?: 0) != 0
+        shift = if (caps) Shift.ONCE else if (shift == Shift.ONCE) Shift.OFF else shift
     }
 
     private fun commitComposition() {

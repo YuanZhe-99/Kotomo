@@ -47,6 +47,5 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
   compiled at build time; Mixed mode does the same until the mixed coordinator (S6) exists. Japanese
   mode converts romaji through Mozc (S3, libraries from Linux CI): the composition shows kana, the
   first candidate is the whole sentence, Enter keeps the kana; editing single segments comes in P2.
-- The keyboard view has no accessibility support (touch exploration) yet.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.

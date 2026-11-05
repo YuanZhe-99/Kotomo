@@ -15,6 +15,10 @@ sealed interface KeyAction {
     data object Emoji : KeyAction
     /** Switches to [mode] (chosen from the Emoji key's long-press popup). */
     data class SetMode(val mode: Mode) : KeyAction
+    /** Moves the cursor [steps] characters (negative: left), from dragging along the space bar. */
+    data class MoveCursor(val steps: Int) : KeyAction
+    /** Deletes [count] words before the cursor, from dragging left from backspace. */
+    data class DeleteWords(val count: Int) : KeyAction
 }
 
 /** Input modes the keyboard offers; Mixed accepts pinyin, romaji and English in one string. */

@@ -12,6 +12,10 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.graphics.Rect
+import androidx.core.view.ViewCompat
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
+import androidx.customview.widget.ExploreByTouchHelper
 import com.yuanzhe.kotomo.R
 
 /** Shift states: off, one capital, or locked capitals. */
@@ -42,6 +46,7 @@ class KeyboardView(
             placed = emptyList()
             requestLayout()
             invalidate()
+            if (isAttachedToWindow) access.invalidateRoot()
         }
 
     var split = false
@@ -124,6 +129,19 @@ class KeyboardView(
     private var pressed: PlacedKey? = null
     private var pressDownTime = 0L
     private var longPressed = false
+    /** Where the pressed key's finger went down, for the space and backspace drags. */
+    private var downX = 0f
+    /** The pointer that pressed the current key. */
+    private var pointerId = 0
+    /** Cursor steps already sent while dragging along the space bar. */
+    private var movedSteps = 0
+    /** Words marked for deletion while dragging left from backspace. */
+    private var deleteWords = 0
+    /** A drag took over the pressed key: releasing it types nothing. */
+    private var swiping = false
+    private val cursorStep = res.getDimension(R.dimen.kb_cursor_step)
+    private val wordStep = res.getDimension(R.dimen.kb_word_step)
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var pendingDrawProbe = 0L
     private val box = RectF()
 
@@ -157,6 +175,7 @@ class KeyboardView(
 
     private fun openPopup(key: PlacedKey, labels: List<String>, actions: List<KeyAction>, selected: Int) {
         longPressed = true
+        popupLayer.hidePreview()
         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         popupActions = actions
         val here = IntArray(2).also(::getLocationInWindow)
@@ -167,6 +186,60 @@ class KeyboardView(
             anchorTop = key.top + here[1] - there[1],
         )
     }
+
+    /**
+     * Exposes every key to TalkBack as a virtual view: explore by touch reads it, double tap types
+     * it (PLAN §8.1: accessibility from the start).
+     */
+    private inner class Access : ExploreByTouchHelper(this) {
+        override fun getVirtualViewAt(x: Float, y: Float): Int =
+            keys().indexOfFirst { x >= it.left && x < it.right && y >= it.top && y < it.bottom }
+                .let { if (it < 0) INVALID_ID else it }
+
+        override fun getVisibleVirtualViews(ids: MutableList<Int>) {
+            keys().indices.forEach(ids::add)
+        }
+
+        override fun onPopulateNodeForVirtualView(id: Int, node: AccessibilityNodeInfoCompat) {
+            val k = keys().getOrNull(id)
+            if (k == null) {
+                node.contentDescription = ""
+                node.setBoundsInParent(Rect())
+                return
+            }
+            node.contentDescription = describe(k.key)
+            node.setBoundsInParent(Rect(k.left.toInt(), k.top.toInt(), k.right.toInt(), k.bottom.toInt()))
+            node.addAction(AccessibilityNodeInfoCompat.ACTION_CLICK)
+        }
+
+        override fun onPerformActionForVirtualView(id: Int, action: Int, arguments: android.os.Bundle?): Boolean {
+            val k = keys().getOrNull(id) ?: return false
+            if (action != AccessibilityNodeInfoCompat.ACTION_CLICK) return false
+            onKey(k.key.action, false, SystemClock.uptimeMillis())
+            return true
+        }
+    }
+
+    private val access = Access()
+
+    init {
+        ViewCompat.setAccessibilityDelegate(this, access)
+    }
+
+    /** Names a key for TalkBack: its label, or what a function key does. */
+    private fun describe(key: Key): String = when (key.action) {
+        KeyAction.Shift -> context.getString(if (shift == Shift.LOCKED) R.string.key_caps_lock else R.string.key_shift)
+        KeyAction.Backspace -> context.getString(R.string.key_backspace)
+        KeyAction.Enter -> context.getString(R.string.key_enter)
+        KeyAction.Space -> context.getString(R.string.key_space, spaceLabels.getValue(mode))
+        KeyAction.Emoji -> context.getString(R.string.key_emoji)
+        is KeyAction.Symbols -> context.getString(R.string.key_symbols)
+        KeyAction.Letters -> context.getString(R.string.key_letters)
+        else -> key.label
+    }
+
+    override fun dispatchHoverEvent(event: MotionEvent): Boolean =
+        access.dispatchHoverEvent(event) || super.dispatchHoverEvent(event)
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val rows = layout.rows.size
@@ -261,10 +334,21 @@ class KeyboardView(
                 pressed = key
                 pressDownTime = event.eventTime
                 longPressed = false
+                downX = event.getX(i)
+                pointerId = event.getPointerId(i)
+                movedSteps = 0
+                deleteWords = 0
+                swiping = false
                 pendingDrawProbe = event.eventTime
                 performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 postDelayed(longPress, longPressTimeout)
+                if (key.key.action is KeyAction.Text && !key.key.function) showPreview(key)
                 invalidate()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val index = event.findPointerIndex(pointerId)
+                val key = pressed
+                if (index >= 0 && key != null) drag(key, event.getX(index))
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (pressed != null) release(commit = true)
             MotionEvent.ACTION_CANCEL -> release(commit = false)
@@ -288,12 +372,61 @@ class KeyboardView(
         invalidate()
     }
 
+    /**
+     * Follows a finger on the pressed key: along the space bar it moves the cursor one character
+     * per step; left from backspace it marks one more word per step, deleted on release (Gboard's
+     * gestures). Either drag cancels the long press and the tap.
+     */
+    private fun drag(key: PlacedKey, x: Float) {
+        val dx = x - downX
+        when (key.key.action) {
+            KeyAction.Space -> {
+                if (!swiping && kotlin.math.abs(dx) < touchSlop) return
+                startSwipe()
+                val steps = (dx / cursorStep).toInt()
+                if (steps != movedSteps) {
+                    onKey(KeyAction.MoveCursor(steps - movedSteps), true, SystemClock.uptimeMillis())
+                    movedSteps = steps
+                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                }
+            }
+            KeyAction.Backspace -> {
+                if (!swiping && -dx < touchSlop) return
+                startSwipe()
+                val words = (-dx / wordStep).toInt().coerceAtLeast(0)
+                if (words != deleteWords) {
+                    deleteWords = words
+                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    popupLayer.showBadge(if (words > 0) "−$words" else null, key, this)
+                }
+            }
+            else -> if (kotlin.math.abs(dx) > touchSlop * 3) popupLayer.hidePreview()
+        }
+    }
+
+    private fun startSwipe() {
+        if (swiping) return
+        swiping = true
+        removeCallbacks(longPress)
+        removeCallbacks(repeatBackspace)
+        popupLayer.hidePreview()
+    }
+
+    private fun showPreview(key: PlacedKey) = popupLayer.showPreview(key.key.label, key, this)
+
     private fun release(commit: Boolean) {
         removeCallbacks(longPress)
         removeCallbacks(repeatBackspace)
+        popupLayer.hidePreview()
         val key = pressed ?: return
         pressed = null
-        if (commit && !longPressed) onKey(key.key.action, false, pressDownTime)
+        when {
+            swiping -> if (commit && key.key.action == KeyAction.Backspace && deleteWords > 0) {
+                onKey(KeyAction.DeleteWords(deleteWords), true, pressDownTime)
+            }
+            commit && !longPressed -> onKey(key.key.action, false, pressDownTime)
+        }
+        swiping = false
         invalidate()
     }
 
@@ -337,6 +470,46 @@ class PopupLayer(context: Context) : View(context) {
 
     private var labels = emptyList<String>()
     private var captions = emptyList<String?>()
+    /** The pressed key's preview bubble (label and box in this layer's coordinates), or null. */
+    private var preview: String? = null
+    private val previewBox = RectF()
+    private val previewPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        textSize = res.getDimension(R.dimen.kb_preview_text)
+    }
+
+    /** Maps a key of [view] to this layer's coordinates. */
+    private fun boxOf(key: PlacedKey, view: View): RectF {
+        val here = IntArray(2).also(view::getLocationInWindow)
+        val there = IntArray(2).also(::getLocationInWindow)
+        val dx = (here[0] - there[0]).toFloat()
+        val dy = (here[1] - there[1]).toFloat()
+        return RectF(key.left + dx, key.top + dy, key.right + dx, key.bottom + dy)
+    }
+
+    /**
+     * Shows a bubble with [label] over the pressed [key], as Gboard does, so the finger does not
+     * hide what it types.
+     */
+    fun showPreview(label: String, key: PlacedKey, view: View) {
+        val k = boxOf(key, view)
+        val w = k.width() + lift * 2
+        previewBox.set(k.centerX() - w / 2, k.top - cellHeight - lift, k.centerX() + w / 2, k.top - lift)
+        if (previewBox.top < 0) previewBox.offset(0f, -previewBox.top)
+        preview = label
+        invalidate()
+    }
+
+    /** Shows a short [badge] (for example "−2" words) over [key], or hides it for null. */
+    fun showBadge(badge: String?, key: PlacedKey, view: View) {
+        if (badge == null) hidePreview() else showPreview(badge, key, view)
+    }
+
+    fun hidePreview() {
+        if (preview == null) return
+        preview = null
+        invalidate()
+    }
     private var left = 0f
     private var top = 0f
     private val box = RectF()
@@ -380,6 +553,14 @@ class PopupLayer(context: Context) : View(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
+        preview?.let { label ->
+            box.set(previewBox.left, previewBox.top + 2, previewBox.right, previewBox.bottom + 2)
+            canvas.drawRoundRect(box, radius, radius, shadowPaint)
+            canvas.drawRoundRect(previewBox, radius, radius, panelPaint)
+            previewPaint.color = inkColor
+            val baseline = previewBox.centerY() - (previewPaint.descent() + previewPaint.ascent()) / 2
+            canvas.drawText(label, previewBox.centerX(), baseline, previewPaint)
+        }
         if (labels.isEmpty()) return
         val w = labels.size * cell
         box.set(left, top + 2, left + w, top + cellHeight + 2)

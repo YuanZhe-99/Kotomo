@@ -53,4 +53,12 @@
     <string name="diag_rime_partial">%1$d ms · 失敗した手順：%2$s</string>
     <string name="diag_rime_prebuilt">ビルド済み · 展開 %1$d ms</string>
     <string name="diag_rime_check">中国語エンジンの自己診断</string>
+    <string name="key_shift">Shift</string>
+    <string name="key_backspace">削除</string>
+    <string name="key_enter">改行</string>
+    <string name="key_space">スペース、%1$s</string>
+    <string name="key_emoji">絵文字。長押しで言語を切り替え</string>
+    <string name="key_symbols">記号</string>
+    <string name="key_letters">文字</string>
+    <string name="key_caps_lock">大文字ロック</string>
 </resources>

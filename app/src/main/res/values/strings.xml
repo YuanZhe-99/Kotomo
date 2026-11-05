@@ -66,4 +66,12 @@
     <string name="popup_half_width" translatable="false">半</string>
     <string name="diag_rime_prebuilt">Prebuilt · %1$d ms to unpack</string>
     <string name="diag_rime_check">Chinese engine check</string>
+    <string name="key_shift">Shift</string>
+    <string name="key_backspace">Delete</string>
+    <string name="key_enter">Enter</string>
+    <string name="key_space">Space, %1$s</string>
+    <string name="key_emoji">Emoji. Long-press to switch language</string>
+    <string name="key_symbols">Symbols</string>
+    <string name="key_letters">Letters</string>
+    <string name="key_caps_lock">Caps lock</string>
 </resources>

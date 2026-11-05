@@ -53,4 +53,12 @@
     <string name="diag_rime_partial">%1$d ms · 失败的步骤：%2$s</string>
     <string name="diag_rime_prebuilt">预编译 · 解压 %1$d ms</string>
     <string name="diag_rime_check">中文引擎自检</string>
+    <string name="key_shift">Shift</string>
+    <string name="key_backspace">删除</string>
+    <string name="key_enter">回车</string>
+    <string name="key_space">空格，%1$s</string>
+    <string name="key_emoji">Emoji。长按切换语言</string>
+    <string name="key_symbols">符号</string>
+    <string name="key_letters">字母</string>
+    <string name="key_caps_lock">大写锁定</string>
 </resources>

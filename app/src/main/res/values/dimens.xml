@@ -26,6 +26,10 @@
     <dimen name="kb_popup_height">52dp</dimen>
     <dimen name="kb_popup_text">22sp</dimen>
     <dimen name="kb_popup_lift">6dp</dimen>
+    <dimen name="kb_preview_text">28sp</dimen>
+    <!-- Gestures: one cursor step per distance along the space bar, one word per distance left of backspace. -->
+    <dimen name="kb_cursor_step">14dp</dimen>
+    <dimen name="kb_word_step">40dp</dimen>
     <!-- Candidate bar and toolbar -->
     <dimen name="bar_height">52dp</dimen>
     <dimen name="bar_pad_start">8dp</dimen>

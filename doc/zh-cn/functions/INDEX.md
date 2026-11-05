@@ -11,7 +11,7 @@
 | `.github/workflows/build.yml` | CI：文档检查、Gradle 检查与构建、签名的 release APK；`v*` 标签时创建 GitHub Release | `android`、`release` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务（S1）：组合、占位候选、敏感输入框中的直接输入、Compose 面板的宿主 | `onKey`、`isDirect`、`refresh` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.place`、`Layout.hit` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、Gboard 式长按弹出（滑动选择、松开输入）、退格连删；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、Gboard 式长按弹出（滑动选择、松开输入）、按键预览、在空格上拖动移动光标与从退格向左拖动删除词、退格连删、每个按键的 TalkBack 节点；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏、状态提示 | `show`、`hint`、`onTouchEvent` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | 在键盘位置显示的 Compose 面板：Emoji 面板（按分组列出系统字体能显示的全部 Emoji；仅在输入框允许学习时把最近使用记入应用私有的偏好设置；长按选择肤色）与全部候选 | `EmojiPanel`、`Recents`、`TonePicker`、`CandidatesPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`load` |
