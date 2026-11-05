@@ -64,6 +64,11 @@ as the `kotomo-arm64-v8a` and `kotomo-x86_64` artifacts. The repository secrets 
 requests from forks) the release APK stays unsigned. A `v*` tag also publishes the signed APK as a
 GitHub Release. Dependabot proposes Gradle and Actions updates weekly.
 
+The project was archived on 2026-11-04 and its GitHub repository deleted, with the CI artifacts
+(including the prebuilt Mozc libraries that `scripts/fetch-mozc.sh` downloads) and the secrets.
+The workflows run again once the repository is pushed to a new GitHub repository with the four
+secrets; until then, build Mozc locally with `scripts/build-mozc.sh`.
+
 ## Testing principles
 
 Tests protect product contracts and error-prone logic, preferably table-driven. Every fixed bug

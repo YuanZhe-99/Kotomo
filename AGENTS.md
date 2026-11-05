@@ -299,7 +299,10 @@ model that did the work.
 ## Remotes and secrets
 
 - `origin` → `<local_gitea_address>` (private Gitea)
-- `github` → `git@github.com:YuanZhe-99/Kotomo.git` (public; CI and GitHub Releases run here)
+
+The project was archived on 2026-11-04: `origin` is the only copy. The public GitHub repository
+(where CI and GitHub Releases ran) was deleted; `.github/` stays for a restart and does nothing
+until the repository is pushed to a new public remote with the CI secrets (`PLAN.md` §0).
 
 Determine the repository path from the runtime workspace; do not hardcode a machine-specific
 absolute path here.

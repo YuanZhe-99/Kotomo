@@ -57,6 +57,9 @@ debug 密钥，因此安装的 release 版本始终由 release 密钥签名。�
 请求），release APK 保持未签名。`v*` 标签还会把签名的 APK 发布为 GitHub Release。Dependabot 每周提出 Gradle 与
 Actions 的更新。
 
+项目已于 2026-11-04 归档，GitHub 仓库连同 CI 产物（包括 `scripts/fetch-mozc.sh` 下载的预编译 Mozc 库）和机密一起删除。
+把仓库推送到新的 GitHub 仓库并配置这四项机密后，工作流才会重新运行；在此之前用 `scripts/build-mozc.sh` 在本地构建 Mozc。
+
 ## 测试原则
 
 测试保护产品契约和容易出错的逻辑，优先使用表驱动测试。每个修复的缺陷都有回归测试，每个转换错误都在转换语料中增加
