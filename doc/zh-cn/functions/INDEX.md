@@ -31,6 +31,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Themes.kt`、`app/src/main/java/com/yuanzhe/kotomo/dictionary/Json.kt` | 以带版本的 JSON 文件保存的键盘主题（`files/themes/current.json`，[settings-format.md](../settings-format.md)）及其所用的纯 Kotlin JSON 读写（有单元测试） | `ThemeFormat`、`ThemeFile`、`Json.parse` |
 | `lexicon/CrossLexicon.java` | 跨语言词库流水线（S5）：获取并校验数据源，在 `build/lexicon/` 中生成拼音 → 日文与英文 → 日文表 | `main`、`SOURCES` |
 | `lexicon/CheckSamples.java` | 用 `tests/lexicon/samples.tsv`（正例与反例）检查生成的表 | `main` |
+| `lexicon/llm-dictionary-prompt.txt` | 词库设置页将提供的提示词（中文，来自用户的草案），用于借助 LLM 制作词库；目前还没有读取方 | — |
 | `core/CMakeLists.txt` | 应用的顶层原生构建；每个引擎库一个子目录 | — |
 | `core/english/` | 英文引擎（S4）：LatinIME 核心与 Kotomo 的 JNI 桥接的 CMake 构建；主机测试 | `jni/english_jni.cpp`、`tests/run-host.sh` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | `libkotomo_english.so` 的 Kotlin 外观（只在引擎线程上调用） | `English.open`、`suggestions` |

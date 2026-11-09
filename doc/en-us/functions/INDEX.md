@@ -32,6 +32,7 @@ side effects and notes where non-trivial).
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Themes.kt`, `app/src/main/java/com/yuanzhe/kotomo/dictionary/Json.kt` | The keyboard theme as a versioned JSON file (`files/themes/current.json`, [settings-format.md](../settings-format.md)) and the pure-Kotlin JSON reader and writer it uses (unit-tested) | `ThemeFormat`, `ThemeFile`, `Json.parse` |
 | `lexicon/CrossLexicon.java` | Cross-language lexicon pipeline (S5): fetches and verifies the data sources, builds pinyin → Japanese and English → Japanese tables into `build/lexicon/` | `main`, `SOURCES` |
 | `lexicon/CheckSamples.java` | Checks the generated tables against `tests/lexicon/samples.tsv` (positive and negative lines) | `main` |
+| `lexicon/llm-dictionary-prompt.txt` | The prompt (in Chinese, from the user's draft) that the dictionary settings will offer for making a dictionary with an LLM; nothing reads it yet | — |
 | `core/CMakeLists.txt` | Top-level native build for the app; one subdirectory per engine library | — |
 | `core/english/` | English engine (S4): CMake build of the LatinIME core and Kotomo's JNI bridge; host test | `jni/english_jni.cpp`, `tests/run-host.sh` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | Kotlin facade of `libkotomo_english.so` (engine thread only) | `English.open`, `suggestions` |
