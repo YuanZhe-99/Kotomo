@@ -20,7 +20,8 @@ data class AiRequest(
  * Carries an AI request from the keyboard to [AiActivity] and the confirmed result back.
  *
  * Notes: main thread; both sides run in the app's main process. Held only in memory: nothing is
- * written to disk, and a process restart drops it.
+ * written to disk, a process restart drops it, and the AI screen drops an unconfirmed request when
+ * it closes for good.
  */
 object AiHandoff {
     /** The request the AI screen works on, or null. */
@@ -58,5 +59,14 @@ object AiHandoff {
     fun clear() {
         request = null
         result = null
+    }
+
+    /**
+     * Drops the request unless the person confirmed a result, which then waits for [take].
+     * Notes: called when the AI screen is destroyed for good (not for a configuration change), so
+     * the selected text does not stay in memory after the screen is gone.
+     */
+    fun dropUnconfirmed() {
+        if (result == null) request = null
     }
 }

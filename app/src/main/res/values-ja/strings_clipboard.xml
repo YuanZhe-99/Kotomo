@@ -45,7 +45,7 @@
     <string name="quick_more_likely">有力</string>
     <string name="clip_settings_section">クリップボード</string>
     <string name="clip_settings_history">クリップボード履歴</string>
-    <string name="clip_settings_history_desc">コピーしたテキストをこの端末に暗号化して保存します。パスワードと機密情報は保存しません</string>
+    <string name="clip_settings_history_desc">コピーしたテキストをこの端末に暗号化して保存します。パスワード欄にいるとき、およびアプリがコピーした内容を機密と指定したときは保存しません。オフにしても保存済みの項目は削除されず、期限切れになるか削除するまで残ります</string>
     <string name="clip_settings_keep">固定していない項目の保存期間</string>
     <plurals name="clip_settings_days">
         <item quantity="other">%d 日</item>

@@ -14,8 +14,8 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 | Check | Result |
 |---|---|
 | Documentation mirror and links | `java tool/CheckDocs.java` passes |
-| Unit tests (S1: layout and hit testing, latency percentiles; settings format: defaults, round trip, unknown keys, no file; clipboard: recording rules, the encrypted file, verification codes, quick paste) | `./gradlew testDebugUnitTest`: 62 tests, 61 pass and 1 is skipped (the settings-format and clipboard tests have run on the Windows host only so far) |
-| Lint | `./gradlew check` passes with no warnings |
+| Unit tests (layout and hit testing, latency percentiles, fields, posture, emoji index; settings format and theme file; clipboard: recording rules, the encrypted file, expiry, refused clips, verification codes, quick paste; the AI hand-off) | `./gradlew :app:testDebugUnitTest` on 2026-11-09 (Windows 11 on ARM64, JDK 21.0.13, debug): 87 tests, 86 pass and 1 is skipped (an emoji test that needs the generated asset, absent on a clone without the data build) |
+| Lint | `./gradlew :app:lintDebug` on 2026-11-09: no errors; two notices that Gradle 9.9.0 and Android Gradle Plugin 9.5.1 are out |
 | Release build | `./gradlew assembleRelease`: R8 on, signed with the release key (APK Signature Scheme v2) |
 
 ## Spikes
@@ -42,9 +42,9 @@ Verified on Windows 11 on ARM64 (2026-11-04; JDK 21.0.13) and on GitHub Actions 
 
 ## Known limitations
 
-- The counts above are those of the runs they record. The code has grown since: at `21cd65c` there
-  are 79 unit tests and 35 librime host checks, and their last recorded run (2026-11-04) passed;
-  nothing has been built or run on the clone made on 2026-11-09.
+- The unit tests and lint above ran on the clone made on 2026-11-09, without the git submodules and
+  without a native or data build. The host engine checks (35 for librime at `21cd65c`, last run on
+  2026-11-04), the release build and everything on a device have not been run again on it.
 - A reading of the code on 2026-11-09 found P1 incomplete: Mixed mode types exactly as Chinese
   mode, Japanese mode has no segment editing or prediction, English mode does not pass touch
   positions to its engine, and fields that ask for no personalized learning accept only direct

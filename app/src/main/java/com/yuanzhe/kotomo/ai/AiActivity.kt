@@ -87,6 +87,18 @@ class AiActivity : ComponentActivity() {
             }
         }
     }
+
+    /**
+     * Drops the handed-over text when the screen goes away for good.
+     * Side effects: clears [AiHandoff]'s request unless a result was confirmed with Replace.
+     * Notes: skipped for a configuration change (rotation, folding), where the screen is
+     * recreated and reads the request again; covers the back gesture, finishing, and the task
+     * being removed while the process lives.
+     */
+    override fun onDestroy() {
+        super.onDestroy()
+        if (!isChangingConfigurations) AiHandoff.dropUnconfirmed()
+    }
 }
 
 /** What the AI screen shows under the actions. */

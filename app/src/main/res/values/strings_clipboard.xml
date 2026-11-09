@@ -50,7 +50,7 @@
     <string name="quick_more_likely">more likely</string>
     <string name="clip_settings_section">Clipboard</string>
     <string name="clip_settings_history">Clipboard history</string>
-    <string name="clip_settings_history_desc">Keep text you copy on this device, encrypted. Passwords and sensitive content are never kept.</string>
+    <string name="clip_settings_history_desc">Keep text you copy on this device, encrypted. Nothing is kept while you are in a password field, or when an app marks what you copied as sensitive. Turning this off doesn\'t delete what\'s already saved: it stays until it expires or you delete it.</string>
     <string name="clip_settings_keep">Keep unpinned items for</string>
     <plurals name="clip_settings_days">
         <item quantity="one">%d day</item>

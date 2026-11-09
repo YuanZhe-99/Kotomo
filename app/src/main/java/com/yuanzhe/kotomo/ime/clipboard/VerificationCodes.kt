@@ -10,8 +10,8 @@ package com.yuanzhe.kotomo.ime.clipboard
 data class VerificationCode(val value: String, val score: Int, val context: String)
 
 /**
- * Finds verification codes in copied or received text with simple local rules, in Chinese,
- * English and Japanese messages.
+ * Finds verification codes in copied text with simple local rules, in Chinese, English and
+ * Japanese messages.
  *
  * Notes: pure Kotlin, no I/O; nothing leaves the device. A text with no code keyword yields
  * nothing unless the whole text is a code, so ordinary numbers are never offered. Dates, times,

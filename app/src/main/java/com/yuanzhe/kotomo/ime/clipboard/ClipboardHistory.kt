@@ -223,46 +223,77 @@ class ClipboardHistory internal constructor(
     /** Background thread only: false when the file is from a newer container or the key is unavailable. */
     private var writable = true
     private val secret by lazy { key() }
+    /** Main thread only: the clipboard timestamp of the last clip refused by [onCopy], or 0. */
+    private var refusedAt = 0L
 
     /** The history, newest first; empty until the file is read (a few milliseconds after creation). */
     val items: StateFlow<List<Clip>> = state
 
+    /** The unreadable history file set aside by [load]; at most one is kept. */
+    private val leftover = File(file.path + ".unreadable")
+
     init {
-        scope.launch(serial) { load() }
+        scope.launch(serial) {
+            load()
+            dropStaleLeftover()
+        }
     }
 
     /**
      * Records the primary clip, when allowed, and returns it for the quick-paste strip.
      * Inputs: clip is ClipboardManager.getPrimaryClip(); allowed is [allowedIn] for the current
      * field and settings.
-     * Returns: the copied text and its codes, or null when nothing may be offered: not allowed, no
-     * text, or a clip marked sensitive.
+     * Returns: the copied text and its codes, or null when nothing may be offered: not allowed now
+     * or when the keyboard first saw the clip ([onCopy]), no text, or a clip marked sensitive.
      * Side effects: adds it to the history when the history is on.
      * Notes: main thread. Clips marked `EXTRA_IS_SENSITIVE` (Android 13+, and the same key set by
      * password managers on older versions) are neither recorded nor returned. Only the first
      * item's plain text is taken; URIs and intents are ignored.
      */
     fun onPrimaryClip(clip: ClipData?, allowed: Boolean): Copied? {
-        if (!allowed || clip == null || clip.itemCount == 0) return null
+        if (clip == null || clip.itemCount == 0) return null
         val description = clip.description
         if (description?.extras?.getBoolean(EXTRA_IS_SENSITIVE) == true) return null
-        val text = clip.getItemAt(0).text?.toString() ?: return null
-        return add(text, description?.timestamp?.takeIf { it > 0 } ?: clock())
+        return onCopy(description?.timestamp ?: 0, allowed) { clip.getItemAt(0).text?.toString() }
+    }
+
+    /**
+     * Applies the recording rules to one clip, given by its clipboard timestamp and its text.
+     * Inputs: timestamp is `ClipDescription.getTimestamp` (0 when unknown); text is read only
+     * when the clip may be taken.
+     * Returns: what [add] returns, or null when the clip is refused now or was refused before.
+     * Side effects: a refused clip's timestamp is remembered (in memory only, never its text), so
+     * the same clip is neither recorded nor offered when the keyboard is next shown in an ordinary
+     * field; a newer clip has another timestamp and is treated normally.
+     * Notes: main thread. History switched off is not a refusal ([allowed] is true then).
+     */
+    internal fun onCopy(timestamp: Long, allowed: Boolean, text: () -> String?): Copied? {
+        if (!allowed) {
+            if (timestamp > 0) refusedAt = timestamp
+            return null
+        }
+        if (timestamp > 0 && timestamp == refusedAt) return null
+        return add(text() ?: return null, timestamp.takeIf { it > 0 } ?: clock())
     }
 
     /**
      * Adds copied [text] (when the history is on) and returns it with its codes.
      * Returns: null for blank or over-long text.
      * Notes: copying text already in the history moves it to the front, keeping its pin; the same
-     * clip seen again (same text, no newer time) changes nothing.
+     * clip seen again (same text, no newer time) changes nothing. With the history off nothing is
+     * added, but items already saved stay and still expire: the copy runs [expire] instead.
      */
     internal fun add(text: String, atUtcMs: Long): Copied? {
         if (text.isBlank() || text.length > MAX_TEXT) return null
-        if (settings().history) change { list ->
-            val old = list.firstOrNull { it.text == text }
-            if (old != null && old.timeUtcMs >= atUtcMs) return@change list
-            val clip = old?.copy(timeUtcMs = atUtcMs) ?: Clip(nextId(list), text, atUtcMs)
-            listOf(clip) + list.filterNot { it === old }
+        if (settings().history) {
+            change { list ->
+                val old = list.firstOrNull { it.text == text }
+                if (old != null && old.timeUtcMs >= atUtcMs) return@change list
+                val clip = old?.copy(timeUtcMs = atUtcMs) ?: Clip(nextId(list), text, atUtcMs)
+                listOf(clip) + list.filterNot { it === old }
+            }
+        } else {
+            expire()
         }
         return Copied(text, VerificationCodes.find(text), atUtcMs)
     }
@@ -290,11 +321,16 @@ class ClipboardHistory internal constructor(
     fun clearUnpinned() = change { list -> list.filter { it.kept } }
 
     /**
-     * Drops unpinned items older than the retention.
-     * Notes: also runs after the file is read and with every change; call it when the panel opens
-     * so an item that expired while the keyboard sat idle is not shown.
+     * Drops unpinned items older than the retention, and the unreadable leftover once it is older too.
+     * Side effects: rewrites the file without the expired items (deletes it when nothing is left).
+     * Notes: also runs after the file is read, with every change and with every copy while the
+     * history is off; call it when the panel opens so an item that expired while the keyboard sat
+     * idle is not shown.
      */
-    fun expire() = change { it }
+    fun expire() {
+        change { it }
+        scope.launch(serial) { dropStaleLeftover() }
+    }
 
     /** Waits until every change submitted so far is applied and written. For tests. */
     internal suspend fun flush() = withContext(serial) {}
@@ -315,20 +351,25 @@ class ClipboardHistory internal constructor(
 
     /** Keeps pinned items and phrases, unpinned items within the retention, at most [MAX_ITEMS] of them. */
     private fun trim(list: List<Clip>): List<Clip> {
-        val cutoff = clock() - settings().retentionDays.coerceIn(Settings.RETENTION_RANGE) * DAY_MS
+        val cutoff = cutoff()
         var unpinned = 0
         return list.filter { it.kept || (it.timeUtcMs >= cutoff && ++unpinned <= MAX_ITEMS) }
     }
+
+    /** Returns the UTC milliseconds before which unpinned items have expired. */
+    private fun cutoff() = clock() - settings().retentionDays.coerceIn(Settings.RETENTION_RANGE) * DAY_MS
 
     private fun nextId(list: List<Clip>) = (list.maxOfOrNull { it.id } ?: 0) + 1
 
     /**
      * Reads the file into [items].
+     * Side effects: when items in the file have expired (or exceed the cap), rewrites it without
+     * them, or deletes it when nothing is left, so expired text does not stay on disk.
      * Notes: a file from a newer container is left untouched: the history starts empty and is
      * never written in this process, so newer data is never overwritten. A file
-     * that cannot be decrypted or parsed (a lost key, damage) is moved aside to `.unreadable` and
-     * the history starts empty. When the Keystore cannot give the key, the history works in
-     * memory only for this process.
+     * that cannot be decrypted or parsed (a lost key, damage) is moved aside to `.unreadable`,
+     * replacing an older one, and the history starts empty. When the Keystore cannot give the
+     * key, the history works in memory only for this process.
      */
     private fun load() {
         if (!file.isFile) return
@@ -348,12 +389,22 @@ class ClipboardHistory internal constructor(
             setAside(); return
         }
         header = records.first()
-        state.value = trim(records.drop(1).mapNotNull(::clipOf).sortedByDescending { it.timeUtcMs })
+        val read = records.drop(1).mapNotNull(::clipOf).sortedByDescending { it.timeUtcMs }
+        val kept = trim(read)
+        state.value = kept
+        if (kept.size != read.size) save(kept)
     }
 
-    /** Writes [list] through a temporary file and an atomic replace. */
+    /**
+     * Writes [list] through a temporary file and an atomic replace.
+     * Side effects: deletes the file instead when [list] is empty.
+     */
     private fun save(list: List<Clip>) {
         if (!writable) return
+        if (list.isEmpty()) {
+            file.delete()
+            return
+        }
         val key = try { secret } catch (_: Exception) { writable = false; return }
         val format = maxOf(header[FORMAT]?.toIntOrNull() ?: 0, ClipFile.VERSION)
         header = header + mapOf(FORMAT to format.toString(), UPDATED to clock().toString())
@@ -368,12 +419,27 @@ class ClipboardHistory internal constructor(
         }
     }
 
+    /**
+     * Moves the unreadable history file to [leftover], replacing an older leftover.
+     * Notes: the move keeps the file's modification time (the history's last write), which
+     * [dropStaleLeftover] goes by.
+     */
     private fun setAside() {
         try {
-            Files.move(file.toPath(), File(file.path + ".unreadable").toPath(), StandardCopyOption.REPLACE_EXISTING)
+            Files.move(file.toPath(), leftover.toPath(), StandardCopyOption.REPLACE_EXISTING)
         } catch (_: IOException) {
             writable = false
         }
+    }
+
+    /**
+     * Deletes [leftover] once its modification time is older than the retention.
+     * Notes: every unpinned item it holds was copied before that time, so by then all of them
+     * would have expired. Background thread.
+     */
+    private fun dropStaleLeftover() {
+        val modified = leftover.lastModified() // 0 when there is none
+        if (modified != 0L && modified < cutoff()) leftover.delete()
     }
 
     companion object {

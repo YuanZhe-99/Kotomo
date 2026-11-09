@@ -45,7 +45,7 @@
     <string name="quick_more_likely">更可能</string>
     <string name="clip_settings_section">剪贴板</string>
     <string name="clip_settings_history">剪贴板历史</string>
-    <string name="clip_settings_history_desc">把复制的文字加密保存在本机；密码与敏感内容从不保存</string>
+    <string name="clip_settings_history_desc">把复制的文字加密保存在本机；在密码框中时、以及应用把复制的内容标记为敏感时不会保存。关闭后已保存的内容不会删除，会保留到过期或你删除为止</string>
     <string name="clip_settings_keep">未固定的内容保留</string>
     <plurals name="clip_settings_days">
         <item quantity="other">%d 天</item>

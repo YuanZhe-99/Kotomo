@@ -178,6 +178,7 @@ class ClipboardHistoryTest {
     @Test
     fun undecryptableFileIsSetAside() { // CLIP-10
         withHistory { h -> h.add("a", now) }
+        file.setLastModified(now) // written "now" on the test clock, so the leftover is not yet stale
         val other = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
         withHistory(other) { h -> assertTrue(h.items.value.isEmpty()) }
         assertTrue(File(file.path + ".unreadable").exists())
@@ -210,5 +211,106 @@ class ClipboardHistoryTest {
         assertEquals(ClipKind.TEXT, ClipKind.of("我的邮箱：name@example.com"))
         val code = Clip(1, "482913", now)
         assertNotNull(code.code)
+    }
+
+    private fun textsOnDisk() = ClipFile.open(file.readBytes(), key).drop(1).map { it["text"] }
+
+    @Test
+    fun expiredItemsLeaveTheFileWhenRead() { // CLIP-13
+        withHistory { h ->
+            h.add("old", now)
+            h.add("recent", now + 6 * DAY)
+        }
+        now += 8 * DAY
+        withHistory { h -> assertEquals(listOf("recent"), texts(h)) }
+        // The unexpired item is kept on disk; the expired one is gone without any change being made.
+        assertEquals(listOf("recent"), textsOnDisk())
+        now += 7 * DAY
+        withHistory { h -> assertTrue(h.items.value.isEmpty()) }
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun unreadableLeftoverIsDroppedAfterTheRetention() { // CLIP-14
+        val leftover = File(file.path + ".unreadable")
+        withHistory { h -> h.add("a", now) }
+        file.setLastModified(now)
+        withHistory(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()) { }
+        withHistory { h ->
+            h.addPhrase("b")
+            h.flush()
+            // Negative: a leftover within the retention stays, and the new readable file is no leftover.
+            assertTrue(leftover.exists())
+            now += 8 * DAY
+            h.expire()
+            h.flush()
+            assertFalse(leftover.exists())
+        }
+        // The same when the history is read: a stale leftover goes, the readable file stays.
+        leftover.writeBytes(ByteArray(40))
+        leftover.setLastModified(now - 8 * DAY)
+        withHistory { h -> assertEquals(listOf("b"), texts(h)) }
+        assertFalse(leftover.exists())
+        assertEquals(listOf("b"), textsOnDisk())
+    }
+
+    @Test
+    fun historyOffKeepsSavedItemsAndStillExpiresThem() { // CLIP-15
+        withHistory { h ->
+            h.add("old", now)
+            h.add("pinned", now)
+            h.flush()
+            h.pin(h.items.value.first { it.text == "pinned" }.id, true)
+        }
+        settings = ClipboardSettings(history = false)
+        withHistory { h ->
+            // Negative: switching the history off deletes nothing by itself.
+            assertEquals(setOf("old", "pinned"), texts(h).toSet())
+            now += 8 * DAY
+            h.add("new", now)
+            h.flush()
+            assertEquals(listOf("pinned"), texts(h))
+        }
+        assertEquals(listOf("pinned"), textsOnDisk())
+    }
+
+    @Test
+    fun clipRefusedInAPasswordFieldStaysRefused() { // CLIP-16 (negative)
+        val password = !ClipboardHistory.sensitiveField(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD, 0)
+        withHistory { h ->
+            assertNull(h.onCopy(now, password) { "hunter2" })
+            // Shown next in an ordinary field with the same clip still on the clipboard.
+            assertNull(h.onCopy(now, true) { "hunter2" })
+            h.flush()
+            assertTrue(h.items.value.isEmpty())
+        }
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun aNewerClipAfterARefusalIsTakenNormally() { // CLIP-17
+        withHistory { h ->
+            assertNull(h.onCopy(now, false) { "hunter2" })
+            val copied = h.onCopy(now + 1, true) { "Your code is 482913" }
+            h.flush()
+            assertEquals(listOf("482913"), copied?.codes?.map { it.value })
+            assertEquals(listOf("Your code is 482913"), texts(h))
+        }
+    }
+
+    @Test
+    fun historyOffIsNoRefusal() { // CLIP-18 (negative)
+        settings = ClipboardSettings(history = false)
+        withHistory { h ->
+            assertNotNull(h.onCopy(now, true) { "Your code is 482913" })
+            // Seen again when the keyboard is next shown: still offered, still not recorded.
+            assertNotNull(h.onCopy(now, true) { "Your code is 482913" })
+            h.flush()
+            assertTrue(h.items.value.isEmpty())
+        }
+    }
+
+    private companion object {
+        const val DAY = 86_400_000L
     }
 }

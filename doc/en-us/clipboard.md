@@ -21,6 +21,19 @@ method and the focused app may read the clipboard, Android 10+) and hands each p
 | Quick paste switched off (`clipboard.quick_paste`) | recorded | nothing |
 | Anything else (URL and e-mail fields included) | recorded | offered |
 
+- The field that decides is the one the keyboard is attached to when it sees the clip: the current
+  field when the clipboard listener fires, or the field the keyboard is next shown in, where it
+  checks the clipboard again. The app the text was copied from never decides. A password copied
+  from an app that does not mark it sensitive, and seen by the keyboard in an ordinary field, is
+  therefore recorded like any other text.
+- A clip the keyboard saw while it was not allowed to record (a sensitive field, incognito mode)
+  stays refused: it is neither recorded nor offered when the keyboard is next shown in an ordinary
+  field with the same clip still on the clipboard. Only the clip's timestamp is remembered, in
+  memory; its text is never read. If the keyboard's process restarts while that clip is still on
+  the clipboard, the refusal is forgotten and the clip is treated as new. A history that is merely
+  switched off is not a refusal.
+- Switching the history off deletes nothing: what is already saved stays until it expires or the
+  person deletes it, and the switch's description says so.
 - Only the first item's plain text is taken; URIs, intents and blank text are ignored, and text
   longer than 20,000 characters is not recorded.
 - The time of a clip is the clipboard's own timestamp (`ClipDescription.getTimestamp`, UTC
@@ -32,8 +45,12 @@ method and the focused app may read the clipboard, Android 10+) and hands each p
 
 - Pinned items and quick phrases are kept until the person removes them.
 - Other items expire after the retention (`clipboard.retention_days`, 7 by default, 1–90) and at
-  most 200 of them are kept, newest first. Expiry runs when the file is read, with every change and
-  through `ClipboardHistory.expire()`, which the keyboard calls when the panel opens.
+  most 200 of them are kept, newest first. Expiry runs when the file is read, with every change,
+  when something is copied while the history is switched off, and through
+  `ClipboardHistory.expire()`, which the keyboard calls when the panel opens. A read that finds
+  expired items rewrites the file without them at once, so expired text does not stay on disk;
+  when nothing is left, the file is deleted. Nothing runs on a timer: while the keyboard is never
+  shown, expired items wait for its next use.
 - `ClipboardHistory.clearUnpinned()` deletes every item that is neither pinned nor a phrase (the
   Privacy page's Clear button).
 
@@ -107,7 +124,9 @@ per record:
 - A file with a newer container version is left untouched: the history starts empty for that run
   and is never written, so newer data is not overwritten. A file that cannot be decrypted or
   parsed (a lost key, damage) is moved aside to `history.kcb.unreadable` and the history starts
-  empty. When the Keystore cannot give the key, the history works in memory only.
+  empty. At most one such file is kept (a newer one replaces it), and it is deleted once the
+  retention has passed since it was last written, checked at every read and every expiry. When
+  the Keystore cannot give the key, the history works in memory only.
 - Every change rewrites the file through `history.kcb.tmp` and an atomic replace, on one background
   thread in submission order. The keyboard reads only the in-memory snapshot
   (`ClipboardHistory.items`).

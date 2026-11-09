@@ -13,7 +13,7 @@ It follows `PLAN.md` §11 and the behavior contract's AI rule.
 | Never in sensitive fields | Refused in direct fields (passwords, `IME_FLAG_NO_PERSONALIZED_LEARNING`, e-mail, URL) and in incognito mode |
 | Preview, confirm, undo | Suggestions are shown first; the field changes only on Replace, and the candidate bar then offers Undo until the next key |
 | Nothing leaves the device | Kotomo sends no text. AICore downloads the model through the system; the network permission (merged from ML Kit, and used by Kotomo only for the downloads the person starts) carries no typed text |
-| Nothing is logged or stored | Neither the text nor the results are logged; the hand-off lives only in memory |
+| Nothing is logged or stored | Neither the text nor the results are logged; the hand-off lives only in memory, and the selected text is dropped from it when the screen closes without Replace (a configuration change such as a rotation keeps it) |
 
 ## The hand-off
 
@@ -26,7 +26,9 @@ It follows `PLAN.md` §11 and the behavior contract's AI rule.
    typed in.
 4. On Replace, the keyboard checks, when the field comes back, that it is the same field
    (package and field ID) and that the original range still holds the original text. Then it
-   replaces the range; otherwise it copies the suggestion to the clipboard and says so.
+   replaces the range; otherwise it copies the suggestion to the clipboard and says so. That copy
+   is an ordinary clip: the clipboard history and the quick-paste strip treat it like any other
+   ([clipboard.md](clipboard.md)), and so they do the screen's Copy button.
 5. Undo restores the original only while the replacement is still there unchanged.
 
 ## Actions
