@@ -19,9 +19,9 @@ When you need to understand code, read in this order and stop as soon as you hav
 
 1. **`doc/en-us/`** — start here, always. `functions/INDEX.md` to find the right module; the
    concept docs for behavior.
-2. **`PLAN.md`** — while it is active, for anything not yet implemented: architecture, the
-   composition engine, phases P0–P5, spikes S1–S8, gates G0–G5, the conversion corpus and
-   acceptance.
+2. **`PLAN.md`** — while it is active, for anything not yet implemented: §0 first (the current
+   state and the work queue), then the architecture, the composition engine, phases P0–P5, spikes
+   S1–S8, gates G0–G5, the conversion corpus and acceptance.
 3. **Comments in the source** — the Function Explanation Layer on each declaration.
 4. **The implementation** — only when the docs and comments are insufficient, or when you must
    confirm actual behavior before changing it.
@@ -33,6 +33,7 @@ about to change, verify against the code, then fix the docs in the same commit.
 
 | Question | Read |
 |---|---|
+| The current state, the one work queue and the open decisions (while the plan is active) | `PLAN.md` §0, §2.5 |
 | Architecture, engine design, phases, spikes, gates, corpus, acceptance (while the plan is active) | `PLAN.md` |
 | Verified upstream contracts (librime, Mozc, OpenCC, the English engine, ML Kit, the Android IME platform, data sets) and quirks | `doc/en-us/upstream.md` |
 | Reused code, dictionary data, emoji assets and fonts: licenses and obligations; design acknowledgements | `doc/en-us/third-party.md` |

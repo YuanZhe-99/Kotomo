@@ -1,151 +1,162 @@
 # PLAN：Kotomo — Android 中英日三语言智能输入法
 
-> 交付对象：负责实施的 Coding Agent。本文是一份实施计划，不代表任何功能已经实现或验证。
+> 交付对象：负责实施的 Coding Agent。
 >
 > 目标：一款本地优先的 Android 输入法。中文拼音、英文和日语罗马字在同一个键盘中输入；混合模式下不必切换语言、不必加分隔，就能连续输入整句，得到正确的中文、英文或日文句子。
 >
 > 路线：中文复用 librime，日文复用 Mozc，英文复用 AOSP LatinIME 的原生建议引擎，简繁转换复用 OpenCC；自研的是整句混合协调层（候选网格、跨语言片段、整句解码、统一候选）和跨语言词库。AI 只处理用户主动交给它的文本，不进入按键路径。
 
-- 编写日期：2026-11-04。
-- 来源：用户的《Android 中英日三语言智能输入法 完整项目开发计划草案》Draft 2.0。本计划保留草案的全部需求，补充核实过的上游事实、架构与引擎设计、阶段与关卡、测试矩阵、风险和停止条件；草案各章在本文中的位置见附录 A。标注"（本计划补充）"的条目不在草案中，由用户确认是否保留。
-- 系列参考：MyApps 系列的工作规范（`AGENTS.md`、`doc/` 中英镜像、版本与发布流程）；MyApps-AI 的 Android Gemini Nano 桥（`GenAiChannel.kt`）及其 AI 使用规则；MyApps-DATA 的备份与同步不变量；MyApps-UI 的设置界面呈现方式。Kotomo 是原生 Kotlin/C++ 应用，不依赖这些 Flutter 包，只移植代码或沿用规则（同一作者的 GPL-3.0 代码）。
-- 上游不停留在旧版本：librime、Mozc、OpenCC、Android 工具链和数据源跟随最新发行版，以提交号或哈希锁定在 `build-lock.json`（P0 创建）。§3 是 2026-11-04 的阅读结果，P0 在实际构建后逐项复核。
-- 核查范围：上游仓库、源码、官方文档与许可证的定向阅读；没有构建或运行任何引擎，也没有在真机上验证任何结论。
-- 产品名称为 **Kotomo**；应用 ID 建议为 `com.yuanzhe.kotomo`（与 MyApps 系列的 `com.yuanzhe.*` 一致）。
+- 本版写于 2026-11-09，重写了 2026-11-04 的计划：需求与设计决定全部保留（来源是用户的草案 Draft 2.0，对应关系见附录 A），章节编号 §1–§18 不变（源码注释与文档按编号引用它们）；改动的是现状、顺序和结构。
+- 怎么读：**§0 是现状与唯一的工作队列**，接手时只需要先读它；§1–§5 是约束与设计；§6–§12 是按阶段排列的需求，每节带"现状"；§13–§18 是验收、隐私、许可证、风险与交付规则。
+- 与 `doc/` 的分工：已经实现的东西以 `doc/en-us/` 为准（`AGENTS.md` 的阅读顺序）；本文只管还没做完的部分，并在每次暂停或完成一个队列项时更新 §0。
+- 现状的依据：2026-11-09 对 `main`（`5381ef6`）和两个未合并分支逐项读代码的核对，加上 `platform-notes.md` 里记录的运行结果。**这次核对没有构建或运行任何东西**；凡写"读代码判断"的，都还需要一次真实的运行来确认。
 
-## 0. 进度与交接（2026-11-04 归档时的状态）
+## 0. 现状与工作队列
 
-> 本节记录实施进度和尚未完成的工作包，供下一位 Agent 接手；后续每次暂停或完成阶段时更新。计划的设计决定仍以 §1–§18 为准。设备、命令与环境细节见 `doc/en-us/platform-notes.md` 与 `development.md`。
+### 0.1 一页现状
 
-> **2026-11-04 项目停止并归档。** 私有 Gitea（`origin`）是唯一的存档，三个分支（`main`、`p2/fuzzy-app-side`、`wip/paused-2026-11-04`）都在上面。公开的 GitHub 仓库连同 CI 运行记录、产物（含预编译的 Mozc 库）、仓库机密与 Releases 一起删除；维护者本机的仓库、`.dev/`（旧 APK、附录 B 提示词副本、Agent 记忆副本）、构建产物和 WSL 中的构建残留也已删除。以后也许会重启：重启时先做 §0.5 第 0 步，下文凡写"两个远端"或"GitHub CI"处，在新的公开仓库建立之前都只指私有远端与本机构建。
+没有任何关卡通过，没有发布过版本（0.1.0，`versionCode` 1）。
 
-### 0.1 各阶段状态
-
-| 阶段 | 状态 | 说明 |
+| 层 | 状态 | 一句话 |
 | --- | --- | --- |
-| P0 工具链 | 完成 | Gradle 工程、`build-lock.json`、CI、子模块均已就位 |
-| S1 IME 骨架 | PASS（真机） | Galaxy Z Fold，Android 17，release 构建；延迟数据见 platform-notes |
-| S2 librime | PASS（真机与主机） | 构建时预编译中文数据；主机测试 35/35（含 T11 地区用词、候选详情） |
-| S3 Mozc | 主机 PASS | 胶水层与固定片段转换在主机通过；Android 库由 CI 构建并按哈希锁定，真机日文转换尚未记录为 PASS |
-| S4 英文引擎 | 主机 PASS | 真机 NOT_RUN |
-| S5 跨语言词库 | 主机 PASS | 样本 34/34 达到名次 |
-| S6 混合整句原型 | 进行中 | 见 §0.3 工作包 E |
-| S7 输入法中的 Gemini Nano | NOT_RUN | 需要支持 Gemini Nano 的真机；写作助手代码已在 `142af4e`，未在真机验证 |
-| S8 许可证与数据源审查 | NOT_RUN | 已用上游大多记录在 `third-party.md` 与 `build-lock.json`，尚未逐项结论化；另需核实 Google Play 对读取通知的政策（§10.7） |
-| G0 | NOT_RUN | 等 S3/S4 真机、S6、S7、S8 与基线 |
-| P1 | 代码完成，真机验证未记录 | §8.1–§8.10 全部实现并推送（`21cd65c`）：手势与开关、输入框适配、大陆/繁体/台湾/香港与地区用词、候选详情（读音、来源、忘记）、平板与折叠屏、Direct Boot、API 37 组合属性、主题 JSON 文件。`./gradlew check` 通过（79 个单元测试、lint 无问题）。用户已拿到 release APK 与检查清单；2026-11-04 回复只能看到界面、无法逐项验证，清单条目尚未回报 |
-| G1 | NOT_RUN | 等真机检查结果；清单按屏幕所见判定，尚未逐条记录，未判定通过前不升版本号 |
-| P2 | 刚开始 | 模糊音（§9.6）引擎侧完成并通过主机测试 T08，应用侧已拆到 `p2/fuzzy-app-side`（工作包 D，未构建）；其余 §9 各项未开始 |
-| P3 | 部分提前 | 剪贴板历史、验证码、快捷输入条（§10.7）已完成；词库系统引擎侧（librime 运行时词表）已完成，应用侧在 WIP 分支（工作包 A） |
-| P4 | 部分提前 | 写作助手（校对、重写，默认关闭）已实现，未在真机验证 |
-| P5 | 未开始 | — |
+| 三个引擎的桥接（librime、Mozc、英文） | 主机 PASS；真机只有 librime PASS | 主机测试 35 + 7 + 13 项通过；Mozc 与英文引擎没有真机记录（§7） |
+| 输入法外壳（键盘、候选栏、布局、输入框适配、设置应用） | 代码基本完成，真机清单 0 行已记录 | §8 各节列出的缺口还有十来处；用户 2026-11-04 只能看到界面，逐项结果未回报 |
+| 三种单语模式 | 能转换，功能不全 | 日文没有文节调整与预测；英文没有用上按键纠错；G1 要求的单语语料不存在（§8.2、§13.1） |
+| 混合模式 | **不存在** | 现在等同中文模式；混合与跨语言的设置开关没有读取方（§8.3） |
+| 协调层与整句转换（产品的核心，§5） | **不存在** | 只有分支上的一份接口草稿；引擎 ↔ 应用契约与 ADR 都没有写（§7） |
+| 跨语言词库 | 生成器完成，没有使用方 | 样本 34/34（§5.9） |
+| 模糊音 | 分支上写完，未构建 | §9.6 |
+| 词库系统 | 引擎侧完成；应用侧在分支上，无法编译 | §10.5 |
+| 剪贴板与验证码 | 主体完成 | 通知读取、按 App 控制、搜索与编辑等未做（§10.7） |
+| 写作助手（AI） | 代码完成，从未在真机运行 | 翻译是占位（§11.1） |
+| 主题编辑器、Emoji 样式包、备份、同步、P5 | 未开始 | §11、§12 |
 
-### 0.2 分支
+| 关卡 / 验证项 | 状态 |
+| --- | --- |
+| S1、S2 | PASS（真机：Galaxy Z Fold，Android 17，release） |
+| S3、S4、S5 | 主机 PASS；S3、S4 真机 NOT_RUN |
+| S6、S7、S8 | NOT_RUN |
+| G0–G5 | NOT_RUN |
 
-- `main`：最后一次验证通过的状态（P1 完成）。
-- `p2/fuzzy-app-side`（只在私有远端）：工作包 D 从 WIP 分支拆出的一组改动，不含词库代码，可按能力独立提交；尚未构建或跑测试。
-- `wip/paused-2026-11-04`：暂停时未完成的工作，**无法编译**，只推送到私有远端。内容是工作包 A（词库应用侧）、D（模糊音应用侧）与 E（S6 的开头）。合入 `main` 前按能力拆成独立提交，每个提交都要通过验证。
-- 设计稿：`design/`，2026-11-04 从设计画布"Kotomo Keyboard & Settings"固化（16 个画板与布局文件，说明见 `design/README.md`）；此后以仓库中的文件为准。
+### 0.2 仓库、分支与环境
 
-### 0.3 未完成的工作包
+- 远端：只有私有 Gitea（`origin`）。项目于 2026-11-04 停止并归档，公开的 GitHub 仓库连同 CI 运行记录、产物（含预编译的 Mozc 库）、仓库机密与 Releases 一起删除；`.github/` 下的工作流文件还在，没有可运行它们的仓库。
+- 分支：
+  - `main`：P1 的代码（`21cd65c`）加其后的文档与设计稿提交。
+  - `p2/fuzzy-app-side`：模糊音，一个提交，是下一个分支的严格子集；读代码判断可以编译，未构建。
+  - `wip/paused-2026-11-04`：一个提交，**无法编译**，含模糊音、词库系统应用侧、S6 的接口草稿与 Mozc 行服务。不整体合入：按能力拆开（Q3、Q4）。
+  - 两个分支各自都能干净地合入 `main`；先合模糊音、再合词库时，`KotomoService.kt` 有一处相邻行冲突，手工可解。
+- 开发机上的工作目录是 2026-11-09 重新克隆的，除了源码什么都没有：子模块未初始化；没有 `local.properties`、`.deps/`、构建产物、`key.properties`、`.dev/`。
+- 不在仓库中的东西：
 
-下列工作包不分主次、不再区分"跳过"与"未跳过"，统一按 §0.5 的顺序推进；同时由多个 Agent 进行时，每个 Agent 使用自己的 git worktree（§0.4）。
-
-**A. 词库系统应用侧（§10.5，T17）。** 设计已由用户确定：
-
-- 包 `com.yuanzhe.kotomo.dictionary`，少量内聚的文件：模型、读音、格式与校验（纯 Kotlin，JVM 测试）；存储；在线客户端；`settings/` 中的词库页。
-- 条目：语言（zh/ja/en）、词、读音（无调拼音 / 平假名 / 无）、权重 0–100、来源（手动、导入、生成、下载），保留未知字段。
-- 读音：拼音小写，ü/u: → v，去掉声调数字和调号，允许空格与隔音符，必须能切分成合法音节；日文只收假名（片假名转平假名，保留长音符）；英文无读音。
-- 导入：TSV、CSV（RFC 4180，可有表头）、JSON（附录 B 的字段，`word` 也视为 `text`，拒绝更新的 `format_version`）、Rime `*.dict.yaml`（`...` 之后的行）。严格 UTF-8 解码，去 BOM，拒绝 U+FFFD 与控制字符。文件内重复与已有条目冲突都计数并预览（默认保留已有）。权重缺省 50；最大值超过 100 时按对数缩放到 0–100；LLM 生成的条目封顶 20。预览显示数量和带行号的前几条错误。导出支持同样的格式。
-- 存储：`user.json` 带版本（`format_version`、`updated_utc_ms`，保留未知键），上一版保存为 `user.prev.json` 以便回滚，不覆盖更新版本的文件；词库包放在 `packs/<id>/`，回滚用 `<id>.prev`；`state.json` 保存启用状态；所有 I/O 在 Dispatchers.IO 上并由 Mutex 保护；每次变化后原子写出三份 Rime 表并发出 `changes`，键盘收到后重新选择方案以重新加载。
-- Rime 表（引擎侧已完成并测试）：`custom_phrase.txt`（手动，质量 1）、`kotomo_packs.txt`（下载，质量 0）、`kotomo_low.txt`（导入与 LLM，质量 −1），行格式 `词<TAB>无调拼音（无空格）<TAB>权重`，位于 librime 的用户目录。
-- 在线：目录 JSON（`format_version`，packs 含 id、各语言标题、语言、分类、许可证、来源署名、版本、大小、url、sha256、格式），保留未知字段，拒绝未知版本；词库包是 gzip 压缩的规范化 TSV，安装时再次校验，丢弃坏行并计数。托管在 GitHub（用户决定），目录地址是一个常量；Agent 不创建发布、不上传。只有在用户打开"获取词库"并接受写明 github.com 的说明后才联网，接受状态记为 `dictionaries.online_accepted`。传输层是 `(url) -> InputStream`（测试用假实现）。下载有进度，校验大小与 sha256，支持安装、卸载、更新、回滚。§10.5 要求的签名尚未设计，需向用户提问。
-- 日文与英文条目先存储并标注"尚未使用"，直到接入 Mozc 用户词典和英文引擎。
-- 设置页：内置、自定义、下载词库的来源与开关；条目编辑（增、改、删、搜索）；带预览与确认的导入；导出；回滚；带说明的"获取词库"；附录 B 提示词与复制按钮，并说明 LLM 条目排序靠后。四种界面语言。
-- 文档：新增 `doc/en-us/dictionaries.md` 及中文镜像；INDEX、settings-format、`PRIVACY_POLICY.md`、AGENTS.md 的"Where to read what"一行。
-- 一个小型原创样例包：每种语言十来个手写的常用词，按在线格式打包，只用于测试。
-- 现状：WIP 分支上已有子 Agent 写的 `Entry.kt`、`Formats.kt`、`DictionaryStore.kt`、`Online.kt`、`settings/Dictionaries.kt`、`dict_*` 字符串和测试，但从未编译成功。已知问题：`MainActivity` 仍引用已删除的 `dictionaries_later`；缺少 `R.raw.llm_dictionary_prompt`（把附录 B 用脚本原样复制到 `app/src/main/res/raw/`，不要读取或打印）；缺少 `dict_export_done`；`Dictionaries.kt` 有类型错误。文档未写。
-
-**B. 词库数据（词库包与目录，由 CI 生成）。** 生成器与词库包；需要改变包或目录格式时，同时更新工作包 A 的代码、文档与测试。
-
-- 用户批准的来源：
-
-| 来源 | 数据许可证 | 用途 |
+| 内容 | 状态 | 怎么办 |
 | --- | --- | --- |
-| iDvel/rime-ice | GPL-3.0 | 中文常用与扩展；其英文词表作为技术与编程英文 |
-| gaboolic/rime-frost | GPL-3.0 | 中文基础词库的替代或补充 |
-| felixonmars/fcitx5-pinyin-zhwiki | Wikimedia（CC BY-SA） | 中文专有名词 |
-| thunlp/THUOCL | 允许商用，要求引用 | 中文领域词库（IT、医学、法律、财经、成语、地名） |
-| WorksApplications/SudachiDict | Apache-2.0 | 日文大词库 |
-| neologd/mecab-ipadic-neologd | Apache-2.0 | 日文新词（2023 年后未更新） |
-| utuhiro78/merge-ut-dictionaries | 各来源不同（jawiki 为 CC BY-SA） | 日文地名、人名 |
-| en-wl/wordlist（SCOWL） | 类 MIT | 已用作英文基础词表 |
-| outloudvi/mw2fcitx（萌娘百科） | 数据许可证未核实 | 不采用 |
+| 签名密钥 | 维护者离线保存；CI 机密已删除 | 本地只构建 debug 或未签名的 release；不读取 `key.properties` |
+| SDK 路径 | 被忽略的 `local.properties`（`sdk.dir`） | 每个工作目录各写一份，或设置 `ANDROID_HOME` |
+| 上游下载 | `.deps/`，按 `build-lock.json` 的哈希锁定 | 各脚本缺失时自动下载并校验 |
+| Mozc 的 Android 库与数据 | 原由 CI 构建，产物已删除；`build-lock.json` 里的哈希指向的文件已不存在 | Q0 |
+| P1 真机检查结果 | 没有记录 | Q2 交付新的 APK 与清单 |
+| 附录 B 提示词的应用内副本 | 不存在 | 需要时用脚本从附录 B 复制，不读取、不打印 |
+| 设计稿 | 已固化到 `design/`（入口 `design/index.html`） | 以仓库中的文件为准 |
 
-- 交付：`lexicon/` 下的 Java 生成器（拉取锁定版本并校验哈希，转换为 `词<TAB>读音<TAB>权重` 的 gzip TSV，丢弃校验失败的行并计数，写出 `catalog.json`）；按分类的词库包；构建为 CI 产物（不发布）的工作流；每个包的校验报告；双语文档与 `version-history.md` 一行。rime-ice 的 `tencent.dict.yaml` 在采用前先核实来源。CC BY-SA 的包保持 CC BY-SA；THUOCL 附引用说明；`third-party.md` 两种语言各加一行。
+### 0.3 工作队列
 
-**C. 剪贴板与验证码的剩余部分（§10.7）。** 已完成：加密历史、固定与快捷短语、过期与上限、复制文本中的验证码识别、面板与快捷输入条。待做：经 `NotificationListenerService` 从通知读取验证码（默认关闭，开启前说明读取范围，只在本机识别，通知原文不保存，验证码只在快捷输入条短暂显示、不进入历史，多个候选数字全部列出并标出最可能的一个）；按 App 控制是否记录；§10.7 中尚未实现的搜索、编辑、分类、批量删除。每条规则都有正例和反例测试（CLIP-xx）；更新 `clipboard.md`、`PRIVACY_POLICY.md` 与 INDEX。
+唯一的执行顺序。前一项没有完成或没有被明确搁置之前，不开始依赖它的后一项；彼此不依赖的项可以由不同的 Agent 在各自的 worktree 中并行（Q3 的词库、Q5 的 S8、Q6 与主线互不依赖）。每完成一项，更新 §0.1 与对应章节的"现状"，并把长期有效的内容移入 `doc/`。
 
-**D. 模糊音应用侧（§9.6）。** 引擎侧已完成：方案补丁可选地引入 `kotomo_fuzzy.yaml`，主机测试 T08（z/zh 开启后 `zongguo` → 中国，关闭时不出现，`zhongguo` 与 `nihao` 不受影响）通过。应用侧已在 `p2/fuzzy-app-side`（§0.2）从 WIP 分支拆出：`FuzzyRule` 与设置键 `chinese.fuzzy.*`、中文页每条规则一个开关、生成补丁文件并在后台部署进程中重新部署、全部关闭时回到预编译数据。待做：构建并运行 `FuzzyPatchTest` 与 `SettingsStoreTest`、更新 settings-format 与 INDEX、重新生成预编译数据、真机验证。
+**Q0 恢复环境与构建途径。** 取决于 §2.5 的决定 2、3。
 
-**E. S6 混合整句原型。** 已有：`core/mixed/mixed.h`（接口）、供主机工具使用的 Mozc 行服务（`core/mozc/tools/kotomo_mozc_server.cc`，固定「池袋」+ `にかいにいこう` → 池袋に買いに行こう）。设计：`core/mixed/` 中与引擎无关的 C++ 协调层，网格边包括拼音片段、英文词、假名片段、按读音命中的日文词、拼音 → 日文与英文 → 日文的跨语言词（S5 词表，按键排序）；每种目标语言做 k-best；收尾通过回调交给 librime（直接链接）和 Mozc（行服务）。语料按 §13.3 放在 `tests/conversion/`，含 §13.2 的用例、反例与 §2.3 的示例（sakura、neko、apple、diannao、ai）。已发现的差距：Mozc 的会话转换把 `watashiwanihonjin` 转成「私羽日本人」（わ 被当作「羽」），协调层需要处理助词（wa → は、o → を、e → へ）。**需要用户决定（写 ADR）：** 设备上三个引擎是只导出 JNI 的独立共享库，C++ 协调层无法在进程内直接调用它们；可选 Kotlin 协调层（每键多次跨 JNI，偏离 §4.4）或让各引擎库额外导出窄的 C 接口。
+- 初始化子模块；写 `local.properties`；`scripts/fetch-boost.sh`。
+- 让数据源的锁定重新可用：CC-CEDICT 锁定的是 MDBG 的"当前文件"，文件已被替换而 `.deps/` 已删除，`emojiData`（Gradle 会运行它）与 `CrossLexicon` 多半会在哈希校验处失败——移动锁定并重跑 `CheckSamples`；顺带按 `AGENTS.md` 的规则检查所有上游的最新版本。
+- Mozc 的 Android 库：按决定 3 取得构建途径；修掉失效的 `scripts/fetch-mozc.sh`，补一个把 `scripts/build-mozc.sh` 的产物放进 `build/mozc-prebuilt/` 的步骤，更新 `build-lock.json` 的哈希。
+- 预编译的中文数据（`scripts/prebuild-rime.sh`，WSL）。
+- 有 CI 时：让它同时运行 rime、英文、Mozc 的主机测试与 `CheckSamples`。
+- 完成判据：从全新克隆出发，`java tool/CheckDocs.java`、`./gradlew check assembleDebug`、三个引擎的主机测试都通过；APK 里日文能转换。做不到的部分写明 BLOCKED 与原因。
 
-### 0.4 Agent 工作规则（来自实施中的教训）
+**Q1 文档与实现对齐。** 依赖 Q0（需要真实的运行结果）。
 
-- 仅针对带内容过滤的 Agent（例如 Claude）：此前的 Claude 会话在把附录 B、长词表或剪贴板与验证码源码整段打印到输出后被内容过滤中止。这类 Agent 只看行数、哈希、计数和测试结果，用脚本处理数据，参考原子写入与版本化文件时看 `settings/Themes.kt`。没有这种过滤的 Agent 不受此限制。
-- 每个 Agent 使用自己的 git worktree，并复制一份 `local.properties`；共用工作目录会互相破坏构建。
-- Gradle 若报告 SDK 中"没有包"或许可证缺失，多半是复用了另一个受沙箱限制的守护进程：使用 `./gradlew --no-daemon`。Gradle 在 Windows 的 Git Bash 或 PowerShell 中运行，不在 WSL 中运行；WSL 只用于 librime 与 Mozc 的主机构建。
-- 从 Git Bash 调用 WSL 时设置 `MSYS_NO_PATHCONV=1`，多行命令写成脚本再执行。
-- 不读取 `key.properties`（签名配置）；不把私有远端的地址写进任何文件或对话。
+- `platform-notes.md`：单元测试数（记录的是 62，现为 79）、rime 主机检查数（24 → 35）、S3 一行（写着 CI 尚未运行，实际已运行过且应用已接入 Mozc）——用 Q0 的运行结果重写，不照抄旧数字。
+- `settings-format.md`：注明哪些键还没有读取方（§8.3）。
+- `development.md`：`fetch-mozc.sh` 的说明与实际一致。
+- 核实合并后的应用清单里有没有 ML Kit 带入的 `INTERNET` 权限（§2.5 决定 10、§14），结果写入 `PRIVACY_POLICY.md` 或修正。
+- 新建 `doc/en-us/decisions.md`，先记录已经事实上做出的决定（引擎组合、librime 的调用深度、Mozc 的构建方式、面板用 Compose），存储方式待决定 7。
+
+**Q2 补齐 P1，取得 G1。** 依赖 Q0。
+
+- 转换语料与运行器（§13.3、§17）：`tests/conversion/` 先放 T01–T03 的单语用例与 §13.2 的全部用例；运行器在主机上按模式驱动各引擎，输出名次并与上次比较。这是 G1 的前提，也是 Q4 的前提。
+- §8 各节的缺口：英文按下坐标传给引擎；日文的文节调整、预测、候选读音与"日文不可用"的提示；`TextAttribute` 用到日文并标出选中片段；模式的顺序、隐藏、按 App 固定与切换时保留组合；中文里英文原样作为候选与拼写纠错；Emoji 面板的搜索与常用；清除学习数据；单手模式宽度可调并按设备与方向记忆；无学习标记的输入框能输入中文和日文而不学习，并补上 T12 测试。
+- §0.5 的偏差中归入本项的部分。
+- §8.3 基础混合模式按决定 5 处理。
+- 首批候选延迟：解释 120–130 ms 的构成（中文每键 5 次 JNI 是已知的一项），能在外壳内改进的先改进，剩下的记录为差距。
+- 更新 `tests/device/p1-checklist.md`，交付一个 release APK；用户逐条回报后判定 G1，通过后版本升到 0.1.1（发布由用户决定）。
+
+**Q3 合入未完成分支上的两项能力。** 依赖 Q0；与 Q2 互不依赖。
+
+- 模糊音（§9.6 的合入清单）。
+- 词库系统应用侧（§10.5 的合入清单），在模糊音之后变基。
+
+**Q4 S6：协调层的主机原型、契约与 ADR。** 依赖 Q2 的语料；设备侧的方案依赖决定 4。
+
+- 从 WIP 分支取出 `core/mixed/mixed.h` 与 Mozc 行服务（并让 `scripts/build-mozc.sh` 构建它），实现 §5.2–§5.4 的最小协调层与主机测试。
+- 在主机上运行 §13.2 的用例与单语基线，输出前 k 名与差距报告。
+- 把引擎 ↔ 应用契约（§4.4）写入 `doc/en-us/`，在 `AGENTS.md` 的"Where to read what"加一行；ADR 记录协调层的位置与快照格式。
+
+**Q5 G0 的其余部分。** S3、S4 的真机结果随 Q2 的 APK 用诊断页自检取得；S7 需要一台支持 Gemini Nano 的真机；S8 是纯文档工作，可以随时并行。全部完成后判定 G0，通过后才开始 Q7 的整句实现。
+
+**Q6 词库数据与剪贴板余项。** 词库数据（§10.5）依赖 Q3 的包格式与决定 2；剪贴板余项（§10.7）中的通知读取依赖 S8 对 Google Play 政策的核实。
+
+**Q7 P2 核心混合输入（§9）→ G2。** 依赖 G0 与 G1。顺序：协调层接入设备（契约的两侧）→ §9.1–§9.4 → §9.5 → §9.7–§9.10 与日语的等价写法。
+
+**Q8 P3 的其余部分（§10）→ G3。Q9 P4 的其余部分（§11）→ G4；其中 AI 部分只依赖 G1 与 S7，可以提前。Q10 P5（§12）→ G5 = 1.0。**
+
+### 0.4 工作规则
 
 用户的工作约定（2026-11-04，适用于所有 Agent）：
 
-- 普通提交在验证后直接推送到所有已配置的远端（归档后只有私有远端），不必先问；版本号、`vX.Y.Z` 标签与发布先向用户报告，确认后再推送。这一条优先于 AGENTS.md 的"推送前询问"。
-- 不要每改一处就请用户在真机上测试：先把计划的功能做完，主机测试、CI 与诊断页的自检承担验证，到里程碑时一次交付一个 APK 和一份检查清单（`tests/device/`）。用户的测试机是 Galaxy Z Fold（Android 17），通过侧载安装 APK，没有 adb；怀疑只在真机出现的问题时，把自检输出加到诊断页，而不是反复要截图。
-- 在线词库与目录托管在 GitHub（Releases，由 CI 构建；归档后需重新决定，见 §0.5 第 0 步）；词库主要来自已核查许可证的开源词库，Agent 只做框架和极小的原创样例；不创建发布、不上传。
-- 开发机是 Windows 11 on ARM64，带 WSL2（Debian）、JDK 21、SDK 37.2、NDK 30；没有 Python，没有官方 Android 模拟器（不支持 ARM64 Windows 主机），布局与逻辑之外的验证都要真机。
-- 构建产物已于 2026-11-04 清理。重新构建依次需要：`scripts/fetch-boost.sh`（如缺）、`scripts/prebuild-rime.sh`（WSL）、`scripts/fetch-mozc.sh` 或 `scripts/build-mozc.sh --abi host`、`java -Xmx4g lexicon/CrossLexicon.java --offline`，然后才是 Gradle。
-- 2026-11-04 用户补充：本机只做轻量测试（文档检查、能在几分钟内跑完的单元测试），不必在本机做完整编译，也不要在 WSL 里重复预编译；完整编译与设备端构建交给 GitHub CI，结果以 CI 的状态为准（归档后 CI 不存在，见 §0.5 第 0 步）。
+- 普通提交在验证后直接推送到所有已配置的远端，不必先问；版本号、`vX.Y.Z` 标签与发布先向用户报告，确认后再推送。这一条优先于 `AGENTS.md` 的"推送前询问"。
+- 不要每改一处就请用户在真机上测试：先把计划的功能做完，主机测试与诊断页的自检承担验证，到里程碑时一次交付一个 APK 和一份检查清单（`tests/device/`）。用户的测试机是 Galaxy Z Fold（Android 17），通过侧载安装 APK，没有 adb；怀疑只在真机出现的问题时，把自检输出加到诊断页，而不是反复要截图。
+- 词库主要来自已核查许可证的开源词库，Agent 只做框架和极小的原创样例；不创建发布、不上传。
+- 开发机是 Windows 11 on ARM64，带 WSL2（Debian）、JDK 21；没有 Python，没有官方 Android 模拟器（不支持 ARM64 Windows 主机），布局与逻辑之外的验证都要真机。
+- 本机只做轻量测试（文档检查、能在几分钟内跑完的单元测试），不做完整编译，也不在 WSL 里重复预编译；完整编译与设备端构建交给 CI。**CI 现在不存在**，这条约定在决定 2 之前无法执行。
 
-### 0.5 恢复后的顺序
+来自实施的教训：
 
-0. 重建环境：从私有远端克隆（含子模块）；需要 CI 时新建公开 GitHub 仓库、添加为第二个远端，并配置 `development.md` 所列的签名机密（签名密钥在维护者的离线副本中），推送后运行 `mozc.yml` 重新生成 Mozc 产物并更新 `build-lock.json` 中的哈希；或在本机用 `scripts/build-mozc.sh` 构建。用户若不再打算公开托管，工作包 A 的在线词库托管地址需要重新决定。
-1. 收集 P1 真机检查结果，修复失败项；G1 通过后升版本号（发布由用户决定）。用户只能观察界面，条目按 `tests/device/p1-checklist.md` 的屏幕判据逐条确认；需要计时或日志的结论另记，绝不代填。
-2. 在 WIP 分支上完成并提交工作包 D；工作包 A 先修到能编译、测试通过，再按能力提交。
-3. 完成 S6（协调层、语料运行器、差距报告），并就协调层位置向用户提出 ADR 问题。
-4. S8 审查。
-5. 工作包 B（词库数据）与 C（剪贴板剩余部分）。
-6. 按顺序推进 P2（§9.1–§9.10），再到 P3–P5。
+- 仅针对带内容过滤的 Agent（例如 Claude）：此前的会话在把附录 B、长词表或剪贴板与验证码源码整段打印到输出后被中止。这类 Agent 只看行数、哈希、计数和测试结果，用脚本处理数据；参考原子写入与版本化文件时看 `settings/Themes.kt`。没有这种过滤的 Agent 不受此限制。
+- 每个 Agent 使用自己的 git worktree，并各有一份 `local.properties`；共用工作目录会互相破坏构建。
+- Gradle 若报告 SDK 中"没有包"或许可证缺失，多半是复用了另一个受沙箱限制的守护进程：使用 `./gradlew --no-daemon`。Gradle 在 Windows 的 Git Bash 或 PowerShell 中运行，不在 WSL 中运行；WSL 只用于 librime 与 Mozc 的主机构建。
+- 从 Git Bash 调用 WSL 时设置 `MSYS_NO_PATHCONV=1`，多行命令写成脚本再执行。
+- 不读取 `key.properties`；不把私有远端的地址写进任何文件或对话。
+- 主机测试通过不等于设备可用（S2 的两个缺陷只在真机出现）；状态只按有记录的运行来写，"代码完成"不写成"完成"。
 
-### 0.6 不在仓库中、接手前需要知道的东西
+### 0.5 计划与实现的偏差
 
-| 内容 | 位置与状态 | 接手时怎么办 |
-| --- | --- | --- |
-| 签名配置与密钥 | 维护者离线保存的签名密钥；GitHub Actions 的机密已随仓库删除 | 本地只构建 debug 或未签名的 release；重启 CI 时重新配置机密（§0.5 第 0 步） |
-| SDK 路径 | 被忽略的 `local.properties`（`sdk.dir`） | 新 worktree 复制一份，或设置 `ANDROID_HOME` |
-| 上游下载 | `.deps/`（忽略，按 `build-lock.json` 的哈希锁定） | 各脚本缺失时自动下载并校验 |
-| 构建产物 | 2026-11-04 已全部清理（本机与 WSL） | 按 §0.4 的重新构建顺序重新生成 |
-| Mozc 的 Android 库与数据 | 原由 GitHub CI 构建，产物已随仓库删除；`build-lock.json` 中的哈希仍是旧产物的 | 用 `scripts/build-mozc.sh` 在本机构建，或重建 CI 后运行 `mozc.yml` 并更新哈希；否则日文模式在 APK 中不可用 |
-| 未完成的工作 | `wip/paused-2026-11-04`，只在私有远端 | 需要私有远端的访问权；公开仓库没有这个分支 |
-| S6 的 Mozc 行服务 | 代码在 WIP 分支；`scripts/build-mozc.sh` 还不会构建它 | 恢复 S6 时把 `//kotomo:kotomo_mozc_server` 加进脚本的 host 分支 |
-| P1 真机检查结果 | 在用户手里，尚未回报 | 先向用户索取，再判定 G1 |
-| 设计稿 | 已固化到 `design/`（入口 `design/index.html`） | 以仓库中的文件为准 |
-| 附录 B 提示词的副本 | 本机副本已删除 | 需要时用脚本从附录 B 复制到 `app/src/main/res/raw/` |
-| Agent 的记忆 | 本机副本已删除，要点都在 §0.4 | 以本节为准 |
-| 旧的 Agent worktree | 已删除；它们的分支都已合入 `main` | — |
+实现中已经与计划不一致、需要改实现或由用户追认的地方。各项的归属写在括号里。
 
-## 1. 给 Coding Agent 的执行要求
+| 偏差 | 计划 | 实现 | 处理 |
+| --- | --- | --- | --- |
+| 基础混合模式 | §8.3 在 P1 交付 | 没有实现，设置开关空转 | §2.5 决定 5 |
+| 引擎 ↔ 应用契约 | §4.4：一个外观类、每键一次 JNI、带版本的快照，并写入文档 | 三个外观类、字符串数组、中文每键 5 次 JNI，没有文档 | 随协调层定义（Q4） |
+| 存储 | Room | 没有 Room，全部是 DataStore 与带版本的文件 | §2.5 决定 7 |
+| 数据格式带版本 | 行为契约：所有持久化格式带版本 | 按 App 记忆（模式、字形）与 Emoji 最近使用存在不带版本的 SharedPreferences 中 | 改实现（Q2） |
+| 无学习标记的输入框 | 不学习，但可以正常输入 | 与密码框一样只能直接输入 ASCII | 改实现（Q2） |
+| 敏感输入框的判定 | 一处定义（§14） | 输入路径与剪贴板各有一套判定 | 合并为一处（Q2） |
+| 候选更新的次序 | 过期的更新永不覆盖新的 | 英文、日文按代号丢弃；中文按顺序应用、不丢弃 | 随契约统一（Q4）；之前在文档中写明 |
+| 上游补丁 | `patches/<upstream>/` 下的编号补丁 | 没有补丁，调整都在自己的构建文件里 | 追认现状（§17） |
+| S2 的方案比较 | 按语料表现在候选方案与词库中选择 | 直接用了 luna_pinyin，没有比较 | 有语料之后补做，或由用户追认（Q5） |
+| 真机验证 | 插桩测试与 Macrobenchmark | 没有 `androidTest`；清单靠目视 | §2.5 决定 8 |
+| P0 → P1 的顺序 | P1 在 S1–S4 与 S8 通过后开始 | P1 已在 S3、S4 真机与 S8 之前完成 | 已成事实；G1 之前补齐（Q5） |
 
-1. 先完成 P0 的技术验证（S1–S8），再以小范围提交推进；每一步都能说明修改位置、行为变化和验证证据。
-2. **第一优先级是核心输入系统**：三语言候选生成、连续输入串的语言边界识别、整句混合转换、中文拼音和英文转日语、整句分段与局部修改、候选排序、模糊音和纠错。这些能力优先于 AI、主题市场和其他扩展。
-3. 复用成熟引擎，不从零重写拼音切分与造句、罗马字组合、假名汉字转换、英文词典与纠错等基础算法。自研的是独立的协调层，而不是把三个引擎的候选简单拼接（§5）。
-4. 协调层和转换语料必须能在桌面主机上构建和运行，不依赖 Android 设备；真机用于延迟、内存、生命周期和 AI。
-5. 按键路径（触摸 → 引擎 → 候选绘制）永不等待 I/O、网络、AI、数据库或后台任务持有的锁；首批候选和后续候选分开交付（§5.5）。
-6. 用固定的转换语料证明转换质量（§13）；"试了几个词看起来对"不是验收。每个转换错误的修复都在语料中留下一行。
-7. 不以"能出候选""界面出现"代替功能完成。延迟、内存、APK 体积、词库部署时间与正确率都要有实测数字和设备信息。
-8. 隐私是架构约束，不是发布前的补丁：默认不联网、不上传输入、敏感输入框不学习（§14）。
-9. 任何第三方代码、词库数据、Emoji 素材和字体，先完成许可证核查再引入；"关于与致谢"和开源许可证页面从第一个可用版本起就存在（§15）。
-10. 普通实现与修复不需要反复确认。确实受设备、依赖、许可证或架构选择阻塞时，记录证据、先完成不受影响的工作，再提出具体问题。
+## 1. 执行要求
+
+1. **核心输入系统优先。** 三语言候选生成、连续输入串的语言边界识别、整句混合转换、拼音与英文转日语、分段与局部修改、候选排序、模糊音和纠错，优先于 AI、主题、词库市场和其他扩展。
+2. 复用成熟引擎，不重写拼音切分与造句、罗马字组合、假名汉字转换、英文词典与纠错。自研的是协调层（§5），不是把三个引擎的候选拼在一起。
+3. 协调层和转换语料必须能在桌面主机上构建和运行，不依赖 Android 设备；真机用于延迟、内存、生命周期和 AI。
+4. 按键路径（触摸 → 引擎 → 候选绘制）永不等待 I/O、网络、AI、数据库或后台任务持有的锁；首批候选和后续候选分开交付（§5.5）。
+5. 用固定的转换语料证明转换质量（§13）；"试了几个词看起来对"不是验收。每个转换错误的修复都在语料中留下一行。
+6. 不以"能出候选""界面出现"代替功能完成。延迟、内存、APK 体积、词库部署时间与正确率都要有实测数字和设备信息。
+7. 隐私是架构约束：默认不联网、不上传输入、敏感输入框不学习（§14）。
+8. 任何第三方代码、词库数据、Emoji 素材和字体，先完成许可证核查再引入（§15）。
+9. 按 §0.3 的队列顺序推进，以小范围提交交付；每一步都能说明修改位置、行为变化和验证证据。普通实现与修复不需要反复确认；确实受设备、依赖、许可证或架构选择阻塞时，记录证据、先完成不受影响的工作，再提出具体问题（§2.5 的待定事项按"默认"推进）。
+10. 计划中的设计决定只由用户更改。实现与计划不一致时，要么改实现，要么把偏差写成问题或 ADR 交用户追认（§0.5），不悄悄以实现为准。
 
 ## 2. 目标、范围和交付层级
 
@@ -163,12 +174,12 @@
 
 ### 2.2 形态与平台
 
-- 一个 APK：输入法服务（`InputMethodService`）、键盘与候选栏、各类面板、设置应用，以及引擎本地库。
-- ABI：`arm64-v8a`（真机）和 `x86_64`（模拟器与开发验证）。`armeabi-v7a` 后置，P0 测出体积与构建成本后由用户决定。所有本地库按 16 KB 页对齐构建。
-- `minSdk` 26：与 MyApps 系列相同，也是 ML Kit GenAI 的最低要求。`compileSdk` 与 `targetSdk` 跟随最新稳定平台，目前为 API 37；Google Play 自 2026-08-31 起要求至少 API 36（§3.2）。
-- 界面语言：English、简体中文、繁體中文、日本語（与 MyApps 系列一致）。
-- 键盘用自定义 View 绘制；设置应用用 Jetpack Compose（Material 3），呈现方式参考 MyApps-UI 的设置组件（分组、分段选择、说明文字）。
-- 不写死屏幕尺寸：P1 起布局就按窗口尺寸类别与可用宽度计算，并在 P1 交付平板、折叠屏与单手模式的基础适配（§8.10，用户 2026-11-04 要求）；横屏分离与悬浮键盘在 P3。
+- 一个 APK：输入法服务（`InputMethodService`）、键盘与候选栏、各类面板、设置应用，以及引擎本地库。应用 ID `com.yuanzhe.kotomo`，产品名 **Kotomo**。
+- ABI：`arm64-v8a`（真机）和 `x86_64`（模拟器与开发验证）。`armeabi-v7a` 后置，测出体积与构建成本后由用户决定。所有本地库按 16 KB 页对齐构建。
+- `minSdk` 26（ML Kit GenAI 的最低要求，与 MyApps 系列相同）；`compileSdk` 与 `targetSdk` 跟随最新稳定平台，目前为 API 37。
+- 界面语言：English、简体中文、繁體中文、日本語。
+- 键盘用自定义 View 绘制；设置应用与键盘内的面板用 Jetpack Compose（Material 3），呈现方式参考 MyApps-UI 的设置组件。
+- 不写死屏幕尺寸：布局按窗口尺寸类别与可用宽度计算（§8.10）；横屏分离与悬浮键盘在 P3。
 
 ### 2.3 输入模式（草案 §2）
 
@@ -201,117 +212,128 @@
 - 在线词库社区与主题市场（P5）；WebDAV 和用户文件夹以外的同步后端。
 - 在线 AI：只在 P4 之后、用户显式开启时提供（§11.3）。
 - `armeabi-v7a`、iOS 与桌面版本。
-- 本地 AI 模型与中文的校对、重写（用户 2026-11-04 决定不做）。
+- 不做：本地 AI 模型、中文的校对与重写、Prompt API 与自定义 AI 提示词（用户 2026-11-04 决定）。
 
 ### 2.5 已确定与待用户决定的事项
 
-已由草案确定：Kotlin/C++；键盘自定义 View；设置界面 Compose；本地优先；AI 可选且不进入按键路径；草案 §17 的性能与隐私原则；§21 的致谢要求。
+**已确定**（改动需要用户决定）：
 
-待用户决定（决定之前按"默认"推进，不对外发布）：
+- 草案确定：Kotlin/C++；键盘自定义 View；设置界面 Compose；本地优先；AI 可选且不进入按键路径；草案 §17 的性能与隐私原则；§21 的致谢要求。
+- 许可证 GPL-3.0（`LICENSE`、`AGENTS.md`），可复用 GPL/LGPL 的键盘与词库代码（§15.1）。
+- 用户 2026-11-04 的决定：
+  - AI：英文和日文用校对与重写的专用 API；中文不提供；不用 Prompt API 和本地模型；翻译只用 ML Kit 设备端翻译（§11.1）。
+  - 从通知读取验证码：默认关闭，由用户主动开启（§10.7）；刚复制内容或刚收到验证码时显示快捷输入条。
+  - 平板、折叠屏与单手模式的基础适配在 P1 交付（§8.10）。
+  - 跨语言词库：Unihan 的每个 `kMandarin` 读音都算数；历史写法与字面读音同时保留（§5.9）。
+  - 词库系统应用侧的设计（§10.5）与批准的词库来源清单（§10.5）；在线词库托管在 GitHub。
+  - Mozc 的 Android 库由 Linux 上的 CI 构建，Windows 开发机使用锁定哈希的产物。
+  - 工作约定：推送、真机测试的节奏、本机只做轻量测试（§0.4）。
 
-| 事项 | 默认 | 说明 |
-| --- | --- | --- |
-| 许可证 | GPL-3.0 | 与 MyApps 应用一致，可复用 GPL/LGPL 的键盘与词库代码（§15.1）。对外发布前确认 |
-| 混合与日文模式下的空格键 | 组合中按空格只插入分隔、不提交，回车或点选提交；中文模式空格选首选 | 草案的整句示例在组合中含空格（`chidai ni kai ni ikou`）；设计稿给出可选方案，交用户选择 |
-| 分发渠道 | GitHub Releases（签名 APK） | Google Play 有输入法与数据披露要求；F-Droid 不接受 ML Kit 这类非自由依赖，需要不含 ML Kit 的构建变体 |
-| 草案提到的主题截图与 Madamada 交互截图 | 放在本地 `.dev/reference/`，不提交 | 截图尚不在仓库中；第三方产品的界面截图不进入公开仓库 |
-| 原创"Apple 风格"Emoji 主题的美术来源 | 暂不制作，先用许可明确的素材 | 需要原创美术或明确授权（§11.5） |
-| 自定义 AI 提示词（草案 §13.1） | 不提供 | 只用专用 API 时无法实现；如需提供，要引入 Prompt API |
-| Mozc 构建主机 | CI（Linux）产出预构建库，Windows 开发机使用锁定哈希的产物 | Mozc 的 Android 构建只支持 macOS/Linux 主机（§3.1） |
+**待用户决定**（决定之前按"默认"推进，不对外发布；标"阻塞"的没有可用的默认做法）：
 
-## 3. 已核实事实与待验证假设
+| # | 事项 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| 1 | 是否正式恢复开发 | 视为恢复：按 §0.3 的队列推进 | 2026-11-04 归档；2026-11-09 仓库重新克隆到开发机并重整本计划。恢复时 `AGENTS.md` 的"Remotes and secrets"与归档说明要相应改写 |
+| 2 | 公开仓库与 CI 是否重建 | **阻塞 Q0 的一部分** | 原 GitHub 仓库、CI、产物与机密已删除。它同时决定：Mozc 的 Android 库从哪里来（决定 3）、完整构建在哪里跑（原约定是 CI）、在线词库托管地址、分发渠道（原默认 GitHub Releases；Google Play 有输入法与数据披露要求；F-Droid 不接受 ML Kit，需要不含 ML Kit 的构建变体） |
+| 3 | Mozc 的 Android 库的构建途径 | **阻塞**：日文模式在 APK 中不可用，直到有途径 | 只能在 x86_64 Linux 或 macOS 上构建（NDK 没有 aarch64 Linux 的主机工具），开发机是 ARM64 Windows + WSL。可选：新仓库的 CI、一台 x86_64 Linux 机器或云主机、其他 |
+| 4 | 协调层在设备上怎样调用三个引擎（ADR） | 建议方案 (b)，决定前只做主机原型 | 三个引擎现在是只导出 JNI 的独立共享库，C++ 协调层无法在进程内直接调用。(a) Kotlin 协调层：每键多次跨 JNI，偏离 §4.4；(b) 各引擎库额外导出窄的 C 接口，协调层是第四个库，仍然每键只跨一次 JNI；(c) 合并成一个库：与 §4.2 的符号隔离冲突，且 Mozc 由 Bazel 单独构建 |
+| 5 | §8.3 基础混合模式放在哪里 | 建议并入协调层的第一步（Q4/Q7），G1 只判定三种单语模式 | 原计划在 P1 用词级合并实现，实际没有做（混合模式现在等同中文模式）。现在补一个 Kotlin 词级合并，协调层完成后即被替换 |
+| 6 | 混合与日文模式下的空格键 | 组合中按空格只插入分隔、不提交，回车或点选提交；中文模式空格选首选 | 草案的整句示例在组合中含空格（`chidai ni kai ni ikou`）；设置键 `mixed.space` 已存在，尚无读取方 |
+| 7 | 存储方式（ADR） | 追认现状：DataStore 存设置，带版本的文件存主题、剪贴板、词库；学习记录需要查询时再引入 Room | 原计划写 Room；实现中没有 Room |
+| 8 | 真机验证的方式 | 诊断页自检 + `tests/device/` 的清单，由用户按屏幕所见回报 | 测试机没有 adb，开发机没有模拟器，§13.5 的插桩测试与 Macrobenchmark 目前无法运行；延迟数字来自诊断页的探针 |
+| 9 | 在线词库包的签名 | 先只做哈希校验（目录 JSON 中的 sha256），签名方案待设计 | §10.5 要求"签名与哈希校验" |
+| 10 | 第一个联网功能加入时的确认 | 加入前向用户确认，并写入隐私政策 | 应用清单目前不声明任何权限；ML Kit 的 AAR 是否在合并清单时带入 `INTERNET` 尚未核实（Q1） |
+| 11 | `armeabi-v7a` | 不构建 | 测出体积与构建成本后决定 |
+| 12 | 草案提到的主题截图与 Madamada 交互截图 | 放在本地 `.dev/reference/`，不提交 | 第三方产品的界面截图不进入仓库 |
+| 13 | 原创"Apple 风格"Emoji 主题的美术来源 | 暂不制作，先用许可明确的素材 | 需要原创美术或明确授权（§11.5） |
+
+## 3. 外部事实与不应继承的假设
+
+已经用到的上游契约（librime、Mozc、OpenCC、英文引擎、Android 输入法平台、ML Kit、数据集）及其核实程度记录在 `doc/en-us/upstream.md`，已引入组件的许可证与义务在 `doc/en-us/third-party.md`，锁定的版本与哈希在 `build-lock.json`——三者以文档为准，本节不再重复。本节只保留**尚未动工的工作还要用到、文档里没有**的事实，均为 2026-11-04 的阅读结果，用到时复核。
 
 ### 3.1 引擎与上游
 
-| 上游 | 核实所得（2026-11-04 阅读） | 对 Kotomo 的影响 |
+| 上游 | 核实所得 | 对后续工作的影响 |
 | --- | --- | --- |
-| librime | 最新发行版 1.17.0（2026-06-06），BSD-3-Clause；CMake、C++17；依赖 Boost ≥1.74、LevelDB、marisa、OpenCC ≥1.0.2、yaml-cpp ≥0.5（glog 可选）。嵌入接口 `rime_api.h`：`setup`、`initialize`、`deploy`、`create_session`、`process_key`、`set_input`、`get_context`（预编辑、光标、候选页）、`get_commit`、`select_candidate`、候选迭代、`delete_candidate`、`set_option`、`register_module`。模糊音和双拼都是方案中 `speller/algebra` 的规则 | 作为子模块从源码构建，跟随 GitHub 发行版。按片段调用可用 `set_input` + `get_context`；更深的接入走 `register_module` 插件。模糊音开关会改写方案规则并重新部署，部署耗时由 S2 测量 |
-| Trime（Rime 的 Android 前端） | GPL-3.0-or-later，约 96% Kotlin；v3.3.13（2026-11-01）；librime 是子模块，由 Gradle 的 CMake 集成从源码构建（NDK 30.0.16248370、CMake 4.1.2），并带 lua、octagram、predict 插件 | S2 首选参考它的构建方式；GPL 代码可在许可证范围内复用 |
-| fcitx5-android | LGPL-2.1-or-later；0.1.3（2026-07-26）；插件有 anthy、chewing、hangul、jyutping、rime、sayura、thai、unikey 等，**没有 Mozc**（PR #667 未合并）；librime 等以独立 prebuilder 产出的静态库链接 | 预构建静态库是 S2 的备选方式；没有可直接复用的 Android 版 Mozc 前端 |
-| Mozc | Google 的代码为 BSD-3-Clause，LICENSE 另附词典声明；只用 Bazel（Bazelisk，`src/.bazeliskrc` 指定 9.0.2）。官方文档 `docs/build_mozc_for_android.md`：`bazelisk build package --config oss_android --config release_build` 产出 `libmozc.so`（NDK r29，**只支持 macOS/Linux 主机**，含 `arm64-v8a` 与 `x86_64`，16 KB 页对齐）。其 JNI 注册在 Google 的类名 `com.google.android.apps.inputmethod.libs.mozc.session.MozcJni` 上，只暴露 `evalCommand`（序列化的 `commands::Command`）、`onPostLoad`、`getDataVersion`；Android Java 客户端不在开源树中。只发布标签（最新 3.35.6354，2026-10-16），没有 GitHub Releases | Kotomo 自写客户端，并需要自己的 C++ 胶水层（不沿用 Google 包名的 JNI）；跟随最新标签；Mozc 在 Linux/macOS 或 CI 上构建，Windows 开发机使用锁定哈希的预构建产物 |
-| Mozc 的片段类型 | `src/converter/segments.h`：`enum SegmentType { FREE, FIXED_BOUNDARY, FIXED_VALUE, SUBMITTED, HISTORY }`。`ImmutableConverter::Resegment` 把 `FIXED_VALUE` 片段以其首个候选的值与 lid/rid 作为最低代价节点插入，**只用于转换请求**；建议和预测请求只接受单个 `FREE` 片段 | §5.4 的"固定片段整句转换"有源码依据，但必须在转换器层调用，并带读音和合法的 lid/rid；预测候选中的跨语言片段需要另行处理 |
-| Mozc 词典数据（`dictionary_oss`） | 混合来源：IPAdic（NAIST 声明与 ICOT 条款，需保留声明与免责文本）、冲绳方言词典（公有领域）、Google 增补条目 | 条款宽松；S8 记录义务，并确认与 GPL-3.0 组合分发的方式 |
-| OpenCC | Apache-2.0；ver.1.4.2（2026-08-22）；配置 s2t、t2s、s2tw、tw2s、s2twp、tw2sp、s2hk、hk2s、s2hkp、hk2sp、t2tw、tw2t、t2hk、hk2t、t2jp、jp2t；日文新字体表 `JPShinjitaiCharacters.txt`（约 550 行）与 `JPShinjitaiPhrases.txt`，README 称日文支持"有限" | 简繁与地区用词直接使用，跟随 GitHub 发行版；`jp2t` 可用于跨语言词库的字形归一，但必须配合 Unihan 变体字段和人工复核 |
-| AOSP LatinIME | Apache-2.0；原生 C++（`native/jni`）含二进制词典、按键邻近信息和建议核心，手势解码为空实现；`dictionaries/` 含 en_US、en_GB 词表；main 分支最近一次提交在 2025-02-26 | 英文引擎首选复用它的原生建议代码与词典格式（S4） |
-| HeliBoard | GPL-3.0（含 AOSP 代码的 Apache-2.0 声明）；v4.2（2026-10-12）；原生部分是 AOSP LatinIME 的 C++；词典仓库 `Helium314/aosp-dictionaries` 按文件各有许可证（英文 experimental 词表为 CC BY 4.0）；手势输入只能用 Google 的闭源库，开源替代（NLnet 资助项目）尚未发布 | LatinIME 原生代码的活跃维护版本，S4 的参考；滑动输入后置 |
-| FlorisBoard | Apache-2.0；Kotlin + Compose（含 Rust 模块），仍为 beta；词语建议和拼写检查不在当前版本中 | 只作为 Compose 键盘的架构参考 |
+| 各上游的发布方式 | librime：GitHub 发行版（1.17.0，2026-06-06）；Mozc：只有标签，没有 GitHub Releases（3.35.6354，2026-10-16）；OpenCC：GitHub 发行版（ver.1.4.2，2026-08-22）；HeliBoard：GitHub 发行版（v4.2，2026-10-12）；AOSP LatinIME main 最近一次提交在 2025-02-26 | `AGENTS.md` 的上游版本规则按这些方式检查最新版 |
+| Trime（Rime 的 Android 前端） | GPL-3.0-or-later；v3.3.13（2026-11-01）；librime 是子模块，由 Gradle 的 CMake 集成构建，并带 lua、octagram、predict 插件 | librime 插件（如 octagram 语言模型）的构建参考；GPL 代码可在许可证范围内复用 |
+| fcitx5-android | LGPL-2.1-or-later；0.1.3（2026-07-26）；插件中**没有 Mozc**（PR #667 未合并） | 没有可直接复用的 Android 版 Mozc 前端 |
+| Mozc 的片段类型 | 建议和预测请求只接受单个 `FREE` 片段；`FIXED_VALUE` 只用于转换请求 | 预测候选中的跨语言片段需要另行处理（§5.4 只覆盖转换） |
+| 手势输入 | LatinIME 的手势解码为空实现；HeliBoard 只能用 Google 的闭源库；开源替代（NLnet 资助项目）尚未发布 | 英文滑动输入后置到 P5 |
+| FlorisBoard | Apache-2.0；Kotlin + Compose，仍为 beta；没有词语建议和拼写检查 | 只作为 Compose 键盘的架构参考 |
 
-依据：[librime 1.17.0](https://github.com/rime/librime/releases/tag/1.17.0)、[`rime_api.h`](https://github.com/rime/librime/blob/master/src/rime_api.h)、[Trime](https://github.com/osfans/trime)、[fcitx5-android](https://github.com/fcitx5-android/fcitx5-android)、[Mozc Android 构建文档](https://github.com/google/mozc/blob/master/docs/build_mozc_for_android.md)、[`segments.h`](https://github.com/google/mozc/blob/master/src/converter/segments.h)、[`dictionary_oss/README.txt`](https://github.com/google/mozc/blob/master/src/data/dictionary_oss/README.txt)、[OpenCC 1.4.2](https://github.com/BYVoid/OpenCC/releases/tag/ver.1.4.2)、[AOSP LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/)、[HeliBoard](https://github.com/HeliBorg/HeliBoard)、[aosp-dictionaries](https://codeberg.org/Helium314/aosp-dictionaries)、[NLnet 手势输入项目](https://nlnet.nl/project/GestureTyping/)、[FlorisBoard](https://github.com/florisboard/florisboard)。
+依据：[librime](https://github.com/rime/librime/releases)、[`rime_api.h`](https://github.com/rime/librime/blob/master/src/rime_api.h)、[Trime](https://github.com/osfans/trime)、[fcitx5-android](https://github.com/fcitx5-android/fcitx5-android)、[Mozc Android 构建文档](https://github.com/google/mozc/blob/master/docs/build_mozc_for_android.md)、[`segments.h`](https://github.com/google/mozc/blob/master/src/converter/segments.h)、[`dictionary_oss/README.txt`](https://github.com/google/mozc/blob/master/src/data/dictionary_oss/README.txt)、[OpenCC](https://github.com/BYVoid/OpenCC/releases)、[AOSP LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/)、[HeliBoard](https://github.com/HeliBorg/HeliBoard)、[aosp-dictionaries](https://codeberg.org/Helium314/aosp-dictionaries)、[NLnet 手势输入项目](https://nlnet.nl/project/GestureTyping/)、[FlorisBoard](https://github.com/florisboard/florisboard)。
 
 ### 3.2 Android 平台与设备端 AI
 
-| 项目 | 核实所得（2026-11-04 阅读） | 对 Kotomo 的影响 |
+| 项目 | 核实所得 | 对后续工作的影响 |
 | --- | --- | --- |
-| 平台与工具链 | Android 17（API 37）于 2026-06-16 发布稳定版；Google Play 自 2026-08-31 起要求新应用与更新以 API 36 为目标；面向 API 35 及以上的应用必须支持 16 KB 页大小，2027-02-01 起 Play 拒绝不支持的更新（NDK r28 起默认 16 KB 对齐）。最新稳定版：AGP 9.5.0（需要 Gradle 9.6.0+ 与 JDK 17，支持到 API 37）、Gradle 9.8.2、Kotlin 2.4.21、NDK r30（30.0.16248370，长期支持版）、Compose BOM 2026.09.00、Room 2.8.5（新的 `androidx.room3` 3.0.3 只支持 KSP）、DataStore 1.3.0 | `compileSdk`/`targetSdk` 取 37；P0 锁定这些版本（或届时更新的版本） |
-| 输入法接口 | `IME_FLAG_NO_PERSONALIZED_LEARNING`（API 26）只是请求，平台不保证；密码类输入为 `TYPE_TEXT_VARIATION_PASSWORD`、`TYPE_TEXT_VARIATION_VISIBLE_PASSWORD`、`TYPE_TEXT_VARIATION_WEB_PASSWORD`、`TYPE_NUMBER_VARIATION_PASSWORD`；内联自动填充建议（API 30：`supportsInlineSuggestions`、`onCreateInlineSuggestionsRequest`，输入法看不到建议内容）；手写笔回调自 API 33 起，Android 14 起"在任意输入框书写"需要输入法实现这些接口；面向 API 34 及以上的输入法不能覆盖 `onCreateInputMethodSessionInterface` | Kotomo 把无学习标记当作硬约束（§14）；内联建议在 P3，手写笔在 P5 |
-| Android 16、17 的变化 | Android 16 新增 `onCustomImeSwitcherButtonRequestedVisible` 与 `onShouldVerifyKeyEvent`。Android 17 对所有应用：未处理的旋转后不再恢复键盘可见性，并按设备内存设定应用的内存上限。面向 API 37：中日韩输入法可以用 `TextAttribute.Builder.setTextSuggestionSelected()` 标记选中的转换候选；禁止修改 `static final` 字段（经 JNI 修改会崩溃）；`System.load()` 加载的本地库必须只读 | 转换片段的标记使用新接口（§8.2）；内存基线必须在 Android 17 设备上测量；JNI 层不碰 `static final` |
-| Compose 与输入法 | `ComposeView` 需要经视图树传递的 `LifecycleOwner` 与 `SavedStateRegistryOwner`；没有官方的输入法指南，社区做法是让服务实现这些所有者并设置到输入法窗口的 decor view 上 | S1 验证之后再决定面板是否使用 Compose |
-| 剪贴板 | Android 10 起只有默认输入法和焦点应用能读取剪贴板；Android 12 的读取提示不对默认输入法显示；Android 13 起敏感剪贴以 `ClipDescription.EXTRA_IS_SENSITIVE` 标记，键盘应隐藏其预览；Android 13 起系统在最后一次读写后不超过 60 分钟清除剪贴板（CDD §9.8.7，AOSP 默认 1 小时）；Android 14–17 没有剪贴板行为变更 | 剪贴板历史由 Kotomo 自己保存（§10.7），不依赖系统保留；敏感剪贴永不记录 |
-| ML Kit GenAI | 提供 Prompt、Proofreading、Rewriting、Summarization、Image Description、Speech Recognition，以及 2026-10-26 新增的 Text-to-Speech、Speech Translation、Agent、Embeddings（alpha，需要 Kotlin 2.3+）。`genai-proofreading` 与 `genai-rewriting` 为 1.0.0-beta1，`genai-prompt` 为 1.0.0-beta5，均为 beta、无 SLA。校对与重写支持英语、日语、法语、德语、意大利语、西班牙语、韩语（**不含中文**），输入少于 256 token，API 26+，解锁 bootloader 的设备不可用；重写风格有 ELABORATE、EMOJIFY、SHORTEN、FRIENDLY、PROFESSIONAL、REPHRASE。Prompt API 输入少于 4,000 token、输出最多 4,096 token。支持的设备包括 Pixel 9/10/11、Galaxy S25/S26/Z Fold7/Flip8/Fold8 和多家厂商的旗舰 | 英文、日文使用专用 API；中文不提供校对与重写（用户决定）；长文本分段处理 |
-| 前台限制 | 官方文档："GenAI API inference is permitted only when the app is the top foreground application"；在前台服务中调用同样返回 `BACKGROUND_USE_BLOCKED`（30）。另有每应用配额（`BUSY` 9、`PER_APP_BATTERY_USE_QUOTA_EXCEEDED` 27），数值未公开。没有找到针对输入法的官方豁免。开发者报告（非官方）：在 Galaxy S25 Ultra（Android 16）上从 `InputMethodService` 调用（键盘显示在其他应用之上）返回 `BACKGROUND_USE_BLOCKED`，同一调用在该应用自己的 Activity 中成功；另有报告 `checkStatus()` 显示可用，生成时才被拒绝 | **默认设计：AI 推理在用户主动打开的 Kotomo 前台界面中进行**（§11.1）；S7 在实际设备上复核直接调用与这一设计 |
-| ML Kit 翻译与语言识别 | `translate` 17.0.3，API 23+，59 种语言，含中文、日文、英文；每种语言模型约 30 MB，按需下载。它是 ML Kit 的普通语言 API，不属于 GenAI，官方页面没有任何前台或后台限制的说明。定位为简单翻译：不含英语的语言对经英语中转（中日互译即如此），质量随语言对变化。语言识别内置版 17.0.6（约 900 KB），支持 100 多种语言，含罗马化的中文与日文 | 翻译直接在键盘中运行（S7 确认）；结果先预览；中日互译的质量在 P4 评估 |
+| 分发要求 | Google Play 自 2026-08-31 起要求以 API 36 为目标；面向 API 35 及以上必须支持 16 KB 页，2027-02-01 起 Play 拒绝不支持的更新 | `targetSdk` 37、所有本地库 16 KB 对齐（已做到） |
+| 尚未使用的输入法接口 | 内联自动填充建议（API 30：`supportsInlineSuggestions`、`onCreateInlineSuggestionsRequest`，输入法看不到建议内容）；手写笔回调自 API 33 起，Android 14 起"在任意输入框书写"需要输入法实现；Android 16 新增 `onCustomImeSwitcherButtonRequestedVisible` 与 `onShouldVerifyKeyEvent`；面向 API 34 及以上不能覆盖 `onCreateInputMethodSessionInterface` | 内联建议在 P3（§10.10），手写笔在 P5 |
+| Android 17 | 未处理的旋转后不再恢复键盘可见性；按设备内存设定应用的内存上限；面向 API 37 禁止修改 `static final` 字段（经 JNI 修改会崩溃），`System.load()` 加载的本地库必须只读 | 内存基线在 Android 17 设备上测量；JNI 层不碰 `static final` |
+| ML Kit GenAI | 提供 Prompt、Proofreading、Rewriting、Summarization、Image Description、Speech Recognition，以及 2026-10-26 新增的 Text-to-Speech、Speech Translation、Agent、Embeddings（alpha）。`genai-proofreading` 与 `genai-rewriting` 为 1.0.0-beta1，`genai-prompt` 为 1.0.0-beta5，无 SLA。校对与重写支持英、日、法、德、意、西、韩（**不含中文**），输入少于 256 token，解锁 bootloader 的设备不可用；重写风格有 ELABORATE、EMOJIFY、SHORTEN、FRIENDLY、PROFESSIONAL、REPHRASE。Prompt API 输入少于 4,000 token、输出最多 4,096 token。支持的设备包括 Pixel 9/10/11、Galaxy S25/S26/Z Fold7/Flip8/Fold8 等 | §11.1 的语言与接口决定 |
+| 前台限制 | 官方文档："GenAI API inference is permitted only when the app is the top foreground application"；前台服务中调用返回 `BACKGROUND_USE_BLOCKED`（30）；每应用配额（`BUSY` 9、`PER_APP_BATTERY_USE_QUOTA_EXCEEDED` 27）数值未公开；没有针对输入法的官方豁免。开发者报告（非官方）：Galaxy S25 Ultra（Android 16）上从 `InputMethodService` 调用被拒绝，同一调用在应用自己的 Activity 中成功；另有报告 `checkStatus()` 显示可用，生成时才被拒绝 | AI 推理在用户打开的 Kotomo 前台界面中进行（§11.1）；S7 在真机复核 |
+| ML Kit 翻译与语言识别 | `translate` 17.0.3，59 种语言，每种模型约 30 MB，按需下载；属于普通语言 API，文档没有前台限制；不含英语的语言对经英语中转（中日互译即如此）。语言识别内置版 17.0.6（约 900 KB），含罗马化的中文与日文 | 翻译直接在键盘中运行（S7 确认）；中日互译的质量在 P4 评估 |
 
-依据：[Android 17](https://android-developers.googleblog.com/2026/06/Android-17.html)、[Play 目标 API 要求](https://developer.android.com/google/play/requirements/target-sdk)、[16 KB 页大小](https://developer.android.com/guide/practices/page-sizes)、[AGP 版本说明](https://developer.android.com/build/releases/about-agp)、[`EditorInfo`](https://developer.android.com/reference/android/view/inputmethod/EditorInfo)、[输入法与自动填充](https://developer.android.com/guide/topics/text/ime-autofill)、[`InputMethodService`](https://developer.android.com/reference/android/inputmethodservice/InputMethodService)、[Android 17 行为变更](https://developer.android.com/about/versions/17/behavior-changes-17)、[复制与粘贴](https://developer.android.com/develop/ui/views/touch-and-input/copy-paste)、[剪贴板安全](https://developer.android.com/privacy-and-security/risks/secure-clipboard-handling)、[Android 13 CDD](https://source.android.com/docs/compatibility/13/android-13-cdd)、[ML Kit GenAI](https://developers.google.com/ml-kit/genai)、[校对 API](https://developers.google.com/ml-kit/genai/proofreading/android)、[重写 API](https://developers.google.com/ml-kit/genai/rewriting/android)、[Prompt API](https://developers.google.com/ml-kit/genai/prompt/android/get-started)、[ML Kit 翻译](https://developers.google.com/ml-kit/language/translation/android)；开发者报告 [wmkeyboard #804](https://github.com/wasi-master/wmkeyboard/issues/804)、[googlesamples/mlkit #1013](https://github.com/googlesamples/mlkit/issues/1013)。
+依据：[Android 17](https://android-developers.googleblog.com/2026/06/Android-17.html)、[Play 目标 API 要求](https://developer.android.com/google/play/requirements/target-sdk)、[16 KB 页大小](https://developer.android.com/guide/practices/page-sizes)、[`EditorInfo`](https://developer.android.com/reference/android/view/inputmethod/EditorInfo)、[输入法与自动填充](https://developer.android.com/guide/topics/text/ime-autofill)、[`InputMethodService`](https://developer.android.com/reference/android/inputmethodservice/InputMethodService)、[Android 17 行为变更](https://developer.android.com/about/versions/17/behavior-changes-17)、[复制与粘贴](https://developer.android.com/develop/ui/views/touch-and-input/copy-paste)、[ML Kit GenAI](https://developers.google.com/ml-kit/genai)、[校对 API](https://developers.google.com/ml-kit/genai/proofreading/android)、[重写 API](https://developers.google.com/ml-kit/genai/rewriting/android)、[Prompt API](https://developers.google.com/ml-kit/genai/prompt/android/get-started)、[ML Kit 翻译](https://developers.google.com/ml-kit/language/translation/android)；开发者报告 [wmkeyboard #804](https://github.com/wasi-master/wmkeyboard/issues/804)、[googlesamples/mlkit #1013](https://github.com/googlesamples/mlkit/issues/1013)。
 
-### 3.3 数据与素材
+### 3.3 数据与素材（S8 与词库数据的候选）
 
-| 数据 | 核实所得（2026-11-04 阅读） | 对 Kotomo 的影响 |
+| 数据 | 核实所得 | 对后续工作的影响 |
 | --- | --- | --- |
-| 中文方案与词库 | rime-ice：GPL-3.0 only（其来源包括 Unihan、rime-essay-simp、THUOCL 等）；rime-frost：GPL-3.0；rime_wanxiang：CC BY 4.0；rime-luna-pinyin、rime-essay、rime-prelude：LGPL-3.0；双拼方案 rime-double-pinyin：GPL-3.0；libime 数据：LGPL-2.1-or-later；CC-CEDICT：CC BY-SA 4.0（词级拼音，持续更新）；mozillazg/pinyin-data：MIT（源自 Unihan） | S2 在许可允许的候选中按语料表现选择；打包 rime-ice 会使整个发行版实际上只能以 GPL-3.0 发布 |
-| 英文词表 | AOSP LatinIME 的 en_US、en_GB 词表（按仓库推断为 Apache-2.0，需要确认）；HeliBoard 词典仓库中的英文 experimental 词表为 CC BY 4.0 | S4、S8 确认许可后选用 |
-| 日文词典 | Mozc OSS 词典（§3.1）；SudachiDict：Apache-2.0（含 UniDic 与部分 NEologd），v20261015；UniDic：GPL-2.0、LGPL-2.1、BSD 三重许可；NEologd：Apache-2.0，2020 年后停更；merge-ut-dictionaries 的产物按来源混合，其中 alt-cannadic 只允许 GPL-2.0（与 GPLv3 不兼容）、jawiki 为未注明版本的 CC BY-SA、SKK 的 edict 为 CC BY-SA 3.0 | 默认使用 Mozc OSS 词典；人名、地名、车站名、外来语的扩充优先取 SudachiDict；不采用仅限 GPL-2.0、CC BY-SA 3.0 或版本不明的数据 |
-| JMdict 与 KANJIDIC2 | EDRDG 许可：CC BY-SA 4.0（覆盖 JMdict 的日文与英文部分、KANJIDIC2 等；其他语言的释义另有版权）。应用须在从菜单进入的独立页面（关于或来源）中署名，只在启动页提及不够，并须有定期更新数据的流程。优先级标记：news1/2、ichi1/2、spec1/2、gai1/2（常用外来语）、nfxx；`lsource` 记录外来语的来源语言（コーヒー 同时标有英文 coffee 与荷兰文 koffie）。jmdict-simplified 每周一自动发布 JSON（最新 3.6.2+20261102210542） | 英文 → 日文映射的主要来源；署名放在"关于与致谢"的独立来源页；更新流程即 `AGENTS.md` 的上游版本规则 |
-| CC BY-SA 4.0 与 GPLv3 | Creative Commons 于 2015-10-08 宣布 GPLv3 为 BY-SA 4.0 的兼容许可（单向）；署名与标注要求依然适用；只针对 4.0 版 | JMdict、CC-CEDICT 的派生数据可以随 GPL-3.0 应用分发，并保留署名 |
-| Unihan | Unicode License v3；Unicode 18.0.0 的 UAX #38：`kMandarin` 至多两个值（第一个用于简体，第二个用于繁体）；变体字段仍为临时性质；18.0 新增 `kJapaneseNewVariant`（新字体）与 `kJapaneseOldVariant`（旧字体）。陷阱：新字体可能与无关的汉字同形——「芸」的 `kMandarin` 是 yún（芸香），而它作为新字体对应的旧字体「藝」读 yì；「駅」的旧字体是「驛」 | §5.9 先把新字体映射到旧字体再取读音；多音字优先使用词级读音 |
-| CLDR Emoji 注释 | CLDR 49（2026-10-22，含 Unicode 18 新 Emoji 的注释），Unicode License v3；cldr-json 的 `annotations/{en,ja,zh,zh-Hant}` 提供关键词与名称，`annotationsDerived` 覆盖肤色与 ZWJ 序列 | Emoji 关键词词库的来源（§4.1） |
-| Emoji 图像 | Noto Emoji：字体为 OFL-1.1，图像为 Apache-2.0，旗帜为公有领域，已支持 Unicode 18.0；Twemoji（jdecked 维护版）：图形为 CC BY 4.0、代码为 MIT，最新 17.0.3 只覆盖 Emoji 17.0；OpenMoji：图形为 CC BY-SA 4.0；Apple：系统软件许可禁止再分发，App Store 审核指南 5.2.5 明确第三方键盘不得包含 Apple Emoji；Telegram 安卓版自带的 Emoji 图像没有授权说明，Telegram-FOSS 因授权不明将其替换 | 默认系统字体；Noto、Twemoji 作为样式包，样式包缺字时回退系统字体；绝不打包 Apple 或来源不明的图像 |
-| 最新 Unicode | Unicode 18.0.0 于 2026-09-16 发布（9 个新 Emoji） | Emoji 数据与样式包跟随最新版本 |
+| 中文方案与词库 | rime-ice：GPL-3.0 only（来源含 Unihan、rime-essay-simp、THUOCL 等；其 `tencent.dict.yaml` 的来源采用前先核实）；rime-frost：GPL-3.0；rime_wanxiang：CC BY 4.0；双拼方案 rime-double-pinyin：GPL-3.0；libime 数据：LGPL-2.1-or-later；mozillazg/pinyin-data：MIT；fcitx5-pinyin-zhwiki：CC BY-SA；THUOCL：允许商用，要求引用 | 内置方案现为 rime-luna-pinyin（LGPL-3.0）；扩展词库按 §10.5 的批准清单 |
+| 日文词典 | SudachiDict：Apache-2.0（含 UniDic 与部分 NEologd），v20261015；NEologd：Apache-2.0，已停更；merge-ut-dictionaries 的产物按来源混合，其中 alt-cannadic 只允许 GPL-2.0、jawiki 为未注明版本的 CC BY-SA、SKK 的 edict 为 CC BY-SA 3.0 | 人名、地名、车站名、外来语的扩充优先取 SudachiDict；merge-ut 只取许可证合格的来源 |
+| JMdict 与 KANJIDIC2 | EDRDG 许可（CC BY-SA 4.0）只覆盖日文与英文部分，其他语言的释义另有版权；优先级标记 news1/2、ichi1/2、spec1/2、gai1/2、nfxx | 日文词条的中文释义不能取自 JMdict 的其他语言部分 |
+| Emoji 图像 | Noto Emoji：字体 OFL-1.1，图像 Apache-2.0，旗帜公有领域，支持 Unicode 18.0；Twemoji（jdecked）：图形 CC BY 4.0，最新 17.0.3 只覆盖 Emoji 17.0；OpenMoji：CC BY-SA 4.0；Apple：禁止再分发，App Store 审核指南 5.2.5 明确第三方键盘不得包含；Telegram 安卓版自带的图像没有授权说明 | §11.5 的样式包；缺字时回退系统字体；绝不打包 Apple 或来源不明的图像 |
 
-依据：[rime-ice](https://github.com/iDvel/rime-ice)、[CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cc-cedict)、[aosp-dictionaries](https://codeberg.org/Helium314/aosp-dictionaries)、[SudachiDict](https://github.com/WorksApplications/SudachiDict)、[merge-ut-dictionaries](https://github.com/utuhiro78/merge-ut-dictionaries)、[EDRDG 许可](https://www.edrdg.org/edrdg/licence.html)、[JMdict DTD](https://www.edrdg.org/jmdict/jmdict_dtd_h.html)、[jmdict-simplified](https://github.com/scriptin/jmdict-simplified)、[CC 兼容许可](https://creativecommons.org/share-your-work/licensing-considerations/compatible-licenses/)、[UAX #38](https://www.unicode.org/reports/tr38/)、[CLDR 49](https://cldr.unicode.org/downloads/cldr-49)、[Noto Emoji](https://github.com/googlefonts/noto-emoji)、[Twemoji](https://github.com/jdecked/twemoji)、[App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)、[Unicode 18.0](https://blog.unicode.org/2026/09/announcing-unicode-standard-version-180.html)。
+数据缺口（S8 继续寻找许可明确的来源，找不到就延后相应功能）：日文词条的常见中文释义、JLPT 词汇分级、日本车站名称全集、专业领域词库。
 
-数据缺口（S8 继续寻找许可明确的来源，找不到就延后相应功能）：日文词条的常见中文释义（尚未找到许可明确的日中词典数据）、JLPT 词汇分级、日本车站名称全集、专业领域词库。
+依据：[rime-ice](https://github.com/iDvel/rime-ice)、[CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cc-cedict)、[SudachiDict](https://github.com/WorksApplications/SudachiDict)、[merge-ut-dictionaries](https://github.com/utuhiro78/merge-ut-dictionaries)、[EDRDG 许可](https://www.edrdg.org/edrdg/licence.html)、[JMdict DTD](https://www.edrdg.org/jmdict/jmdict_dtd_h.html)、[jmdict-simplified](https://github.com/scriptin/jmdict-simplified)、[CC 兼容许可](https://creativecommons.org/share-your-work/licensing-considerations/compatible-licenses/)、[UAX #38](https://www.unicode.org/reports/tr38/)、[CLDR](https://cldr.unicode.org/)、[Noto Emoji](https://github.com/googlefonts/noto-emoji)、[Twemoji](https://github.com/jdecked/twemoji)、[App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)。
 
 ### 3.4 不应继承为结论的假设
 
 - "librime 和 Mozc 各自能用，拼起来就能混合整句"：两者都是会话式引擎，各自切分输入，不接受外部候选网格；跨语言整句需要协调层（§5）。
-- "Mozc 的固定片段能直接用于所有候选"：只有转换请求支持，建议和预测不支持（§3.1）。
-- "Gemini Nano 可以直接在输入法里调用"：ML Kit GenAI 只允许位于最前台的应用推理，已有开发者报告从 `InputMethodService` 调用被拒绝（§3.2）；默认改为在 Kotomo 的前台界面中推理，S7 在实际设备上复核。这一限制只针对 GenAI：设备端翻译属于 ML Kit 的普通 API，不受它约束（§3.2）。
-- "ML Kit 的校对与重写支持中文"：不支持（§3.2）；Kotomo 因此不为中文提供校对与重写（§11.1）。
-- "英文转日文就是音译"：以词典映射为主，音译只作最后的候选（草案 §5.3）。
-- "简繁转换只需逐字转换"：需要词组级转换和地区用词，并让地区词库参与候选生成（草案 §4.3）。
-- "日文汉字词可以直接得到汉语拼音"：需要字形归一（新字体 → 旧字体 → 简体）和多音字处理；新字体可能与无关的汉字同形，日本国字没有汉语读音（§3.3、§5.9）。
-- "键盘里显示的 Emoji 样式就是对方 App 显示的样式"：不是；提交的是 Unicode，显示由目标 App 决定（草案 §8.3）。
-- "Telegram 使用 Apple 风格 Emoji，所以素材可以用"：不能据此推定任何授权（草案 §8.4）。
-- "LLM 生成的词库可以直接用"：不可以，必须校验且默认低优先级（草案 §7.4）。
-- "首批候选 50 ms 在所有设备上都能达到"：需要真机基线，先测量再承诺（草案 §17.1）。
-- 草案 §3.4 与 §19.1 的 `chida nikainiikou` 是 `chidai nikainiikou` 的笔误（用户 2026-11-04 确认）：与 §3.1 一样，`chidai` 是「池袋」的汉语拼音，这些用例验证的都是"拼音 → 日文"加罗马字的整句转换（§13.2）。
-- 草案用例 `chocolateokainiikou` 中的 `o` 对应助词「を」（标准罗马字写作 `wo`）：需要一条带代价、只在名词之后生效的"助词 o → を"容错规则，不能把它当成普通的「お」。
+- "Mozc 的固定片段能直接用于所有候选"：只有转换请求支持，建议和预测不支持。
+- "Gemini Nano 可以直接在输入法里调用"：ML Kit GenAI 只允许位于最前台的应用推理（§3.2）；默认在 Kotomo 的前台界面中推理，S7 复核。这一限制只针对 GenAI，设备端翻译不受它约束。
+- "ML Kit 的校对与重写支持中文"：不支持；Kotomo 因此不为中文提供校对与重写（§11.1）。
+- "英文转日文就是音译"：以词典映射为主，音译只作最后的候选。
+- "简繁转换只需逐字转换"：需要词组级转换和地区用词，并让地区词库参与候选生成。
+- "日文汉字词可以直接得到汉语拼音"：需要字形归一（新字体 → 旧字体 → 简体）和多音字处理；新字体可能与无关的汉字同形（§5.9）。
+- "键盘里显示的 Emoji 样式就是对方 App 显示的样式"：不是；提交的是 Unicode，显示由目标 App 决定。
+- "Telegram 使用 Apple 风格 Emoji，所以素材可以用"：不能据此推定任何授权。
+- "LLM 生成的词库可以直接用"：不可以，必须校验且默认低优先级。
+- "首批候选 50 ms 在所有设备上都能达到"：S1 在旗舰折叠屏上测得 p95 为 120–130 ms，目标尚未达到（§16）。
+- "主机测试通过等于设备可用"：S2 在真机上才暴露两个缺陷（JNI 字符串末字符丢失、设备上无法创建 build 目录）；S3、S4 的真机结果仍是空白。
+- 草案 §3.4 与 §19.1 的 `chida nikainiikou` 是 `chidai nikainiikou` 的笔误（用户 2026-11-04 确认）：`chidai` 是「池袋」的汉语拼音，这些用例验证的都是"拼音 → 日文"加罗马字的整句转换（§13.2）。
+- 草案用例 `chocolateokainiikou` 中的 `o` 对应助词「を」（标准罗马字写作 `wo`）：需要一条带代价、只在名词之后生效的"助词 o → を"容错规则（§5.4），不能把它当成普通的「お」。
 
-## 4. 架构决策
+## 4. 架构
 
-### 4.1 默认技术选择
+### 4.1 技术选择
 
-| 项目 | 默认方案 | 采用条件/限制 |
+| 项目 | 方案 | 现状 |
 | --- | --- | --- |
-| 应用语言 | Kotlin（最新稳定版），协程与 `Flow` | 工具可用 Java 单文件程序（`java tool/…`） |
-| 构建 | Gradle Kotlin DSL + 版本目录；本地代码用 CMake（`externalNativeBuild`） | Mozc 用其自身的 Bazel 构建，由脚本产出预构建库供 Gradle 打包（S3 决定细节） |
-| 键盘与候选栏 | 自定义 View + Canvas | 面板（Emoji、剪贴板）可以用 Compose，前提是 S1 证明它在 IME 窗口中的首帧和内存可以接受 |
-| 设置应用 | Jetpack Compose，Material 3 | 参考 MyApps-UI 的设置呈现；品牌色与图标由设计稿给出 |
-| 中文引擎 | librime | 方案与词库数据按许可证与语料表现选择（§3.3、S2） |
-| 日文引擎 | Mozc | 使用其组合器、转换器、词典与预测；客户端与 C++ 胶水层自写 |
-| 英文引擎 | AOSP LatinIME 的原生建议代码与二进制词典 | 词表来源按许可证选择（§3.3、S4）；做不到时以 ADR 改为自研的词表 + 二元组 + 按键纠错 |
-| 混合协调层 | 自研 C++（`core/`） | 候选网格、解码、跨语言词库运行时、统一候选与 JNI |
-| 简繁与地区用词 | OpenCC | librime 本身也依赖 OpenCC；同一份库与数据，不重复打包 |
-| 跨语言词库 | 自建流水线（`lexicon/`），从 JMdict、Unihan、OpenCC 与 Mozc 词典生成 | 生成结果连同来源与哈希可复现（§5.9） |
-| Emoji 关键词 | Unicode CLDR 注释（英文、简体中文、繁体中文、日文） | 中文关键词另生成拼音键，日文关键词另生成罗马字键 |
-| Emoji 图像 | 默认用系统 Emoji 字体；Noto Emoji、Twemoji 作为可选样式包 | 样式只影响键盘内显示，提交的始终是 Unicode；样式包缺字时回退系统字体 |
-| 存储 | Room（SQLite）存用户词库、学习记录、剪贴板与短语；DataStore 存设置；主题为 JSON 文件 | 格式带版本，保留未知字段，使用 UTC 时间；数据迁移与配置升级可以回滚 |
-| 后台任务 | WorkManager | 词库更新、自动备份 |
-| 设备端 AI | ML Kit GenAI（经 AICore 调用 Gemini Nano） | 从 MyApps-AI 的 `GenAiChannel.kt` 移植；推理在用户打开的 Kotomo 前台界面中进行（§3.2、S7） |
-| 翻译 | ML Kit 设备端翻译 | 模型由用户点击下载 |
-| 测试 | GoogleTest（主机端 C++）、JUnit（Kotlin 逻辑）、AndroidX Test（真机与模拟器）、Macrobenchmark（延迟） | GoogleTest 与 librime、Mozc 的测试框架一致 |
+| 应用语言 | Kotlin（最新稳定版），协程与 `Flow`；工具用 Java 单文件程序（`java tool/…`、`java lexicon/…`） | 已采用 |
+| 构建 | Gradle Kotlin DSL + 版本目录；本地代码用 CMake（`externalNativeBuild`）；Mozc 用其自身的 Bazel 构建，由脚本产出预构建库供 Gradle 打包 | 已采用；Mozc 预构建库的来源已失效（Q0） |
+| 键盘与候选栏 | 自定义 View + Canvas；面板可以用 Compose | 已采用；S1 实测 Compose 的 Emoji 面板首帧 73 ms，面板用 Compose |
+| 设置应用 | Jetpack Compose，Material 3；呈现参考 MyApps-UI，品牌色与图标由设计稿给出 | 已采用 |
+| 中文引擎 | librime（方案 rime-luna-pinyin，LGPL-3.0） | `libkotomo_rime.so`，从源码构建，不带插件与日志；中文数据在构建时预编译 |
+| 日文引擎 | Mozc；客户端与 C++ 胶水层自写 | `libkotomo_mozc.so`：会话转换与转换器层的固定片段转换都已实现并在主机通过；应用只用到会话转换 |
+| 英文引擎 | AOSP LatinIME 的原生建议代码与二进制词典（取自 HeliBoard v4.2 的维护版本） | `libkotomo_english.so`；词表为 aosp-dictionaries 的 en_US（CC BY 4.0）；手势解码为空 |
+| 混合协调层 | 自研 C++：候选网格、解码、跨语言词库运行时、统一候选与 JNI | **不存在**；只有未合并分支上的接口草稿（§7 S6） |
+| 简繁与地区用词 | OpenCC（与 librime 同一份库与数据） | 已采用（大陆、繁体、台湾、香港） |
+| 跨语言词库 | 自建流水线（`lexicon/`），从 JMdict、Unihan、CC-CEDICT、OpenCC 与 Mozc 词典生成，结果连同来源与哈希可复现（§5.9） | 生成器与样本检查已有；产物还没有任何使用方 |
+| Emoji 关键词 | Unicode CLDR 注释（英、简中、繁中、日），中文关键词另生成拼音键，日文关键词另生成罗马字键 | 已采用（`lexicon/EmojiData.java` → `emoji.tsv`） |
+| Emoji 图像 | 默认系统 Emoji 字体；Noto Emoji、Twemoji 作为可选样式包；样式只影响键盘内显示，提交的始终是 Unicode | 系统字体已采用；样式包未做 |
+| 存储 | 格式带版本，保留未知字段，使用 UTC 时间；迁移与升级可以回滚 | 设置在 Preferences DataStore，主题是 JSON 文件，剪贴板是加密文件，均带版本；**没有 Room**（§2.5 决定 7）。按 App 记忆与 Emoji 最近使用存在不带版本的 SharedPreferences 中（§0.5） |
+| 后台任务 | WorkManager（词库更新、自动备份） | 未引入；librime 的部署在独立进程的服务中进行 |
+| 设备端 AI | ML Kit GenAI（经 AICore 调用 Gemini Nano），推理在用户打开的 Kotomo 前台界面中进行 | 已实现（校对与五种重写），未在真机验证（S7） |
+| 翻译 | ML Kit 设备端翻译，模型由用户点击下载 | 未做（界面上是占位） |
+| 测试 | 主机端 C++ 测试、JUnit（Kotlin 逻辑）、真机验证、延迟测量 | JUnit 79 个；rime 主机检查 35 项、Mozc 7 项、英文 13 项；没有插桩测试（§2.5 决定 8） |
 
 ### 4.2 运行结构
+
+目标结构：
 
 ```text
 触摸 ─→ KeyboardView（主线程）─→ 按键事件 ─→ 引擎线程（唯一）─→ core（C++）
@@ -324,41 +346,50 @@
 ```
 
 - 输入法与设置应用在同一进程；设置的修改经 DataStore 通知引擎线程重新加载。
-- librime 部署（编译方案）与词库加载在后台线程进行，完成前键盘继续使用上一份已部署的数据。
+- librime 部署（编译方案）与词库加载在后台进行，完成前键盘继续使用上一份已部署的数据。
 - AI、翻译、备份、同步与下载都不在引擎线程上运行。
 - 用户数据（用户词库、学习记录、剪贴板、设置）与系统词库（随应用或下载得到的只读数据）分开存储；替换或回滚系统词库不触及用户数据。
-- Mozc 胶水层（含 protobuf、abseil）与 librime（含 Boost）分属不同的共享库，隐藏内部符号，避免同名符号冲突；由 S3 确认。
+- Mozc 胶水层（含 protobuf、abseil）与 librime（含 Boost）分属不同的共享库，隐藏内部符号，避免同名符号冲突。
+
+现状：唯一的引擎线程（`kotomo-engine`）已有；按键后先画一份临时候选，引擎结果作为第二次更新到达；英文与日文按代号丢弃过期结果，中文按顺序应用、不丢弃。librime 的部署在独立进程（`:deploy`）中进行，键盘保持上一份数据，已做到。三个引擎是三个互不相识的共享库，各有一个 Kotlin 外观类；"core（C++）"这一层还不存在。
 
 ### 4.3 模块与目录
 
 目录随第一份真实内容出现，不预建空目录。
 
 ```text
-app/                Android 应用：输入法服务、键盘与布局、候选栏、面板、设置、存储、剪贴板、备份与同步、AI
-core/               C++ 协调层：组合、候选网格、解码、跨语言词库运行时、引擎适配与 JNI
-core/tests/         主机端单元测试
-lexicon/            词库构建流水线：源数据 → 运行时词库，含来源与校验
-tests/conversion/   转换语料（主机与真机共用）
-third_party/        librime、Mozc、OpenCC、LatinIME 原生代码等子模块（固定提交）
-patches/            对上游的补丁（编号、注明原因）
-scripts/            构建上游、生成词库、运行语料的脚本
-design/             设计 Agent 的独立界面稿（HTML）与设计令牌
+app/                Android 应用：输入法服务、键盘与布局、候选栏、面板、设置、存储、剪贴板、AI
+core/rime/          librime 的桥接、数据暂存与预编译工具、主机测试
+core/mozc/          Mozc 的胶水层（Bazel 包）与主机测试
+core/english/       LatinIME 建议核心的桥接与主机测试
+lexicon/            词库构建流水线：跨语言词库、Emoji 数据、样本检查
+tests/lexicon/      跨语言词库的样本清单
+tests/device/       真机检查清单
+third_party/        librime、Mozc、OpenCC、HeliBoard（LatinIME 原生代码）等子模块（固定提交）
+scripts/            取得与构建上游的脚本
+design/             设计稿（HTML）与设计令牌
 build-lock.json     工具链、上游提交、数据源版本与哈希
 ```
+
+计划中、尚不存在的目录：`core/mixed/`（协调层）、`tests/conversion/`（转换语料，主机与真机共用）、`patches/`（对上游的补丁，§17）、`doc/en-us/decisions.md`（ADR）。
 
 草案 §16.2 的模块（Input Coordinator、Language Engines、Dictionary Manager 等）是职责划分：它们落在上表的目录中，不是逐个建类的清单。
 
 ### 4.4 引擎 ↔ 应用契约
 
-- 应用侧一个 Kotlin 外观类，对应 `core/jni` 的少量入口，只在引擎线程上调用。
+目标：
+
+- 应用侧一个 Kotlin 外观类，对应少量 JNI 入口，只在引擎线程上调用。
 - 输入：按键事件（字符与按下坐标，用于按键纠错）、命令（选择候选、选择片段、锁定片段、部分提交、撤销转换、恢复原始输入、清空、切换模式与选项）、上下文（光标前的文本；敏感输入框不传）。
-- 输出：快照，包括组合文本及其片段划分与光标、候选页及每个候选的元数据、快照代号。每次按键只跨一次 JNI；快照用紧凑的二进制格式或 protobuf-lite 序列化，不用逐键 JSON（P0 选定）。
+- 输出：快照，包括组合文本及其片段划分与光标、候选页及每个候选的元数据、快照代号。每次按键只跨一次 JNI；快照用紧凑的二进制格式或 protobuf-lite 序列化，不用逐键 JSON。
 - 统一候选字段（草案 §6.1）：候选文字、原始输入范围、来源语言、目标语言、读音、词频、匹配置信度、分段信息、词库来源、是否模糊匹配、是否跨语言转换、是否 Emoji。
-- 契约带版本号，P0 结束前写入 `doc/en-us/`；此后一侧改动契约，两侧及其测试在同一变更中更新。
+- 契约带版本号，写入 `doc/en-us/`；此后一侧改动契约，两侧及其测试在同一变更中更新。
+
+现状：契约**不存在，也没有文档**。应用通过三个外观类（`engine/Rime.kt`、`Mozc.kt`、`English.kt`）分别调用三个库，返回值是各自约定的字符串数组；中文每键跨 5 次 JNI，按下坐标不传给任何引擎。契约随协调层一起定义（Q4），它取决于 §2.5 的决定 4。
 
 ## 5. 整句混合输入引擎（核心设计）
 
-本节是草案 §3 的实现方案，属于默认设计：S2–S6 的结果可以改变实现手段，但不能降低 §13.2 的验收要求。
+本节是草案 §3 的实现方案，**尚未实现**（S6 只有接口草稿，见 §7）。它是默认设计：S6 的结果可以改变实现手段，但不能降低 §13.2 的验收要求。
 
 ### 5.1 输入模型
 
@@ -396,8 +427,9 @@ build-lock.json     工具链、上游提交、数据源版本与哈希
 
 ### 5.4 按目标语言收尾
 
-- **日文**：解码结果是"读音串 + 已固定的片段"，例如 [池袋/いけぶくろ（固定）] + [に] + [かいにいこう]。交给 Mozc 转换时，固定片段作为 `FIXED_VALUE` 片段传入（带读音和合法的 lid/rid，取自 Mozc 词典中的同一词条），其余部分由 Mozc 的词典、连接代价和活用规则转换，得到「池袋|に|買いに|行こう」及每个文节的候选。这需要在 Mozc 转换器层调用的 C++ 胶水层（S3）。做不到时依次退回：(1) 把固定片段作为本次会话的临时用户词条，再整句转换；(2) 用 Mozc 的词典与连接代价在协调层内自建日文网格（成本最高，需要 ADR）。
-- **中文**：拼音片段交给 librime，得到整句与词候选；英文片段原样保留。S2 决定调用深度：按片段使用会话接口（`set_input` + `get_context`），或以 `register_module` 插件直接使用其词典与造句。
+- **日文**：解码结果是"读音串 + 已固定的片段"，例如 [池袋/いけぶくろ（固定）] + [に] + [かいにいこう]。交给 Mozc 转换时，固定片段作为 `FIXED_VALUE` 片段传入（带读音和合法的 lid/rid，取自 Mozc 词典中的同一词条），其余部分由 Mozc 的词典、连接代价和活用规则转换，得到「池袋|に|買いに|行こう」及每个文节的候选。**S3 已在主机上证明这条路可行**（转换器层的 `ApplyConversion`，固定 池袋 + `にかいにいこう` → 池袋に買いに行こう），原定的两条退路（临时用户词条；协调层内自建日文网格）目前不需要，只在设备上行不通时再启用并写 ADR。
+- 助词：Mozc 的会话转换把罗马字 `wa` 当作「わ」，`watashiwanihonjin` 得到「私羽日本人」（S3 实测）。协调层需要带代价的助词规则：`wa` → は、`o` → を、`e` → へ，只在名词之后生效；`chocolateokainiikou` 中的 `o` 即属此类（§3.4）。
+- **中文**：拼音片段交给 librime，得到整句与词候选；英文片段原样保留。S2 的结论：按片段使用会话接口（`set_input` + 候选迭代）在主机上约 0.2 ms 一个前缀，足够；不需要 `register_module` 插件。
 - **英文**：英文词序列，带大小写、拼写纠错与短语补全。
 - 收尾结果保留片段结构，供 §5.6 的局部修改使用。
 
@@ -426,16 +458,18 @@ build-lock.json     工具链、上游提交、数据源版本与哈希
 
 ### 5.9 跨语言词库
 
-- **拼音 → 日文汉字词**（草案 §5.2）：取 Mozc 词典中全由汉字构成的词条（普通名词、专有名词、地名、车站名、人名、专业术语等），逐字求汉语读音：先把新字体映射到旧字体（Unihan 18.0 的 `kJapaneseOldVariant`，辅以 OpenCC 的日文新字体表），再转为简体，然后取拼音——优先用中文词典（如 CC-CEDICT）中同形词的词级读音，否则用 Unihan 的 `kMandarin`；多音字展开并加代价。必须先映射旧字体：「芸」直接取读音是 yún，而作为「藝」的新字体应读 yì（§3.3）。例：池袋 → chí dài → `chidai`；東京 → 东京 → `dongjing`；面接 → `mianjie`；在留 → `zailiu`。没有汉语读音的日本国字（如込、畑、峠）跳过，或由人工映射补充。候选同时显示日文读音（池袋 / いけぶくろ）。用户可以自定义映射。
-- **英文 → 日文**（草案 §5.3）：从 JMdict 的英文释义反查，分三类：(1) 常见外来语（片假名词，参考优先级标记 `gai1` 等）；(2) 语义对应的汉字词（`school` → 学校）；(3) 没有现成词条时的音译候选——排在最后、可单独关闭，不当作常用词。不以逐字母替换作为英文转日文。
-- 日文词条以 Mozc 词典的条目为准（读音、表层形式、词性 ID），使固定片段能带合法的 lid/rid 进入转换（§5.4）；不在 Mozc 词典中的词（用户自定义）使用通用名词的词性。
-- 校验：每类映射都有人工复核的样本清单和不应出现的反例；覆盖率与错误率写入词库元数据。
-- 许可：JMdict 派生数据遵循 CC BY-SA 4.0，按 EDRDG 的要求署名（§15.1）。
+生成器（`lexicon/CrossLexicon.java`）与样本检查（`lexicon/CheckSamples.java`，34/34，反例 0/8）已在 S5 完成；运行时查询与进入网格属于 S6 和 P2。规则：
+
+- **拼音 → 日文汉字词**（草案 §5.2）：取 Mozc 词典中全由汉字构成的词条（普通名词、专有名词、地名、车站名、人名、专业术语等），逐字求汉语读音：先把新字体映射到旧字体（Unihan 18.0 的 `kJapaneseOldVariant`，辅以 OpenCC 的日文新字体表），再转为简体，然后取拼音——优先用中文词典（CC-CEDICT）中同形词的词级读音，否则用 Unihan 的 `kMandarin`；多音字展开并加代价。必须先映射旧字体：「芸」直接取读音是 yún，而作为「藝」的新字体应读 yì。例：池袋 → `chidai`；東京 → `dongjing`；面接 → `mianjie`；在留 → `zailiu`。用户 2026-11-04 的两项决定：Unihan 给出的每个 `kMandarin` 读音都算数（含日本国字，如 込、峠），只有完全没有读音的字才跳过其所在的词；OpenCC 词组表带来历史写法时，词条同时保留历史读音与按字面的读音（世論：`yulun` 与 `shilun`）。候选同时显示日文读音（池袋 / いけぶくろ）。用户可以自定义映射。
+- **英文 → 日文**（草案 §5.3）：从 JMdict 的英文释义反查，分三类：(1) 常见外来语（片假名词，以 `languageSource` 判定）；(2) 语义对应的汉字词（`school` → 学校）；(3) 没有现成词条时的音译候选——排在最后、可单独关闭，不当作常用词。不以逐字母替换作为英文转日文。
+- 日文词条以 Mozc 词典的条目为准（读音、表层形式、词性 ID），使固定片段能带合法的 lid/rid 进入转换（§5.4）；不在 Mozc 词典中的词（用户自定义、纯假名映射）使用通用名词的词性。
+- 校验：每类映射都有人工复核的样本清单和不应出现的反例（`tests/lexicon/samples.tsv`）；覆盖率与错误率写入词库元数据。
+- 许可：JMdict 与 CC-CEDICT 的派生数据遵循 CC BY-SA 4.0，按 EDRDG 的要求署名（§15.1）。
 
 ## 6. 阶段依赖和验收关卡
 
 ```text
-P0 技术验证与工具链
+P0 技术验证与工具链（G0）
  ├─ S1 IME 骨架与延迟基线 ───────────────────────────┐
  ├─ S2 librime ──────┐                              │
  ├─ S3 Mozc ─────────┤                              │
@@ -448,45 +482,40 @@ P0 技术验证与工具链
               └──────→ P4 AI 与个性化（G4；AI 部分只依赖 P1 与 S7，可与 P2、P3 并行）
 ```
 
-依赖图不要求多个 Agent；单个 Agent 也按这个顺序推进。S7 失败只影响 P4 的 AI 部分。P1 可以在 S1–S4 与 S8 通过后开始，不必等 S6。
+阶段（P）是需求的归属，关卡（G）是验收，§0.3 的队列是实际的执行顺序。依赖图不要求多个 Agent；单个 Agent 也按这个顺序推进。S7 失败只影响 P4 的 AI 部分。P1 不必等 S6；P2 的整句实现必须等 G0。P3、P4 中已经提前做了的部分（剪贴板、写作助手、librime 运行时词表）不改变关卡的顺序：它们在各自的关卡验收。
 
-| 关卡 | 必须证明 | 未通过的处理 |
-| --- | --- | --- |
-| G0：可行性 | librime、Mozc 与英文引擎在 `arm64-v8a` 真机上经 JNI 运行；S6 原型在主机上对 §13.2 的用例给出结果与差距分析；延迟、内存与体积基线已测；许可证清单完成 | 不开始 P2 的整句实现；改选引擎或调用深度，并写 ADR |
-| G1：基础输入 | 三种单语模式在真机上可日常使用；敏感输入框不学习；致谢、许可证与隐私页面就位 | 修复后再发布第一个版本 |
-| G2：混合输入 | §13.2 的用例达到规定名次；单语语料没有回退；延迟预算达标 | 继续 P2，不用扩展功能掩盖 |
-| G3：完整输入体验 | §10 各项在真机上通过；词库导入的校验与回滚可用 | 未完成项明确列出 |
-| G4：AI 与个性化 | 支持的设备上 AI 可用且符合 §14；不支持的设备体验无损；备份恢复往返正确 | AI 不可用时如实标注，不用在线 AI 代替 |
-| G5：1.0 | §18 的完成清单全部满足 | 只完成一部分时按层级交付 |
+| 关卡 | 必须证明 | 未通过的处理 | 现状（§0.1） |
+| --- | --- | --- | --- |
+| G0：可行性 | librime、Mozc 与英文引擎在 `arm64-v8a` 真机上经 JNI 运行；S6 原型在主机上对 §13.2 的用例给出结果与差距分析；延迟、内存与体积基线已测；许可证清单完成 | 不开始 P2 的整句实现；改选引擎或调用深度，并写 ADR | NOT_RUN |
+| G1：基础输入 | 三种单语模式在真机上可日常使用；敏感输入框不学习；致谢、许可证与隐私页面就位 | 修复后再发布第一个版本 | NOT_RUN |
+| G2：混合输入 | §13.2 的用例达到规定名次；单语语料没有回退；延迟预算达标 | 继续 P2，不用扩展功能掩盖 | NOT_RUN |
+| G3：完整输入体验 | §10 各项在真机上通过；词库导入的校验与回滚可用 | 未完成项明确列出 | NOT_RUN |
+| G4：AI 与个性化 | 支持的设备上 AI 可用且符合 §14；不支持的设备体验无损；备份恢复往返正确 | AI 不可用时如实标注，不用在线 AI 代替 | NOT_RUN |
+| G5：1.0 | §18 的完成清单全部满足 | 只完成一部分时按层级交付 | NOT_RUN |
+
+每通过一个关卡，补丁版本号加 0.0.1（`AGENTS.md`）；当前版本 0.1.0，未发布。
 
 ## 7. P0 — 技术验证与工具链
 
-### 输入
+工具链、Gradle 工程、`build-lock.json` 与子模块已就位；各项的证据在 `doc/en-us/platform-notes.md`，上游结论在 `upstream.md`。下表是每个验证项相对其原始要求的结果与余项；余项完成后才能判定 G0。
 
-- 本仓库、本计划与 §3 的上游事实。
-- 至少一台 `arm64-v8a` 真机（S7 需要支持 Gemini Nano 的设备）和一个 `x86_64` 模拟器。
-- Android SDK/NDK、CMake；构建 Mozc 用的 Linux 或 macOS 主机（或 CI）与 Bazelisk。
+| 验证项 | 结果 | 已有的证据 | 余项 |
+| --- | --- | --- | --- |
+| S1 IME 骨架与延迟基线 | PASS（真机） | Galaxy Z Fold（SM-F971U1，Android 17，release）：按键 → 键绘制 p95 19–21 ms；按键 → 候选绘制 p95 120–130 ms；首帧 11–14 ms；内存 61–80 MB | 候选延迟未达 §13.4 的 50 ms 目标，差距要有解释或改进（Q2） |
+| S2 librime | PASS（真机与主机） | 构建时预编译数据；主机检查 35 项；敏感输入框用不建用户词典的方案 | 原要求中的"比较候选方案与词库在中文语料上的表现"没有做（只用了 luna_pinyin，也没有语料）；设备上的部署时间、内存与体积没有系统记录 |
+| S3 Mozc | 主机 PASS；真机 NOT_RUN | 主机 7/7：`わたしはにほんじん` → 私は日本人；固定 池袋 + `にかいにいこう` → 池袋に買いに行こう | 真机上的这两个转换；体积、内存、延迟；可复现的 Android 库（原产物已删除，Q0） |
+| S4 英文引擎 | 主机 PASS；真机 NOT_RUN | 主机 13/13（纠错、邻键、补全、下一词、反例）；库约 360 KB | 真机结果与延迟；应用还没有把按下坐标传给引擎（§8.2） |
+| S5 跨语言词库 | 主机 PASS | 样本 34/34 达到名次，反例 0/8；拼音 → 日文覆盖 Mozc 全汉字词条的 99.97 % | 产物还没有被任何引擎使用（S6） |
+| S6 混合整句原型（主机） | NOT_RUN | 未合并分支上有接口草稿 `core/mixed/mixed.h`（没有任何实现、构建目标或测试）和供主机使用的 Mozc 行服务 | 全部：用 S2–S5 的组件实现 §5.2–§5.4 的最小协调层，在主机上运行 §13.2 的用例与单语基线，输出前 k 名与差距分析（Q4） |
+| S7 输入法中的 Gemini Nano | NOT_RUN | 写作助手已按"前台界面推理"的默认设计实现 | 在支持的真机上：(1) 从 `InputMethodService` 直接调用校对 API，记录结果（预期 `BACKGROUND_USE_BLOCKED`）；(2) 验证默认设计，并测量原输入框的文本与选区能否可靠恢复；(3) 从输入法服务直接调用 ML Kit 设备端翻译，确认它不受前台限制（Q5） |
+| S8 许可证与数据源审查 | NOT_RUN | 已引入的组件都在 `third-party.md` | 为每个候选上游与数据源记录版本、来源、哈希、许可证、义务和是否采用（含 §10.5 的词库来源、Emoji 素材、字体、ML Kit 的数据处理条款）；Google Play 对读取通知的政策（§10.7）；§3.3 的数据缺口（Q5） |
+| 契约与 ADR | 未做 | — | 引擎 ↔ 应用契约写入 `doc/en-us/`；`decisions.md` 记录引擎组合与调用深度、Mozc 的构建方式、快照序列化格式、协调层的位置、存储方式（Q4） |
 
-### 工作项
-
-- [x] 工具链：选定并锁定 AGP、Kotlin、Gradle、NDK、CMake、`compileSdk`/`targetSdk`；创建 Gradle 工程（`app/`）、`build-lock.json`、CI（主机测试与 Android 构建）和 Dependabot；`.gitmodules` 只写上游的公开地址。
-- [x] **S1 IME 骨架**：`InputMethodService` + 自定义 View 的 QWERTY 键盘 + 候选栏（假数据）；测量按下到绘制的延迟、输入法冷启动到首帧的时间、内存；验证 Compose 能否用于面板（ViewTree 所有者、首帧、内存）。
-- [x] **S2 librime**：参考 Trime，以子模块从源码构建 librime 及其依赖，打通 JNI，在真机上部署一个拼音方案；记录部署时间、内存、体积、每键延迟；比较候选方案与词库（§3.3）在中文语料上的表现；判断 §5.4 的调用深度；确认在敏感输入框中关闭其用户词典写入的方式。
-- [ ] **S3 Mozc**：在 Linux/macOS 主机或 CI 上用 Bazel 构建 Mozc，写 Kotomo 自己的 C++ 胶水层（会话命令 + 转换器层的固定片段转换），产出各 ABI 的共享库并锁定哈希；真机上转换 `わたしはにほんじん` → 私は日本人；验证固定片段转换 [池袋（固定）] + `にかいにいこう` → 池袋に買いに行こう；记录体积、内存、延迟；确认其历史学习在敏感输入框中关闭的方式。
-- [ ] **S4 英文引擎**：构建 AOSP LatinIME 的原生建议代码（参考 HeliBoard 的维护版本），用许可明确的词表生成二进制词典；验证按键纠错、拼写纠错与下一词预测；记录体积与延迟。
-- [x] **S5 跨语言词库原型**：按 §5.9 从 JMdict、Unihan、OpenCC 与 Mozc 词典生成拼音 → 日文与英文 → 日文映射；统计样本清单的覆盖率与错误，至少覆盖池袋、東京、面接、在留、日本、桜、猫、カード、コーヒー、コンピューター、チョコレート、スケジュール、学校。
-- [ ] **S6 混合整句原型（主机）**：用 S2–S5 的组件实现 §5.2–§5.4 的最小协调层，在桌面上运行 §13.2 的用例与单语基线，输出前 k 名与差距分析。
-- [ ] **S7 输入法中的 Gemini Nano**：在支持的真机上，(1) 从 `InputMethodService` 直接调用 ML Kit GenAI 的校对 API，在目标 App 位于前台时记录结果（§3.2 的报告预期为 `BACKGROUND_USE_BLOCKED`）；(2) 验证默认设计：用户在键盘上点 AI 后打开 Kotomo 的前台界面完成推理，返回后把结果作为替换建议交给输入法，并测量原输入框的文本与选区能否可靠恢复（§11.1）；(3) 从输入法服务直接调用 ML Kit 设备端翻译，确认它不受前台限制。
-- [ ] **S8 许可证与数据源审查**：为每个候选上游与数据源记录版本、来源、哈希、许可证、义务和是否采用（中文方案与词库、英文词表、日文词典、JMdict、Unihan、CLDR、Emoji 素材、字体、ML Kit 的数据处理条款）。
-- [ ] 把引擎 ↔ 应用契约的初稿写入 `doc/en-us/`；第一个 ADR 记录引擎组合与调用深度、Mozc 的构建方式和快照序列化格式。
-
-### 产物与验收
-
-- `build-lock.json`、可构建的 `app/` 与 `core/`，CI 通过。
-- S1–S8 各自的结果（`PASS / FAIL / BLOCKED / NOT_RUN`）与证据写入 `doc/en-us/platform-notes.md`，上游结论写入 `upstream.md`，许可证写入 `third-party.md`。
-- G0 的状态。
+S6 的设计要点（接口草稿已体现的部分）：与引擎无关的 C++ 协调层，网格边包括拼音片段、英文词、假名片段、按读音命中的日文词、拼音 → 日文与英文 → 日文的跨语言词（S5 的词表，按键排序）；每种目标语言做 k-best；收尾通过回调交给 librime（主机上直接链接）和 Mozc（主机上经行服务）。草稿相对 §5 还缺：Emoji 与符号的提议者、解码器中的语言模型状态、频率校准、用户历史、两阶段与增量解码，以及收尾结果的片段结构（现在只返回字符串，§5.6 需要片段）。
 
 ## 8. P1 — 基础可用版本（草案 Phase 1）
+
+P1 的代码在 `21cd65c` 提交，`./gradlew check` 当时通过（79 个单元测试）。2026-11-09 逐项核对代码的结论是：大部分已实现，但**不是全部**；每节的"缺口"是 G1 之前要补的（Q2），除非注明归入后面的阶段。
 
 ### 8.1 输入法框架与键盘
 
@@ -495,32 +524,50 @@ P0 技术验证与工具链
 - 长按按键选择符号、按键弹出预览、按键震动与音效、空格键左右滑动移动光标、长按空格切换语言、删除键滑动批量删除、长按删除连续删除、双击空格输入句号、快速插入 Emoji、自动大小写、智能空格；每个手势单独开关。
 - 横屏与竖屏都可用（横屏分离布局在 P3）。
 - （本计划补充）Direct Boot：设备首次解锁前，键盘只使用设备保护存储中的只读内置数据，不读写任何个人数据（锁屏密码输入）。
-- （本计划补充）无障碍：自定义 View 键盘从一开始就提供无障碍节点，TalkBack 可以逐键朗读，避免后期返工。
+- （本计划补充）无障碍：自定义 View 键盘提供无障碍节点，TalkBack 可以逐键朗读。
+
+现状：已实现（三种字母模式共用一套 QWERTY，只有标点不同；首次解锁前没有日文）。缺口：无。
 
 ### 8.2 三种单语模式
 
 - 中文：librime 的全拼、整句输入、长句预测、自动造词、词频学习、拼写纠错；中英混输的基本形态（英文原样作为候选）。
 - 英文：词典预测、按键与拼写纠错、自动大小写、下一词预测基础版。
 - 日文：Mozc 的罗马字 → 平假名、片假名、汉字，整句转换、文节调整、预测。
-- （本计划补充）面向 API 37 时，用 `TextAttribute.Builder.setTextSuggestionSelected()` 标记组合中当前选中的转换片段（§3.2）。
+- （本计划补充）面向 API 37 时，用 `TextAttribute.Builder.setTextSuggestionSelected()` 标记组合中当前选中的转换片段。
 - 模式切换：语言键、长按选择、顺序与隐藏、按 App 记忆与固定、保留未提交文字（§2.3）。
+
+现状：三种模式都能转换（日文需要 Mozc 库，Q0）。缺口：
+
+- 中文：没有"英文原样作为候选"；方案中没有启用拼写纠错。
+- 英文：按下坐标没有传给引擎，按键纠错实际不起作用（引擎侧已支持）。
+- 日文：每键用会话转换重转整串，候选只有整句、首文节的备选、平假名、片假名；没有文节调整，没有预测；缺少 Mozc 库或数据时只显示罗马字，没有任何提示。
+- `TextAttribute` 只用在中文路径，且恒为未选中；日文没有用。
+- 模式切换：没有自定义顺序、隐藏与按 App 固定；切换时直接提交组合，而不是保留。
 
 ### 8.3 基础混合模式
 
 - 三个引擎并行产出词级候选，按 §2.3 的原则合并排序（不含跨语言整句）。`diannao`、`coffee`、`sakura`、`nihon`、`apple`、`neko`、`ai` 的候选包含 §2.3 示例所列的语言。
 
+现状：**没有实现。** 混合模式现在等同中文模式（只有 librime 的候选，外加 Emoji）；`mixed.level`、四个 `mixed.weight_*`、`mixed.space`、除 Emoji 外的 `mixed.cross.*` 与全部 `japanese.cross.*` 设置键都没有读取方。处理方式见 §2.5 决定 5。
+
 ### 8.4 简繁转换
 
 - 大陆简体、台湾繁体、香港繁体；手动切换、候选栏快速切换、按 App 记忆；OpenCC 的词组级转换与地区用词（例：网络/網路、软件/軟體、鼠标/滑鼠、视频/影片、信息/資訊）。地区词库参与候选生成在 P3。
+
+现状：已实现（另有不带地区用词的"繁体"），主机测试 T11。缺口：无。
 
 ### 8.5 候选栏
 
 - 横向滑动、展开全部候选、长按候选查看读音与来源、删除学习记录（降权与屏蔽在 P2）。
 
+现状：已实现。缺口：日文候选的"读音"显示的是整个组合的读音，不是该候选的读音。
+
 ### 8.6 Emoji 与主题（基础）
 
 - Emoji 面板：分类浏览、常用与最近使用、搜索（CLDR 关键词）、肤色选择；提交 Unicode。
 - 主题：浅色、深色、Material You 动态配色，以及高度、圆角等少量参数；主题以 JSON 存储。
+
+现状：分类、最近使用、肤色与主题已实现；候选栏里已有按英文、拼音、罗马字联想的 Emoji。缺口：面板里没有搜索框；只有"最近使用"，没有"常用"。
 
 ### 8.7 输入框适配（草案 §10）
 
@@ -539,15 +586,21 @@ P0 技术验证与工具链
 
 按输入类型调整标点、空格、大小写、回车键、候选生成、自动纠错与布局。无法提供标准编辑能力的输入框使用兼容模式，保证基本字符输入正常。
 
+现状：已实现，单元测试 T13。缺口：带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框现在与密码框一样只能直接输入 ASCII，不能输入中文和日文——比计划更严（计划只要求不学习，而不学习的方案与 Mozc 的无痕参数都已具备）；"敏感"在代码中有两处不同的定义；这条路径没有 T12 测试。
+
 ### 8.8 设置应用、关于与隐私
 
 - 设置：模式、键盘、候选、隐私（清除学习数据、无痕模式）、关于。
 - "关于与致谢"页面、开源许可证页面、第三方组件与数据来源（§15）。
 - `PRIVACY_POLICY.md` 与应用内的隐私说明。
 
+现状：各页面、无痕模式、致谢、许可证与数据来源页都在。缺口：没有"清除学习数据"（隐私页只能清除剪贴板）；词库页是占位说明（§10.5）；设置里有一批没有读取方的开关（§8.3）。
+
 ### 8.9 发布管线
 
-- 版本号、签名（Kotomo 新建自己的签名密钥，只存在于 CI secrets 与维护者的离线副本中）、release 构建（R8）、GitHub 仓库建立后的 Actions 发布产物、`version-history.md`。
+- 版本号、签名（密钥只存在于 CI 机密与维护者的离线副本中）、release 构建（R8）、Actions 发布产物、`version-history.md`。
+
+现状：版本 0.1.0（`versionCode` 1）、签名配置、R8 与按 ABI 拆分都在；CI 的工作流文件还在，但没有可运行它的仓库（§2.5 决定 2）。
 
 ### 8.10 平板、折叠屏与单手模式（用户 2026-11-04 要求）
 
@@ -557,15 +610,21 @@ P0 技术验证与工具链
 - 单手模式：左手、右手切换，宽度可调；空出的一侧提供切换方向与恢复全宽的按钮；按设备与方向分别记住设置。
 - 设计稿（`design/`）给出紧凑、中等、展开三种宽度与单手模式下的键盘和候选栏。
 
+现状：尺寸类别、最大宽度、铰链分离与桌面姿态已实现，单元测试 T14。缺口：单手模式的宽度是固定值，不可调；设置是一个全局值，没有按设备与方向分别记住。
+
 ### G1 验收
 
-- 三种单语模式在真机上达到单语语料（T01–T03）规定的名次。
+- 三种单语模式在真机上达到单语语料（T01–T03）规定的名次。语料与运行器还不存在（Q2）。
 - 密码类输入、`IME_FLAG_NO_PERSONALIZED_LEARNING` 与无痕模式下不学习、不记录（T12）。
 - 首批候选延迟、输入法冷启动和内存达到 §13.4 的目标，或记录差距与原因。
 - §8.10 在一台平板、一台折叠屏（含折叠与展开切换、半折叠）和手机的单手模式下通过（T14）。
 - release 构建在真机上可用；致谢、许可证与隐私页面完整。
 
+真机部分按 `tests/device/p1-checklist.md` 判定。清单是针对 `21cd65c` 写的，用户 2026-11-04 回复只能看到界面、无法逐项验证，至今没有任何一行被记录；补完缺口后清单随新的 APK 更新，再交给用户。
+
 ## 9. P2 — 核心混合输入（草案 Phase 2，最主要的开发阶段）
+
+除 §9.6 的中文模糊音外，本章都还没有开始；整句实现等 G0。
 
 ### 9.1 三语言同时识别
 
@@ -607,6 +666,14 @@ P0 技术验证与工具链
 
 - 另外支持 n/nn 等鼻音规则、长音输入变体、促音（重复辅音）和小假名。容错（加惩罚）：片假名长音容错、常见拼写错误、邻近按键误触。等价写法与真正的错误容忍分开处理，防止过度模糊匹配。
 
+现状：中文的 11 条规则已在分支 `p2/fuzzy-app-side` 上写完，**引擎侧与应用侧都只在分支上，`main` 上没有**：`FuzzyRule` 与设置键 `chinese.fuzzy.*`、中文页每条规则一个开关、生成 `kotomo_fuzzy.yaml`（`speller/algebra` 的补丁，每条规则双向）并在后台部署进程中重新部署、全部关闭时回到预编译数据、方案补丁可选地引入该文件、主机测试 T08（z/zh 开启后 `zongguo` → 中国，关闭时不出现，`zhongguo` 与 `nihao` 不受影响）。读代码判断可以编译，但从未构建。合入前（Q3）：
+
+- 构建并运行 `FuzzyPatchTest`、`SettingsStoreTest` 与主机 T08；重新生成预编译数据（方案文件变了）。
+- T08 现在只测手写的 z/zh：加一条把应用生成的补丁文件原样喂给 librime 的用例；核实同时开启 n/l 与 l/r 时不会连带产生 n↔r；核实不学习的方案（`luna_pinyin_simp_private`）也带上了模糊音。
+- 文档：`settings-format.md` 的 `chinese.fuzzy.*` 与 INDEX 的行（两种语言）；语料加正例与反例。
+
+日语的等价写法、拼音缺字与多字纠错、用户自定义模糊音都还没有做。
+
 ### 9.7 四层纠错（草案 §6.3）
 
 1. 按键纠错：基于键盘几何与按下坐标识别相邻键误触。
@@ -614,7 +681,7 @@ P0 技术验证与工具链
 3. 模糊音纠错：使用用户启用的中日模糊音规则。
 4. 上下文纠错：根据句子内容调整候选。
 
-纠错以提供候选为主；自动替换可以关闭，替换后立即按退格即可撤销。
+纠错以提供候选为主；自动替换可以关闭，替换后立即按退格即可撤销。英文引擎对乱码输入会给出多词拆分，自动替换之前需要 Kotomo 自己的置信阈值（`upstream.md`）。
 
 ### 9.8 排序与用户控制（草案 §6.2）
 
@@ -624,6 +691,9 @@ P0 技术验证与工具链
 ### 9.9 用户学习（草案 §6.4）
 
 - 个人词频、短语学习、自动造词、下一词预测、按 App 分语言学习、候选降权、自定义词优先、清除学习记录、无痕模式。平滑与衰减见 §5.3。
+- 列出已学习内容的界面在这里交付；P1 清单中"没有学到任何东西"的那一半到这时才能在屏幕上判定。
+
+现状：只有 librime 自己的学习（可逐条忘记）；英文引擎完全不学习；Mozc 从不提交，所以也不学习。
 
 ### 9.10 跨语言转换开关（草案 §5.4）
 
@@ -642,6 +712,8 @@ P0 技术验证与工具链
 | 候选词注音 | 开启 |
 | 智能整句翻译 | 关闭 |
 
+现状：设置键与设置页已有，没有读取方（§8.3）。
+
 ### G2 验收
 
 - §13.2 的用例全部达到规定名次；T05–T10 通过；单语语料（T01–T03）没有回退。
@@ -649,6 +721,8 @@ P0 技术验证与工具链
 - 局部修改不改写已确认的片段；所有跨语言开关生效。
 
 ## 10. P3 — 高级输入体验（草案 Phase 3）
+
+已提前做的：§10.7 的大部分、§10.5 的引擎侧与（分支上的）应用侧、§10.6 的联想、§8.4 之上的地区输出。其余未开始。
 
 ### 10.1 日语变形与敬语（草案 §5.6）
 
@@ -659,7 +733,7 @@ P0 技术验证与工具链
 ### 10.2 候选注音与日语辅助学习（草案 §5.7）
 
 - 汉字假名注音、候选读音预览、动词词典形、词性、常见中文释义、自动生词本、词汇收藏、JLPT 词汇分类。
-- 可选功能，不影响普通输入速度。中文释义与 JLPT 分类的数据来源见 §3.3；没有许可明确的数据时延后。
+- 可选功能，不影响普通输入速度。中文释义与 JLPT 分类目前没有许可明确的数据（§3.3）；找不到时延后。
 
 ### 10.3 地区用词（草案 §4.3）
 
@@ -689,17 +763,57 @@ P0 技术验证与工具链
 - 编辑器与导入：JSON、CSV、TSV、Rime 兼容词表、自定义词库包。导入时执行数据结构校验、重复词条检测、读音检测、编码检查、权重归一化、冲突处理、预览与确认（T17）。LLM 生成的词库默认低优先级；应用内提供附录 B 的提示词。
 - 在线词库：下载前说明来源；签名与哈希校验；可回滚。
 
+**应用侧的设计（用户已确定）：**
+
+- 包 `com.yuanzhe.kotomo.dictionary`，少量内聚的文件：模型、读音、格式与校验（纯 Kotlin，JVM 测试）；存储；在线客户端；`settings/` 中的词库页。
+- 条目：语言（zh/ja/en）、词、读音（无调拼音 / 平假名 / 无）、权重 0–100、来源（手动、导入、生成、下载），保留未知字段。
+- 读音：拼音小写，ü/u: → v，去掉声调数字和调号，允许空格与隔音符，必须能切分成合法音节；日文只收假名（片假名转平假名，保留长音符）；英文无读音。
+- 导入：TSV、CSV（RFC 4180，可有表头）、JSON（附录 B 的字段，`word` 也视为 `text`，拒绝更新的 `format_version`）、Rime `*.dict.yaml`（`...` 之后的行）。严格 UTF-8 解码，去 BOM，拒绝 U+FFFD 与控制字符。文件内重复与已有条目冲突都计数并预览（默认保留已有）。权重缺省 50；最大值超过 100 时按对数缩放到 0–100；LLM 生成的条目封顶 20。预览显示数量和带行号的前几条错误。导出支持同样的格式。
+- 存储：`user.json` 带版本（`format_version`、`updated_utc_ms`，保留未知键），上一版保存为 `user.prev.json` 以便回滚，不覆盖更新版本的文件；词库包放在 `packs/<id>/`，回滚用 `<id>.prev`；`state.json` 保存启用状态；所有 I/O 在 Dispatchers.IO 上并由 Mutex 保护；每次变化后原子写出三份 Rime 表并发出 `changes`，键盘收到后重新选择方案以重新加载。
+- Rime 表：`custom_phrase.txt`（手动，质量 1）、`kotomo_packs.txt`（下载，质量 0）、`kotomo_low.txt`（导入与 LLM，质量 −1），行格式 `词<TAB>无调拼音（无空格）<TAB>权重`，位于 librime 的用户目录。
+- 在线：目录 JSON（`format_version`，packs 含 id、各语言标题、语言、分类、许可证、来源署名、版本、大小、url、sha256、格式），保留未知字段，拒绝未知版本；词库包是 gzip 压缩的规范化 TSV，安装时再次校验，丢弃坏行并计数。目录地址是一个常量；Agent 不创建发布、不上传。只有在用户打开"获取词库"并接受写明来源的说明后才联网，接受状态记为 `dictionaries.online_accepted`。传输层是 `(url) -> InputStream`（测试用假实现）。下载有进度，校验大小与 sha256，支持安装、卸载、更新、回滚。签名见 §2.5 决定 9；托管地址见决定 2。
+- 日文与英文条目先存储并标注"尚未使用"，直到接入 Mozc 用户词典和英文引擎。
+- 设置页：内置、自定义、下载词库的来源与开关；条目编辑（增、改、删、搜索）；带预览与确认的导入；导出；回滚；带说明的"获取词库"；附录 B 提示词与复制按钮，并说明 LLM 条目排序靠后。四种界面语言。
+- 文档：新增 `doc/en-us/dictionaries.md` 及中文镜像；INDEX、settings-format、`PRIVACY_POLICY.md`、`AGENTS.md` 的"Where to read what"一行。
+- 一个小型原创样例包：每种语言十来个手写的常用词，按在线格式打包，只用于测试。
+
+**现状。** 引擎侧在 `main` 上已完成：三份 librime 运行时词表，主机测试 T17-rime。应用侧只在分支 `wip/paused-2026-11-04` 上，**无法编译**；`main` 上的词库页是占位说明，没有任何代码写这三份表。分支上模型、读音、各格式的读写、存储与在线客户端基本符合设计，共 31 个测试；结论是值得修，不必重写。合入前（Q3）：
+
+- 编译错误：`MainActivity` 仍引用已删除的 `dictionaries_later`，且没有接入词库页；缺 `R.raw.llm_dictionary_prompt`（用脚本把附录 B 的提示词原样复制到 `app/src/main/res/raw/`，不读取、不打印）；四种语言都缺 `dict_export_done`；缺 `settings_dialog_max` 尺寸；`Dictionaries.kt` 中 `Formats.of` 应为 `ImportFormat.of`，条目行上连写两个尾随 lambda；`OnlineTest` 把 `Int` 传给 `Long` 参数。
+- 行为错误：导入时权重在缩放之前就被截到 100，对数缩放实际不发生（现有测试没有覆盖）；空表写出的是一个换行而不是空文件；在线包的大小与 sha256 只在目录给出时才校验，应为必填；没有下载进度；`OnlineTest` 的假传输层与用例的地址对不上，编译后多数用例会失败。
+- 与设计的差距：日文与英文条目的"尚未使用"只有整页一条说明，不是逐条标注；内置与自定义词库没有开关；词库包的 TSV 期望有 `language` 列，与下面词库数据的 `词<TAB>读音<TAB>权重` 不一致，两边要统一；样例包只有 5 行、不是在线格式；`Dictionaries.kt` 是一个近三百行的组合函数，需要整理；文档一行未写。
+
+**词库数据（词库包与目录）。** 生成器与词库包；需要改变包或目录格式时，同时更新应用侧的代码、文档与测试。用户批准的来源：
+
+| 来源 | 数据许可证 | 用途 |
+| --- | --- | --- |
+| iDvel/rime-ice | GPL-3.0 | 中文常用与扩展；其英文词表作为技术与编程英文 |
+| gaboolic/rime-frost | GPL-3.0 | 中文基础词库的替代或补充 |
+| felixonmars/fcitx5-pinyin-zhwiki | Wikimedia（CC BY-SA） | 中文专有名词 |
+| thunlp/THUOCL | 允许商用，要求引用 | 中文领域词库（IT、医学、法律、财经、成语、地名） |
+| WorksApplications/SudachiDict | Apache-2.0 | 日文大词库 |
+| neologd/mecab-ipadic-neologd | Apache-2.0 | 日文新词（已停更） |
+| utuhiro78/merge-ut-dictionaries | 各来源不同（jawiki 为 CC BY-SA） | 日文地名、人名 |
+| en-wl/wordlist（SCOWL） | 类 MIT | 英文词表 |
+| outloudvi/mw2fcitx（萌娘百科） | 数据许可证未核实 | 不采用 |
+
+交付：`lexicon/` 下的 Java 生成器（拉取锁定版本并校验哈希，转换为 gzip TSV，丢弃校验失败的行并计数，写出 `catalog.json`）；按分类的词库包；每个包的校验报告；构建与托管方式取决于 §2.5 决定 2（Agent 不发布、不上传）；双语文档与 `version-history.md` 一行。rime-ice 的 `tencent.dict.yaml` 在采用前先核实来源。CC BY-SA 的包保持 CC BY-SA；THUOCL 附引用说明；`third-party.md` 两种语言各加一行。尚未开始（Q6）。
+
 ### 10.6 Emoji（草案 §8.1、§8.2）
 
 - 语义联想：中文、英文、日语以及拼音、罗马字都能触发 Emoji 候选（apple/pingguo → 🍎，neko/mao/cat → 🐱，sakura/yinghua → 🌸，birthday/shengri → 🎂，coffee/kafei → ☕，computer/diannao → 💻）；与文字候选共享候选系统，使用独立权重，默认排在文字候选之后。
 - 面板：收藏、Emoji 组合、颜文字、自定义快捷输入、词语与 Emoji 的自定义映射。
 
+现状：联想已实现（英文、拼音、罗马字键，固定插在第二位，取三个）；独立权重的设置没有读取方；面板的收藏、组合、颜文字与自定义映射未做。
+
 ### 10.7 持久化剪贴板（草案 §12）
 
 - 文本历史、搜索、固定、收藏、分类、编辑、批量删除、自动过期、最大记录数、本地加密、备份与恢复、快捷短语；按 App 控制是否记录；密码与敏感内容默认不保存。
-- 不依赖系统剪贴板永久保存历史；处理应用未运行、剪贴板被系统清除和切换输入法等情况。平台事实（§3.2）：默认输入法可以读取剪贴板，且不会触发读取提示；Android 13 起系统最迟 60 分钟后清除剪贴板，历史必须由 Kotomo 自己保存；标记为敏感（`EXTRA_IS_SENSITIVE`）的内容不记录、不预览。
+- 不依赖系统剪贴板永久保存历史；处理应用未运行、剪贴板被系统清除和切换输入法等情况。平台事实：默认输入法可以读取剪贴板，且不会触发读取提示；Android 13 起系统最迟 60 分钟后清除剪贴板；标记为敏感（`EXTRA_IS_SENSITIVE`）的内容不记录、不预览。
 - 快捷输入条（用户 2026-11-04 要求）：刚复制内容、或刚收到验证码时，键盘上方显示可一键输入的卡片；在验证码类输入框中优先显示。复制的文本中若含验证码，单独列出。
 - 从通知读取验证码（用户 2026-11-04 决定：默认关闭，用户主动开启）：经 `NotificationListenerService` 读取短信、邮件等通知中的验证码，需要用户在系统设置中授予通知读取权限；开启前说明读取范围。只在本机识别，不上传；通知原文不保存，识别出的验证码只在快捷输入条中短时间显示，并不进入剪贴板历史（除非用户复制）。同一条通知中有多个数字而无法确定哪个是验证码时，全部列出，每个附带一小段上下文，并标出最可能的一个。Google Play 对读取通知的政策要求在 S8 核实。
+
+现状（细节在 `doc/en-us/clipboard.md`）：加密历史、去重、固定、过期与上限、敏感内容不记录、复制文本中的验证码识别、面板（全部、固定、验证码）与快捷输入条已实现，31 个单元测试。未做（Q6）：从通知读取验证码；按 App 控制是否记录；搜索、编辑、分类、批量删除；快捷短语的界面（数据模型已有，只有测试在调用）；备份（§11.6）。每条规则都要有正例和反例测试（CLIP-xx），并更新 `clipboard.md`、`PRIVACY_POLICY.md` 与 INDEX。
 
 ### 10.8 智能标点、联想与输入辅助（草案 §14.1–§14.3）
 
@@ -707,10 +821,14 @@ P0 技术验证与工具链
 - 联想：下一词预测、常用短语补全、中文成语、英文固定搭配、日语助词与常用表达、专业术语、个性化预测。
 - 辅助：常用短语快捷输入、文本替换、自定义快捷码、拼写建议、光标控制、文本选择辅助、撤销和重做。
 
+现状：只有按模式的标点与智能空格。
+
 ### 10.9 布局（草案 §9.1、§9.2）
 
 - 中文九宫格、日语 12 键 Flick 输入、横屏分离式键盘、悬浮键盘；在 §8.10 的基础上，为平板与折叠屏展开状态提供分离布局等大屏优化。
 - 自定义：键盘高度、按键宽度与间距、圆角、字体大小、数字行、工具栏、空格键大小、功能键位置、长按符号映射。
+
+现状：展开状态的分离布局已有；可调的只有高度与圆角。
 
 ### 10.10 工具栏、代码模式与按 App 设置（草案 §9.4、§10）
 
@@ -719,19 +837,25 @@ P0 技术验证与工具链
 - 按 App 的个性化设置。
 - （本计划补充）Android 11 起的内联自动填充建议（密码管理器等）显示在候选栏中。
 
+现状：工具栏是五个固定的工具；代码输入框只是切到英文与 ASCII 符号；按 App 只记忆模式与字形。
+
 ### G3 验收
 
 - §10 各项在真机上通过（T11、T14、T16、T17）；词库导入能校验、能回滚；剪贴板遵守 §14。
 
 ## 11. P4 — AI 与个性化（草案 Phase 4）
 
+已提前做的：§11.1–§11.2 的校对与重写。其余未开始。
+
 ### 11.1 Gemini Nano（草案 §13.1、§13.3）
 
-- 通过官方支持的 ML Kit GenAI（经 AICore）：校对、拼写修正、语法修正、翻译、文本重写、润色、扩写、缩写、日语敬语转换、语气调整、自定义提示词。AI 功能独立于核心输入引擎。
-- 语言与接口（用户 2026-11-04 决定）：英文和日文直接使用校对与重写的专用 API（输入须少于 256 token，超出时分段处理）；**中文不提供校对与重写**，选中中文文本时不显示这些按钮；不使用 Prompt API，也不使用本地模型。翻译只用 ML Kit 设备端翻译（中日互译经英语中转，质量在 P4 评估）。草案功能与重写风格的对应：润色 → REPHRASE 或 PROFESSIONAL，扩写 → ELABORATE，缩写 → SHORTEN，语气调整 → FRIENDLY 或 PROFESSIONAL，日语敬语转换 → PROFESSIONAL。草案的"自定义提示词"需要 Prompt API，因此暂不提供（§2.5）。
-- 运行位置：前台限制只针对 GenAI（Gemini Nano），ML Kit 设备端翻译直接在键盘中运行。GenAI 只允许位于最前台的应用推理，已有报告显示从输入法服务调用会被拒绝（§3.2），所以校对、重写等功能的默认设计是：用户在键盘上点 AI 后，打开 Kotomo 的前台界面（底部弹出或半透明的 Activity）完成推理；回到原输入框后，只有原文与选区都没有变化时才替换，否则把结果复制到剪贴板并说明原因。S7 的结果可以改变这一设计。
-- 移植 MyApps-AI 的 `GenAiChannel.kt`：模型变体探测、错误映射（`BACKGROUND_USE_BLOCKED` → 后台、配额、过长等）、R8 保留规则；沿用 MyApps-AI 的规则：默认关闭；开关就是闸门（关闭时不调用任何 AI 接口，连状态也不查）；每次请求前重新检查状态；不代替用户下载模型；结果标注生成位置。
+- 通过官方支持的 ML Kit GenAI（经 AICore）：校对、拼写修正、语法修正、翻译、文本重写、润色、扩写、缩写、日语敬语转换、语气调整。AI 功能独立于核心输入引擎。
+- 语言与接口（用户 2026-11-04 决定）：英文和日文直接使用校对与重写的专用 API（输入须少于 256 token，超出时分段处理）；**中文不提供校对与重写**，选中中文文本时不显示这些按钮；不使用 Prompt API，也不使用本地模型，因此草案的"自定义提示词"不提供。翻译只用 ML Kit 设备端翻译（中日互译经英语中转，质量在 P4 评估）。草案功能与重写风格的对应：润色 → REPHRASE 或 PROFESSIONAL，扩写 → ELABORATE，缩写 → SHORTEN，语气调整 → FRIENDLY 或 PROFESSIONAL，日语敬语转换 → PROFESSIONAL。
+- 运行位置：GenAI 只允许位于最前台的应用推理（§3.2），所以用户在键盘上点 AI 后，打开 Kotomo 的前台界面完成推理；回到原输入框后，只有原文与选区都没有变化时才替换，否则把结果复制到剪贴板并说明原因。ML Kit 设备端翻译直接在键盘中运行。S7 的结果可以改变这一设计。
+- 沿用 MyApps-AI 的规则（由其 `GenAiChannel.kt` 移植）：模型变体探测、错误映射、R8 保留规则；默认关闭；开关就是闸门（关闭时不调用任何 AI 接口，连状态也不查）；每次请求前重新检查状态；不代替用户下载模型；结果标注生成位置。
 - 兼容：设备支持、Android 版本、AICore 状态、模型下载状态、语言限制、输入长度限制、模型版本差异。不支持的设备上隐藏 AI 入口或说明原因，所有输入功能照常可用。
+
+现状（细节在 `doc/en-us/ai.md`）：校对与五种重写风格已实现，默认关闭，在前台的 `AiActivity` 中推理，原文未变才替换、否则复制，可撤销；中文被拒绝。**从未在真机上运行过**（S7）。翻译是界面上的占位，没有引入翻译依赖。
 
 ### 11.2 AI 操作界面（草案 §13.2）
 
@@ -749,7 +873,7 @@ P0 技术验证与工具链
 
 ### 11.5 Emoji 样式包（草案 §8.3、§8.4）
 
-- 系统 Emoji、Noto Emoji、Twemoji、用户自定义素材包（导入时提示用户须遵守素材授权）；原创"Apple 风格"主题视美术来源而定（§2.5），绝不打包未经授权的 Apple Emoji 图像。
+- 系统 Emoji、Noto Emoji、Twemoji、用户自定义素材包（导入时提示用户须遵守素材授权）；原创"Apple 风格"主题视美术来源而定（§2.5 决定 13），绝不打包未经授权的 Apple Emoji 图像。
 - 界面明确区分"键盘中的显示样式"与"目标 App 的最终显示"；Emoji 素材包与键盘配色主题相互独立。
 
 ### 11.6 备份（草案 §15.2）
@@ -768,7 +892,7 @@ P0 技术验证与工具链
 
 ## 12. P5 — 扩展与优化（草案 Phase 5）→ 1.0
 
-- 中英日语音输入、中文与日语手写（含 Android 14 起由输入法实现的手写笔"在任意输入框书写"，§3.2）、外接物理键盘、更多输入方案与语言、英文滑动输入（开源手势解码器可用之后）。语音输入若使用 ML Kit 的设备端语音识别，很可能同样受前台限制（推断，§3.2），需先验证。
+- 中英日语音输入、中文与日语手写（含 Android 14 起由输入法实现的手写笔"在任意输入框书写"，§3.2）、外接物理键盘、更多输入方案与语言、英文滑动输入（开源手势解码器可用之后）。语音输入若使用 ML Kit 的设备端语音识别，很可能同样受前台限制（推断），需先验证。
 - 性能优化、主流厂商系统上的兼容性测试、平板与折叠屏的进一步优化、在线词库社区与主题扩展。
 
 ### G5 验收
@@ -779,27 +903,27 @@ P0 技术验证与工具链
 
 ### 13.1 测试编号
 
-| ID | 测试 | 验证重点 | 阶段 |
-| --- | --- | --- | --- |
-| T01 | 中文单语语料 | 全拼、整句、同音词、简拼 | P1 |
-| T02 | 英文单语语料 | 预测、纠错、大小写 | P1 |
-| T03 | 日文单语语料 | 罗马字、整句、文节 | P1 |
-| T04 | 混合词级语料 | §2.3 的示例、原语言优先、`ai` | P1 |
-| T05 | 拼音 → 日文 | §5.9 的样本与反例 | P2 |
-| T06 | 英文 → 日文 | 外来语、语义词、音译的排序 | P2 |
-| T07 | 整句混合 | §13.2 | P2 |
-| T08 | 模糊音与纠错 | 声母、韵母、罗马字变体、长音与促音、误触、连续输入中的拼写错误 | P2 |
-| T09 | 局部修改 | 锁定、重算、撤销、恢复原始输入 | P2 |
-| T10 | 排序与学习 | 原语言优先、词频、词库优先级、Emoji、歧义、语言偏好、衰减 | P2 |
-| T11 | 简繁与地区用词 | 网络/網路、软件/軟體 等 | P1、P3 |
-| T12 | 隐私 | 敏感输入框、无学习标记、无痕模式、日志不含输入内容、敏感剪贴 | P1 |
-| T13 | 输入框适配 | §8.7 的各类输入框 | P1 |
-| T14 | 交互与适配 | 竖屏、横屏、分离式、单手、平板、折叠与展开切换、半折叠、分屏、输入框切换、长按、剪贴板、主题、Emoji 包、备份与恢复 | P1–P4 |
-| T15 | 性能 | 快速连续打字、长句、多词库、低端设备内存、冷启动、候选刷新、频繁切换 App、后台恢复、长时间稳定 | P0–P5 |
-| T16 | 日语变形与敬语 | 每个活用型 | P3 |
-| T17 | 词库导入 | 校验、冲突、回滚、LLM 词库低优先级 | P3 |
-| T18 | AI | 前台限制、不支持的设备、预览与确认、敏感输入框禁用 | P4 |
-| T19 | 备份与同步 | 往返、冲突、恢复前关闭自动同步 | P4 |
+| ID | 测试 | 验证重点 | 阶段 | 已有的测试 |
+| --- | --- | --- | --- | --- |
+| T01 | 中文单语语料 | 全拼、整句、同音词、简拼 | P1 | 只有 rime 主机检查中的几项（T01-S2）；没有语料 |
+| T02 | 英文单语语料 | 预测、纠错、大小写 | P1 | 只有英文主机测试的 13 项（S4）；没有语料 |
+| T03 | 日文单语语料 | 罗马字、整句、文节 | P1 | 只有 Mozc 主机测试的 7 项；没有语料 |
+| T04 | 混合词级语料 | §2.3 的示例、原语言优先、`ai` | P1 | 无 |
+| T05 | 拼音 → 日文 | §5.9 的样本与反例 | P2 | 词库层面：`tests/lexicon/samples.tsv`（S5） |
+| T06 | 英文 → 日文 | 外来语、语义词、音译的排序 | P2 | 同上 |
+| T07 | 整句混合 | §13.2 | P2 | 无 |
+| T08 | 模糊音与纠错 | 声母、韵母、罗马字变体、长音与促音、误触、连续输入中的拼写错误 | P2 | 分支上的主机检查（z/zh） |
+| T09 | 局部修改 | 锁定、重算、撤销、恢复原始输入 | P2 | 无 |
+| T10 | 排序与学习 | 原语言优先、词频、词库优先级、Emoji、歧义、语言偏好、衰减 | P2 | 无 |
+| T11 | 简繁与地区用词 | 网络/網路、软件/軟體 等 | P1、P3 | rime 主机检查 |
+| T12 | 隐私 | 敏感输入框、无学习标记、无痕模式、日志不含输入内容、敏感剪贴 | P1 | rime 主机检查（T12-S2）、剪贴板单元测试；应用侧的敏感输入框判定没有测试 |
+| T13 | 输入框适配 | §8.7 的各类输入框 | P1 | `FieldsTest` |
+| T14 | 交互与适配 | 竖屏、横屏、分离式、单手、平板、折叠与展开切换、半折叠、分屏、输入框切换、长按、剪贴板、主题、Emoji 包、备份与恢复 | P1–P4 | `PostureTest`、`LayoutTest`；rime 主机检查中的候选详情 |
+| T15 | 性能 | 快速连续打字、长句、多词库、低端设备内存、冷启动、候选刷新、频繁切换 App、后台恢复、长时间稳定 | P0–P5 | 诊断页的延迟探针（S1 的数字） |
+| T16 | 日语变形与敬语 | 每个活用型 | P3 | 无 |
+| T17 | 词库导入 | 校验、冲突、回滚、LLM 词库低优先级 | P3 | rime 主机检查（T17-rime）；分支上的 31 个词库测试 |
+| T18 | AI | 前台限制、不支持的设备、预览与确认、敏感输入框禁用 | P4 | `GenAiTest`（2 项） |
+| T19 | 备份与同步 | 往返、冲突、恢复前关闭自动同步 | P4 | 无 |
 
 ### 13.2 整句与跨语言验收用例（草案 §19.1）
 
@@ -816,17 +940,18 @@ P0 技术验证与工具链
 | T06-001 | 混合 | `computer` | コンピューター | 前 3 |
 | T06-002 | 混合 | `coffee` | コーヒー | 前 3 |
 | T07-001 | 混合 | `chidai ni kai ni ikou` | 池袋に買いに行こう | 首个整句候选 |
-| T07-002 | 混合 | `chidai nikainiikou` | 池袋に買いに行こう | 前 3（草案 §3.4、§19.1 写作 `chida`，为笔误） |
+| T07-002 | 混合 | `chidai nikainiikou` | 池袋に買いに行こう | 前 3（草案写作 `chida`，为笔误） |
 | T07-003 | 混合 | `chidainikainiikou` | 池袋に買いに行こう | 前 3 |
 | T07-004 | 混合 | `zailiucard` | 在留カード | 前 3 |
 | T07-005 | 混合 | `chocolateokainiikou` | チョコレートを買いに行こう | 前 3 |
 
-每个用例都配有反例，例如 `nihao` 在混合模式中不以日文结果为首选，`coffee` 不以拼音拆分为首选。
+每个用例都配有反例，例如 `nihao` 在混合模式中不以日文结果为首选，`coffee` 不以拼音拆分为首选。已知差距：T03-001 在 Mozc 的普通会话中得到「私羽日本人」（§5.4 的助词规则）。
 
 ### 13.3 语料格式
 
-- 一个用例一行（TSV）：`id`、`mode`、`context`（光标前文本，可为空）、`input`、`expected`（多个可接受结果用 `|` 分隔）、`rank`（`1`、`3`、`5`）、`notes`；以 `!` 开头的期望表示"不得出现在前 N 名"。
+- 位置 `tests/conversion/`（尚不存在）。一个用例一行（TSV）：`id`、`mode`、`context`（光标前文本，可为空）、`input`、`expected`（多个可接受结果用 `|` 分隔）、`rank`（`1`、`3`、`5`）、`notes`；以 `!` 开头的期望表示"不得出现在前 N 名"。
 - 主机端与真机端使用同一份语料；运行器输出每一行的名次，并与上一次运行比较，按行报告回退。
+- 每个修复的转换错误加一行；每项能力都有正例和反例；不为单条用例调引擎，改动前后都跑整份语料。
 
 ### 13.4 性能目标与测量（草案 §17.1）
 
@@ -841,14 +966,18 @@ P0 技术验证与工具链
 | AI 推理 | 不阻塞键盘 | 推理期间的按键延迟 |
 | 离线输入 | 完整可用 | 飞行模式下运行全部单语与混合语料 |
 
-此外在 P0 建立基线、在后续阶段持续记录：输入法冷启动到首帧、空闲与打字时的内存（PSS，至少在一台 Android 17 设备上测量，因为它按设备内存设定应用的内存上限）、每个 ABI 的 APK 体积、librime 部署时间、Mozc 数据加载时间。除首批候选外的数值目标在基线之后以 ADR 设定，不预先编造。
+此外持续记录：输入法冷启动到首帧、空闲与打字时的内存（PSS，至少在一台 Android 17 设备上测量）、每个 ABI 的 APK 体积、librime 部署时间、Mozc 数据加载时间。除首批候选外的数值目标在基线之后以 ADR 设定，不预先编造。
 
-参考设备：一台中端设备（P0 选定并记录型号）、一台低端设备（≤ 4 GB 内存）、一台支持 Gemini Nano 的设备、一台折叠屏、一台平板（模拟器可以补充尺寸覆盖，但折叠切换以真机为准）；模拟器只用于功能验证。
+已有的基线只有 S1（§7）：首批候选 p95 120–130 ms，高于目标。含 Mozc 的体积与内存、部署时间都还没有数字。
+
+参考设备：一台中端设备、一台低端设备（≤ 4 GB 内存）、一台支持 Gemini Nano 的设备、一台折叠屏、一台平板。目前唯一的测试机是用户的 Galaxy Z Fold（Android 17），它是旗舰，不能代表中端与低端；其他设备的来源未定。模拟器只用于功能验证，而开发机上没有模拟器。
 
 ### 13.5 验证方法
 
-- 主机端：`core/` 单元测试与全部转换语料，在每次改动 `core/`、`lexicon/`、`third_party/` 或 `patches/` 时于 CI 运行。
-- 真机端：插桩测试向测试 App 输入；Macrobenchmark 测延迟；30 分钟连续输入脚本、100 次键盘显示与隐藏、频繁切换 App 检查稳定性与内存增长。
+- 主机端：各引擎桥接的主机测试与全部转换语料，在每次改动 `core/`、`lexicon/`、`third_party/` 或 `patches/` 时运行（有 CI 时在 CI 上）。
+- 应用逻辑：JVM 单元测试（`./gradlew check`）。
+- 真机端（目标）：插桩测试向测试 App 输入；Macrobenchmark 测延迟；30 分钟连续输入脚本、100 次键盘显示与隐藏、频繁切换 App 检查稳定性与内存增长。
+- 真机端（现在可行的，§2.5 决定 8）：诊断页的自检与延迟探针，加上 `tests/device/` 的检查清单，由用户按屏幕所见逐条回报；需要计时或日志的结论另记，绝不代填。
 - 截图用于界面验证，不能代替行为断言；模拟器结果不作为延迟、内存与 AI 的证据。
 
 ### 13.6 每次验收报告模板
@@ -870,10 +999,10 @@ Next blocking issue:
 ## 14. 隐私与安全（草案 §17.2）
 
 - 默认不上传输入内容，不上传用户词库；没有分析与广告 SDK；崩溃信息中不含输入内容。
-- 敏感输入：密码类输入（`TYPE_TEXT_VARIATION_PASSWORD`、`TYPE_TEXT_VARIATION_VISIBLE_PASSWORD`、`TYPE_TEXT_VARIATION_WEB_PASSWORD`、`TYPE_NUMBER_VARIATION_PASSWORD`）、带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框（平台只把它当作请求，Kotomo 当作硬约束）、标记为敏感的剪贴内容与无痕模式下，不学习、不记录历史、不记录剪贴板、不调用 AI、不显示个性化预测；librime 与 Mozc 自身的学习同样关闭（S2、S3 确认方式）。
+- 敏感输入：密码类输入（`TYPE_TEXT_VARIATION_PASSWORD`、`TYPE_TEXT_VARIATION_VISIBLE_PASSWORD`、`TYPE_TEXT_VARIATION_WEB_PASSWORD`、`TYPE_NUMBER_VARIATION_PASSWORD`）、带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框（平台只把它当作请求，Kotomo 当作硬约束）、标记为敏感的剪贴内容与无痕模式下，不学习、不记录历史、不记录剪贴板、不调用 AI、不显示个性化预测；librime 与 Mozc 自身的学习同样关闭（做法见 `doc/en-us/upstream.md`）。
 - 本地数据（用户词库、学习记录、剪贴板）加密存储，密钥在 Android Keystore 中；用户可以清除全部学习数据。
 - 日志不记录输入内容、候选、剪贴板与提示词，只记录长度与耗时；release 构建去掉调试日志。
-- 网络：P1–P2 不声明 `INTERNET` 权限（本计划补充）；第一个需要网络的功能（P3 在线词库或 P4 模型下载）加入时由用户确认，并写入隐私政策。在线 AI 与同步必须显式开启；在线词库验证完整性与来源。
+- 网络：P1–P2 不需要网络（本计划补充）；第一个需要网络的功能（在线词库或模型下载）加入时由用户确认，并写入隐私政策。在线 AI 与同步必须显式开启；在线词库验证完整性与来源。
 - 除 ML Kit 外不引入会联网或收集数据的 SDK；ML Kit 的数据处理条款在 S8 核实并写入隐私政策。
 - 备份可加密；同步默认不包含剪贴板与历史数据。
 - 通知读取（验证码）默认关闭，只在用户授权后使用；不保存通知原文，不上传，不用于学习；随时可在设置中关闭并引导用户撤销系统权限（§10.7）。
@@ -882,21 +1011,21 @@ Next blocking issue:
 
 ### 15.1 许可证策略
 
-- Kotomo 默认 GPL-3.0（§2.5）。与之兼容、可以组合的上游许可证包括：BSD-3-Clause（librime、Mozc）、Apache-2.0（OpenCC、AOSP LatinIME）、LGPL-2.1-or-later（fcitx5-android）、GPL-3.0（Trime、HeliBoard、rime-ice）、Unicode License v3（Unihan、CLDR）、CC BY 4.0，以及单向兼容 GPLv3 的 CC BY-SA 4.0（JMdict 等，依据 FSF 的许可证列表）。打包 GPL-3.0-only 的数据（如 rime-ice）会使整个发行版实际上只能以 GPL-3.0 发布。
-- 不采用：许可证不明或不允许再分发的代码与数据（包括无许可声明的抓取词库）、未经授权的 Apple Emoji 图像、商业输入法的词库与素材。用户可以导入自己提供的词库文件，但应用不分发来源不明的词库。
+- Kotomo 为 GPL-3.0。与之兼容、可以组合的上游许可证包括：BSD-3-Clause（librime、Mozc）、Apache-2.0（OpenCC、AOSP LatinIME）、LGPL-2.1-or-later（fcitx5-android）、LGPL-3.0（rime-luna-pinyin 等）、GPL-3.0（Trime、HeliBoard、rime-ice）、Unicode License v3（Unihan、CLDR）、CC BY 4.0，以及单向兼容 GPLv3 的 CC BY-SA 4.0（JMdict、CC-CEDICT 等）。打包 GPL-3.0-only 的数据（如 rime-ice）会使整个发行版实际上只能以 GPL-3.0 发布。
+- 不采用：许可证不明或不允许再分发的代码与数据（包括无许可声明的抓取词库）、仅限 GPL-2.0 或 CC BY-SA 3.0 的数据、未经授权的 Apple Emoji 图像、商业输入法的词库与素材。用户可以导入自己提供的词库文件，但应用不分发来源不明的词库。
 - 每个随应用分发的组件都在 `doc/en-us/third-party.md`（版本、来源、许可证、修改、义务）、`THIRD_PARTY_NOTICES.md` 和应用内的许可证页面中各有一条；生成的词库保留其来源数据的许可证与署名。
-- JMdict 等 EDRDG 数据：在"关于与致谢"中、从菜单进入的独立来源页上署名，并链接其许可与文档（只在启动页提及不够）；按上游版本规则定期更新数据（§3.3）。
+- JMdict 等 EDRDG 数据：在"关于与致谢"中、从菜单进入的独立来源页上署名，并链接其许可与文档（只在启动页提及不够）；按上游版本规则定期更新数据。
 
 ### 15.2 设计参考与致谢（草案 §21.1–§21.3）
 
 - **特别致谢：玛嗒玛嗒输入法（Madamada）及其开发者。** 它为中文用户学习和输入日语所做的设计，是 Kotomo 日语输入部分的重要参考，特别包括：中文拼音直接输入日语汉字、英文直接输入日语片假名、中文拼音、英文与日语罗马字混合连打、整句连续输入与转换、候选词读音标注、日语动词变形、敬语切换、分类日语词库、自动生词本、城市主题与个性化键盘。Kotomo 明确说明这些功能设计受 Madamada 启发；借鉴交互理念不代表可以使用其代码、词库、图像和其他受保护的资源。官方名称：玛嗒玛嗒（繁体 瑪嗒瑪嗒，日文 マダマダ，英文 Madamada），官网 <https://madamada.catchingnow.com/>；目前是 iOS/iPadOS 应用（也兼容 Mac 与 visionOS），没有 Android 版本，也没有开源（2026-11-04 核实）。
 - 其他参考输入法：[Gboard](https://play.google.com/store/apps/details?id=com.google.android.inputmethod.latin)（键盘布局、触控操作、候选栏、多语言、Emoji、滑动输入、输入框适配）；[微软拼音](https://support.microsoft.com/windows/microsoft-simplified-chinese-ime-9b962a3b-2fa4-4f37-811c-b1886320dd72)（模糊音、长句转换、词频学习、双拼、U/V 模式、拼音纠错）；[搜狗输入法](https://shurufa.sogou.com/)（智能联想、长句输入、按键纠错、词库管理、用户造词、候选操作、键盘皮肤）；[Microsoft SwiftKey](https://www.microsoft.com/swiftkey)（个性化预测、英文纠错、多语言预测、智能空格、剪贴板、输入手势）；[Google 日本語入力](https://www.google.co.jp/ime/) / [Mozc](https://github.com/google/mozc)（罗马字转换、假名汉字转换、日语长句输入、文节转换、日语词典与预测）。
-- 开源项目：实际使用时按许可证致谢并保留版权声明，重点为 Rime/librime、Mozc、Fcitx5 for Android、OpenCC、Noto Emoji、Twemoji，以及实际使用的其他词库与工具。Telegram 只作为 Emoji 独立渲染架构的参考，不据此推定 Apple Emoji 素材可以使用。
+- 开源项目：实际使用时按许可证致谢并保留版权声明，重点为 Rime/librime、Mozc、Fcitx5 for Android、OpenCC、HeliBoard / AOSP LatinIME、Noto Emoji、Twemoji，以及实际使用的其他词库与工具。Telegram 只作为 Emoji 独立渲染架构的参考，不据此推定 Apple Emoji 素材可以使用。
 - 措辞：不得暗示参考项目或其开发者对 Kotomo 进行了官方认可、合作或授权。只参考交互设计的项目使用设计致谢；实际使用的代码与素材另行提供许可证与版权声明。
 
 ### 15.3 致谢的落地（草案 §21.4）
 
-1. README 中的 Acknowledgements 章节（已建立）。
+1. README 中的 Acknowledgements 章节。
 2. 应用设置中的"关于与致谢"页面。
 3. 开源许可证页面。
 4. 第三方依赖及其版权信息。
@@ -906,19 +1035,20 @@ Next blocking issue:
 
 ## 16. 风险、决策与停止条件
 
-| 风险 | 优先级 | 缩小风险的行动 | 触发后的处理 |
+| 风险 | 优先级 | 现状与缩小风险的行动 | 触发后的处理 |
 | --- | --- | --- | --- |
-| 跨语言整句与 Mozc、librime 的衔接做不到（固定片段、调用深度） | 最高 | S3、S6 提前验证；§5.4 的退路 | 按退路实现并写 ADR；不降低 §13.2 的要求，只调整手段 |
+| 跨语言整句与 Mozc、librime 的衔接 | 最高 | 固定片段转换已在主机上证明可行（S3）；剩下的是协调层在设备上如何调用三个引擎（§2.5 决定 1）与助词处理（§5.4） | 按 §5.4 的退路实现并写 ADR；不降低 §13.2 的要求，只调整手段 |
 | 混合模式的语言歧义（`change`、`hang`、`kai` 等） | 最高 | 语料中大量歧义用例；频率校准；切换代价 | 收紧"积极"档；默认档更保守 |
-| 中低端设备上首批候选达不到 50 ms | 高 | S1–S4 基线；两阶段候选；增量解析 | 缩小第一阶段的内容，绝不阻塞主线程 |
-| APK 体积与内存（librime + Mozc + LatinIME + 词库；Android 17 按设备内存限制应用内存） | 高 | P0 测量；词库可按需下载 | 拆分可下载的数据包；ADR |
-| Mozc 的 Bazel 构建难以融入 Gradle 与 CI，且不支持 Windows 主机 | 高 | S3 先做独立脚本与缓存 | 预构建产物加锁定哈希 |
-| ML Kit GenAI 在输入法中被前台限制拒绝（已有开发者报告） | 高 | 默认在 Kotomo 的前台界面中推理；S7 复核 | 前台界面也不可行时，AI 只在设置应用中提供；不以在线 AI 代替 |
+| 首批候选达不到 50 ms | 高 | S1 实测：按键 → 候选绘制 p95 为 120–130 ms（Galaxy Z Fold，release），**尚未达标**；两阶段候选与增量解析还没有实现 | 缩小第一阶段的内容，绝不阻塞主线程；差距与原因写入 platform-notes |
+| APK 体积与内存（librime + Mozc + LatinIME + 词库；Android 17 按设备内存限制应用内存） | 高 | 进程内存 61–80 MB（S1，不含 Mozc）；含 Mozc 的体积与内存未测 | 拆分可下载的数据包；ADR |
+| Mozc 的 Android 库只能在 x86_64 Linux 或 macOS 上构建，原 CI 与产物已删除 | 高 | §0.3 Q0 重新取得构建途径 | 没有途径时日文模式在 APK 中不可用，如实标注，不发布 |
+| ML Kit GenAI 在输入法中被前台限制拒绝（已有开发者报告） | 高 | 默认在 Kotomo 的前台界面中推理（已实现，未在真机验证）；S7 复核 | 前台界面也不可行时，AI 只在设置应用中提供；不以在线 AI 代替 |
 | 词库与数据的许可证不清 | 高 | S8 | 不采用；寻找替代或自建 |
+| 没有 CI、没有模拟器、测试机没有 adb | 高 | 主机测试与诊断页自检承担验证；真机结论只来自用户按清单回报 | 无法取得证据的关卡保持 NOT_RUN，不代填 |
 | 日中释义、JLPT 分类、车站名等数据缺口 | 中 | S8 列出缺口 | 功能延后或由用户导入 |
-| 跨语言词库的错误映射（同形异义、日本国字） | 中 | 样本复核与反例 | 降权或移除；用户可以屏蔽 |
+| 跨语言词库的错误映射（同形异义、日本国字） | 中 | 样本复核与反例（S5：34/34，反例 0/8） | 降权或移除；用户可以屏蔽 |
 | 厂商系统上的输入法兼容问题 | 中 | P5 兼容性测试 | 兼容模式 |
-| Android 剪贴板的限制与自动清除 | 中 | §3.2 | 使用自有历史，并在界面中说明 |
+| Android 剪贴板的限制与自动清除 | 中 | 已用自有加密历史 | 在界面中说明 |
 | 没有成熟的开源滑动输入解码器 | 低 | 关注 §3.1 的开源项目 | 后置到 P5 |
 
 ### 必须停止该依赖链的情形
@@ -931,28 +1061,18 @@ Next blocking issue:
 
 停止的是受影响的依赖链，不是整个项目。继续可以独立完成的工作，并写出最小的阻塞报告。
 
-## 17. 构建与命令接口契约
+## 17. 构建与命令
 
-下面是**待实现的目标接口**，P0 起逐步实现。名称可以按仓库风格调整，但文档、脚本与 CI 必须一致。
+现有命令以 `doc/en-us/development.md` 为准（文档检查、Gradle、词库与 Emoji 生成器、各引擎的主机测试、上游脚本）。下面只列**计划要求、但还不存在或已经失效**的接口；名称可以按仓库风格调整，文档、脚本与 CI 必须一致。
 
-```bash
-# 文档镜像与链接检查（已存在）
-java tool/CheckDocs.java
-
-# Android 构建与检查
-./gradlew assembleDebug
-./gradlew check              # 单元测试与 lint
-./gradlew connectedCheck     # 真机或模拟器上的插桩测试
-
-# 上游与词库
-scripts/build-mozc.sh --abi arm64-v8a   # 在 Linux/macOS 主机或 CI 上运行
-scripts/build-lexicon.sh                # 源数据 → 运行时词库，记录来源与哈希
-
-# 主机端引擎测试与转换语料
-cmake -S core -B build/host && cmake --build build/host
-ctest --test-dir build/host
-build/host/kotomo-corpus tests/conversion/   # 输出每行的名次，与上一次运行比较
-```
+| 接口 | 现状 | 归属 |
+| --- | --- | --- |
+| 转换语料运行器（主机）：读 `tests/conversion/`，输出每行的名次，并与上一次运行比较 | 不存在；`tests/conversion/` 也不存在 | Q2 |
+| 一条命令跑完全部主机测试 | 不存在：`core/CMakeLists.txt` 只含 rime 与 english，只有 rime 注册了 ctest；Mozc 走 Bazel，英文走 `run-host.sh` | Q2 |
+| 取得 Mozc 的 Android 库 | `scripts/fetch-mozc.sh` 指向已删除仓库的 CI 产物，已失效；`scripts/build-mozc.sh --abi arm64-v8a` 只能在 x86_64 Linux 或 macOS 上运行，且没有脚本把产物放进应用期望的 `build/mozc-prebuilt/` | Q0 |
+| `./gradlew connectedCheck`（插桩测试）与 Macrobenchmark | 没有 `androidTest`；测试机没有 adb | 待定（§2.5 决定 8） |
+| CI 中运行主机测试 | 原 `build.yml` 从不运行 rime ctest、英文主机测试与 `CheckSamples` | Q0 |
+| 上游补丁目录 `patches/<upstream>/` | 不存在，目前也不需要：对上游的调整全部在 Kotomo 自己的构建文件里（自写的 CMake 目标清单、`stage-data.cmake`、`*.custom.yaml`、Bazel 的 `--nocheck_visibility`）。第一份真正的补丁出现时再建目录 | — |
 
 脚本要求：
 
@@ -962,21 +1082,13 @@ build/host/kotomo-corpus tests/conversion/   # 输出每行的名次，与上一
 
 ## 18. 提交粒度与最终交付清单
 
-### 建议提交顺序（P0）
-
-1. `build: Gradle project, toolchain lock and CI`
-2. `ime: input method service skeleton and latency probe (S1)`
-3. `rime: build librime for Android and bridge it (S2)`
-4. `mozc: build Mozc and the converter glue (S3)`
-5. `english: LatinIME native suggestions and dictionary (S4)`
-6. `lexicon: cross-language lexicon prototype (S5)`
-7. `core: mixed lattice prototype on the host (S6)`
-8. `ai: Gemini Nano from the input method (S7)`
-9. `docs: P0 results, license audit and the engine contract (S8)`
-
-每个提交附上对应的测试结果；允许为修复和实验拆成更小的提交。不在同一个提交中混入上游移动、整体重构与新行为。
+- 一个提交一项能力，附上对应的测试结果；允许为修复和实验拆成更小的提交。不在同一个提交中混入上游移动、整体重构与新行为。
+- 未合并分支上的工作按能力拆成独立提交合入 `main`，每个提交都通过验证；不把无法编译的状态合入。
+- 文档（`doc/` 两种语言、`functions/INDEX.md`、需要时的 `PRIVACY_POLICY.md`）与代码在同一个提交中更新；本计划的 §0 在每次暂停或完成一个队列项时更新。
 
 ### 最终完成清单（草案 §22）
+
+每一项只有在真机上按 §13 验证之后才勾选；目前没有任何一项达到这一标准（§0.1）。
 
 - [ ] 中文、英文、日语均可正常离线输入。
 - [ ] 提供中文、英文、日文、混合四种输入模式。
@@ -1008,18 +1120,9 @@ build/host/kotomo-corpus tests/conversion/   # 输出每行的名次，与上一
 
 只完成部分关卡时，按层级交付可用成果和阻塞报告，不勾选整项。
 
-## 19. 首次工作会话应立即完成的事情
-
-1. 阅读 `AGENTS.md` 与本计划，记录工作树状态与已配置的远程仓库。
-2. 选定并锁定工具链，创建 Gradle 工程与 CI。
-3. S1：输入法骨架与延迟基线（真机）。
-4. S2、S3、S4：librime、Mozc 与英文引擎的最小闭环（先在主机上打通，再上真机）。
-5. 建立转换语料文件与运行器，先放入 §13.2 的用例。
-6. 汇报实际改动、执行的命令、各项结果与下一项具体阻塞；随后按依赖图继续。
-
-**第一轮优先交付两个独立的证据：librime 与 Mozc 确实能在 Android 真机上经 JNI 工作；混合整句原型确实能在主机上对 §13.2 的用例给出可检验的结果。** 其余功能都建立在这两项证据之上。
-
 ## 附录 A：草案章节对应
+
+来源是用户的《Android 中英日三语言智能输入法 完整项目开发计划草案》Draft 2.0。本计划保留草案的全部需求；标注"（本计划补充）"的条目不在草案中。
 
 | 草案 | 本计划 |
 | --- | --- |
