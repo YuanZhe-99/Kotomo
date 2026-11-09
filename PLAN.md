@@ -41,11 +41,7 @@
 ### 0.2 仓库、分支与环境
 
 - 远端：只有私有 Gitea（`origin`）。项目于 2026-11-04 停止并归档，公开的 GitHub 仓库连同 CI 运行记录、产物（含预编译的 Mozc 库）、仓库机密与 Releases 一起删除；`.github/` 下的工作流文件还在，没有可运行它们的仓库。
-- 分支：
-  - `main`：P1 的代码（`21cd65c`）加其后的文档与设计稿提交。
-  - `p2/fuzzy-app-side`：模糊音，一个提交，是下一个分支的严格子集；读代码判断可以编译，未构建。
-  - `wip/paused-2026-11-04`：一个提交，**无法编译**，含模糊音、词库系统应用侧、S6 的接口草稿与 Mozc 行服务。不整体合入：按能力拆开（Q3、Q4）。
-  - 两个分支各自都能干净地合入 `main`；先合模糊音、再合词库时，`KotomoService.kt` 有一处相邻行冲突，手工可解。
+- 分支：`main` 是 P1 的代码（`21cd65c`）加其后的文档与设计稿提交。另有两个未合并的分支，处置见下面的"未合并的分支"。
 - 开发机上的工作目录是 2026-11-09 重新克隆的，除了源码什么都没有：子模块未初始化；没有 `local.properties`、`.deps/`、构建产物、`key.properties`、`.dev/`。
 - 不在仓库中的东西：
 
@@ -58,6 +54,41 @@
 | P1 真机检查结果 | 没有记录 | Q2 交付新的 APK 与清单 |
 | 附录 B 提示词的应用内副本 | 不存在 | 需要时用脚本从附录 B 复制，不读取、不打印 |
 | 设计稿 | 已固化到 `design/`（入口 `design/index.html`） | 以仓库中的文件为准 |
+
+**未合并的分支：保留，内容落到 `main` 之后再删。** 两个分支各只有一个提交，都从 `21cd65c` 分出；此后 `main` 上只动过文档、设计稿与真机清单，分支下面的代码没有变过（2026-11-09 用 git 核对）。它们是约 3100 行未合并工作的唯一副本，其中词库应用侧约 2700 行、31 个测试，核对结论是值得修、不必重写（§10.5），所以现在不删；也不能直接合入，因为没有一行构建过，而 `main` 只收通过验证的提交（§18）。
+
+| 分支 | 内容 | 状态 | 去向 |
+| --- | --- | --- | --- |
+| `p2/fuzzy-app-side`（`9590481`） | 模糊音的引擎侧与应用侧，12 个文件、222 行 | 读代码判断可以编译，未构建 | Q3 第一步，§9.6 的合入清单 |
+| `wip/paused-2026-11-04`（`0be66bf`） | 上一个分支的全部内容，加词库系统应用侧（16 个文件）和 S6 的草稿（3 个文件） | **无法编译** | 不整体合入：词库部分在 Q3 第二步（§10.5），S6 部分在 Q4（§7） |
+
+两个分支的关系：WIP 分支等于模糊音分支加上纯新增的内容。两者只有 `KotomoService.kt` 与 `Settings.kt` 两个共有文件不同，WIP 在其中各多 14 行词库代码，没有删改。因此：
+
+- 模糊音从 `p2/fuzzy-app-side` 取。这个分支是从 WIP 手工拆出来的（那两个文件去掉了词库代码），删掉它等于丢掉这次拆分。
+- 词库部分在模糊音落到 `main` 之后，按路径从 WIP 取文件，不要用 `git merge`：合并会在 `KotomoService.kt` 报一处相邻行冲突，而直接取 WIP 的版本没有冲突，因为它已经包含模糊音的改动。取之前先确认模糊音合入时没有再改这两个文件，否则手工并入那 14 行。
+
+```bash
+# Q3 第二步：词库系统应用侧（在已含模糊音的 main 之上）
+git checkout origin/wip/paused-2026-11-04 -- \
+  app/src/main/java/com/yuanzhe/kotomo/dictionary \
+  app/src/main/java/com/yuanzhe/kotomo/settings/Dictionaries.kt \
+  app/src/main/java/com/yuanzhe/kotomo/settings/Settings.kt \
+  app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt \
+  app/src/main/res/values/strings.xml app/src/main/res/values-ja/strings.xml \
+  app/src/main/res/values-zh-rCN/strings.xml app/src/main/res/values-zh-rTW/strings.xml \
+  app/src/test/java/com/yuanzhe/kotomo/dictionary app/src/test/resources/dictionary
+
+# Q4：S6 的草稿
+git checkout origin/wip/paused-2026-11-04 -- \
+  core/mixed/mixed.h core/mozc/BUILD.bazel core/mozc/tools/kotomo_mozc_server.cc
+```
+
+删除规则（删除远端分支不可恢复，这是唯一的副本）：
+
+- `p2/fuzzy-app-side`：模糊音在 `main` 上通过验证并推送之后删除。
+- `wip/paused-2026-11-04`：词库部分与 S6 部分都落到 `main` 之后删除；删除前运行 `git diff main origin/wip/paused-2026-11-04 --stat`，确认剩下的差异只是 `main` 上后来的改动，没有遗漏的文件。
+- 如果决定放弃其中某项能力（例如不做词库系统），由用户决定后再删，并在本节记下放弃的是什么。
+- 不在这两个分支上继续开发；新的工作从 `main` 开分支。
 
 ### 0.3 工作队列
 
@@ -92,7 +123,7 @@
 **Q3 合入未完成分支上的两项能力。** 依赖 Q0；与 Q2 互不依赖。
 
 - 模糊音（§9.6 的合入清单）。
-- 词库系统应用侧（§10.5 的合入清单），在模糊音之后变基。
+- 词库系统应用侧（§10.5 的合入清单），在模糊音之后按路径从 WIP 分支取文件（§0.2）。
 
 **Q4 S6：协调层的主机原型、契约与 ADR。** 依赖 Q2 的语料；设备侧的方案依赖决定 4。
 
