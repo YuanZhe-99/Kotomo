@@ -39,12 +39,12 @@
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Rime.kt` | `libkotomo_rime.so` 的 Kotlin 外观（只在引擎线程上调用） | `initialize`、`deploy`、`processKey`、`setLearning` |
 | `scripts/fetch-boost.sh` | 下载并校验 librime 需要的 Boost 头文件 | — |
 | `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换与固定片段转换、JNI、主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`tests/kotomo_mozc_test.cc` |
-| `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | `libkotomo_mozc.so` 的 Kotlin 外观（Android 库生成前应用不使用它） | `sessionConvert`、`pinnedConvert` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | `libkotomo_mozc.so` 的 Kotlin 外观（APK 中带有该库及其数据时，日文模式调用 `sessionConvert`；`pinnedConvert` 尚无调用方） | `sessionConvert`、`pinnedConvert` |
 | `scripts/build-mozc.sh` | 为主机或 Android ABI 构建 Mozc 与胶水层（Android 需要 x86_64 Linux 或 macOS） | `--abi` |
 | `.github/workflows/mozc.yml` | CI：主机测试，以及带哈希清单的 Android Mozc 库产物 | `mozc` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | 在独立进程中把 librime 部署到暂存目录、`filesDir/rime` 下的文件布局、构建的换入与部署报告 | `RimeDeployService`、`RimeFiles.promote` |
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
-| `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定 | — |
+| `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定；该运行已于 2026-11-04 随 GitHub 仓库删除，指向新的构建之前它下载不到任何东西 | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的工具栏快捷设置：单手方向、分离布局、简繁、无痕、设置应用 | `QuickPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | 通过 ML Kit GenAI 用 Gemini Nano 校对与改写（[ai.md](../ai.md)）：状态、由用户发起的下载、长文字拆分、错误映射 | `GenAi`、`AiAction`、`AiFailure` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`、`AiHandoff.kt` | 写作助手页面（语言、操作、建议、替换、复制）及其与键盘之间的内存交接 | `AiActivity`、`AiHandoff`、`AiRequest` |

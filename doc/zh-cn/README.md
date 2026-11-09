@@ -22,15 +22,15 @@ librime（中文）、Mozc（日文）、AOSP LatinIME 的建议引擎（英文�
 
 ## 上游版本
 
-Kotomo 跟随每个上游的最新发行版，并以提交号锁定；P0 创建 `build-lock.json` 后，由它记录每次构建实际使用的版本。下表为
-最近一次检查（2026-11-04）时的最新版本；目前还没有构建任何东西。
+Kotomo 跟随每个上游的最新发行版，并以提交号锁定；`build-lock.json` 记录每次构建实际使用的版本。下表为
+最近一次检查（2026-11-04）时的最新版本。
 
 | 组件 | 策略 | 最近检查时的最新版本 |
 |---|---|---|
 | librime | 最新 GitHub 发行版 | 1.17.0 |
 | Mozc | 最新标签（Mozc 不发布 GitHub Releases） | 3.35.6354 |
 | OpenCC | 最新 GitHub 发行版 | 1.4.2 |
-| 英文引擎：AOSP LatinIME 原生代码或 HeliBoard 维护的版本 | 最新；来源在技术验证 S4 中选定 | AOSP `main`（2025-02-26）；HeliBoard 4.2 |
+| 英文引擎：HeliBoard 维护的 AOSP LatinIME 原生代码 | HeliBoard 的最新发行版 | HeliBoard 4.2 |
 | Android 平台 | 最新稳定 API 作为 `compileSdk` 与 `targetSdk` | API 37（Android 17） |
 | Android Gradle Plugin、Gradle、Kotlin、NDK | 最新稳定版 | 9.5.0、9.8.2、2.4.21、r30（30.0.16248370） |
 | Compose BOM、Room、DataStore | 最新稳定版 | 2026.09.00、2.8.5、1.3.0 |

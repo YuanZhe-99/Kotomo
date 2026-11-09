@@ -25,16 +25,15 @@ settings app; a C++ engine reached through JNI carries the mixed-input coordinat
 
 ## Upstream versions
 
-Kotomo follows the latest release of each upstream, pinned by commit; once P0 creates
-`build-lock.json`, it records what each build used. The table shows the latest version at the last
-check (2026-11-04); nothing has been built yet.
+Kotomo follows the latest release of each upstream, pinned by commit; `build-lock.json` records
+what each build used. The table shows the latest version at the last check (2026-11-04).
 
 | Component | Policy | Latest at last check |
 |---|---|---|
 | librime | latest GitHub release | 1.17.0 |
 | Mozc | latest tag (Mozc publishes no GitHub releases) | 3.35.6354 |
 | OpenCC | latest GitHub release | 1.4.2 |
-| English engine: AOSP LatinIME native code or HeliBoard's maintained copy | latest; the source is chosen in spike S4 | AOSP `main` of 2025-02-26; HeliBoard 4.2 |
+| English engine: AOSP LatinIME's native code in HeliBoard's maintained copy | latest HeliBoard release | HeliBoard 4.2 |
 | Android platform | newest stable API as `compileSdk` and `targetSdk` | API 37 (Android 17) |
 | Android Gradle Plugin, Gradle, Kotlin, NDK | latest stable | 9.5.0, 9.8.2, 2.4.21, r30 (30.0.16248370) |
 | Compose BOM, Room, DataStore | latest stable | 2026.09.00, 2.8.5, 1.3.0 |

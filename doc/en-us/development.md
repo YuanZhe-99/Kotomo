@@ -36,8 +36,8 @@ Gradle runs on the Windows host (Git Bash or PowerShell), never in WSL; WSL buil
 Mozc for the host. From Git Bash, call WSL with `MSYS_NO_PATHCONV=1` so paths under `/mnt/c` are
 passed unchanged, and put multi-line commands in a script.
 
-The host engine tests and the conversion corpus runner join this list with their first code;
-`PLAN.md` §17 lists the intended commands.
+The conversion corpus runner joins this list with its first code; `PLAN.md` §17 lists the
+interfaces the plan asks for that do not exist yet.
 
 ## Release signing
 

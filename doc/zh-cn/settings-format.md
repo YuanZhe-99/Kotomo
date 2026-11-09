@@ -28,6 +28,9 @@
 
 ## 键
 
+键盘目前还不读取 `mixed.level`、各 `mixed.weight_*` 键、`mixed.space`，以及除 `mixed.cross.emoji` 之外的所有
+`mixed.cross.*` 与 `japanese.cross.*` 开关：设置应用保存并显示它们，混合协调层完成后才生效。
+
 | 键 | 类型 | 默认值 | 设置 |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | 键盘启动时的模式：`mixed`、`chinese`、`japanese`、`english` |

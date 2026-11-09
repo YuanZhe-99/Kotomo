@@ -33,7 +33,7 @@ cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime 
 Gradle 在 Windows 主机上运行（Git Bash 或 PowerShell），不在 WSL 中运行；WSL 只用于在主机上构建 librime 和
 Mozc。从 Git Bash 调用 WSL 时加上 `MSYS_NO_PATHCONV=1`，让 `/mnt/c` 下的路径原样传入；多行命令写成脚本。
 
-主机端引擎测试和转换语料运行器随各自的第一份代码加入此列表；`PLAN.md` §17 列出了计划中的命令。
+转换语料运行器随它的第一份代码加入此列表；`PLAN.md` §17 列出了计划要求、但尚不存在的接口。
 
 ## Release 签名
 

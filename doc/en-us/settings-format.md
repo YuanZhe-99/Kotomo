@@ -33,6 +33,10 @@ app and the keyboard run in the same process and share one `SettingsStore`
 
 ## Keys
 
+The keyboard does not read `mixed.level`, the `mixed.weight_*` keys, `mixed.space`, or any
+`mixed.cross.*` or `japanese.cross.*` switch other than `mixed.cross.emoji` yet: the settings app
+stores and shows them, and they take effect once the mixed coordinator exists.
+
 | Key | Type | Default | Setting |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | Mode the keyboard starts in: `mixed`, `chinese`, `japanese`, `english` |
