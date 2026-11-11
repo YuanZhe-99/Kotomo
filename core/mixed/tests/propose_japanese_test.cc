@@ -63,6 +63,9 @@ int main() {
     Check(sokuon && sokuon->reading == "った" && doubled &&
               doubled->cost == costs.kana + costs.doubled_n,
           "S6-propose-kana-sokuon-and-nn");
+    // Negative: ka + tta is two edges, never one more edge over both.
+    Check(!Find(lattice, EdgeKind::kKana, 0, 4) && !Find(lattice, EdgeKind::kKana, 5, 8),
+          "S6-propose-kana-shortest-spellings");
   }
 
   return kotomo::mixed::test::Result();

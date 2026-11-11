@@ -22,6 +22,18 @@ bool AllKana(std::string_view text) {
   return true;
 }
 
+/// Returns: true when `romaji` is two shorter kana spellings in a row (`kai` = ka + i), so the
+///   lattice already holds it as two edges and one more would only duplicate the path.
+bool Splits(std::string_view romaji, std::string_view kana, Engines& engines) {
+  for (size_t cut = 1; cut < romaji.size(); ++cut) {
+    const std::string head = engines.Hiragana(romaji.substr(0, cut));
+    if (!AllKana(head)) continue;
+    const std::string tail = engines.Hiragana(romaji.substr(cut));
+    if (AllKana(tail) && head + tail == kana) return true;
+  }
+  return false;
+}
+
 bool Vowel(char c) { return c == 'a' || c == 'i' || c == 'u' || c == 'e' || c == 'o'; }
 
 }  // namespace
@@ -39,7 +51,7 @@ void ProposeJapanese(const Input& input, Engines& engines, const Options& option
         continue;
       }
       std::string kana = engines.Hiragana(romaji);
-      if (!AllKana(kana)) continue;
+      if (!AllKana(kana) || Splits(romaji, kana, engines)) continue;
       lattice->Add({.begin = static_cast<uint16_t>(begin),
                     .end = static_cast<uint16_t>(end),
                     .kind = EdgeKind::kKana,

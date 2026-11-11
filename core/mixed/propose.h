@@ -16,9 +16,10 @@ namespace kotomo::mixed {
 /// Side effects: one Engines::Spellings call per position.
 void ProposePinyin(const Input& input, Engines& engines, const Options& options, Lattice* lattice);
 
-/// Adds kKana edges for the romaji Mozc's table maps to kana (one to four letters), and
-/// kParticle edges for wa, o and e after the first position.
-/// Side effects: Engines::Hiragana calls, at most four per position.
+/// Adds kKana edges for the shortest romaji spellings Mozc's table maps to kana (one to four
+/// letters; `kai` is ka + i, not an edge of its own), and kParticle edges for wa, o and e after
+/// the first position.
+/// Side effects: Engines::Hiragana calls, a bounded number per position.
 void ProposeJapanese(const Input& input, Engines& engines, const Options& options,
                      Lattice* lattice);
 
