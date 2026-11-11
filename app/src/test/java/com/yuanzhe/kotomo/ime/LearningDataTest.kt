@@ -22,9 +22,11 @@ class LearningDataTest {
         File(user, "sync").apply { mkdirs(); File(this, "a.txt").writeText("x") }
         File(user, "build").apply { mkdirs(); File(this, "luna_pinyin.prism.bin").writeText("x") }
         File(user, "user.yaml").writeText("x")
+        // The person's dictionaries (PLAN §10.5) are plain-text tables beside the learned data.
+        listOf("custom_phrase.txt", "kotomo_packs.txt", "kotomo_low.txt").forEach { File(user, it).writeText("x") }
         val profile = folder.newFolder("profile").also { File(it, "history.db").writeText("x") }
         LearningData.clearFiles(user, profile)
-        assertEquals(setOf("build", "user.yaml"), user.list()!!.toSet())
+        assertEquals(setOf("build", "user.yaml", "custom_phrase.txt", "kotomo_packs.txt", "kotomo_low.txt"), user.list()!!.toSet())
         assertTrue(File(user, "build/luna_pinyin.prism.bin").isFile)
         assertTrue(profile.isDirectory && profile.list()!!.isEmpty())
     }

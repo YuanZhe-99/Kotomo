@@ -54,7 +54,11 @@ class FuzzySettingsTest {
         withField { scenario ->
             runBlocking { store.update { it.copy(chineseFuzzy = setOf(FuzzyRule.Z_ZH)) } }
             waitFor("the fuzzy build") { files.fuzzy.isFile && files.current }
-            assertEquals("中国", type(scenario, "zongguo"))
+            // The build is current once it is moved in; librime then reopens on the engine thread,
+            // which on the emulator can outlast the settle time, so the first try may come too early.
+            var text = ""
+            repeat(ATTEMPTS) { if (text != "中国") text = type(scenario, "zongguo") }
+            assertEquals("中国", text)
         }
     }
 
@@ -115,5 +119,6 @@ class FuzzySettingsTest {
         const val DEPLOY_MS = 120_000L
         const val POLL_MS = 500L
         const val SETTLE_MS = 1000L
+        const val ATTEMPTS = 3
     }
 }
