@@ -1009,7 +1009,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private class RimeState(val handled: Boolean, val commit: String?, val preedit: String, val candidates: List<Rime.Candidate>)
 
     private fun rimeState(handled: Boolean) = if (rimeReady) {
-        RimeState(handled, Rime.getCommit(), Rime.getComposition(), Rime.getCandidates(CHINESE_CANDIDATES))
+        RimeState(handled, Rime.getCommit(), Rime.getComposition(), Rime.getCandidates(Candidates.CHINESE_LIMIT))
     } else {
         RimeState(false, null, "", emptyList())
     }
@@ -1039,7 +1039,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         rimeCandidates = state.candidates
         val texts = state.candidates.map { it.text }
         val emoji = emojiFor(state.preedit)
-        val at = minOf(EMOJI_POSITION, texts.size)
+        val at = minOf(Candidates.EMOJI_POSITION, texts.size)
         chineseCandidates = withEmoji(texts, emoji)
         rimeIndexes = if (emoji.isEmpty()) state.candidates.indices.toList()
         else (0 until at).toList() + List(chineseCandidates.size - state.candidates.size) { -1 } + (at until state.candidates.size).toList()
@@ -1272,26 +1272,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             main.post {
                 if (gen != generation || segments.isEmpty()) return@post
                 val reading = segments.joinToString("") { it.reading }
-                val firsts = segments.map { s -> s.candidates.firstOrNull()?.value ?: s.reading }
-                val rest = firsts.drop(1).joinToString("")
-                val list = buildList {
-                    add(firsts.joinToString(""))
-                    segments.first().candidates.forEach { add(it.value + rest) }
-                    add(reading)
-                    add(toKatakana(reading))
-                }.distinct()
                 japaneseReading = reading
                 currentInputConnection?.setComposingText(reading, 1)
-                candidates = withEmoji(list, emojiFor(typed))
+                candidates = withEmoji(Candidates.japanese(segments), emojiFor(typed))
                 candidateBar.show(candidates, 0)
                 shownCandidates.value = candidates
             }
         }
-    }
-
-    /** Converts hiragana to katakana; other characters stay. */
-    private fun toKatakana(text: String) = buildString {
-        for (c in text) append(if (c in '\u3041'..'\u3096') c + 0x60 else c)
     }
 
     /**
@@ -1305,18 +1292,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * emoji suggestions are on and the field is not sensitive.
      * Returns: up to three emoji, best first.
      */
-    private fun emojiFor(typed: String): List<String> {
-        val key = typed.lowercase().filter { it in 'a'..'z' }
-        if (direct || key.length < 2 || !settings.mixed.cross.emoji) return emptyList()
-        return emojiIndex?.lookup(key, EMOJI_SUGGESTIONS).orEmpty()
-    }
+    private fun emojiFor(typed: String): List<String> =
+        if (direct || !settings.mixed.cross.emoji) emptyList() else Candidates.emoji(emojiIndex, typed)
 
     /** Puts [emoji] into [list] at the third place (after the most likely words), marking them. */
     private fun withEmoji(list: List<String>, emoji: List<String>): List<String> {
         emojiShown = emoji.toSet()
-        if (emoji.isEmpty()) return list
-        val at = minOf(EMOJI_POSITION, list.size)
-        return (list.take(at) + emoji + list.drop(at)).distinct()
+        return Candidates.withEmoji(list, emoji)
     }
 
     /** Says why Chinese mode cannot convert yet (dictionary being prepared or failed), or null. */
@@ -1334,10 +1316,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val words = english?.suggestions(typed, previous = previous)?.map { it.word }.orEmpty()
             main.post {
                 if (gen != generation) return@post
-                val capital = typed.firstOrNull()?.isUpperCase() == true
-                val shown = words.map { if (capital) it.replaceFirstChar(Char::uppercase) else it }
-                val words = if (typed.isEmpty()) shown.distinct() else (listOf(typed) + shown).distinct()
-                candidates = withEmoji(words, emojiFor(typed))
+                candidates = withEmoji(Candidates.english(typed, words), emojiFor(typed))
                 candidateBar.show(candidates, 0)
                 shownCandidates.value = candidates
             }
@@ -1392,9 +1371,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val DOUBLE_SPACE_MS = 400L
         /** The most text handed to the AI screen at once. */
         const val AI_MAX_CHARS = 2000
-        const val EMOJI_SUGGESTIONS = 3
-        const val EMOJI_POSITION = 2
-        const val CHINESE_CANDIDATES = 30
         // X11 keysyms that librime takes.
         const val SPACE = 0x20
         const val BACKSPACE = 0xff08

@@ -33,6 +33,7 @@ scripts/prebuild-rime.sh                # compiled Chinese data for the APK
 scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test
 scripts/build-mozc.sh --abi arm64-v8a --abi x86_64   # Mozc for the APK into build/mozc-prebuilt, compared with build-lock.json
 cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime && ctest --test-dir build/host/rime -V   # S2 librime host test
+tests/conversion/run.sh                 # conversion corpus on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```
 
@@ -43,8 +44,14 @@ without Japanese or without compiled Chinese data. `scripts/fetch-mozc.sh` downl
 libraries from a GitHub Actions run instead; the run it pins was deleted with the repository and it
 works again only once CI exists.
 
-The conversion corpus runner joins this list with its first code; `PLAN.md` §17 lists the
-interfaces the plan asks for that do not exist yet.
+The conversion corpus (`tests/conversion/corpus.tsv`) runs through the app's own engine facades
+and candidate assembly in a host JVM: `run.sh` builds the host librime and English libraries,
+then runs `ConversionCorpusTest` with `KOTOMO_CORPUS=1`. It needs the prebuilt Chinese data, the
+host Mozc build, the English dictionary and the emoji asset. A line that passed in the baseline
+and fails now is a regression and fails the run; lines that fail in the baseline too are known
+gaps. Run it before and after every change to an engine, a lexicon or ranking, and accept a new
+baseline (`--update`) only after reading the report. `PLAN.md` §17 lists the interfaces the plan
+asks for that do not exist yet.
 
 ## Emulator
 

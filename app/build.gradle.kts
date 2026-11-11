@@ -98,6 +98,12 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // The English engine's native code logs through android.util.Log; in a corpus run the stub
+    // android.jar returns defaults instead of throwing (ordinary unit tests keep the strict stubs).
+    testOptions {
+        unitTests.isReturnDefaultValues = providers.environmentVariable("KOTOMO_CORPUS").orNull == "1"
+    }
 }
 
 /**
@@ -214,6 +220,19 @@ val rimeData = tasks.register<RimeDataTask>("rimeData") {
     outputDir = layout.buildDirectory.dir("generated/rime")
     // The staged data follows the submodules; the script rewrites only changed files, so it always runs.
     outputs.upToDateWhen { false }
+}
+
+// The conversion corpus (tests/conversion/run.sh) sets KOTOMO_CORPUS=1: the unit-test JVM then
+// loads the host engine libraries built under build/, and ConversionCorpusTest runs instead of
+// being skipped.
+if (providers.environmentVariable("KOTOMO_CORPUS").orNull == "1") {
+    val root = rootProject.layout.projectDirectory.asFile
+    val libraries = listOf("build/host/rime", "build/host/english", "build/mozc/out/host")
+        .joinToString(File.pathSeparator) { root.resolve(it).path }
+    tasks.withType<Test>().configureEach {
+        systemProperty("java.library.path", libraries)
+        systemProperty("kotomo.corpus.root", root.path)
+    }
 }
 
 androidComponents {

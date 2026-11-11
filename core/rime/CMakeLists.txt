@@ -2,7 +2,8 @@
 # library, libkotomo_rime.so, whose only exports are the JNI entry points (jni/exports.map).
 #
 # Android (Gradle's externalNativeBuild, or the NDK toolchain file directly) builds the shared
-# library. A host build (Linux) builds the bridge as a static library plus the tests in tests/.
+# library. A host build (Linux) builds the same shared library for the conversion corpus, plus the
+# prebuild tool and the tests in tests/.
 #
 # Upstream code is compiled as checked out: librime and OpenCC get their target definitions here
 # (their own CMake files need find_package results and, for OpenCC's data, Python), while LevelDB,
@@ -143,17 +144,21 @@ add_library(kotomo_rime_bridge STATIC jni/rime_bridge.cc)
 target_include_directories(kotomo_rime_bridge PUBLIC jni)
 target_link_libraries(kotomo_rime_bridge PUBLIC kotomo_librime)
 
-if(ANDROID)
-  add_library(kotomo_rime SHARED jni/rime_jni.cc)
-  target_link_libraries(kotomo_rime PRIVATE kotomo_rime_bridge)
-  target_link_options(kotomo_rime PRIVATE
-    "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/jni/exports.map"
-    "-Wl,--exclude-libs,ALL"
-    "-Wl,--gc-sections"
-    "-Wl,-z,max-page-size=16384")
-  set_target_properties(kotomo_rime PROPERTIES LINK_DEPENDS
-                        "${CMAKE_CURRENT_SOURCE_DIR}/jni/exports.map")
-else()
+# The JNI library: the app's on Android; on the host, the conversion corpus (tests/conversion) loads
+# it into a JVM through the app's own facade.
+add_library(kotomo_rime SHARED jni/rime_jni.cc)
+target_link_libraries(kotomo_rime PRIVATE kotomo_rime_bridge)
+target_link_options(kotomo_rime PRIVATE
+  "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/jni/exports.map"
+  "-Wl,--exclude-libs,ALL"
+  "-Wl,--gc-sections"
+  "-Wl,-z,max-page-size=16384")
+set_target_properties(kotomo_rime PROPERTIES LINK_DEPENDS
+                      "${CMAKE_CURRENT_SOURCE_DIR}/jni/exports.map")
+
+if(NOT ANDROID)
+  find_package(JNI REQUIRED COMPONENTS JVM)
+  target_include_directories(kotomo_rime PRIVATE ${JNI_INCLUDE_DIRS})
   # Host: the prebuild tool (scripts/prebuild-rime.sh) and the tests.
   add_executable(kotomo_rime_prebuild tools/prebuild.cc)
   target_link_libraries(kotomo_rime_prebuild PRIVATE kotomo_rime_bridge)

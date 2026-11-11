@@ -1,0 +1,71 @@
+# Kotomo conversion corpus (PLAN.md §13.2, §13.3), run on the host by tests/conversion/run.sh.
+# Columns: id, mode (chinese, english, japanese, mixed), context (the text before the cursor; only
+# English uses it today, as the previous word), input (the letters typed; empty means nothing typed),
+# expected (acceptable outputs separated by "|"; a leading "!" means none of those outputs may appear
+# within the rank), rank (1, 3, 5; 0 means anywhere), notes.
+# The corpus measures conversion, not key handling: the runner hands the whole input to the engine
+# the mode uses today (Chinese and Mixed: librime's set_input, where a space or an apostrophe is a
+# syllable delimiter; Japanese: one Mozc session fed letter by letter; English: the English engine
+# with the context as the previous word) and ranks the candidate bar's list as the keyboard builds
+# it, emoji included.
+# Every capability has a positive and a negative line. Every fixed conversion bug adds a line.
+# Never tune an engine to one line at the expense of others: the whole corpus runs before and after.
+id	mode	context	input	expected	rank	notes
+T01-001	chinese		nihao	你好	1	§13.2
+T01-002	chinese		jin tian tian qi hen hao	今天天气很好	1	§13.2: whole sentence with typed spaces
+T01-003	chinese		jintiantianqihenhao	今天天气很好	1	whole sentence without spaces
+T01-004	chinese		zhongguo	中国	1	common word
+T01-005	chinese		zg	中国	3	abbreviated pinyin (initials only)
+T01-006	chinese		shi	是	1	homophones: the most common first
+T01-007	chinese		shi	事|时|十|市	5	homophones: other common readings follow
+T01-008	chinese		woxiangqubeijing	我想去北京	1	sentence
+T01-009	chinese		dianhua	电话	1	word
+T01-010	chinese		xian	先|西安|现	3	syllable boundary ambiguity: xian / xi'an
+T01-011	chinese		xi'an	西安	1	apostrophe forces the boundary
+T01-N01	chinese		nihao	!こんにちは	0	Chinese mode offers no Japanese
+T01-N02	chinese		zhongguo	!中國	5	Simplified script: no Traditional 中國
+T02-001	english		helo	hello	3	spelling correction: dropped letter
+T02-002	english		teh	the	3	spelling correction: transposition
+T02-003	english		beautif	beautiful	3	completion
+T02-004	english		the	the	1	a correct word stays first
+T02-005	english		hell	hell	1	a correct word is not corrected away
+T02-006	english		Helo	Hello	3	case: a capital stays capital
+T02-007	english	the		first|same|most	5	next-word prediction after "the": nothing typed
+T02-008	english		qxzjvk	qxzjvk	1	gibberish: the typed letters stay first, nothing replaces them
+T02-N01	english		the	!teh	5	a correct word is not "corrected" into a misspelling
+T02-N02	english		hell	!hello	1	a correct word does not lose first place
+T03-001	japanese		watashiwanihonjin	私は日本人	1	§13.2; known gap: the particle は typed wa (PLAN §5.4)
+T03-002	japanese		nihon	日本	1	word
+T03-003	japanese		toukyou	東京	1	place name
+T03-004	japanese		arigatou	ありがとう|有難う	3	common expression
+T03-005	japanese		kyouhaiitenkidesune	今日はいい天気ですね	1	sentence with the particle は typed ha
+T03-006	japanese		sakura	桜|さくら	3	word
+T03-007	japanese		shi	し	0	romaji: shi gives the kana し
+T03-008	japanese		si	し	0	romaji: si gives the same kana (PLAN §9.6)
+T03-009	japanese		kitte	切手|きって	3	sokuon: doubled consonant
+T03-010	japanese		konnichiha	こんにちは	3	nn before a vowel
+T03-N01	japanese		nihao	!你好	0	pinyin is not converted as Chinese in Japanese mode
+T04-001	mixed		diannao	电脑	3	§2.3: original language first
+T04-002	mixed		diannao	コンピューター	5	§2.3
+T04-003	mixed		coffee	coffee	1	§2.3
+T04-004	mixed		coffee	コーヒー	3	§2.3, §13.2 T06-002
+T04-005	mixed		sakura	桜|さくら	3	§2.3
+T04-006	mixed		nihon	日本	1	§2.3
+T04-007	mixed		apple	apple	1	§2.3
+T04-008	mixed		apple	アップル	5	§2.3
+T04-009	mixed		neko	猫	3	§2.3
+T04-010	mixed		ai	爱	3	§2.3: ai keeps 爱, AI, 愛 and あい
+T04-011	mixed		ai	AI	5	§2.3
+T04-012	mixed		ai	愛|あい	5	§2.3
+T04-N01	mixed		nihao	!こんにちは|!にはお	1	§13.2: nihao does not put Japanese first
+T05-001	mixed		mianjie	面接	3	§13.2
+T05-002	mixed		chidai	池袋	3	§13.2: reading いけぶくろ
+T05-003	mixed		dongjing	東京	3	§13.2: after Chinese 东京
+T05-004	mixed		dongjing	东京	1	§13.2: Chinese 东京 first
+T06-001	mixed		computer	コンピューター	3	§13.2
+T06-002	mixed		coffee	コーヒー	3	§13.2
+T07-001	mixed		chidai ni kai ni ikou	池袋に買いに行こう	1	§13.2: first whole-sentence candidate
+T07-002	mixed		chidai nikainiikou	池袋に買いに行こう	3	§13.2 (the draft's chida is a typo)
+T07-003	mixed		chidainikainiikou	池袋に買いに行こう	3	§13.2
+T07-004	mixed		zailiucard	在留カード	3	§13.2
+T07-005	mixed		chocolateokainiikou	チョコレートを買いに行こう	3	§13.2: the particle を typed o after a noun

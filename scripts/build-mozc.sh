@@ -16,6 +16,8 @@
 #                    downloaded into <work>/tools and checked against its hash
 #   --jobs <n>       Bazel --jobs (default: Bazel's own choice)
 #
+# Host output: <out>/host/libkotomo_mozc.so and <out>/host/mozc.data for the
+# conversion corpus (tests/conversion/run.sh).
 # Android output: <out>/<abi>/libkotomo_mozc.so (16 KB-aligned, JNI symbols
 # only), <out>/mozc.data and <out>/SHA256SUMS, installed into build/mozc-prebuilt
 # for the app build and compared with build-lock.json. Runs on Linux (x86_64 for
@@ -57,7 +59,7 @@ while [[ $# -gt 0 ]]; do
     --ndk) ndk="${2:?}"; shift 2 ;;
     --bazelisk) bazelisk="${2:?}"; shift 2 ;;
     --jobs) jobs="${2:?}"; shift 2 ;;
-    -h|--help) sed -n '2,24p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,26p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
@@ -159,6 +161,9 @@ for abi in "${abis[@]}"; do
     if grep -v '^Java_com_yuanzhe_kotomo_engine_Mozc_' <<<"$exported" | grep -q .; then
       die "host library exports more than its JNI functions"
     fi
+    # The conversion corpus (tests/conversion) loads this library and the data set into a host JVM.
+    run install -D -m 0755 "$host_lib" "$out/host/libkotomo_mozc.so"
+    run install -D -m 0644 "$src/bazel-bin/data_manager/oss/mozc.data" "$out/host/mozc.data"
     echo "host: tests passed; $(wc -l <<<"$exported") exported symbols, all JNI"
     continue
   fi

@@ -31,6 +31,7 @@ scripts/prebuild-rime.sh                # compiled Chinese data for the APK
 scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test
 scripts/build-mozc.sh --abi arm64-v8a --abi x86_64   # Mozc for the APK into build/mozc-prebuilt, compared with build-lock.json
 cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime && ctest --test-dir build/host/rime -V   # S2 librime host test
+tests/conversion/run.sh                 # conversion corpus on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```
 
@@ -39,7 +40,10 @@ cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime 
 `KOTOMO_REQUIRE_RIME_PREBUILT=1` 的情况下运行 Gradle，使 APK 不会在缺少日文或缺少预编译中文数据时产出。
 `scripts/fetch-mozc.sh` 改为从 GitHub Actions 的运行下载同样的库；它锁定的运行已随仓库删除，只有 CI 重新存在后才能再用。
 
-转换语料运行器随它的第一份代码加入此列表；`PLAN.md` §17 列出了计划要求、但尚不存在的接口。
+转换语料（`tests/conversion/corpus.tsv`）在主机的 JVM 中经应用自己的引擎外观与候选组装运行：`run.sh` 先构建主机版
+librime 与英文库，再在设置 `KOTOMO_CORPUS=1` 的情况下运行 `ConversionCorpusTest`。它需要预编译的中文数据、主机版
+Mozc、英文词典与 Emoji 数据。基线中通过、这次失败的行是回退，会让运行失败；在基线中也失败的行是已知差距。每次改动引擎、
+词库或排序前后都运行它，读过报告之后才用 `--update` 接受新的基线。`PLAN.md` §17 列出了计划要求、但尚不存在的接口。
 
 ## 模拟器
 
