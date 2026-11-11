@@ -70,6 +70,9 @@ T04-009	mixed		neko	猫	3	§2.3
 T04-010	mixed		ai	爱	3	§2.3: ai keeps 爱, AI, 愛 and あい
 T04-011	mixed		ai	AI	5	§2.3
 T04-012	mixed		ai	愛|あい	5	§2.3
+T04-013	mixed		wo xihuan ai	我喜欢AI	5	the allow list: AI stands inside a sentence although the word list marks it offensive (user 2026-11-11)
+T04-014	mixed		aishishenme	AI是什么	3	the allow list, at the start of an unspaced sentence
+T04-N02	mixed		wo xihuan ai	!我喜欢AI	1	original language first: the Chinese reading of ai stays ahead of AI inside a pinyin sentence
 T04-N01	mixed		nihao	!こんにちは|!にはお	1	§13.2: nihao does not put Japanese first
 T05-001	mixed		mianjie	面接	3	§13.2
 T05-002	mixed		chidai	池袋	3	§13.2: reading いけぶくろ

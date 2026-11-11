@@ -128,10 +128,11 @@ class FakeEngines : public Engines {
       {"いく", {{"行く", "いく", 3000}}},
       {"ねこ", {{"猫", "ねこ", 3100}, {"ねこ", "ねこ", 5200}}}};
   std::map<std::string, std::vector<EnglishForm>> english_ = {
-      {"book", {{"book", 200}}}, {"ai", {{"AI", 150}}}, {"the", {{"the", 255}}},
+      {"book", {{"book", 200}}}, {"ai", {{"AI", 113, true}}}, {"the", {{"the", 255}}},
       {"note", {{"note", 180}}}, {"xq", {{"xq", 10}}},              {"shu", {{"shu", 85}}},
       {"apple", {{"Apple", 200}, {"apple", 180}}},
-      {"tv", {{"TV", 140}}},     {"damn", {{"damn", 160, true}}}};
+      {"tv", {{"TV", 140}}},     {"blorp", {{"blorp", 160, true}}},
+      {"zz", {{"ZZ", 113, true}}}};
 };
 
 /// Builds the tests' cross-language lexicon: three pinyin keys and three English keys.

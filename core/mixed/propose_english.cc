@@ -8,6 +8,19 @@ namespace {
 /// The longest English word looked up, in letters.
 constexpr size_t kMaxWord = 24;
 
+/// Words that may stand inside a longer input although the rules below would keep them to the
+/// whole input. Each entry needs its reason here; the upstream word list itself is never edited.
+///   AI: the upstream list (aosp-dictionaries en_US) marks it possibly offensive, which is a
+///       mislabel, and lists it rarer than the floor for two-letter words; it is an everyday
+///       word in all three languages' text (user decision, 2026-11-11).
+constexpr std::string_view kAllowedInside[] = {"AI"};
+
+/// Returns: whether `text`, as the dictionary writes it, is on the list above.
+bool AllowedInside(std::string_view text) {
+  return std::find(std::begin(kAllowedInside), std::end(kAllowedInside), text) !=
+         std::end(kAllowedInside);
+}
+
 }  // namespace
 
 namespace {
@@ -31,12 +44,15 @@ void ProposeEnglish(const Input& input, Engines& engines, const Options& options
       const std::string_view typed = letters.substr(begin, length);
       std::vector<EnglishForm> forms = engines.English(typed);
       // Inside a longer input a short or possibly offensive word is more likely a chance split
-      // of something else: only the whole input may be one.
+      // of something else: only the whole input may be one, except the words kAllowedInside
+      // names. No word rarer than the general floor is ever proposed.
       const bool whole = begin == 0 && end == input.size();
       const int floor = !whole && length <= 3 ? costs.english_short_probability
                                               : costs.english_min_probability;
-      std::erase_if(forms, [whole, floor](const EnglishForm& f) {
-        return f.probability < floor || (f.sensitive && !whole);
+      std::erase_if(forms, [whole, floor, &costs](const EnglishForm& f) {
+        if (f.probability < costs.english_min_probability) return true;
+        if (whole || AllowedInside(f.text)) return false;
+        return f.probability < floor || f.sensitive;
       });
       if (forms.empty()) continue;
       // The word as typed comes first when the dictionary has that spelling; otherwise its most

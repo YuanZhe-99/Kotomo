@@ -63,7 +63,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 核心的 `ProximityInfo`、`Dictionary` 与 `SuggestionResults` 需要 `JNIEnv` 和 Java 数组；结果按分数从低到高输出，且可能重复列出同一个词 | 桥接层自己构建 QWERTY 邻近网格（32 × 16 格，与 `ProximityInfo.computeNearestNeighbors` 相同），按分数从高到低排序并去重；触摸点使用固定的 1000 × 600 QWERTY 坐标系 | 已在主机上测试 |
 | 主词典为二进制格式 202（单个只读文件），按路径、偏移与长度打开；AOSP 的 dicttool（`127336e9`）可直接用 `javac` 编译，`makedict -2` 把 `.combined` 词表转为该格式，结果逐字节可复现 | `tool/BuildEnglishDict.java`；应用直接从 APK 中映射未压缩的资源文件 | 已在主机上测试 |
 | 输入时给出纠错与补全（`helo` → hello、`teh` → the）以及二元组预测；乱码会得到多词拆分，LatinIME 的 Java 层原本会过滤它们 | Kotomo 在任何自动替换之前都需要自己的置信度阈值 | 已在主机上测试 |
-| 精确查找不需要 `JNIEnv`：结构策略的 `getWordId` 与 `getWordAttributesInContext` 给出一个词的概率（0–255）与标志；词表中有些词只有首字母大写或全大写的写法，`AI` 被标为可能冒犯（f=113）而 `ai` 只有 f=41，另有许多很短的条目（`Le`、`Rd`、`Chi`） | 协调层按三种大小写查找一段字母，很短的词或可能冒犯的词只有作为整个输入时才提出 | 经协调层的主机运行（S6） |
+| 精确查找不需要 `JNIEnv`：结构策略的 `getWordId` 与 `getWordAttributesInContext` 给出一个词的概率（0–255）与标志；词表中有些词只有首字母大写或全大写的写法，`AI` 被标为可能冒犯（f=113）而 `ai` 只有 f=41，另有许多很短的条目（`Le`、`Rd`、`Chi`） | 协调层按三种大小写查找一段字母，很短的词或可能冒犯的词只有作为整个输入时才提出；`core/mixed/propose_english.cc` 中有一张很小的放行表，每一项都写明原因，让被误标的词可以出现在句子中间（目前只有 `AI`），词表本身从不改动 | 经协调层的主机运行（S6） |
 | 手势解码为空实现；手势输入需要 Google 的闭源库 | 手势输入等待开源解码器 | 已阅读 |
 
 ## Android 输入法平台

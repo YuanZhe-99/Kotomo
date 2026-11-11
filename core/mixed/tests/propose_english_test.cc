@@ -67,14 +67,25 @@ int main() {
     Check(one.size() == 1 && one.From(0)[0].text == "TV" && !Find(longer, EdgeKind::kEnglish, 0, 2) &&
               Find(longer, EdgeKind::kEnglish, 2, 6),
           "S6-propose-english-short-word-whole-input-only");
-    const Input word = *ParseInput("damn");
+    // The fake dictionary marks the made-up word blorp possibly offensive.
+    const Input word = *ParseInput("blorp");
     Lattice typed(word.size());
     ProposeEnglish(word, engines, options, &typed);
-    const Input split = *ParseInput("damnbook");
+    const Input split = *ParseInput("blorpbook");
     Lattice parts(split.size());
     ProposeEnglish(split, engines, options, &parts);
-    Check(typed.size() == 1 && !Find(parts, EdgeKind::kEnglish, 0, 4),
+    Check(typed.size() == 1 && !Find(parts, EdgeKind::kEnglish, 0, 5) &&
+              Find(parts, EdgeKind::kEnglish, 5, 9),
           "S6-propose-english-sensitive-whole-input-only");
+    // AI is marked the same way upstream, and rarer than the short-word floor, by mistake: the
+    // allow list lets it stand inside an input (the fake copies both marks). Negative: ZZ, made
+    // up with the same marks and not on the list, stays out.
+    const Input mid = *ParseInput("bookaizz");
+    Lattice allowed(mid.size());
+    ProposeEnglish(mid, engines, options, &allowed);
+    const Edge* ai = Find(allowed, EdgeKind::kEnglish, 4, 6);
+    Check(ai && ai->text == "AI" && !Find(allowed, EdgeKind::kEnglish, 6, 8),
+          "Q7-propose-english-allowed-inside");
   }
   {
     // Negative: too rare a word, and a single letter, are not proposed.
