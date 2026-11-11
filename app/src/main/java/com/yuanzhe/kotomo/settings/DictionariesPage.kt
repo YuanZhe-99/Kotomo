@@ -27,6 +27,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -66,8 +68,11 @@ import kotlin.math.roundToInt
 
 /**
  * Holds what the dictionaries page is in the middle of: the search, the word being edited, the
- * import waiting for confirmation, the source waiting for the download notice and the last
- * message. One instance per visit of the page.
+ * import waiting for confirmation (with what to do with conflicts), the export format, the source
+ * waiting for the download notice and the last message.
+ *
+ * Notes: one instance per visit of the page, kept in [visit] while the activity is only rebuilt
+ * (dark mode, rotation, PLAN §10.5 gap found in Q3) and dropped when the page is left.
  */
 private class DictionaryUi {
     var query by mutableStateOf("")
@@ -76,9 +81,17 @@ private class DictionaryUi {
     /** Whether the editor was opened on an existing entry (which it replaces). */
     var editingExisting by mutableStateOf(false)
     var pending by mutableStateOf<PendingImport?>(null)
+    /** Whether an import replaces the entries it conflicts with. */
+    var replace by mutableStateOf(false)
+    var exportFormat by mutableStateOf(Format.TSV)
     /** The source whose download waits for the notice to be accepted. */
     var notice by mutableStateOf<String?>(null)
     var message by mutableStateOf<String?>(null)
+
+    companion object {
+        /** The current visit's state; survives the activity being rebuilt, not leaving the page. */
+        var visit: DictionaryUi? = null
+    }
 }
 
 /** A file read and checked, waiting for the person to confirm it. */
@@ -102,13 +115,17 @@ internal fun DictionariesPage() {
     val context = LocalContext.current
     val store = remember { DictionaryStore.get(context) }
     val d by store.state.collectAsState()
-    val ui = remember { DictionaryUi() }
+    val ui = remember { DictionaryUi.visit ?: DictionaryUi().also { DictionaryUi.visit = it } }
+    val activity = context as? android.app.Activity
+    DisposableEffect(Unit) {
+        onDispose { if (activity?.isChangingConfigurations != true) DictionaryUi.visit = null }
+    }
     if (d.readOnly) Section(null) { Inset { Note(stringResource(R.string.dict_read_only)) } }
     ui.message?.let { Section(null) { Inset { Text(it, style = MaterialTheme.typography.bodyMedium) } } }
     SourcesSection(d, store)
     WordsSection(d, ui)
     ImportSection(d, store, ui)
-    ExportSection(d)
+    ExportSection(d, ui)
     DownloadsSection(d, store, ui)
     PromptSection()
     ui.editing?.let { EntryDialog(it, ui.editingExisting, store, ui) }
@@ -171,11 +188,12 @@ private fun EntryRow(e: Entry, open: () -> Unit) {
 @Composable
 private fun EntryDialog(start: Entry, existing: Boolean, store: DictionaryStore, ui: DictionaryUi) {
     val scope = rememberCoroutineScope()
-    var lang by remember { mutableStateOf(start.lang) }
-    var text by remember { mutableStateOf(start.text) }
-    var reading by remember { mutableStateOf(start.reading.orEmpty()) }
-    var weight by remember { mutableFloatStateOf(start.weight.toFloat()) }
-    var exists by remember { mutableStateOf(false) }
+    // Saved with the activity's state, so an edit in progress survives dark mode and rotation.
+    var lang by rememberSaveable(start) { mutableStateOf(start.lang) }
+    var text by rememberSaveable(start) { mutableStateOf(start.text) }
+    var reading by rememberSaveable(start) { mutableStateOf(start.reading.orEmpty()) }
+    var weight by rememberSaveable(start) { mutableFloatStateOf(start.weight.toFloat()) }
+    var exists by rememberSaveable(start) { mutableStateOf(false) }
     val (checkedText, textProblem) = Readings.text(text)
     val (checkedReading, readingProblem) = if (checkedText == null) null to null else Readings.reading(lang, checkedText, reading)
     val problem = if (text.isBlank()) null else textProblem ?: readingProblem
@@ -228,7 +246,6 @@ private fun ImportSection(d: Dictionaries, store: DictionaryStore, ui: Dictionar
     val added = stringResource(R.string.dict_import_done)
     val unknown = stringResource(R.string.dict_unknown_format)
     val tooBig = stringResource(R.string.dict_too_big)
-    var replace by remember { mutableStateOf(false) }
     // Reads the chosen file off the main thread and checks it; the preview waits for confirmation.
     fun check(p: PendingImport) = scope.launch {
         val checked = withContext(Dispatchers.Default) {
@@ -278,15 +295,15 @@ private fun ImportSection(d: Dictionaries, store: DictionaryStore, ui: Dictionar
                 if (preview.duplicates > 0) Note(pluralStringResource(R.plurals.dict_preview_duplicates, preview.duplicates, preview.duplicates))
                 if (preview.conflicts > 0) {
                     Note(pluralStringResource(R.plurals.dict_preview_conflicts, preview.conflicts, preview.conflicts))
-                    Choice(listOf(stringResource(R.string.dict_conflict_keep), stringResource(R.string.dict_conflict_replace)), if (replace) 1 else 0) { replace = it == 1 }
+                    Choice(listOf(stringResource(R.string.dict_conflict_keep), stringResource(R.string.dict_conflict_replace)), if (ui.replace) 1 else 0) { ui.replace = it == 1 }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_group_gap))) {
                 Button(enabled = preview != null && preview.entries.isNotEmpty(), onClick = {
                     scope.launch {
-                        if (store.import(preview!!, replace)) ui.message = added
+                        if (store.import(preview!!, ui.replace)) ui.message = added
                         ui.pending = null
-                        replace = false
+                        ui.replace = false
                     }
                 }) { Text(stringResource(R.string.dict_confirm)) }
                 OutlinedButton(onClick = { ui.pending = null }) { Text(stringResource(R.string.dict_cancel)) }
@@ -325,14 +342,13 @@ private fun readDocument(context: Context, uri: Uri): Pair<String?, ByteArray?> 
 /** Draws the export buttons (one per format) and the rollback of the last change. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ExportSection(d: Dictionaries) {
+private fun ExportSection(d: Dictionaries, ui: DictionaryUi) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { DictionaryStore.get(context) }
-    var format by remember { mutableStateOf(Format.TSV) }
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val text = Formats.write(d.entries, format)
+        val text = Formats.write(d.entries, ui.exportFormat)
         scope.launch(Dispatchers.IO) { runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } } }
     }
     Section(stringResource(R.string.dict_export)) {
@@ -341,7 +357,7 @@ private fun ExportSection(d: Dictionaries) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_group_gap))) {
                 Format.entries.forEach { f ->
                     OutlinedButton(enabled = d.entries.isNotEmpty(), onClick = {
-                        format = f
+                        ui.exportFormat = f
                         save.launch("kotomo-dictionary.${f.extension}")
                     }) { Text(f.extension.uppercase().removeSuffix(".YAML")) }
                 }
