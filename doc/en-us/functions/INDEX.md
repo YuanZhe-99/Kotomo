@@ -42,11 +42,11 @@ side effects and notes where non-trivial).
 | `scripts/fetch-boost.sh` | Downloads and verifies the Boost headers librime needs | — |
 | `core/mozc/` | Japanese engine glue (S3): session conversion and pinned-span conversion over Mozc, JNI, host test; built inside Mozc's Bazel workspace | `kotomo_mozc.h`, `tests/kotomo_mozc_test.cc` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | Kotlin facade of `libkotomo_mozc.so` (Japanese mode calls `sessionConvert` when the library and its data are in the APK; nothing calls `pinnedConvert` yet) | `sessionConvert`, `pinnedConvert` |
-| `scripts/build-mozc.sh` | Builds Mozc and the glue for the host or for Android ABIs (Android needs x86_64 Linux or macOS) | `--abi` |
-| `.github/workflows/mozc.yml` | CI: host tests and the Android Mozc libraries as a hash-listed artifact | `mozc` |
+| `scripts/build-mozc.sh` | Builds Mozc and the glue for the host or for Android ABIs (Android needs x86_64 Linux or macOS); installs the Android output into `build/mozc-prebuilt` and compares it with `build-lock.json` | `--abi` |
+| `.github/workflows/mozc.yml` | CI (inactive until a new GitHub repository exists): host tests and the Android Mozc libraries as a hash-listed artifact | `mozc` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | librime deploy in its own process into a staging directory, the file layout under `filesDir/rime`, the swap and the deploy report | `RimeDeployService`, `RimeFiles.promote` |
 | `core/rime/tools/prebuild.cc`, `scripts/prebuild-rime.sh` | Compile librime's data on a Linux host into the shared data the APK ships | `main` |
-| `scripts/fetch-mozc.sh` | Fetches the Mozc libraries and data built by mozc.yml, pinned by run and SHA-256 in build-lock.json; that run was deleted with the GitHub repository on 2026-11-04, so it downloads nothing until it is pointed at a new build | — |
+| `scripts/fetch-mozc.sh` | Fetches the Mozc libraries and data built by mozc.yml, pinned by run and SHA-256 in build-lock.json; that run was deleted with the GitHub repository on 2026-11-04, so it downloads nothing until CI exists again; `build-mozc.sh` builds the same files locally | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | The toolbar's quick settings in the keyboard's place: one-handed side, split layout, Simplified/Traditional, incognito, settings app | `QuickPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | Gemini Nano proofreading and rewriting through ML Kit GenAI ([ai.md](../ai.md)): status, user-started download, splitting long text, error mapping | `GenAi`, `AiAction`, `AiFailure` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`, `AiHandoff.kt` | The writing-help screen (language, action, suggestions, Replace, Copy) and the in-memory hand-off between it and the keyboard | `AiActivity`, `AiHandoff`, `AiRequest` |

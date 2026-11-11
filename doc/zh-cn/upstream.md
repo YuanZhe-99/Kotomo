@@ -24,13 +24,14 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 要点 | 影响 | 核实 |
 |---|---|---|
 | Google 的代码为 BSD-3-Clause；词典数据带有自己的声明（IPAdic 适用 NAIST 与 ICOT 条款、公有领域的冲绳方言词典、Google 的增补条目） | 声明随数据一起分发 | 已阅读 |
-| 只能用 Bazel（Bazelisk）构建；Android 构建（`docs/build_mozc_for_android.md`）只在 macOS 或 Linux 主机上产出 16 KB 对齐的 `libmozc.so` | Mozc 在 Linux、macOS 或 CI 上构建；Windows 机器使用锁定的预构建产物 | 已阅读 |
+| 只能用 Bazel（Bazelisk）构建；Android 构建（`docs/build_mozc_for_android.md`）只在 macOS 或 Linux 主机上产出 16 KB 对齐的 `libmozc.so` | Mozc 的 Android 库用 `scripts/build-mozc.sh` 在 x86_64 Linux 主机上构建 | 已阅读，已构建 |
 | 自带的 JNI 注册在 Google 的类 `com.google.android.apps.inputmethod.libs.mozc.session.MozcJni` 上，只暴露 `evalCommand`（序列化的 `commands::Command`）、`onPostLoad` 和 `getDataVersion`；Android 客户端没有开源 | Kotomo 自写客户端和 C++ 胶水层 | 已阅读 |
 | `Segment::SegmentType` 有 `FREE`、`FIXED_BOUNDARY`、`FIXED_VALUE`、`SUBMITTED` 与 `HISTORY`；`ImmutableConverter::Resegment` 保留 `FIXED_VALUE` 片段的值和 lid/rid，只用于转换请求 | 在转换器层的胶水代码中，可以把跨语言片段固定在日文整句转换里；预测候选无法携带固定片段 | 已阅读 |
 | 只发布标签（最近检查时为 `3.35.6354`） | 子模块跟随最新标签 | 已阅读 |
 | 3.35.6354（`0136c357`）没有 git 子模块；依赖通过 Bazel 模块（abseil-cpp 20260107.1、protobuf 34.1）与 `src/build_tools/update_deps.py`（Android NDK r29）获取 | `git submodule update --init third_party/mozc` 即可，其余由 Bazel 获取 | 已构建 |
 | 主机构建可在 aarch64 Linux 上运行（Debian 13、gcc 14.2、经 Bazelisk 1.30.0 的 Bazel 9.0.2）；Bazel 的 `local_jdk` 需要 `JAVA_HOME` | 主机测试在 Windows on ARM64 的 WSL 中运行 | 已构建 |
-| rules_android_ndk 获取 NDK 时会运行 NDK 的 clang，而 NDK 只有 x86_64 Linux 与 macOS 的主机工具；只要有 NDK，aarch64 Linux 上连主机构建也会失败 | Android 库由 x86_64 Linux 上的 `.github/workflows/mozc.yml` 构建 | 已构建 |
+| rules_android_ndk 获取 NDK 时会运行 NDK 的 clang，而 NDK 只有 x86_64 Linux 与 macOS 的主机工具；只要有 NDK，aarch64 Linux 上连主机构建也会失败 | Android 库在 x86_64 Linux 上构建；2026-11-10 的本地构建（Debian 13）逐字节复现了已删除的 CI 运行的哈希 | 已构建 |
+| Bazel 在每个服务进程中只对 NDK 模块扩展（rules_android_ndk）求值一次：同一服务进程里先做主机构建、再获取 NDK 时，Android 构建找不到 C++ 工具链（"No matching toolchains found"） | `scripts/build-mozc.sh` 在第一条 Bazel 命令之前获取 NDK | 已构建 |
 | `converter::Converter::ApplyConversion` 是公开接口；手工构造的含 `FIXED_VALUE` 片段的分段会保留固定的值，其余部分由 Mozc 分段并转换 | PLAN §5.4 的固定片段转换在转换器层可行，不需要退路：固定池袋 + `にかいにいこう` → 池袋に買いに行こう | 主机测试 |
 | `DictionaryInterface::LookupExact` 返回带 lid 与 rid 的词条（池袋/いけぶくろ：1924/1924）；拼音拼写没有词条 | 固定片段取同一词条的 ID；未知词使用普通名词 | 主机测试 |
 | `//converter`、`//session:session_handler` 与 `//dictionary:dictionary_interface` 只对 Mozc 自身可见 | Kotomo 的胶水层用 `--nocheck_visibility` 构建，而不是打补丁 | 已构建 |

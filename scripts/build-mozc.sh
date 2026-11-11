@@ -17,7 +17,8 @@
 #   --jobs <n>       Bazel --jobs (default: Bazel's own choice)
 #
 # Android output: <out>/<abi>/libkotomo_mozc.so (16 KB-aligned, JNI symbols
-# only), <out>/mozc.data and <out>/SHA256SUMS. Runs on Linux (x86_64 for
+# only), <out>/mozc.data and <out>/SHA256SUMS, installed into build/mozc-prebuilt
+# for the app build and compared with build-lock.json. Runs on Linux (x86_64 for
 # Android, since the NDK ships only x86_64 Linux host tools) or macOS; nothing
 # is installed system-wide.
 
@@ -56,7 +57,7 @@ while [[ $# -gt 0 ]]; do
     --ndk) ndk="${2:?}"; shift 2 ;;
     --bazelisk) bazelisk="${2:?}"; shift 2 ;;
     --jobs) jobs="${2:?}"; shift 2 ;;
-    -h|--help) sed -n '2,23p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,24p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
@@ -125,6 +126,26 @@ fi
 bazel_flags=(--config release_build --nocheck_visibility)
 [[ -n "$jobs" ]] && bazel_flags+=("--jobs=$jobs")
 
+# The NDK must exist before the first Bazel command of this run: Bazel evaluates the NDK module
+# extension once per server, so an NDK fetched after a host build leaves no Android toolchain.
+ndk_dest="$src/third_party/ndk/$NDK_DIR_NAME"
+if [[ " ${abis[*]} " != " host " ]]; then
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64|Darwin-*) ;;
+    *) die "$abi needs an x86_64 Linux or a macOS host: the NDK has no $(uname -s)-$(uname -m) tools" ;;
+  esac
+  if [[ ! -d "$ndk_dest" ]]; then
+    if [[ -n "$ndk" ]]; then
+      run mkdir -p "$src/third_party/ndk"
+      run ln -s "$(cd "$ndk" && pwd)" "$ndk_dest"
+    else
+      (cd "$src" && python3 build_tools/update_deps.py \
+        --noqt --noninja --nollvm --nomsys2 --nowix) || die "NDK download failed"
+    fi
+  fi
+  [[ -d "$ndk_dest" ]] || die "no NDK at $ndk_dest"
+fi
+
 for abi in "${abis[@]}"; do
   if [[ "$abi" == "host" ]]; then
     (cd "$src" && "$bazelisk" test --config oss_linux "${bazel_flags[@]}" \
@@ -142,21 +163,6 @@ for abi in "${abis[@]}"; do
     continue
   fi
 
-  case "$(uname -s)-$(uname -m)" in
-    Linux-x86_64|Darwin-*) ;;
-    *) die "$abi needs an x86_64 Linux or a macOS host: the NDK has no $(uname -s)-$(uname -m) tools" ;;
-  esac
-  ndk_dest="$src/third_party/ndk/$NDK_DIR_NAME"
-  if [[ ! -d "$ndk_dest" ]]; then
-    if [[ -n "$ndk" ]]; then
-      run mkdir -p "$src/third_party/ndk"
-      run ln -s "$(cd "$ndk" && pwd)" "$ndk_dest"
-    else
-      (cd "$src" && python3 build_tools/update_deps.py \
-        --noqt --noninja --nollvm --nomsys2 --nowix) || die "NDK download failed"
-    fi
-  fi
-  [[ -d "$ndk_dest" ]] || die "no NDK at $ndk_dest"
 
   # The data set is the same for every ABI and incompatible with the Android platforms, so it is
   # built for the host; its bazel-bin path is valid until the next build changes the config.
@@ -164,7 +170,7 @@ for abi in "${abis[@]}"; do
     (cd "$src" && "$bazelisk" build --config oss_linux "${bazel_flags[@]}" \
       //data_manager/oss:mozc_dataset_for_oss) || die "data set build failed"
     run mkdir -p "$out"
-    run cp "$src/bazel-bin/data_manager/oss/mozc.data" "$out/mozc.data"
+    run install -m 0644 "$src/bazel-bin/data_manager/oss/mozc.data" "$out/mozc.data"
     data_built=1
   fi
   (cd "$src" && "$bazelisk" build --config oss_android "${bazel_flags[@]}" \
@@ -172,7 +178,7 @@ for abi in "${abis[@]}"; do
   lib="$(cd "$src" && "$bazelisk" cquery --config oss_android "${bazel_flags[@]}" \
     --output=files "//kotomo:android_$abi" 2>/dev/null)" || die "cannot locate the $abi library"
   run mkdir -p "$out/$abi"
-  run cp "$src/$lib" "$out/$abi/libkotomo_mozc.so"
+  run install -m 0755 "$src/$lib" "$out/$abi/libkotomo_mozc.so"
 
   # 16 KB pages: every PT_LOAD segment must be aligned to at least 0x4000.
   readelf="$(find "$ndk_dest/toolchains/llvm/prebuilt" -name llvm-readelf -type f -o -name llvm-readelf -type l | head -n1)"
@@ -198,4 +204,26 @@ if [[ -d "$out" ]]; then
   (cd "$out" && find . -type f ! -name SHA256SUMS -print0 | sort -z \
     | xargs -0 sha256sum > SHA256SUMS) || die "hashing failed"
   cat "$out/SHA256SUMS"
+fi
+
+# Installs the Android outputs where the app build picks them up and compares them with the
+# hashes build-lock.json records; a difference is reported, since moving Mozc changes them.
+if [[ -f "$out/mozc.data" ]]; then
+  prebuilt="$repo/build/mozc-prebuilt"
+  run install -D -m 0644 "$out/mozc.data" "$prebuilt/assets/mozc.data"
+  for abi in "${abis[@]}"; do
+    [[ "$abi" == "host" ]] && continue
+    run install -D -m 0755 "$out/$abi/libkotomo_mozc.so" "$prebuilt/jniLibs/$abi/libkotomo_mozc.so"
+  done
+  python3 - "$repo/build-lock.json" "$out" "${abis[@]}" <<'EOF' || die "build-lock.json comparison failed"
+import hashlib, json, pathlib, sys
+pinned = json.load(open(sys.argv[1]))["upstreams"]["mozc"]["prebuilt"]["sha256"]
+out = pathlib.Path(sys.argv[2])
+files = ["mozc.data"] + [f"{abi}/libkotomo_mozc.so" for abi in sys.argv[3:] if abi != "host"]
+for name in files:
+    got = hashlib.sha256((out / name).read_bytes()).hexdigest()
+    want = pinned.get(name)
+    print(f"{name}: {'matches build-lock.json' if got == want else f'differs from build-lock.json ({want}); record {got}'}")
+EOF
+  echo "installed into $prebuilt"
 fi

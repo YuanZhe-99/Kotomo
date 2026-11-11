@@ -78,7 +78,7 @@
         "sha256": "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf"
       },
       "prebuilt": {
-        "source": "GitHub Actions .github/workflows/mozc.yml, artifact kotomo-mozc",
+        "source": "scripts/build-mozc.sh --abi arm64-v8a --abi x86_64 on x86_64 Linux (Debian 13, 2026-11-10); reproduces the deleted CI run 41931242062 byte for byte",
         "repository": "YuanZhe-99/Kotomo",
         "run": "41931242062",
         "commit": "0172e41",
