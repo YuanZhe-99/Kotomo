@@ -53,12 +53,17 @@ int main() {
     const Input input = *ParseInput("tushuguan");
     Lattice lattice(input.size());
     ProposeCross(input, *lexicon, options, &lattice);
+    // Negative: the one-syllable shu inside tushuguan is not proposed.
     Check(Count(lattice, EdgeKind::kPinyinJa, 0, 9) == 1 &&
-              Count(lattice, EdgeKind::kPinyinJa, 2, 5) == 1 && lattice.size() == 2,
+              Count(lattice, EdgeKind::kPinyinJa, 2, 5) == 0 && lattice.size() == 1,
           "S6-propose-cross-pinyin");
+    const Input alone = *ParseInput("shu");
+    Lattice single(alone.size());
+    ProposeCross(alone, *lexicon, options, &single);
+    Check(Count(single, EdgeKind::kPinyinJa, 0, 3) == 1, "S6-propose-cross-one-syllable-whole-input");
     const Edge& edge = lattice.From(0)[0];
     Check(edge.text == "図書館" && edge.reading == "としょかん" &&
-              edge.cost == 3000 + options.costs.pinyin_to_japanese,
+              edge.cost == 3000 + options.costs.japanese_word + options.costs.pinyin_to_japanese,
           "S6-propose-cross-cost");
   }
   {
@@ -70,15 +75,15 @@ int main() {
   }
   {
     // The switches (negative): each direction and transliteration can be turned off.
-    const Input input = *ParseInput("xianxqbook");
+    const Input input = *ParseInput("tushuguanxqbook");
     Options off = options;
     off.pinyin_to_japanese = false;
     off.transliteration = false;
     Lattice lattice(input.size());
     ProposeCross(input, *lexicon, off, &lattice);
-    Check(Count(lattice, EdgeKind::kPinyinJa, 0, 4) == 0 &&
-              Count(lattice, EdgeKind::kEnJa, 4, 6) == 0 &&
-              Count(lattice, EdgeKind::kEnJa, 6, 10) == 2,
+    Check(Count(lattice, EdgeKind::kPinyinJa, 0, 9) == 0 &&
+              Count(lattice, EdgeKind::kEnJa, 9, 11) == 0 &&
+              Count(lattice, EdgeKind::kEnJa, 11, 15) == 2,
           "S6-propose-cross-switches");
     off.english_to_japanese = false;
     Lattice none(input.size());
@@ -89,7 +94,8 @@ int main() {
     careful.level = Level::kConservative;
     Lattice strict(input.size());
     ProposeCross(input, *lexicon, careful, &strict);
-    Check(strict.From(0)[0].cost == 3200 + 2 * options.costs.pinyin_to_japanese,
+    Check(strict.From(0)[0].cost ==
+              3000 + options.costs.japanese_word + 2 * options.costs.pinyin_to_japanese,
           "S6-propose-cross-level");
   }
   return kotomo::mixed::test::Result();

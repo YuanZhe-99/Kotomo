@@ -36,6 +36,47 @@ int main() {
     Check(book->cost == costs.english_base + costs.english_step * 55, "S6-propose-english-cost");
   }
   {
+    // As typed first: apple is a word, so Apple pays for the change of case.
+    const Input input = *ParseInput("apple");
+    Lattice lattice(input.size());
+    ProposeEnglish(input, engines, options, &lattice);
+    const Edge* first = lattice.From(0).empty() ? nullptr : &lattice.From(0)[0];
+    Check(lattice.size() == 2 && first->text == "Apple" &&
+              first->cost == costs.english_base + costs.english_step * 55 + costs.english_recased &&
+              lattice.From(0)[1].text == "apple" &&
+              lattice.From(0)[1].cost == costs.english_base + costs.english_step * 55,
+          "S6-propose-english-as-typed-first");
+  }
+  {
+    // Negative: inside an input a short word needs a higher probability (shu is at 85).
+    const Input input = *ParseInput("shubook");
+    Lattice lattice(input.size());
+    ProposeEnglish(input, engines, options, &lattice);
+    Check(!Find(lattice, EdgeKind::kEnglish, 0, 3) && Find(lattice, EdgeKind::kEnglish, 3, 7),
+          "S6-propose-english-short-word-floor");
+  }
+  {
+    // A short word or a possibly offensive one is proposed as the whole input only (negative
+    // inside a longer one).
+    const Input alone = *ParseInput("tv");
+    Lattice one(alone.size());
+    ProposeEnglish(alone, engines, options, &one);
+    const Input inside = *ParseInput("tvbook");
+    Lattice longer(inside.size());
+    ProposeEnglish(inside, engines, options, &longer);
+    Check(one.size() == 1 && one.From(0)[0].text == "TV" && !Find(longer, EdgeKind::kEnglish, 0, 2) &&
+              Find(longer, EdgeKind::kEnglish, 2, 6),
+          "S6-propose-english-short-word-whole-input-only");
+    const Input word = *ParseInput("damn");
+    Lattice typed(word.size());
+    ProposeEnglish(word, engines, options, &typed);
+    const Input split = *ParseInput("damnbook");
+    Lattice parts(split.size());
+    ProposeEnglish(split, engines, options, &parts);
+    Check(typed.size() == 1 && !Find(parts, EdgeKind::kEnglish, 0, 4),
+          "S6-propose-english-sensitive-whole-input-only");
+  }
+  {
     // Negative: too rare a word, and a single letter, are not proposed.
     const Input input = *ParseInput("xqa");
     Lattice lattice(input.size());

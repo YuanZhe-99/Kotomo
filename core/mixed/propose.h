@@ -23,15 +23,20 @@ void ProposePinyin(const Input& input, Engines& engines, const Options& options,
 void ProposeJapanese(const Input& input, Engines& engines, const Options& options,
                      Lattice* lattice);
 
-/// Adds a kEnglish edge for every span of two or more letters that is a word of the English
-/// dictionary with at least Costs::english_min_probability, written as the dictionary writes it.
+/// Adds kEnglish edges for every span of two or more letters that is a word of the English
+/// dictionary above the probability floor (a higher one for two and three letters inside a longer
+/// input, where possibly offensive words are not proposed either): the spelling
+/// as typed when the dictionary has it, otherwise the most common one, and the other spellings
+/// (`Apple` for apple) at `Costs::english_recased` more.
 /// Side effects: Engines::English calls.
 void ProposeEnglish(const Input& input, Engines& engines, const Options& options,
                     Lattice* lattice);
 
 /// Adds kPinyinJa and kEnJa edges for the spans that are keys of the cross-language lexicon, the
-/// Options::cross_words cheapest words per span and direction.
-/// Notes: honors the pinyin → Japanese, English → Japanese and transliteration switches.
+/// Options::cross_words cheapest words per span and direction. An edge costs Mozc's word cost of
+/// the entry, plus `Costs::japanese_word`, plus the direction's penalty scaled by the level.
+/// Notes: honors the pinyin → Japanese, English → Japanese and transliteration switches; a
+///   one-syllable pinyin key is proposed only as the whole input.
 void ProposeCross(const Input& input, const CrossLexicon& lexicon, const Options& options,
                   Lattice* lattice);
 

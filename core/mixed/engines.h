@@ -42,10 +42,17 @@ struct JapaneseSegment {
   std::vector<JapaneseWord> words;
 };
 
+/// Holds one conversion of a pinyin run.
+struct ChineseWord {
+  std::string text;
+  bool composed = false;  // librime made it up from shorter words; false: a dictionary entry
+};
+
 /// Holds one spelling of an English word in the dictionary.
 struct EnglishForm {
   std::string text;     // as the dictionary writes it (`AI`, `apple`)
   int probability = 0;  // the dictionary's unigram probability, 0–255; higher is more common
+  bool sensitive = false;  // the dictionary marks it possibly offensive
 };
 
 /// The questions the coordinator asks the engines, on the engine thread only.
@@ -66,7 +73,7 @@ class Engines {
   /// Inputs: `syllables` are spellings joined by apostrophes (`ni'hao`), so librime segments
   ///   exactly there.
   /// Returns: up to `limit` conversions of the whole run, best first; empty when librime has none.
-  virtual std::vector<std::string> Chinese(std::string_view syllables, size_t limit) = 0;
+  virtual std::vector<ChineseWord> Chinese(std::string_view syllables, size_t limit) = 0;
 
   /// Maps romaji to hiragana with Mozc's romaji table.
   /// Returns: hiragana, with the letters the table cannot map left as ASCII.
@@ -80,7 +87,8 @@ class Engines {
   /// Looks an English word up in the English dictionary, exactly (no correction).
   /// Inputs: `word` in lower case.
   /// Returns: the dictionary's spellings of it (lower case, capitalized, upper case), most
-  ///   probable first; empty when it is not a word.
+  ///   probable first, each marked when the dictionary calls it possibly offensive; empty when
+  ///   it is not a word.
   virtual std::vector<EnglishForm> English(std::string_view word) = 0;
 };
 

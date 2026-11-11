@@ -19,8 +19,8 @@ namespace kotomo::mixed {
 /// English words stay as written.
 /// Side effects: appends to `out` the sentence and, when one run covers the whole input, up to
 ///   `Options::alternatives` conversions of it, each `Costs::chinese_rank` dearer than the one
-///   before; appends nothing when librime converts a run to nothing. One Engines::Chinese call
-///   per run.
+///   before; a run librime composes rather than finds pays `Costs::chinese_composed`. Appends
+///   nothing when librime converts a run to nothing. One Engines::Chinese call per run.
 void FinishChinese(const Input& input, const Path& path, Engines& engines, const Options& options,
                    std::vector<Candidate>* out);
 

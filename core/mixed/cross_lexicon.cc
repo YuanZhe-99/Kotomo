@@ -54,6 +54,10 @@ bool CrossLexicon::Parse(std::string_view text, bool english, std::vector<CrossE
       return false;
     }
     entry.transliteration = english && field[1] == "translit";
+    if (!english) {  // the second column spells the key's syllables, separated by spaces
+      entry.syllables = static_cast<uint8_t>(
+          std::min<size_t>(255, 1 + std::count(field[1].begin(), field[1].end(), ' ')));
+    }
     longest_key_ = std::max(longest_key_, entry.key.size());
     out->push_back(entry);
   }

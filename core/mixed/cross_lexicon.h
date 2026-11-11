@@ -19,6 +19,7 @@ struct CrossEntry {
   std::string_view surface;  // the Japanese word
   std::string_view reading;  // its hiragana reading
   int32_t cost = 0;          // Mozc's word cost of the entry; lower is more common
+  uint8_t syllables = 0;     // pinyin → Japanese only: the syllables of the key
   bool transliteration = false;  // English → Japanese class `translit`: a made-up spelling
 };
 

@@ -15,16 +15,22 @@ namespace kotomo::mixed {
 /// §5.3's per-language calibration (fitted, stored in the lexicon metadata) replaces them in P2.
 struct Costs {
   int32_t pinyin_syllable = 1000;   // one syllable of a Chinese run
-  int32_t fuzzy = 1500;             // on top, a syllable reached only through a rule or correction
-  int32_t chinese_rank = 1800;      // each place further down librime's list for a run
-  int32_t kana = 1500;              // decoding estimate for one kana edge; Mozc's cost replaces it
+  int32_t fuzzy = 3000;             // on top, a syllable reached only through a rule or correction
+  int32_t chinese_rank = 2500;      // each place further down librime's list for a run
+  int32_t chinese_composed = 4000;  // a run librime has no entry for and composes from words
+  int32_t kana = 2200;              // decoding estimate for one kana edge; Mozc's cost replaces it
   int32_t doubled_n = 200;          // on top, ん typed nn (so n + ni wins over nn + i)
   int32_t japanese_bias = 0;        // added to Mozc's cost of a free run
   int32_t english_base = 800;       // an English word of the highest probability
   int32_t english_step = 25;        // each probability step below 255
   int32_t english_min_probability = 80;  // rarer words are not proposed
-  int32_t pinyin_to_japanese = 2000;     // a pinyin span read as a Japanese word
-  int32_t english_to_japanese = 2000;    // an English word read as a Japanese word
+  int32_t english_short_probability = 150;  // the floor for two or three letters inside an input
+  int32_t english_recased = 800;         // on top, a spelling in another case than typed
+  // A cross-language word costs Mozc's word cost of it, plus what Mozc's connection costs add
+  // to a word on average (a pinned word reports none), plus the direction's penalty.
+  int32_t japanese_word = 1500;          // the connection share of a pinned Japanese word
+  int32_t pinyin_to_japanese = 500;      // the penalty for a pinyin span read as a Japanese word
+  int32_t english_to_japanese = 500;     // the penalty for an English word read as a Japanese word
   int32_t transliteration = 3000;        // on top, a made-up katakana spelling
   int32_t english_in_chinese = 1500;     // an English word kept in a Chinese sentence
   int32_t english_in_japanese = 4000;    // an English word kept in a Japanese sentence
@@ -42,8 +48,8 @@ struct Options {
   bool pinyin_to_japanese = true;
   bool english_to_japanese = true;
   bool transliteration = true;
-  size_t beam = 12;         // partial paths kept per position
-  size_t paths = 5;         // whole paths finished per target language
+  size_t beam = 16;         // partial paths kept per position
+  size_t paths = 8;         // whole paths finished per target language
   size_t cross_words = 3;   // cross-language words proposed per span and direction
   size_t alternatives = 6;  // engine alternatives listed when one run covers the whole input
   size_t candidates = 20;   // candidates in a snapshot

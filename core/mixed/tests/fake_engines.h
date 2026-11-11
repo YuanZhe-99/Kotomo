@@ -28,12 +28,17 @@ class FakeEngines : public Engines {
     }
   }
 
-  std::vector<std::string> Chinese(std::string_view syllables, size_t limit) override {
+  /// Notes: the fake's entries are dictionary words, except the ones written with a leading `~`,
+  ///   which stand for runs librime composes.
+  std::vector<ChineseWord> Chinese(std::string_view syllables, size_t limit) override {
     ++chinese_calls;
+    std::vector<ChineseWord> out;
     const auto found = chinese_.find(std::string(syllables));
-    if (found == chinese_.end()) return {};
-    std::vector<std::string> out = found->second;
-    if (out.size() > limit) out.resize(limit);
+    if (found == chinese_.end()) return out;
+    for (const std::string& text : found->second) {
+      if (out.size() == limit) break;
+      out.push_back(text[0] == '~' ? ChineseWord{text.substr(1), true} : ChineseWord{text, false});
+    }
     return out;
   }
 
@@ -102,7 +107,7 @@ class FakeEngines : public Engines {
       {"an", false},  {"xian", false}, {"tu", false}, {"guan", false}, {"ai", false},
       {"hoa", true}};
   std::map<std::string, std::vector<std::string>> chinese_ = {
-      {"shu", {"书", "树", "数"}},        {"ni'hao", {"你好", "拟好"}},
+      {"shu", {"书", "树", "数"}},        {"ni'hao", {"你好", "~拟好"}},
       {"hen'hao", {"很好"}},              {"xi'an", {"西安"}},
       {"xian", {"先", "线"}},             {"tu'shu'guan", {"图书馆"}},
       {"ai", {"爱", "矮"}},               {"hoa", {"好"}},
@@ -122,8 +127,10 @@ class FakeEngines : public Engines {
       {"いく", {{"行く", "いく", 3000}}},
       {"ねこ", {{"猫", "ねこ", 3100}, {"ねこ", "ねこ", 5200}}}};
   std::map<std::string, std::vector<EnglishForm>> english_ = {
-      {"book", {{"book", 200}}}, {"ai", {{"AI", 150}, {"ai", 90}}}, {"the", {{"the", 255}}},
-      {"note", {{"note", 180}}}, {"xq", {{"xq", 10}}},              {"shu", {{"shu", 85}}}};
+      {"book", {{"book", 200}}}, {"ai", {{"AI", 150}}}, {"the", {{"the", 255}}},
+      {"note", {{"note", 180}}}, {"xq", {{"xq", 10}}},              {"shu", {{"shu", 85}}},
+      {"apple", {{"Apple", 200}, {"apple", 180}}},
+      {"tv", {{"TV", 140}}},     {"damn", {{"damn", 160, true}}}};
 };
 
 /// Builds the tests' cross-language lexicon: three pinyin keys and three English keys.

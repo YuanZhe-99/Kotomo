@@ -27,7 +27,7 @@ void FinishChinese(const Input& input, const Path& path, Engines& engines, const
                    std::vector<Candidate>* out) {
   Candidate sentence{.text = {}, .target = Lang::kChinese, .cost = path.cost,
                      .flags = PathFlags(path), .pieces = {}};
-  std::vector<std::string> whole_input_run;  // librime's list when one run is the whole input
+  std::vector<ChineseWord> whole_input_run;  // librime's list when one run is the whole input
   for (size_t i = 0; i < path.edges.size();) {
     const Edge& first = *path.edges[i];
     if (first.kind != EdgeKind::kPinyin) {
@@ -43,20 +43,25 @@ void FinishChinese(const Input& input, const Path& path, Engines& engines, const
       if (!syllables.empty()) syllables += '\'';
       syllables += path.edges[end]->text;
     }
-    std::vector<std::string> conversions = engines.Chinese(syllables, options.alternatives);
+    std::vector<ChineseWord> conversions = engines.Chinese(syllables, options.alternatives);
     if (conversions.empty()) return;
     sentence.pieces.push_back(MakePiece(input, first.begin, path.edges[end - 1]->end,
-                                        conversions.front(), Lang::kChinese, Origin::kRime, false));
-    sentence.text += conversions.front();
+                                        conversions.front().text, Lang::kChinese, Origin::kRime,
+                                        false));
+    sentence.text += conversions.front().text;
+    if (conversions.front().composed) sentence.cost += options.costs.chinese_composed;
     if (i == 0 && end == path.edges.size()) whole_input_run = std::move(conversions);
     i = end;
   }
   out->push_back(sentence);
+  const int32_t composed = options.costs.chinese_composed;
   for (size_t rank = 1; rank < whole_input_run.size(); ++rank) {
     Candidate other = sentence;
-    other.text = whole_input_run[rank];
-    other.pieces.front().text = whole_input_run[rank];
-    other.cost += static_cast<int32_t>(rank) * options.costs.chinese_rank;
+    other.text = whole_input_run[rank].text;
+    other.pieces.front().text = other.text;
+    other.cost += static_cast<int32_t>(rank) * options.costs.chinese_rank +
+                  (whole_input_run[rank].composed ? composed : 0) -
+                  (whole_input_run.front().composed ? composed : 0);
     out->push_back(std::move(other));
   }
 }

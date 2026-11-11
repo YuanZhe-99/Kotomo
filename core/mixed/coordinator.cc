@@ -11,6 +11,30 @@
 
 namespace kotomo::mixed {
 
+namespace {
+
+/// Applies "original language first" (AGENTS.md, behavior contract): when the cheapest candidate
+/// is cross-language and another candidate is written in a language its cross-language pieces
+/// were typed in, the best such candidate moves to the front.
+/// Notes: a cross-language sentence with no reading in the typed language stays first: there is
+///   no original-language candidate to prefer.
+void OriginalLanguageFirst(std::vector<Candidate>* candidates) {
+  if (candidates->empty() || !(candidates->front().flags & kCross)) return;
+  bool typed[3] = {false, false, false};
+  for (const Piece& piece : candidates->front().pieces) {
+    if (piece.origin == Origin::kPinyinJa || piece.origin == Origin::kEnJa) {
+      typed[static_cast<int>(piece.typed)] = true;
+    }
+  }
+  const auto original =
+      std::find_if(candidates->begin(), candidates->end(), [&typed](const Candidate& c) {
+        return !(c.flags & kCross) && typed[static_cast<int>(c.target)];
+      });
+  if (original != candidates->end()) std::rotate(candidates->begin(), original, original + 1);
+}
+
+}  // namespace
+
 Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation) {
   Snapshot snapshot{.generation = generation, .stage = 0, .input = {}, .cursor = 0,
                     .candidates = {}};
@@ -49,6 +73,7 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation)
     if (!seen.insert(candidate.text).second) continue;
     snapshot.candidates.push_back(std::move(candidate));
   }
+  if (options_.level != Level::kAggressive) OriginalLanguageFirst(&snapshot.candidates);
   return snapshot;
 }
 

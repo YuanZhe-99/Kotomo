@@ -111,6 +111,21 @@ int main() {
               s.candidates[0].pieces.size() == 2,
           "S6-finish-english", Shown(s));
   }
+  // Original language first is a rule, not a matter of costs: even when the Japanese reading of
+  // a pinyin word is cheaper, the Chinese candidate leads; only the aggressive level lets the
+  // cheaper cross-language candidate lead.
+  {
+    Options dear;
+    dear.costs.pinyin_syllable = 9000;
+    Coordinator balanced(engines, *lexicon, dear);
+    const Snapshot s = balanced.Convert("xian", 1);
+    Check(Place(s, "先") == 0 && Place(s, "線") == 1 && Get(s, "線").cost < Get(s, "先").cost,
+          "S6-coordinator-original-first-rule", Shown(s));
+    dear.level = Level::kAggressive;
+    Coordinator aggressive(engines, *lexicon, dear);
+    const Snapshot a = aggressive.Convert("xian", 1);
+    Check(Place(a, "線") == 0, "S6-coordinator-aggressive-level", Shown(a));
+  }
   // The switches: with pinyin → Japanese off, no cross-language candidate (negative).
   {
     Options off;
