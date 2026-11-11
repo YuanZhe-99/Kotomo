@@ -1,14 +1,14 @@
 {
   "format": 1,
-  "checked": "2026-11-04",
+  "checked": "2026-11-10",
   "toolchain": {
     "jdk": "21",
     "gradle": {
-      "version": "9.8.2",
-      "distribution": "https://services.gradle.org/distributions/gradle-9.8.2-bin.zip",
-      "sha256": "21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607"
+      "version": "9.9.1",
+      "distribution": "https://services.gradle.org/distributions/gradle-9.9.1-bin.zip",
+      "sha256": "d8a18a7a841dd5df825d35a685fad6f2d7f12ac0c280e57b67c27b4a520ba228"
     },
-    "androidGradlePlugin": "9.5.0",
+    "androidGradlePlugin": "9.5.1",
     "kotlin": "2.4.21",
     "composeBom": "2026.09.00",
     "compileSdk": "37.2",
@@ -147,14 +147,14 @@
       }
     },
     "cc-cedict": {
-      "version": "2026-11-04T07:19:40Z",
+      "version": "2026-11-10T08:36:22Z",
       "url": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip",
-      "sha256": "594d6414c969dc143953bdcc2ae151069ae20354a20aacc1ac8b0edfcf273187"
+      "sha256": "2a55f22fd34e1767b6237a14cfcb29bf78e4fb252171dbc7a36b05417ad9f433"
     },
     "jmdict-eng": {
-      "version": "jmdict-simplified 3.6.2+20261102210542 (JMdict 2026-11-02)",
-      "url": "https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20261102210542/jmdict-eng-3.6.2%2B20261102210542.json.zip",
-      "sha256": "851791d3cc98a29ca7e4f65532966cdee637a1bc218cf1c99b4895b780edb101"
+      "version": "jmdict-simplified 3.6.2+20261109214828 (JMdict 2026-11-09)",
+      "url": "https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20261109214828/jmdict-eng-3.6.2%2B20261109214828.json.zip",
+      "sha256": "6499b5ff4f6c57878a9e01e4df8d2c33ab1a8a3d649ca64e9b45d3885d645fb6"
     },
     "english-wordlist": {
       "url": "https://codeberg.org/Helium314/aosp-dictionaries/raw/commit/ff0cd52be8d9530200fefe8b296c53d4f662091e/wordlists/main_en_US__experimental.combined",

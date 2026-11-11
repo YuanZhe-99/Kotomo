@@ -100,9 +100,9 @@ public final class EmojiData {
             new Source("unihan", "18.0.0", List.of(
                     new Remote("https://www.unicode.org/Public/18.0.0/ucd/Unihan.zip", "Unihan.zip",
                             "4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e"))),
-            new Source("cc-cedict", "2026-11-04T07:19:40Z", List.of(
+            new Source("cc-cedict", "2026-11-10T08:36:22Z", List.of(
                     new Remote("https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip", "cedict_1_0_ts_utf-8_mdbg.zip",
-                            "594d6414c969dc143953bdcc2ae151069ae20354a20aacc1ac8b0edfcf273187"))),
+                            "2a55f22fd34e1767b6237a14cfcb29bf78e4fb252171dbc7a36b05417ad9f433"))),
             new Source("mozc", "3.35.6354", List.of(
                     new Remote(MOZC_RAW + "dictionary00.txt", "dictionary00.txt", "9e07ce292932c4fff327ed8cb06274c09acca556bd8bdf7c7ef1f6173eae3b61"),
                     new Remote(MOZC_RAW + "dictionary01.txt", "dictionary01.txt", "836fd5fd8399510de0d8ef7b33be913cca6bbaee7b712cc8045fba03f4c75a89"),

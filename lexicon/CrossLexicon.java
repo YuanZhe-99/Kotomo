@@ -88,13 +88,13 @@ public final class CrossLexicon {
                     new Remote(OPENCC_RAW + "JPShinjitaiPhrases.txt", "JPShinjitaiPhrases.txt", "799c9d69d78fcf96b35110693866bd34a070e4f50e6be55a4ecf8080cd2832d6"))),
             new Source("unihan", "18.0.0", "Unicode-3.0", "https://www.unicode.org/Public/18.0.0/ucd/", List.of(
                     new Remote("https://www.unicode.org/Public/18.0.0/ucd/Unihan.zip", "Unihan.zip", "4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e"))),
-            new Source("cc-cedict", "2026-11-04T07:19:40Z", "CC-BY-SA-4.0",
+            new Source("cc-cedict", "2026-11-10T08:36:22Z", "CC-BY-SA-4.0",
                     "https://www.mdbg.net/chinese/dictionary?page=cc-cedict", List.of(
-                    new Remote("https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip", "cedict_1_0_ts_utf-8_mdbg.zip", "594d6414c969dc143953bdcc2ae151069ae20354a20aacc1ac8b0edfcf273187"))),
-            new Source("jmdict", "jmdict-simplified 3.6.2+20261102210542 (JMdict 2026-11-02)", "CC-BY-SA-4.0 (EDRDG licence)",
-                    "https://github.com/scriptin/jmdict-simplified/releases/tag/3.6.2%2B20261102210542", List.of(
-                    new Remote("https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20261102210542/jmdict-eng-3.6.2%2B20261102210542.json.zip",
-                            "jmdict-eng-3.6.2+20261102210542.json.zip", "851791d3cc98a29ca7e4f65532966cdee637a1bc218cf1c99b4895b780edb101"))));
+                    new Remote("https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip", "cedict_1_0_ts_utf-8_mdbg.zip", "2a55f22fd34e1767b6237a14cfcb29bf78e4fb252171dbc7a36b05417ad9f433"))),
+            new Source("jmdict", "jmdict-simplified 3.6.2+20261109214828 (JMdict 2026-11-09)", "CC-BY-SA-4.0 (EDRDG licence)",
+                    "https://github.com/scriptin/jmdict-simplified/releases/tag/3.6.2%2B20261109214828", List.of(
+                    new Remote("https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20261109214828/jmdict-eng-3.6.2%2B20261109214828.json.zip",
+                            "jmdict-eng-3.6.2+20261109214828.json.zip", "6499b5ff4f6c57878a9e01e4df8d2c33ab1a8a3d649ca64e9b45d3885d645fb6"))));
 
     // Pinyin derivation penalties, added to the Mozc word cost.
     /** Reading built character by character from Unihan instead of a CC-CEDICT word. */
@@ -246,7 +246,7 @@ public final class CrossLexicon {
 
         List<Row> en = new ArrayList<>();
         Set<String> wanted = new HashSet<>();
-        readJmdict(DEPS.resolve("jmdict/jmdict-eng-3.6.2+20261102210542.json.zip"), en, wanted);
+        readJmdict(DEPS.resolve("jmdict/jmdict-eng-3.6.2+20261109214828.json.zip"), en, wanted);
 
         List<Row> pinyin = new ArrayList<>();
         Map<String, MozcWord> mozc = new HashMap<>();

@@ -32,8 +32,8 @@ Kotomo 跟随每个上游的最新发行版，并以提交号锁定；`build-loc
 | OpenCC | 最新 GitHub 发行版 | 1.4.2 |
 | 英文引擎：HeliBoard 维护的 AOSP LatinIME 原生代码 | HeliBoard 的最新发行版 | HeliBoard 4.2 |
 | Android 平台 | 最新稳定 API 作为 `compileSdk` 与 `targetSdk` | API 37（Android 17） |
-| Android Gradle Plugin、Gradle、Kotlin、NDK | 最新稳定版 | 9.5.0、9.8.2、2.4.21、r30（30.0.16248370） |
+| Android Gradle Plugin、Gradle、Kotlin、NDK | 最新稳定版 | 9.5.1、9.9.1、2.4.21、r30（30.0.16248370） |
 | Compose BOM、Room、DataStore | 最新稳定版 | 2026.09.00、2.8.5、1.3.0 |
 | ML Kit GenAI 校对、重写与 Prompt；ML Kit 翻译 | 最新版 | 1.0.0-beta1、1.0.0-beta1、1.0.0-beta5；17.0.3 |
-| JMdict（经 jmdict-simplified）、Unihan、CLDR | 最新发布版 | 3.6.2+20261102210542；Unicode 18.0.0；CLDR 49 |
+| JMdict（经 jmdict-simplified）、Unihan、CLDR | 最新发布版 | 3.6.2+20261109214828；Unicode 18.0.0；CLDR 49 |
 | Noto Emoji、Twemoji | 最新发行版 | v2026-09-24-unicode18_0；17.0.3 |

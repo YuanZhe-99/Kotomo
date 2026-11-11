@@ -35,8 +35,8 @@ what each build used. The table shows the latest version at the last check (2026
 | OpenCC | latest GitHub release | 1.4.2 |
 | English engine: AOSP LatinIME's native code in HeliBoard's maintained copy | latest HeliBoard release | HeliBoard 4.2 |
 | Android platform | newest stable API as `compileSdk` and `targetSdk` | API 37 (Android 17) |
-| Android Gradle Plugin, Gradle, Kotlin, NDK | latest stable | 9.5.0, 9.8.2, 2.4.21, r30 (30.0.16248370) |
+| Android Gradle Plugin, Gradle, Kotlin, NDK | latest stable | 9.5.1, 9.9.1, 2.4.21, r30 (30.0.16248370) |
 | Compose BOM, Room, DataStore | latest stable | 2026.09.00, 2.8.5, 1.3.0 |
 | ML Kit GenAI proofreading, rewriting and prompt; ML Kit translation | latest | 1.0.0-beta1, 1.0.0-beta1, 1.0.0-beta5; 17.0.3 |
-| JMdict (through jmdict-simplified), Unihan, CLDR | latest published release | 3.6.2+20261102210542; Unicode 18.0.0; CLDR 49 |
+| JMdict (through jmdict-simplified), Unihan, CLDR | latest published release | 3.6.2+20261109214828; Unicode 18.0.0; CLDR 49 |
 | Noto Emoji, Twemoji | latest release | v2026-09-24-unicode18_0; 17.0.3 |

@@ -76,7 +76,7 @@ internal val DATA = listOf(
         "https://www.unicode.org/license.txt", holder = "© Unicode, Inc.", notes = listOf(R.string.note_build_input),
     ),
     Credit(
-        "CC-CEDICT", "2026-11-04", "CC BY-SA 4.0", R.string.use_cedict, "https://www.mdbg.net/chinese/dictionary?page=cc-cedict",
+        "CC-CEDICT", "2026-11-10", "CC BY-SA 4.0", R.string.use_cedict, "https://www.mdbg.net/chinese/dictionary?page=cc-cedict",
         "https://creativecommons.org/licenses/by-sa/4.0/", holder = "MDBG; based on CEDICT by Paul Andrew Denisowski",
         notes = listOf(R.string.note_build_input),
     ),
@@ -85,7 +85,7 @@ internal val DATA = listOf(
         "https://www.apache.org/licenses/LICENSE-2.0", notes = listOf(R.string.note_build_input),
     ),
     Credit(
-        "JMdict (through jmdict-simplified 3.6.2)", "2026-11-02", "CC BY-SA 4.0 (EDRDG licence)", R.string.use_jmdict,
+        "JMdict (through jmdict-simplified 3.6.2)", "2026-11-09", "CC BY-SA 4.0 (EDRDG licence)", R.string.use_jmdict,
         "https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project", "https://www.edrdg.org/edrdg/licence.html",
         holder = "© Electronic Dictionary Research and Development Group", notes = listOf(R.string.note_build_input),
     ),
