@@ -83,6 +83,10 @@ data class Dictionaries(
     val canRollBack: Boolean = false,
     val readOnly: Boolean = false,
     val onlineAccepted: Int = 0,
+    /** The person's words are encrypted with their password (ADR-012). */
+    val protected: Boolean = false,
+    /** Protected and not unlocked in this process: the words cannot be read or changed. */
+    val locked: Boolean = false,
     val generation: Long = 0,
 )
 
@@ -108,11 +112,21 @@ internal object DictionaryFormat {
         val packs: Map<String, Boolean> = emptyMap(),
         /** The version of the download notice the person accepted; 0 for none (PLAN §14 "联网"). */
         val onlineAccepted: Int = 0,
+        /** The password protection in force, or null (ADR-012). */
+        val protection: Protected? = null,
         val version: Int = VERSION,
         val extra: Map<String, Any?> = emptyMap(),
     )
 
+    /**
+     * The password protection of `state.json` (`protection`): the key's salt and rounds, and a
+     * small sealed check that tells a right password from a wrong one. Never the password or the key.
+     */
+    data class Protected(val iterations: Int, val salt: ByteArray, val check: ByteArray)
+
     private val ENTRY_KNOWN = setOf("language", "text", "reading", "weight", "source")
+    private val B64 = java.util.Base64.getEncoder()
+    private val B64D = java.util.Base64.getDecoder()
 
     /** Reads `user.json`; null when the text is not a JSON object. */
     fun readUser(text: String): User? {
@@ -169,8 +183,13 @@ internal object DictionaryFormat {
             downloads = o["downloads_enabled"] as? Boolean ?: true,
             packs = packs,
             onlineAccepted = o.long("online_accepted")?.toInt()?.coerceAtLeast(0) ?: 0,
+            protection = o.obj("protection")?.let { pr ->
+                runCatching {
+                    Protected(pr.long("iterations")!!.toInt(), B64D.decode(pr.str("salt")!!), B64D.decode(pr.str("check")!!))
+                }.getOrNull()
+            },
             version = o.long("format_version")?.toInt() ?: VERSION,
-            extra = o.filterKeys { it !in setOf("format_version", "updated_utc_ms", "custom_enabled", "downloads_enabled", "packs", "online_accepted") },
+            extra = o.filterKeys { it !in setOf("format_version", "updated_utc_ms", "custom_enabled", "downloads_enabled", "packs", "online_accepted", "protection") },
         )
     }
 
@@ -184,6 +203,9 @@ internal object DictionaryFormat {
             put("downloads_enabled", state.downloads)
             put("packs", state.packs.mapValues { (_, on) -> mapOf("enabled" to on) })
             if (state.onlineAccepted > 0) put("online_accepted", state.onlineAccepted.toLong())
+            state.protection?.let {
+                put("protection", linkedMapOf("kdf" to "pbkdf2-hmac-sha256", "iterations" to it.iterations.toLong(), "salt" to B64.encodeToString(it.salt), "check" to B64.encodeToString(it.check)))
+            }
         },
         indent = true,
     ) + "\n"
@@ -216,7 +238,7 @@ internal object DictionaryFormat {
  * in `state.json`, and librime's three run-time tables in librime's user directory.
  *
  * Inputs: dir holds the dictionary files; rimeUser is librime's user directory; io runs the file
- * work; clock gives UTC milliseconds.
+ * work; iterations are the PBKDF2 rounds for new password protection; clock gives UTC milliseconds.
  * Notes: one instance per process ([get]); the settings and the keyboard share it. Every change
  * runs on [io] under one [Mutex], writes files through a temporary file and an atomic rename,
  * rewrites the three tables and publishes a new [state]; the keyboard re-selects librime's schema
@@ -227,6 +249,7 @@ class DictionaryStore(
     private val dir: File,
     private val rimeUser: File,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val iterations: Int = Protection.ITERATIONS,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val lock = Mutex()
@@ -236,6 +259,11 @@ class DictionaryStore(
 
     private val userFile = File(dir, "user.json")
     private val prevFile = File(dir, "user.prev.json")
+    private val sealedFile = File(dir, "user.kenc")
+    private val sealedPrev = File(dir, "user.prev.kenc")
+    /** The key derived from the person's password while unlocked; only in memory. */
+    private var key: javax.crypto.SecretKey? = null
+    private val isLocked get() = switches.protection != null && key == null
     private val stateFile = File(dir, "state.json")
     private val packsDir = File(dir, "packs")
     private var user = DictionaryFormat.User(emptyList())
@@ -285,12 +313,12 @@ class DictionaryStore(
      * Returns: false when read-only or there is no previous version.
      */
     suspend fun rollBack() = change {
-        if (!prevFile.isFile) return@change false
-        val previous = DictionaryFormat.readUser(prevFile.readText()) ?: return@change false
+        val prevText = loadText(prev = true) ?: return@change false
+        val previous = DictionaryFormat.readUser(prevText) ?: return@change false
         if (previous.version > DictionaryFormat.VERSION) return@change false
-        val current = userFile.takeIf { it.isFile }?.readText()
-        writeAtomically(userFile, prevFile.readText())
-        if (current != null) writeAtomically(prevFile, current) else prevFile.delete()
+        val current = loadText(prev = false)
+        storeText(prev = false, prevText)
+        if (current != null) storeText(prev = true, current) else currentFile(prev = true).delete()
         user = previous
         true
     }
@@ -345,6 +373,89 @@ class DictionaryStore(
     }
 
     /**
+     * Turns password protection on (ADR-012): `user.json` and `user.prev.json` become
+     * `user.kenc` and `user.prev.kenc`, sealed with a key derived from [password]; the plain
+     * files are deleted. The store stays unlocked in this process.
+     * Returns: false when already protected, read-only, or the files cannot be written.
+     * Notes: the password is not kept; the caller clears its array afterwards. Slow (key derivation).
+     */
+    suspend fun protect(password: CharArray) = change(user = false) {
+        if (switches.protection != null || user.version > DictionaryFormat.VERSION) return@change false
+        val salt = Protection.salt()
+        val k = Protection.derive(password, salt, iterations)
+        val p = DictionaryFormat.Protected(iterations, salt, Protection.seal(CHECK, k, salt, iterations, "check"))
+        val plainCurrent = userFile.takeIf { it.isFile }?.readText()
+        val plainPrev = prevFile.takeIf { it.isFile }?.readText()
+        plainCurrent?.let { writeAtomically(sealedFile, Protection.seal(it.toByteArray(), k, salt, iterations, "user")) }
+        plainPrev?.let { writeAtomically(sealedPrev, Protection.seal(it.toByteArray(), k, salt, iterations, "user")) }
+        key = k
+        saveState(switches.copy(protection = p))
+        userFile.delete()
+        prevFile.delete()
+        true
+    }
+
+    /**
+     * Unlocks a protected dictionary for this process.
+     * Returns: false for a wrong password (the files are untouched) or when not protected.
+     * Side effects: reads the words and rewrites librime's tables from them.
+     */
+    suspend fun unlock(password: CharArray) = change(user = false) {
+        val p = switches.protection ?: return@change false
+        val k = Protection.derive(password, p.salt, p.iterations)
+        try {
+            Protection.open(p.check, k)
+        } catch (_: SealException) {
+            return@change false
+        }
+        key = k
+        user = readUserFile()
+        true
+    }
+
+    /**
+     * Locks a protected dictionary: forgets the key and empties the two librime tables made from
+     * the person's words, so the keyboard stops offering them until the next unlock.
+     */
+    suspend fun lock() = change(user = false) {
+        if (switches.protection == null || key == null) return@change false
+        key = null
+        user = DictionaryFormat.User(emptyList())
+        rimeUser.mkdirs()
+        writeAtomically(File(rimeUser, DictionaryFormat.CUSTOM_TABLE), "")
+        writeAtomically(File(rimeUser, DictionaryFormat.LOW_TABLE), "")
+        true
+    }
+
+    /**
+     * Turns password protection off: the words are written back as plain `user.json` (and the
+     * previous version as `user.prev.json`), the sealed files deleted. Returns: false while locked.
+     */
+    suspend fun unprotect() = change(user = false) {
+        if (switches.protection == null || key == null) return@change false
+        val current = loadText(prev = false)
+        val previous = loadText(prev = true)
+        current?.let { writeAtomically(userFile, it) }
+        previous?.let { writeAtomically(prevFile, it) }
+        saveState(switches.copy(protection = null))
+        key = null
+        sealedFile.delete()
+        sealedPrev.delete()
+        true
+    }
+
+    /**
+     * Seals an export of the person's words with their key while protected.
+     * Returns: the sealed file for [text] in [format], or null when not protected (export plain).
+     */
+    suspend fun sealExport(text: String, format: Format): ByteArray? = withContext(io) {
+        lock.withLock {
+            val p = switches.protection ?: return@withLock null
+            Protection.seal(text.toByteArray(), key ?: return@withLock null, p.salt, p.iterations, format.extension)
+        }
+    }
+
+    /**
      * Records that the person accepted version [notice] of the download notice (PLAN §14): only
      * then do the settings start downloads.
      */
@@ -369,7 +480,7 @@ class DictionaryStore(
             // A full disk or a removed directory fails the change, never the caller.
             try {
                 if (!loaded) read()
-                val ok = if (user && this@DictionaryStore.user.version > DictionaryFormat.VERSION) false else block()
+                val ok = if (user && (isLocked || this@DictionaryStore.user.version > DictionaryFormat.VERSION)) false else block()
                 if (ok) publish()
                 ok
             } catch (_: IOException) {
@@ -381,20 +492,61 @@ class DictionaryStore(
     /** Reads `user.json` and `state.json` (missing files are empty; a damaged `user.json` is moved aside). */
     private fun read() {
         loaded = true
-        user = userFile.takeIf { it.isFile }?.let { f ->
+        switches = stateFile.takeIf { it.isFile }?.let { DictionaryFormat.readState(it.readText()) } ?: DictionaryFormat.State()
+        user = readUserFile()
+    }
+
+    /**
+     * Reads the person's entries: `user.json`, or `user.kenc` with the key while protected (empty
+     * while locked). A plain file that is not a dictionary is moved aside; a sealed one that does
+     * not open stays as it is (a wrong key never destroys it).
+     */
+    private fun readUserFile(): DictionaryFormat.User {
+        if (switches.protection != null) {
+            val text = try {
+                loadText(prev = false)
+            } catch (e: SealException) {
+                // A file from a newer version is never overwritten: read-only, like a newer user.json.
+                if (e.problem == SealProblem.NEWER) return DictionaryFormat.User(emptyList(), version = DictionaryFormat.VERSION + 1)
+                null
+            } ?: return DictionaryFormat.User(emptyList())
+            return DictionaryFormat.readUser(text) ?: DictionaryFormat.User(emptyList())
+        }
+        return userFile.takeIf { it.isFile }?.let { f ->
             DictionaryFormat.readUser(f.readText()) ?: run {
                 runCatching { Files.move(f.toPath(), File(dir, "user.json.unreadable").toPath(), StandardCopyOption.REPLACE_EXISTING) }
                 null
             }
         } ?: DictionaryFormat.User(emptyList())
-        switches = stateFile.takeIf { it.isFile }?.let { DictionaryFormat.readState(it.readText()) } ?: DictionaryFormat.State()
+    }
+
+    /** The file that holds the current ([prev] false) or previous entries in the mode in force. */
+    private fun currentFile(prev: Boolean): File = when {
+        switches.protection != null -> if (prev) sealedPrev else sealedFile
+        else -> if (prev) prevFile else userFile
+    }
+
+    /** Reads the current or previous entries' text; null when there is none or it is locked. */
+    private fun loadText(prev: Boolean): String? {
+        val f = currentFile(prev).takeIf { it.isFile } ?: return null
+        if (switches.protection == null) return f.readText()
+        val k = key ?: return null
+        return Protection.open(f.readBytes(), k).toString(Charsets.UTF_8)
+    }
+
+    /** Writes the current or previous entries' text, sealed while protected. */
+    private fun storeText(prev: Boolean, text: String) {
+        val p = switches.protection
+        val f = currentFile(prev)
+        if (p == null) writeAtomically(f, text) else writeAtomically(f, Protection.seal(text.toByteArray(), key!!, p.salt, p.iterations, "user"))
     }
 
     /** Saves the person's entries, keeping the file it replaces as `user.prev.json`. */
     private fun saveUser(next: DictionaryFormat.User): Boolean {
         dir.mkdirs()
-        if (userFile.isFile) Files.copy(userFile.toPath(), prevFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
-        writeAtomically(userFile, DictionaryFormat.writeUser(next, clock()))
+        val current = currentFile(prev = false)
+        if (current.isFile) Files.copy(current.toPath(), currentFile(prev = true).toPath(), StandardCopyOption.REPLACE_EXISTING)
+        storeText(prev = false, DictionaryFormat.writeUser(next, clock()))
         user = next
         return true
     }
@@ -415,8 +567,12 @@ class DictionaryStore(
     private fun publish() {
         val packs = installed()
         rimeUser.mkdirs()
-        DictionaryFormat.tables(user.entries, switches.custom).forEach { (name, text) ->
-            writeAtomically(File(rimeUser, name), text)
+        // Locked: the tables written at the last unlock stay, so the keyboard keeps the words
+        // (ADR-012); Lock empties them on purpose.
+        if (!isLocked) {
+            DictionaryFormat.tables(user.entries, switches.custom).forEach { (name, text) ->
+                writeAtomically(File(rimeUser, name), text)
+            }
         }
         val joined = File(rimeUser, DictionaryFormat.PACKS_TABLE + ".tmp")
         FileOutputStream(joined).use { out ->
@@ -433,6 +589,8 @@ class DictionaryStore(
             downloadsEnabled = switches.downloads,
             canRollBack = prevFile.isFile,
             readOnly = user.version > DictionaryFormat.VERSION,
+            protected = switches.protection != null,
+            locked = isLocked,
             onlineAccepted = switches.onlineAccepted,
             generation = _state.value.generation + 1,
         )
@@ -450,10 +608,13 @@ class DictionaryStore(
         }
 
     /** Writes [text] through a temporary file, synced, then an atomic rename. */
-    private fun writeAtomically(file: File, text: String) {
+    private fun writeAtomically(file: File, text: String) = writeAtomically(file, text.toByteArray())
+
+    /** Writes [bytes] through a temporary file, synced, then an atomic rename. */
+    private fun writeAtomically(file: File, bytes: ByteArray) {
         file.parentFile?.mkdirs()
         val tmp = File(file.path + ".tmp")
-        FileOutputStream(tmp).use { it.write(text.toByteArray()); it.fd.sync() }
+        FileOutputStream(tmp).use { it.write(bytes); it.fd.sync() }
         Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
@@ -461,6 +622,8 @@ class DictionaryStore(
         private const val ENTRIES = "entries.tsv"
         private const val META = "pack.json"
         private const val TABLE = "table.txt"
+        /** The text sealed as the password check. */
+        private val CHECK = "kotomo-dictionary-check".toByteArray()
 
         @Volatile private var instance: DictionaryStore? = null
 

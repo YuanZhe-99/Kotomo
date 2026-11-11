@@ -58,6 +58,9 @@ import com.yuanzhe.kotomo.dictionary.InstalledPack
 import com.yuanzhe.kotomo.dictionary.Progress
 import com.yuanzhe.kotomo.dictionary.Sources
 import com.yuanzhe.kotomo.dictionary.Problem
+import com.yuanzhe.kotomo.dictionary.Protection
+import com.yuanzhe.kotomo.dictionary.SealException
+import com.yuanzhe.kotomo.dictionary.SealProblem
 import com.yuanzhe.kotomo.dictionary.Readings
 import com.yuanzhe.kotomo.dictionary.Source
 import com.yuanzhe.kotomo.dictionary.Weights
@@ -87,12 +90,19 @@ private class DictionaryUi {
     /** The source whose download waits for the notice to be accepted. */
     var notice by mutableStateOf<String?>(null)
     var message by mutableStateOf<String?>(null)
+    /** The password dialog open, or null. */
+    var password by mutableStateOf<PasswordMode?>(null)
+    /** A picked file that is encrypted, waiting for its password. */
+    var sealed by mutableStateOf<ByteArray?>(null)
 
     companion object {
         /** The current visit's state; survives the activity being rebuilt, not leaving the page. */
         var visit: DictionaryUi? = null
     }
 }
+
+/** What the password dialog is for: protecting the words, unlocking them, opening an encrypted file. */
+private enum class PasswordMode { PROTECT, UNLOCK, OPEN }
 
 /** A file read and checked, waiting for the person to confirm it. */
 private data class PendingImport(
@@ -123,9 +133,14 @@ internal fun DictionariesPage() {
     if (d.readOnly) Section(null) { Inset { Note(stringResource(R.string.dict_read_only)) } }
     ui.message?.let { Section(null) { Inset { Text(it, style = MaterialTheme.typography.bodyMedium) } } }
     SourcesSection(d, store)
-    WordsSection(d, ui)
-    ImportSection(d, store, ui)
-    ExportSection(d, ui)
+    ProtectionSection(d, store, ui)
+    if (d.locked) {
+        Section(null) { Inset { Note(stringResource(R.string.dict_protect_locked)) } }
+    } else {
+        WordsSection(d, ui)
+        ImportSection(d, store, ui)
+        ExportSection(d, ui)
+    }
     DownloadsSection(d, store, ui)
     PromptSection()
     ui.editing?.let { EntryDialog(it, ui.editingExisting, store, ui) }
@@ -264,11 +279,32 @@ private fun ImportSection(d: Dictionaries, store: DictionaryStore, ui: Dictionar
             val format = Format.of(name)
             when {
                 bytes == null -> ui.message = tooBig
+                Protection.isSealed(bytes) -> {
+                    ui.message = null
+                    ui.sealed = bytes
+                    ui.password = PasswordMode.OPEN
+                }
                 format == null -> ui.message = unknown
                 else -> {
                     ui.message = null
                     check(PendingImport(bytes, format, Lang.ZH, generated = format == Format.JSON, preview = null, failure = null))
                 }
+            }
+        }
+    }
+    if (ui.password == PasswordMode.OPEN) {
+        ui.sealed?.let { bytes ->
+            PasswordDialog(PasswordMode.OPEN, close = { ui.password = null; ui.sealed = null }) { pw ->
+                // Decrypts with the file's own salt and rounds; the inner format comes from its header.
+                val opened = withContext(Dispatchers.Default) {
+                    runCatching { Protection.header(bytes).kind to Protection.open(bytes, pw) }
+                }
+                val (kind, plain) = opened.getOrNull() ?: return@PasswordDialog (opened.exceptionOrNull() as? SealException)?.problem ?: SealProblem.DAMAGED
+                val format = Format.entries.firstOrNull { it.extension == kind } ?: return@PasswordDialog SealProblem.DAMAGED
+                ui.password = null
+                ui.sealed = null
+                check(PendingImport(plain, format, Lang.ZH, generated = format == Format.JSON, preview = null, failure = null))
+                null
             }
         }
     }
@@ -349,7 +385,12 @@ private fun ExportSection(d: Dictionaries, ui: DictionaryUi) {
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val text = Formats.write(d.entries, ui.exportFormat)
-        scope.launch(Dispatchers.IO) { runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } } }
+        val format = ui.exportFormat
+        scope.launch(Dispatchers.IO) {
+            // While protected the export is sealed with the same password (ADR-012).
+            val bytes = store.sealExport(text, format) ?: text.toByteArray()
+            runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
+        }
     }
     Section(stringResource(R.string.dict_export)) {
         Inset {
@@ -358,7 +399,7 @@ private fun ExportSection(d: Dictionaries, ui: DictionaryUi) {
                 Format.entries.forEach { f ->
                     OutlinedButton(enabled = d.entries.isNotEmpty(), onClick = {
                         ui.exportFormat = f
-                        save.launch("kotomo-dictionary.${f.extension}")
+                        save.launch("kotomo-dictionary.${f.extension}" + if (d.protected) ".kenc" else "")
                     }) { Text(f.extension.uppercase().removeSuffix(".YAML")) }
                 }
             }
@@ -472,6 +513,101 @@ private fun NoticeDialog(source: DictionarySource, store: DictionaryStore, ui: D
     )
 }
 
+/**
+ * Draws password protection (ADR-012): off (with Protect), on and unlocked (Lock now, Turn
+ * off), or locked (Unlock), and what protection does and does not cover.
+ */
+@Composable
+private fun ProtectionSection(d: Dictionaries, store: DictionaryStore, ui: DictionaryUi) {
+    val scope = rememberCoroutineScope()
+    Section(stringResource(R.string.dict_protect)) {
+        Inset {
+            Note(stringResource(R.string.dict_protect_desc))
+            when {
+                !d.protected -> OutlinedButton(enabled = !d.readOnly, onClick = { ui.password = PasswordMode.PROTECT }) { Text(stringResource(R.string.dict_protect_on)) }
+                d.locked -> OutlinedButton(onClick = { ui.password = PasswordMode.UNLOCK }) { Text(stringResource(R.string.dict_unlock)) }
+                else -> {
+                    Note(stringResource(R.string.dict_protect_active))
+                    Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_group_gap))) {
+                        OutlinedButton(onClick = { scope.launch { store.lock() } }) { Text(stringResource(R.string.dict_lock)) }
+                        OutlinedButton(onClick = { scope.launch { store.unprotect() } }) { Text(stringResource(R.string.dict_protect_off)) }
+                    }
+                }
+            }
+        }
+    }
+    when (val mode = ui.password) {
+        PasswordMode.PROTECT -> PasswordDialog(mode, close = { ui.password = null }) { pw -> if (store.protect(pw)) { ui.password = null; null } else SealProblem.DAMAGED }
+        PasswordMode.UNLOCK -> PasswordDialog(mode, close = { ui.password = null }) { pw -> if (store.unlock(pw)) { ui.password = null; null } else SealProblem.WRONG_PASSWORD }
+        else -> {}
+    }
+}
+
+/**
+ * Asks for a password: twice and with the warning that it cannot be recovered to protect the
+ * words, once to unlock them or open an encrypted file.
+ * Inputs: submit runs with the password and returns the problem to show, or null when done; the
+ * password's characters are cleared afterwards.
+ * Notes: the password lives only in this dialog's memory, never in the saved state.
+ */
+@Composable
+private fun PasswordDialog(mode: PasswordMode, close: () -> Unit, submit: suspend (CharArray) -> SealProblem?) {
+    val scope = rememberCoroutineScope()
+    var first by remember { mutableStateOf("") }
+    var second by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<SealProblem?>(null) }
+    val protecting = mode == PasswordMode.PROTECT
+    val hint = when {
+        protecting && first.isNotEmpty() && first.length < MIN_PASSWORD -> R.string.dict_password_short
+        protecting && second.isNotEmpty() && first != second -> R.string.dict_password_mismatch
+        problem == SealProblem.WRONG_PASSWORD -> R.string.dict_password_wrong
+        problem != null -> R.string.dict_file_damaged
+        else -> null
+    }
+    val ready = !busy && if (protecting) first.length >= MIN_PASSWORD && first == second else first.isNotEmpty()
+    AlertDialog(
+        onDismissRequest = { if (!busy) close() },
+        title = {
+            Text(stringResource(when (mode) {
+                PasswordMode.PROTECT -> R.string.dict_password_title_protect
+                PasswordMode.UNLOCK -> R.string.dict_password_title_unlock
+                PasswordMode.OPEN -> R.string.dict_password_title_open
+            }))
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_card_gap))) {
+                if (protecting) Text(stringResource(R.string.dict_password_warning), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                PasswordField(first, R.string.dict_password) { first = it; problem = null }
+                if (protecting) PasswordField(second, R.string.dict_password_repeat) { second = it }
+                hint?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                if (busy) Note(stringResource(R.string.dict_working))
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = ready, onClick = {
+                busy = true
+                scope.launch {
+                    val chars = first.toCharArray()
+                    problem = try { submit(chars) } finally { chars.fill('\u0000') }
+                    busy = false
+                }
+            }) { Text(stringResource(R.string.dict_password_ok)) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = close) { Text(stringResource(R.string.dict_cancel)) } },
+    )
+}
+
+/** A single-line password field whose text is hidden and never suggested or learned. */
+@Composable
+private fun PasswordField(value: String, @StringRes label: Int, change: (String) -> Unit) {
+    OutlinedTextField(
+        value, change, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(label)) },
+        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password, autoCorrectEnabled = false),
+    )
+}
+
 /** Draws the LLM prompt (PLAN appendix B, packed from lexicon/ at build time): show, copy, and why its words rank low. */
 @Composable
 private fun PromptSection() {
@@ -555,5 +691,7 @@ private const val MAX_IMPORT = 16 * 1024 * 1024
  * kind of data), so the person is asked again.
  */
 private const val NOTICE_VERSION = 1
+/** The shortest password protection accepts. */
+private const val MIN_PASSWORD = 6
 /** The prompt's asset name (app/build.gradle.kts, task llmPrompt). */
 private const val PROMPT_ASSET = "llm-dictionary-prompt.txt"

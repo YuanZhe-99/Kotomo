@@ -58,6 +58,7 @@ TSV、CSV 与 JSON 包含全部条目以及表头或格式版本；Rime 格式�
 |---|---|
 | `files/dictionaries/user.json` | 用户的条目 |
 | `files/dictionaries/user.prev.json` | 最后一次修改之前的版本；"恢复上一个版本"交换这两个文件 |
+| `files/dictionaries/user.kenc`、`user.prev.kenc` | 开启密码保护期间，以上两个文件的加密版本（取代明文文件） |
 | `files/dictionaries/state.json` | 开关 |
 | `files/dictionaries/packs/<id>/` | 已安装的词库包：`entries.tsv`（规范化的）、`table.txt`（它的 librime 词表行）与 `pack.json` |
 | `files/dictionaries/packs/<id>.prev/` | 该词库包的上一个版本，用于回滚 |
@@ -82,6 +83,36 @@ TSV、CSV 与 JSON 包含全部条目以及表头或格式版本；Rime 格式�
 | `downloads_enabled` | 全部下载的词库包；默认 `true` |
 | `packs` | 每个已安装的包：`{"<id>": {"enabled": true}}` |
 | `online_accepted` | 用户接受的下载说明的版本；接受之前没有这一项 |
+| `protection` | 开启密码保护期间：`kdf`、`iterations`、`salt` 与 `check`（见下） |
+
+## 密码保护
+
+默认关闭（ADR-012）。"用密码保护"以用户设置的密码派生的密钥加密用户的词；Kotomo 不在磁盘上保存密码或密钥，
+忘记的密码无法找回（对话框中写明）。
+
+- `user.json` 与 `user.prev.json` 变为 `user.kenc` 与 `user.prev.kenc`，明文文件被删除；之后的每次修改都加密写出。
+  关闭密码保护时写回明文文件并删除加密文件，需要先解锁。
+- 密钥：PBKDF2（HMAC-SHA256），600,000 轮，随机 16 字节盐，256 位；每个文件用 AES-256-GCM，每次新的 12 字节 IV
+  与 128 位标签，文件头作为附加数据。`state.json` 保存 `protection`（`kdf`、`iterations`、`salt`、`check`：一小段
+  加密文字，用来区分密码的对错）。
+- 键盘进程启动后词库处于锁定状态：解锁之前词库页不显示也不修改任何词。上次解锁时写出的 librime 词表保留，键盘仍能
+  打出用户的词；"立即锁定"清空 `custom_phrase.txt` 与 `kotomo_low.txt`，直到下次解锁。librime 需要明文词表，所以
+  键盘能使用这些词期间，它们在应用私有存储中是可读的。
+- 受保护期间导出的文件以同样方式加密（`kotomo-dictionary.<格式>.kenc`）；导入加密文件时询问它的密码，并按文件头
+  中写明的格式读取。
+
+```text
+offset  size  content
+0       4     magic "KDIC"
+4       1     container version (1)
+5       4     PBKDF2 rounds (big-endian)
+9       1     salt length (16), then the salt
+26      1     kind length, then the kind (UTF-8: "user", "check" or an export's format)
+…       12    AES-GCM IV
+…       n     ciphertext and 128-bit tag; associated data = every byte before the IV
+```
+
+容器版本更新的文件从不打开或覆盖：词库页只读。
 
 ## 下载的词库
 
@@ -154,7 +185,8 @@ zh	你好	ni hao	90
 ## 测试
 
 `FormatsTest`（读音、编码、各格式、重复、冲突、权重、预览、导出），`DictionaryStoreTest`（带版本的文件、回滚、
-更新版本的文件、开关、词表、词库包及其 `pack.json`、下载说明），`SourcesTest`（各来源格式的极小原创样例：保留的词、
+更新版本的文件、开关、词表、词库包及其 `pack.json`、下载说明），`ProtectionTest`（加密格式、错误的密码、被改动的
+字节、更新的版本；磁盘上没有明文的词、重启后锁定、锁定、解锁、关闭保护、加密的导出），`SourcesTest`（各来源格式的极小原创样例：保留的词、
 读音、权重、按原因丢弃的行；提供的来源），`DownloadsTest`（带自有证书的本地 HTTPS 服务器，经真实的传输层：发布
 摘要与大小、只走 HTTPS 的重定向、缺失的文件、损坏的压缩包、取消、失败时保留已安装的版本），`DictionaryRimeTest`
 与 `DictionaryPacksTest`（存储的词表与转换出的词库包在主机 librime 中按可信程度排序；`KOTOMO_PACKS=1` 时从锁定的
@@ -164,7 +196,7 @@ zh	你好	ni hao	90
 ## 已知差距
 
 - 内置词库没有开关；没有它们键盘无法输入。
-- `user.json` 没有加密（PLAN §14 要求个人数据加密存储）；librime 读取的词表本来就是明文。
+- 只有用户开启密码保护时 `user.json` 才加密（用户 2026-11-11 决定）；键盘能使用这些词时，librime 的词表总是明文。
 - 日文与英文条目尚未使用。
 - 只有 GitHub 的发布附件带有公布的校验值；THUOCL 与 rime-ice 的单字表只受 HTTPS 保护。
 - Mozc 用户词典读取日文词条之前，不提供日文来源。

@@ -17,6 +17,7 @@ old one stays with its status changed. Dates are when the decision took effect.
 | ADR-009 | Snapshots are a versioned compact binary format | default taken 2026-11-11, awaiting the user's confirmation |
 | ADR-010 | Basic Mixed mode arrives with the coordinator; space separates in Mixed and Japanese compositions | default taken 2026-11-11, awaiting the user's confirmation |
 | ADR-011 | Dictionaries are downloaded from their sources and converted on the device, replacing a hosted catalog | accepted 2026-11-11 (user decision) |
+| ADR-012 | Optional password protection seals the person's dictionary files; librime's tables stay plain while usable | switch decided by the user 2026-11-11; the locking behavior awaits the user's confirmation |
 
 ## ADR-001 Engines
 
@@ -197,4 +198,30 @@ tens of seconds in the background.
 **Reopens when.** A source moves or changes format, a source starts publishing checksums or
 signatures, or a large source (Japanese dictionaries once Mozc's user dictionary reads them) needs
 preconversion after all.
+
+## ADR-012 Password protection of the person's dictionary
+
+**Decision.** An optional switch, off by default (user decision, 2026-11-11), encrypts the
+person's dictionary files (`user.kenc`, `user.prev.kenc`) and exports with a key derived from a
+password they choose: PBKDF2-HMAC-SHA256 with 600,000 rounds and a random salt, AES-256-GCM per
+file with a versioned header (`dictionaries.md`). The password and the key are never written;
+a forgotten password cannot be recovered. librime can only read plain tables, so: after a
+process start the dictionary is locked (nothing shown or changed) but the tables written at the
+last unlock stay, and the keyboard keeps typing the words; Lock now empties the two tables made
+from the person's words until the next unlock.
+
+**Why.** It protects what matters most at rest, the full list with its sources and the previous
+version, and every export or backup made from it, without making the keyboard ask for a
+password after each restart of its process (Android restarts input methods often). The
+plain tables in the app's private storage are what an input method needs to type the words; they
+hold only word, pinyin and weight, never Japanese or English entries or the sources.
+
+**Cost.** While the keyboard can use the words, they are readable in the tables by anyone who can
+read the app's private storage (root, a debugger on a debug build). Protecting them as well would
+mean emptying the tables at every process start, so the person's words would be missing until
+they unlock in the settings.
+
+**Reopens when.** The user decides that a restart should lock the keyboard too (tables emptied
+at every start), that the keyboard should ask for the password, or that the Keystore should hold
+a key instead of a password.
 

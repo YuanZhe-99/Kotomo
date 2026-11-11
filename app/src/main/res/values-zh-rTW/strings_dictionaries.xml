@@ -115,4 +115,24 @@
     <plurals name="dict_download_done">
         <item quantity="other">已安裝 %d 個詞。</item>
     </plurals>
+    <string name="dict_protect">密碼保護</string>
+    <string name="dict_protect_desc">用你設定的密碼在這台裝置上加密你的詞，匯出的檔案也用它加密。鍵盤能使用你的詞期間，它讀取的詞表仍以可讀形式留在 Kotomo 的私有儲存空間中。</string>
+    <string name="dict_protect_on">用密碼保護</string>
+    <string name="dict_protect_active">你的詞已加密。</string>
+    <string name="dict_protect_locked">你的詞已鎖定。解鎖後才能檢視、修改、匯入或匯出。在你點「立即鎖定」之前，鍵盤仍能打出它已有的詞。</string>
+    <string name="dict_lock">立即鎖定</string>
+    <string name="dict_unlock">解鎖</string>
+    <string name="dict_protect_off">關閉密碼保護</string>
+    <string name="dict_password">密碼</string>
+    <string name="dict_password_repeat">再次輸入密碼</string>
+    <string name="dict_password_short">至少 6 個字元。</string>
+    <string name="dict_password_mismatch">兩次輸入的密碼不同。</string>
+    <string name="dict_password_wrong">密碼錯誤。</string>
+    <string name="dict_file_damaged">檔案已損壞，或來自較新版本的 Kotomo。</string>
+    <string name="dict_password_warning">Kotomo 不保存這個密碼，也無法找回。忘記密碼，你的詞就無法復原。</string>
+    <string name="dict_password_title_protect">保護你的詞</string>
+    <string name="dict_password_title_unlock">解鎖你的詞</string>
+    <string name="dict_password_title_open">開啟加密的檔案</string>
+    <string name="dict_password_ok">確定</string>
+    <string name="dict_working">正在處理…</string>
 </resources>

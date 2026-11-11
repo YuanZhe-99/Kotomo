@@ -115,4 +115,24 @@
     <plurals name="dict_download_done">
         <item quantity="other">%d 語をインストールしました。</item>
     </plurals>
+    <string name="dict_protect">パスワード保護</string>
+    <string name="dict_protect_desc">設定したパスワードで、この端末上のあなたの単語を暗号化します。書き出したファイルも同じパスワードで暗号化されます。キーボードが単語を使える間、キーボードが読む一覧は Kotomo の専用領域に読める形で残ります。</string>
+    <string name="dict_protect_on">パスワードで保護</string>
+    <string name="dict_protect_active">あなたの単語は暗号化されています。</string>
+    <string name="dict_protect_locked">あなたの単語はロックされています。表示・変更・取り込み・書き出しにはロックを解除してください。「今すぐロック」をタップするまで、キーボードはそれまでの単語を入力できます。</string>
+    <string name="dict_lock">今すぐロック</string>
+    <string name="dict_unlock">ロックを解除</string>
+    <string name="dict_protect_off">保護をオフにする</string>
+    <string name="dict_password">パスワード</string>
+    <string name="dict_password_repeat">パスワードをもう一度</string>
+    <string name="dict_password_short">6 文字以上にしてください。</string>
+    <string name="dict_password_mismatch">2 つのパスワードが違います。</string>
+    <string name="dict_password_wrong">パスワードが違います。</string>
+    <string name="dict_file_damaged">ファイルが壊れているか、新しいバージョンの Kotomo のものです。</string>
+    <string name="dict_password_warning">Kotomo はこのパスワードを保存せず、復元もできません。忘れると単語は失われます。</string>
+    <string name="dict_password_title_protect">単語を保護</string>
+    <string name="dict_password_title_unlock">単語のロックを解除</string>
+    <string name="dict_password_title_open">暗号化されたファイルを開く</string>
+    <string name="dict_password_ok">OK</string>
+    <string name="dict_working">処理中…</string>
 </resources>

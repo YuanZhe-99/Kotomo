@@ -122,4 +122,24 @@
         <item quantity="one">Installed %d word.</item>
         <item quantity="other">Installed %d words.</item>
     </plurals>
+    <string name="dict_protect">Password protection</string>
+    <string name="dict_protect_desc">Encrypts your words on this phone with a password you choose; exports are encrypted with it too. The lists the keyboard types your words from stay readable in Kotomo\'s private storage while it can use them.</string>
+    <string name="dict_protect_on">Protect with a password</string>
+    <string name="dict_protect_active">Your words are encrypted.</string>
+    <string name="dict_protect_locked">Your words are locked. Unlock them to see, change, import or export them. The keyboard keeps typing the words it had until you tap Lock now.</string>
+    <string name="dict_lock">Lock now</string>
+    <string name="dict_unlock">Unlock</string>
+    <string name="dict_protect_off">Turn protection off</string>
+    <string name="dict_password">Password</string>
+    <string name="dict_password_repeat">Repeat the password</string>
+    <string name="dict_password_short">Use at least 6 characters.</string>
+    <string name="dict_password_mismatch">The two passwords differ.</string>
+    <string name="dict_password_wrong">Wrong password.</string>
+    <string name="dict_file_damaged">The file is damaged or comes from a newer version of Kotomo.</string>
+    <string name="dict_password_warning">Kotomo does not keep this password and cannot recover it. If you forget it, your words are lost.</string>
+    <string name="dict_password_title_protect">Protect your words</string>
+    <string name="dict_password_title_unlock">Unlock your words</string>
+    <string name="dict_password_title_open">Open an encrypted file</string>
+    <string name="dict_password_ok">OK</string>
+    <string name="dict_working">Working…</string>
 </resources>

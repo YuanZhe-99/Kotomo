@@ -75,6 +75,7 @@ atomic rename, on the IO dispatcher under one lock.
 |---|---|
 | `files/dictionaries/user.json` | the person's entries |
 | `files/dictionaries/user.prev.json` | the version before the last change; "Restore the previous version" swaps the two |
+| `files/dictionaries/user.kenc`, `user.prev.kenc` | the same two, sealed, while password protection is on (instead of the plain files) |
 | `files/dictionaries/state.json` | the switches |
 | `files/dictionaries/packs/<id>/` | an installed pack: `entries.tsv` (normalized), `table.txt` (its librime lines) and `pack.json` |
 | `files/dictionaries/packs/<id>.prev/` | the pack's previous version, for rollback |
@@ -100,6 +101,41 @@ verbatim and written back unchanged.
 | `downloads_enabled` | all downloaded packs; default `true` |
 | `packs` | `{"<id>": {"enabled": true}}` per installed pack |
 | `online_accepted` | the version of the download notice the person accepted; missing until then |
+| `protection` | while password protection is on: `kdf`, `iterations`, `salt` and `check` (below) |
+
+## Password protection
+
+Off by default (ADR-012). Protect with a password encrypts the person's words with a key derived
+from a password they choose; Kotomo keeps neither the password nor the key on disk, and nothing
+recovers a forgotten password (the dialog says so).
+
+- `user.json` and `user.prev.json` become `user.kenc` and `user.prev.kenc`; the plain files are
+  deleted. Every later change is written sealed. Turn protection off writes the plain files back
+  and deletes the sealed ones; it needs the dictionary unlocked.
+- The key: PBKDF2 with HMAC-SHA256, 600,000 rounds, a random 16-byte salt, 256 bits; each file is
+  AES-256-GCM with a fresh 12-byte IV and a 128-bit tag, the header as associated data.
+  `state.json` keeps `protection` (`kdf`, `iterations`, `salt`, `check`: a small sealed text that
+  tells a right password from a wrong one).
+- After the keyboard's process starts the dictionary is locked: the page shows nothing of the
+  words and changes nothing until Unlock. librime's tables written at the last unlock stay, so
+  the keyboard still types the person's words; Lock now empties `custom_phrase.txt` and
+  `kotomo_low.txt` until the next unlock. Those tables must be plain text for librime, so while
+  the keyboard can use the words they are readable in the app's private storage.
+- While protected an export is sealed the same way (`kotomo-dictionary.<format>.kenc`); importing a
+  sealed file asks for its password and reads the format named in its header.
+
+```text
+offset  size  content
+0       4     magic "KDIC"
+4       1     container version (1)
+5       4     PBKDF2 rounds (big-endian)
+9       1     salt length (16), then the salt
+26      1     kind length, then the kind (UTF-8: "user", "check" or an export's format)
+…       12    AES-GCM IV
+…       n     ciphertext and 128-bit tag; associated data = every byte before the IV
+```
+
+A file with a newer container version is never opened or overwritten: the page is read-only.
 
 ## Downloaded dictionaries
 
@@ -186,7 +222,9 @@ them.
 
 `FormatsTest` (readings, encoding, each format, duplicates, conflicts, weights, preview, export),
 `DictionaryStoreTest` (versioned files, rollback, newer files, switches, the tables, packs and
-their `pack.json`, the notice), `SourcesTest` (each source format on tiny original samples:
+their `pack.json`, the notice), `ProtectionTest` (the sealed format, wrong passwords, changed bytes,
+newer versions; no plain words on disk, locked after a restart, Lock, unlock, turning it off,
+sealed exports), `SourcesTest` (each source format on tiny original samples:
 words kept, readings, weights, lines dropped by reason; the offered sources), `DownloadsTest`
 (a local HTTPS server with its own certificate through the real transport: release digests and
 sizes, HTTPS-only redirects, missing files, damaged archives, cancellation, the installed version
@@ -198,8 +236,8 @@ converted from the pinned files), through `tests/conversion/run.sh`; on the emul
 ## Known gaps
 
 - Built-in dictionaries have no switch; the keyboard cannot type without them.
-- `user.json` is not encrypted (PLAN §14 asks for encrypted personal data); librime reads its
-  tables as plain text anyway.
+- `user.json` is encrypted only when the person turns password protection on (user decision
+  2026-11-11); librime's tables are plain text whenever the keyboard can use the words.
 - Japanese and English entries are not used yet.
 - Only GitHub release assets come with a published checksum; THUOCL and rime-ice's character
   list are protected by HTTPS alone.

@@ -14,6 +14,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,6 +44,8 @@ class DictionaryKeyboardTest {
 
     @After
     fun cleanUp() = runBlocking {
+        if (store.state.value.locked) store.unlock(PASSWORD.toCharArray())
+        if (store.state.value.protected) store.unprotect()
         store.delete(word)
         store.setSources(custom = true)
         Unit
@@ -63,6 +66,23 @@ class DictionaryKeyboardTest {
         withField { scenario ->
             runBlocking { store.put(word); store.setSources(custom = false) }
             assertNotEquals("考拓莫", type(scenario, "kaotuomo"))
+        }
+    }
+
+    /**
+     * T17-protect (ADR-012): with password protection on, Lock now stops the keyboard offering the
+     * person's words (their tables are emptied); unlocking brings them back.
+     */
+    @Test
+    fun lockedWordsAreNotTypedUntilUnlocked() {
+        withField { scenario ->
+            runBlocking { store.put(word); assertTrue(store.protect(PASSWORD.toCharArray())) }
+            assertEquals("protected and unlocked: typed", "考拓莫", type(scenario, "kaotuomo"))
+            runBlocking { assertTrue(store.lock()) }
+            assertNotEquals("locked: not typed", "考拓莫", type(scenario, "kaotuomo"))
+            runBlocking { assertTrue(store.unlock(PASSWORD.toCharArray())) }
+            assertEquals("unlocked again: typed", "考拓莫", type(scenario, "kaotuomo"))
+            runBlocking { assertTrue(store.unprotect()) }
         }
     }
 
@@ -97,5 +117,7 @@ class DictionaryKeyboardTest {
         const val SPACE = "Space"
         const val WAIT_MS = 5000L
         const val SETTLE_MS = 1000L
+        /** Made up for the test; the protection is turned off again at its end. */
+        const val PASSWORD = "kotomo-test-password"
     }
 }
