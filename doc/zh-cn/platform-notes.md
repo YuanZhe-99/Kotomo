@@ -3,30 +3,30 @@
 | 平台 | 状态 |
 |---|---|
 | Android 手机（`arm64-v8a`） | 在 Galaxy Z Fold（Android 17，release 构建）上运行：S1 与 S2 在该机通过。P1 的设备检查清单尚未逐条记录；只能观察屏幕上显示的内容。 |
-| Android 模拟器（`x86_64`） | 在主机支持的情况下用于验证布局和插桩测试；从不作为延迟或设备端 AI 的证据。 |
+| Android 模拟器（`x86_64`） | 开发主机上的 Android 17（API 37.2）Google Play 镜像，16 KB 页：release APK 可安装，Kotomo 可选为键盘，日文模式经 Mozc 转换（2026-11-10）。只用于布局和逻辑；从不作为延迟、内存或设备端 AI 的证据。 |
 | Android 平板和折叠屏 | P1 代码已就位（尚未在设备上运行）：窗口尺寸类别、居中的最大宽度、半折叠时按键位于铰链下方、竖向铰链两侧的分离两半与两个空格键（有单元测试）。 |
-| 桌面主机（Windows、Linux、macOS） | P0 起用于构建和测试引擎核心；从不作为产品目标平台。 |
+| 桌面主机（Linux、macOS） | 构建和测试各引擎与应用；开发主机是 x86_64 Linux（Debian 13）。从不作为产品目标平台。 |
 
 ## 仓库
 
-在 Windows 11 on ARM64（2026-11-04；JDK 21.0.13）和 GitHub Actions（`ubuntu-latest`）上验证：
+2026-11-10 在开发主机 x86_64 Linux（Debian 13，JDK 21.0.13）上从全新克隆验证：
 
 | 检查 | 结果 |
 |---|---|
 | 文档镜像与链接 | `java tool/CheckDocs.java` 通过 |
-| 单元测试（布局与命中判定、延迟百分位、输入框、姿态、Emoji 索引；设置格式与主题文件；剪贴板：记录规则、加密文件、过期、被拒绝的剪贴、验证码、快捷输入；AI 交接） | 2026-11-09 运行 `./gradlew :app:testDebugUnitTest`（Windows 11 on ARM64，JDK 21.0.13，debug）：87 个测试，86 个通过、1 个跳过（一个需要生成资源的 Emoji 测试；没有做数据构建的克隆上没有该资源） |
-| Lint | 2026-11-09 运行 `./gradlew :app:lintDebug`：没有错误；两条提示，指出 Gradle 9.9.0 与 Android Gradle Plugin 9.5.1 已发布 |
-| Release 构建 | `./gradlew assembleRelease`：启用 R8，以 release 密钥签名（APK 签名方案 v2） |
+| 单元测试（布局与命中判定、延迟百分位、输入框、姿态、Emoji 索引；设置格式与主题文件；剪贴板：记录规则、加密文件、过期、被拒绝的剪贴、验证码、快捷输入；AI 交接） | 2026-11-10 运行 `./gradlew check`（debug）：87 个测试，87 个通过，没有跳过 |
+| Lint | 2026-11-10 运行 `./gradlew check`：没有错误 |
+| Release 构建 | 2026-11-10 在设置 `KOTOMO_REQUIRE_MOZC=1` 与 `KOTOMO_REQUIRE_RIME_PREBUILT=1` 的情况下运行 `./gradlew assembleRelease`：启用 R8，以 release 密钥签名（APK 签名方案 v2，经 `apksigner` 验证）；arm64-v8a 27.4 MB，x86_64 27.5 MB，各自带有 librime、Mozc（库 2.9 MB，数据 19 MB）和英文引擎 |
 
 ## 技术验证
 
 | 技术验证 | 状态 | 证据 |
 |---|---|---|
 | S1 IME 骨架 | 真机上 PASS（Galaxy Z Fold，SM-F971U1，Android 17，release 构建，2026-11-04） | 按下到按键绘制 p50 9–10 ms、p95 19–21 ms；按下到候选绘制 p50 15–48 ms、p95 120–130 ms（英文与中文引擎，不计首次调用）；键盘视图到首帧 11–14 ms；Compose Emoji 面板首帧 73 ms；进程内存 61–80 MB。展开屏上为分离布局，外屏为手机布局，按键位于系统栏之上。 |
-| S2 librime | 真机（同一部手机）与主机上 PASS | 使用构建时编译的数据可以输入中文（首次启动解压约 120 ms）。发现并修复了两个只在真机上出现的问题：JNI 字符串转换丢掉了数据路径的最后一个字符；真机上部署时无法创建 build/。诊断页的自检会显示其状态。主机：24 项检查，包括预编译数据与按键路径。 |
-| S3 Mozc | 主机上 PASS；Android 构建 NOT_RUN | Mozc 3.35.6354 与 Kotomo 的胶水层在 WSL（aarch64）中构建；主机测试 7 项全部通过：`わたしはにほんじん` → 私は日本人，固定池袋 + `にかいにいこう` → 池袋に買いに行こう，拼音不是 Mozc 的读音。Android 库曾由 `.github/workflows/mozc.yml` 在 x86_64 Linux 上构建，并按哈希锁定在 `build-lock.json` 中；该构建已于 2026-11-04 随 GitHub 仓库删除，需要重新构建。没有真机结果的记录。 |
-| S4 英文引擎 | 主机上 PASS；真机上 NOT_RUN | `libkotomo_english.so` 可为 arm64-v8a 与 x86_64 构建（去符号后约 360 KB，16 KB 对齐）；2.5 MB 的词典可复现构建；在 WSL（Debian，aarch64）中运行 `core/english/tests/run-host.sh`：13 项全部通过（`helo` → hello、`teh` → the、邻键误触、补全、下一词预测、反例）。主机上每次调用 3.8 ms，不代表真机延迟。 |
-| S5 跨语言词库 | 主机上 PASS | `java lexicon/CheckSamples.java`：34 条预期映射全部达到要求的名次（`chidai` 下的池袋、`dongjing` 下的東京、`coffee` 下的コーヒー……），8 条反例 0 条出错（`yunshu` 下没有芸術）。拼音 → 日文覆盖 Mozc 中 99.97% 的全汉字词条。 |
+| S2 librime | 真机（同一部手机）与主机上 PASS | 使用构建时编译的数据可以输入中文（首次启动解压约 120 ms）。发现并修复了两个只在真机上出现的问题：JNI 字符串转换丢掉了数据路径的最后一个字符；真机上部署时无法创建 build/。诊断页的自检会显示其状态。主机：35 项检查，包括预编译数据、按键路径与运行时词表，另有 9 项 UTF 转换检查（`ctest` 2/2，x86_64 Linux，2026-11-10）。 |
+| S3 Mozc | 主机上 PASS；Android 构建 PASS；真机上 NOT_RUN | Mozc 3.35.6354 与 Kotomo 的胶水层；主机测试 7 项全部通过（x86_64 Linux，2026-11-10）：`わたしはにほんじん` → 私は日本人，固定池袋 + `にかいにいこう` → 池袋に買いに行こう，拼音不是 Mozc 的读音。`scripts/build-mozc.sh` 构建的 arm64-v8a 与 x86_64 库（16 KB 对齐，导出 5 个符号，全部是 JNI）和数据集，SHA-256 与 `build-lock.json` 中已删除的 CI 运行完全相同。在模拟器上（Android 17，x86_64，release），日文模式把 `watashiwanihonjin` 首选转为私羽日本人，即 T03-001 已知的助词差距。没有真机结果的记录。 |
+| S4 英文引擎 | 主机上 PASS；真机上 NOT_RUN | `libkotomo_english.so` 可为 arm64-v8a 与 x86_64 构建（去符号后约 360 KB，16 KB 对齐）；2.5 MB 的词典可复现构建；在 x86_64 Linux 上运行 `core/english/tests/run-host.sh`（2026-11-10）：13 项全部通过（`helo` → hello、`teh` → the、邻键误触、补全、下一词预测、反例）。主机上每次调用 4.7 ms，不代表真机延迟。 |
+| S5 跨语言词库 | 主机上 PASS | `java lexicon/CheckSamples.java`（2026-11-10，CC-CEDICT 2026-11-10，JMdict 2026-11-09）：34 条预期映射全部达到要求的名次（`chidai` 下的池袋、`dongjing` 下的東京、`coffee` 下的コーヒー……），8 条反例 0 条出错（`yunshu` 下没有芸術）。拼音 → 日文覆盖 Mozc 中 99.97% 的全汉字词条。 |
 | S6–S8 | NOT_RUN | — |
 
 ## 关卡
@@ -42,13 +42,11 @@
 
 ## 已知限制
 
-- 上面的单元测试与 lint 是在 2026-11-09 重新克隆的工作目录上运行的，没有初始化 git 子模块，也没有做本地构建或数据构建。主机端的引擎检查
-  （`21cd65c` 时 librime 为 35 项，最近一次运行在 2026-11-04）、release 构建和真机上的一切都还没有在这份克隆上重新运行。
 - 2026-11-09 逐项读代码的结论是 P1 并未完成：混合模式的输入与中文模式完全相同，日文模式没有文节编辑与预测，英文模式没有把触摸位置
   传给引擎，要求不做个性化学习的输入框只能直接输入 ASCII。全部缺口见 `PLAN.md` §8。
 
 - P1 的手势、输入框适配、台湾与香港输出、候选详情、Direct Boot 和 API 37 组合属性只经过单元测试或主机测试。P1 检查清单（`tests/device/p1-checklist.md`）按屏幕所见判定，目前尚未逐条记录，因此 G1 仍为 NOT_RUN。首次解锁之前，键盘只用默认设置和内置数据输入：中文不学习、英文可用、没有日文（Mozc 的数据在凭据保护存储中）、没有剪贴板、AI 和最近使用的 Emoji。
 - 英文模式由 S4 引擎提供纠错、补全与下一词预测；输入的原词始终排在第一位，空格提交的就是它。中文模式用构建时编译好的
-  数据经 librime（S2）转换拼音；在混合协调层（S6）完成之前，混合模式也这样做。日文模式经 Mozc（S3，库由 Linux CI
+  数据经 librime（S2）转换拼音；在混合协调层（S6）完成之前，混合模式也这样做。日文模式经 Mozc（S3，库由 `scripts/build-mozc.sh`
   构建）转换罗马字：组合显示假名，第一个候选是整句，回车保留假名；逐段修改在 P2 实现。
 - 在 P0 于真机上测量之前，不能对延迟、内存、APK 体积或设备端 AI 作出任何结论。

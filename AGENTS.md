@@ -301,9 +301,11 @@ model that did the work.
 
 - `origin` → `<local_gitea_address>` (private Gitea)
 
-The project was archived on 2026-11-04: `origin` is the only copy. The public GitHub repository
-(where CI and GitHub Releases ran) was deleted; `.github/` stays for a restart and does nothing
-until the repository is pushed to a new public remote with the CI secrets (`PLAN.md` §0).
+`origin` is the only copy. The project was archived on 2026-11-04 and resumed on 2026-11-10; the
+public GitHub repository (where CI and GitHub Releases ran) was deleted and is not rebuilt for now.
+`.github/` stays for a restart and does nothing until the repository is pushed to a new public
+remote with the CI secrets (`PLAN.md` §0). Until then every build and test runs on the development
+host (`doc/en-us/development.md`).
 
 Determine the repository path from the runtime workspace; do not hardcode a machine-specific
 absolute path here.
