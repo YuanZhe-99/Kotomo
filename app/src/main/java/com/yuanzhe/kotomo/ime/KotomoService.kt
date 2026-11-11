@@ -45,7 +45,16 @@ import com.yuanzhe.kotomo.settings.SettingsStore
 import com.yuanzhe.kotomo.settings.SplitLayout
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
@@ -111,6 +120,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var mozcTried = false
     /** Engine thread only: librime deployed and its session open. */
     private var rimeReady = false
+    /** Main thread: librime was opened after the first unlock, so its build can be checked ([syncRimeBuild]). */
+    private val rimeChecked = MutableStateFlow(false)
+    /** Serializes [syncRimeBuild]: the settings watch and a finished deploy both call it. */
+    private val rimeBuildLock = Mutex()
 
     private lateinit var keyboard: KeyboardView
     private lateinit var candidateBar: CandidateBar
@@ -334,11 +347,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         if (!beforeUnlock) runCatching { files.writeCheck(check.toString()) }
         val open = rimeReady
-        val deploy = !beforeUnlock && !files.prebuilt && !files.current
         main.post {
             rimeOpen = open
             applyEngineSettings()
-            if (deploy) startDeploy()
+            // The settings watch then deploys if this version's data or the fuzzy rules need it.
+            if (!beforeUnlock) rimeChecked.value = true
             refresh(0)
         }
     }
@@ -348,6 +361,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Returns: the collecting job (cancelled when the store changes after the first unlock).
      */
     private fun watchSettings() = lifecycleScope.launch {
+        // The fuzzy-pinyin rules decide which librime build the keyboard needs; act only on the
+        // stored values (not the defaults before the first read) and never before the first unlock.
+        launch {
+            combine(rimeChecked, store.loaded.filterNotNull().map { it.chineseFuzzy }.distinctUntilChanged(), ::Pair)
+                .collect { (checked, rules) -> if (checked && !locked) syncRimeBuild(rules) }
+        }
         store.flow.collect {
             // A new theme repaints everything: rebuild the views and drop the cached panels.
             if (appliedLook != null && appliedLook != (it.theme to it.keyRadiusDp)) {
@@ -388,20 +407,49 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 refresh(0)
                 return
             }
-            engine.post {
-                val files = RimeFiles(this@KotomoService)
-                if (rimeReady) Rime.shutdown()
-                rimeReady = false
-                if (files.promote() || files.hasBuild) rimeReady = Rime.initialize(files.shared.path, files.user.path)
-                val open = rimeReady
-                main.post {
-                    rimeOpen = open
-                    applyEngineSettings()
-                    clearChinese()
-                    refresh(0)
-                }
+            reopenRime { it.promote() || it.hasBuild }
+            // The rules may have changed while it deployed.
+            lifecycleScope.launch { store.loaded.value?.let { syncRimeBuild(it.chineseFuzzy) } }
+        }
+    }
+
+    /**
+     * Restarts librime on the engine thread after its build changed, then applies the settings
+     * and drops the composition on the main thread.
+     * Inputs: prepare runs with librime shut down and returns whether a build is there to open.
+     */
+    private fun reopenRime(prepare: (RimeFiles) -> Boolean) {
+        engine.post {
+            val files = RimeFiles(this@KotomoService)
+            if (rimeReady) Rime.shutdown()
+            rimeReady = false
+            if (prepare(files)) rimeReady = Rime.initialize(files.shared.path, files.user.path)
+            val open = rimeReady
+            main.post {
+                rimeOpen = open
+                applyEngineSettings()
+                clearChinese()
+                refresh(0)
             }
         }
+    }
+
+    /**
+     * Brings librime's build in line with this version's data and the fuzzy-pinyin [rules]
+     * (PLAN §9.6): writes or removes the rule file, then deploys in the deploy process when the
+     * build is not current, or, with prebuilt data and no rule on, drops the deployed build so
+     * librime reads the prebuilt data again (nothing compiles on the phone then).
+     * Notes: main thread, files on the IO dispatcher; the keyboard keeps typing on the previous
+     * build until the new one is swapped in. Never before the first unlock.
+     */
+    private suspend fun syncRimeBuild(rules: Set<FuzzyRule>) = rimeBuildLock.withLock {
+        val files = RimeFiles(this)
+        val (drop, deploy) = withContext(Dispatchers.IO) {
+            files.writeFuzzy(Fuzzy.yaml(rules))
+            if (files.prebuilt && rules.isEmpty()) files.hasBuild to false else false to !files.current
+        }
+        if (drop) reopenRime { it.dropBuild(); true }
+        if (deploy) startDeploy()
     }
 
     /**

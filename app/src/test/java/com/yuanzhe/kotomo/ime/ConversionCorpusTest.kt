@@ -20,9 +20,16 @@ import org.junit.Test
  * passed in the baseline no longer passes, or when the corpus is malformed; lines that fail in the
  * baseline too are known gaps, reported but not failing. Host results never stand in for device
  * results.
+ *
+ * A Chinese or Mixed line may name fuzzy-pinyin rules after its mode (`chinese+fuzzy:z_zh,n_l`, or
+ * `+fuzzy:all`): the line then runs on a librime build deployed with the rule file the app itself
+ * generates ([Fuzzy.yaml]), as the keyboard's deploy process does (T08).
  */
 class ConversionCorpusTest {
-    /** One corpus line; [negative] lines list outputs that must not appear within [rank]. */
+    /**
+     * One corpus line; [negative] lines list outputs that must not appear within [rank]; [fuzzy]
+     * holds the fuzzy-pinyin rules it runs with (none for a plain mode).
+     */
     private data class Line(
         val id: String,
         val mode: Mode,
@@ -31,6 +38,7 @@ class ConversionCorpusTest {
         val expected: List<String>,
         val negative: Boolean,
         val rank: Int,
+        val fuzzy: Set<FuzzyRule> = emptySet(),
     )
 
     /** One line's outcome: whether it passed, the position that decided it (1-based), the list. */
@@ -39,6 +47,10 @@ class ConversionCorpusTest {
     private lateinit var mozc: Mozc
     private lateinit var english: English
     private lateinit var emoji: EmojiIndex
+    private lateinit var rimeShared: File
+    private lateinit var tmp: File
+    /** The fuzzy-pinyin rules of the librime build open now. */
+    private var rimeRules = emptySet<FuzzyRule>()
 
     @Test
     fun corpusHasNoRegressions() {
@@ -46,10 +58,12 @@ class ConversionCorpusTest {
         assumeTrue("run tests/conversion/run.sh", root?.isDirectory == true)
         root!!
         val lines = parse(root.resolve("tests/conversion/corpus.tsv").readLines())
-        val tmp = Files.createTempDirectory("kotomo-corpus").toFile()
+        tmp = Files.createTempDirectory("kotomo-corpus").toFile()
         try {
             open(root, tmp)
-            val outcomes = lines.associate { it.id to judge(it, candidates(it)) }
+            // Lines with the same fuzzy rules run together, so each rule set deploys once.
+            val outcomes = lines.sortedBy { line -> line.fuzzy.joinToString(",") { it.key } }
+                .associate { it.id to judge(it, candidates(it)) }
             report(root, lines, outcomes)
         } finally {
             Rime.shutdown()
@@ -71,15 +85,32 @@ class ConversionCorpusTest {
             .map { (n, l) ->
                 val c = l.split('\t')
                 require(c.size == 7) { "corpus line ${n + 1}: ${c.size} columns, want 7" }
-                val mode = Mode.entries.firstOrNull { it.name.equals(c[1], ignoreCase = true) }
+                val modeName = c[1].substringBefore('+')
+                val mode = Mode.entries.firstOrNull { it.name.equals(modeName, ignoreCase = true) }
                     ?: error("corpus line ${n + 1}: unknown mode ${c[1]}")
+                val fuzzy = if ('+' in c[1]) {
+                    val option = c[1].substringAfter('+')
+                    require(option.startsWith("fuzzy:") && (mode == Mode.CHINESE || mode == Mode.MIXED)) {
+                        "corpus line ${n + 1}: unknown option $option for ${mode.name.lowercase()}"
+                    }
+                    val names = option.removePrefix("fuzzy:")
+                    if (names == "all") {
+                        FuzzyRule.entries.toSet()
+                    } else {
+                        names.split(',').mapTo(mutableSetOf()) { name ->
+                            FuzzyRule.entries.firstOrNull { it.key == name } ?: error("corpus line ${n + 1}: unknown fuzzy rule $name")
+                        }
+                    }
+                } else {
+                    emptySet()
+                }
                 val rank = c[5].toIntOrNull()
                 require(rank in setOf(0, 1, 3, 5)) { "corpus line ${n + 1}: rank ${c[5]}" }
                 val alternatives = c[4].split('|')
                 val negative = alternatives.all { it.startsWith("!") }
                 require(negative || alternatives.none { it.startsWith("!") }) { "corpus line ${n + 1}: mixed ! and plain outputs" }
                 require(alternatives.all { it.removePrefix("!").isNotEmpty() }) { "corpus line ${n + 1}: empty output" }
-                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!)
+                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy)
             }
         val duplicates = lines.groupBy { it.id }.filterValues { it.size > 1 }.keys
         require(duplicates.isEmpty()) { "duplicate corpus ids: $duplicates" }
@@ -89,8 +120,9 @@ class ConversionCorpusTest {
     /** Opens the three engines and the emoji index on the host builds under [root]/build. */
     private fun open(root: File, tmp: File) {
         val build = root.resolve("build")
+        rimeShared = build.resolve("rime-prebuilt")
         val rimeUser = tmp.resolve("rime").apply { mkdirs() }
-        check(Rime.initialize(build.resolve("rime-prebuilt").path, rimeUser.path)) { "librime did not open on build/rime-prebuilt" }
+        check(Rime.initialize(rimeShared.path, rimeUser.path)) { "librime did not open on build/rime-prebuilt" }
         Rime.setOption("zh_hans", true)
         mozc = checkNotNull(Mozc.open(build.resolve("mozc/out/host/mozc.data").path, tmp.resolve("mozc").apply { mkdirs() }.path)) {
             "Mozc did not open build/mozc/out/host/mozc.data"
@@ -110,6 +142,7 @@ class ConversionCorpusTest {
      */
     private fun candidates(line: Line): List<String> = when (line.mode) {
         Mode.CHINESE, Mode.MIXED -> {
+            useRules(line.fuzzy)
             Rime.clear()
             Rime.setInput(line.input)
             val texts = Rime.getCandidates(Candidates.CHINESE_LIMIT).map { it.text }
@@ -127,6 +160,24 @@ class ConversionCorpusTest {
             val words = english.suggestions(line.input, previous = line.context.ifEmpty { null }).map { it.word }
             Candidates.withEmoji(Candidates.english(line.input, words), Candidates.emoji(emoji, line.input))
         }
+    }
+
+    /**
+     * Opens librime on a build with the fuzzy-pinyin [rules]: the prebuilt data for none, else a
+     * user directory holding the app's rule file, deployed on first use (as the deploy process
+     * deploys into its staging directory).
+     */
+    private fun useRules(rules: Set<FuzzyRule>) {
+        if (rules == rimeRules) return
+        val text = Fuzzy.yaml(rules)
+        val user = tmp.resolve("rime-" + Fuzzy.hash(text).take(12))
+        val fresh = !user.isDirectory
+        user.mkdirs()
+        if (text != null) user.resolve(Fuzzy.FILE).writeText(text)
+        Rime.initialize(rimeShared.path, user.path)
+        if (fresh && text != null) check(Rime.deploy()) { "librime did not deploy the fuzzy rules ${rules.map { it.key }}: ${Rime.deployFailures()}" }
+        Rime.setOption("zh_hans", true)
+        rimeRules = rules
     }
 
     /**
@@ -176,7 +227,8 @@ class ConversionCorpusTest {
             lines.forEach { line ->
                 val o = outcomes.getValue(line.id)
                 val want = line.expected.joinToString("|") { if (line.negative) "!$it" else it }
-                appendLine("${now[line.id]} ${line.id} ${line.mode.name.lowercase()} '${line.input}' want $want within ${line.rank}: " +
+                val mode = line.mode.name.lowercase() + if (line.fuzzy.isEmpty()) "" else "+fuzzy:" + line.fuzzy.joinToString(",") { it.key }
+                appendLine("${now[line.id]} ${line.id} $mode '${line.input}' want $want within ${line.rank}: " +
                     "at ${o.position ?: "-"} [${o.shown.take(SHOWN).joinToString(" / ")}]")
             }
             appendLine()

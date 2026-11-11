@@ -11,6 +11,9 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 嵌入接口 `rime_api.h`：会话、`process_key`、`set_input`、`get_context`（预编辑、光标、候选页）、`get_commit`、候选选择与迭代、`set_option`、`register_module` | 拼音片段可以经 `set_input` 与 `get_context` 转换；更深的接入走插件模块 | 已阅读 |
 | luna_pinyin 的拼写运算已经应用 `pinyin:/spelling_correction` 与 `pinyin:/key_correction`（`hoa` → hao，`tain` → tian）；`translator/enable_correction` 会加载 `.correction.bin`，而 1.17 的词典编译器从不写出它（那段代码在 `#if 0` 中），会话因找不到文件而中止 | 中文拼写纠错来自方案的规则；`enable_correction` 保持关闭 | 主机测试，语料 T01-012、T01-015 |
 | 模糊音和双拼都是方案中的 `speller/algebra` 规则 | 修改模糊音开关会改写方案并重新部署，所以部署耗时很重要 | 已阅读 |
+| 以 `?` 结尾的引用是可选的（`__include: kotomo_fuzzy:/patch?`）：文件不存在时该节点不变；配置文件先在用户目录、再在共享目录中查找；`speller/algebra/+` 追加到 luna_pinyin 由 `pinyin.yaml` 拼成的列表之后 | Kotomo 的方案补丁从用户目录引入应用生成的 `kotomo_fuzzy.yaml`；预编译数据（没有该文件）不变；不学习的方案通过同一个补丁得到同样的规则 | 主机测试（`FuzzyRimeTest`）、语料 T08 |
+| `fuzz/…/…/` 派生出标为模糊的拼写，权重减半（`log 0.5`）；简拼规则只作用于它运行时已存在的拼写 | 模糊音规则使用 `fuzz`，并在其后再追加一次 luna_pinyin 的两条简拼规则；词频相近时精确拼写优先，但频率高得多的模糊匹配仍可能排在前面（开启 z/zh 时 `zi`：之 在 子 之前） | 语料 T08-020–T08-023 |
+| 两条共享一个字母的模糊音规则在查询时会连带生效，与规则在列表中的顺序无关，经过非音节的拼写也一样（`li→qq` 加 `ni→li`：`qq` 也给出 ni 的字）：同时开启 n/l 与 l/r 时，`ri` 也给出 n 声母的字（`rihao` → 你好） | 每条规则仍各有开关；在查明原因或打补丁之前记为已知差距 | 主机探测、语料 T08-N21（FAIL） |
 | Trime 用 Gradle 的 CMake 集成构建 librime（NDK 30.0.16248370）；fcitx5-android 链接独立 prebuilder 产出的静态库 | 两种构建方式都可用 | 已阅读 |
 | 1.17.0 可用 NDK 30 与 CMake 3.22.1，按 Kotomo 自己的目标列表（`core/rime/CMakeLists.txt`）为 Android 构建；它对 Boost 的使用全部只需头文件，Boost 1.92.0 的头文件即可；没有 glog 时使用 `no_logging.h` | `libkotomo_rime.so`，每个 ABI 去符号后约 2.9 MB，16 KB 页面，只导出 JNI；输入内容不可能进入日志 | 已构建（arm64-v8a、x86_64），已在主机上测试 |
 | 没有关闭学习的运行时开关；`translator/enable_user_dict: false` 使用户词典不被创建，因此既不读也不写 | 敏感输入框选用方案 `luna_pinyin_simp_private` | 主机测试 T12-S2 |

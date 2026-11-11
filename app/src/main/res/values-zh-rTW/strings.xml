@@ -78,7 +78,7 @@
     <string name="page_mixed">混合模式</string>
     <string name="page_mixed_desc">%1$s · 跨語言轉換與各語言權重</string>
     <string name="page_chinese">中文</string>
-    <string name="page_chinese_desc">簡體、繁體、台灣或香港</string>
+    <string name="page_chinese_desc">簡體、繁體、台灣或香港 · 模糊音</string>
     <string name="page_japanese">日文</string>
     <string name="page_japanese_desc">羅馬字 · 拼音與英文轉日文 · 讀音</string>
     <string name="page_english">英文</string>

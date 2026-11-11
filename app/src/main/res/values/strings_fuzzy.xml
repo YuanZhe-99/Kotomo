@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fuzzy pinyin on the Chinese settings page (PLAN §9.6). Rule titles are pinyin and the same in every language. -->
+<resources>
+    <string name="fuzzy_initials">Fuzzy pinyin: initials</string>
+    <string name="fuzzy_finals">Fuzzy pinyin: finals</string>
+    <string name="fuzzy_note">Each switch lets two similar sounds stand for each other. Exact spellings still come first. Turning a switch on or off prepares the Chinese dictionary again in the background; typing goes on meanwhile.</string>
+    <string name="fuzzy_z_zh" translatable="false">z ↔ zh</string>
+    <string name="fuzzy_z_zh_desc">Typing zongguo offers 中国</string>
+    <string name="fuzzy_c_ch" translatable="false">c ↔ ch</string>
+    <string name="fuzzy_c_ch_desc">Typing cifan offers 吃饭</string>
+    <string name="fuzzy_s_sh" translatable="false">s ↔ sh</string>
+    <string name="fuzzy_s_sh_desc">Typing sijian offers 时间</string>
+    <string name="fuzzy_n_l" translatable="false">n ↔ l</string>
+    <string name="fuzzy_n_l_desc">Typing lihao offers 你好</string>
+    <string name="fuzzy_f_h" translatable="false">f ↔ h</string>
+    <string name="fuzzy_f_h_desc">Typing hangjian offers 房间</string>
+    <string name="fuzzy_l_r" translatable="false">l ↔ r</string>
+    <string name="fuzzy_l_r_desc">Typing luguo offers 如果</string>
+    <string name="fuzzy_an_ang" translatable="false">an ↔ ang</string>
+    <string name="fuzzy_an_ang_desc">Typing angquan offers 安全</string>
+    <string name="fuzzy_en_eng" translatable="false">en ↔ eng</string>
+    <string name="fuzzy_en_eng_desc">Typing fengxi offers 分析</string>
+    <string name="fuzzy_in_ing" translatable="false">in ↔ ing</string>
+    <string name="fuzzy_in_ing_desc">Typing yingwei offers 因为</string>
+    <string name="fuzzy_ian_iang" translatable="false">ian ↔ iang</string>
+    <string name="fuzzy_ian_iang_desc">Typing xiangzai offers 现在</string>
+    <string name="fuzzy_uan_uang" translatable="false">uan ↔ uang</string>
+    <string name="fuzzy_uan_uang_desc">Typing guangli offers 管理</string>
+</resources>

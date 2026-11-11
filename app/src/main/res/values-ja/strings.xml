@@ -78,7 +78,7 @@
     <string name="page_mixed">ミックスモード</string>
     <string name="page_mixed_desc">%1$s · 言語をまたぐ変換と言語ごとの重み</string>
     <string name="page_chinese">中国語</string>
-    <string name="page_chinese_desc">簡体字・繁体字・台湾・香港</string>
+    <string name="page_chinese_desc">簡体字・繁体字・台湾・香港・あいまい音</string>
     <string name="page_japanese">日本語</string>
     <string name="page_japanese_desc">ローマ字 · ピンインと英語から日本語 · 読み</string>
     <string name="page_english">英語</string>

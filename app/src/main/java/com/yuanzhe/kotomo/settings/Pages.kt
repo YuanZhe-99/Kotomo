@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.yuanzhe.kotomo.R
+import com.yuanzhe.kotomo.ime.FuzzyRule
 import com.yuanzhe.kotomo.ime.KeyboardMemory
 import com.yuanzhe.kotomo.ime.OneHandedMemory
 import com.yuanzhe.kotomo.ime.Posture
@@ -298,7 +299,10 @@ private fun CrossSwitches(cross: CrossLanguage, change: ((CrossLanguage) -> Cros
     SwitchRow(R.string.cross_emoji, R.string.cross_emoji_desc, cross.emoji) { on -> change { it.copy(emoji = on) } }
 }
 
-/** Draws the Chinese page: Mainland Simplified, Traditional, Taiwan or Hong Kong output. */
+/**
+ * Draws the Chinese page: Mainland Simplified, Traditional, Taiwan or Hong Kong output, and one
+ * switch per fuzzy-pinyin rule (PLAN §9.6), initials and finals in their own sections.
+ */
 @Composable
 internal fun ChinesePage(settings: Settings, store: SettingsStore) {
     Section(stringResource(R.string.chinese_script)) {
@@ -308,6 +312,40 @@ internal fun ChinesePage(settings: Settings, store: SettingsStore) {
             Note(stringResource(R.string.chinese_script_note))
         }
     }
+    val (initials, finals) = FuzzyRule.entries.partition { it.ordinal <= FuzzyRule.L_R.ordinal }
+    Section(stringResource(R.string.fuzzy_initials)) {
+        Inset { Note(stringResource(R.string.fuzzy_note)) }
+        FuzzySwitches(initials, settings, store)
+    }
+    Section(stringResource(R.string.fuzzy_finals)) {
+        FuzzySwitches(finals, settings, store)
+    }
+}
+
+/** Draws the switches of [rules]; each turns one fuzzy-pinyin rule on or off on its own. */
+@Composable
+private fun FuzzySwitches(rules: List<FuzzyRule>, settings: Settings, store: SettingsStore) {
+    rules.forEach { rule ->
+        val (title, desc) = rule.labels
+        SwitchRow(title, desc, rule in settings.chineseFuzzy) { on ->
+            store.set { it.copy(chineseFuzzy = if (on) it.chineseFuzzy + rule else it.chineseFuzzy - rule) }
+        }
+    }
+}
+
+/** Names a fuzzy-pinyin rule and gives its example, as string resources. */
+private val FuzzyRule.labels get() = when (this) {
+    FuzzyRule.Z_ZH -> R.string.fuzzy_z_zh to R.string.fuzzy_z_zh_desc
+    FuzzyRule.C_CH -> R.string.fuzzy_c_ch to R.string.fuzzy_c_ch_desc
+    FuzzyRule.S_SH -> R.string.fuzzy_s_sh to R.string.fuzzy_s_sh_desc
+    FuzzyRule.N_L -> R.string.fuzzy_n_l to R.string.fuzzy_n_l_desc
+    FuzzyRule.F_H -> R.string.fuzzy_f_h to R.string.fuzzy_f_h_desc
+    FuzzyRule.L_R -> R.string.fuzzy_l_r to R.string.fuzzy_l_r_desc
+    FuzzyRule.AN_ANG -> R.string.fuzzy_an_ang to R.string.fuzzy_an_ang_desc
+    FuzzyRule.EN_ENG -> R.string.fuzzy_en_eng to R.string.fuzzy_en_eng_desc
+    FuzzyRule.IN_ING -> R.string.fuzzy_in_ing to R.string.fuzzy_in_ing_desc
+    FuzzyRule.IAN_IANG -> R.string.fuzzy_ian_iang to R.string.fuzzy_ian_iang_desc
+    FuzzyRule.UAN_UANG -> R.string.fuzzy_uan_uang to R.string.fuzzy_uan_uang_desc
 }
 
 /** Draws the Japanese page: Japanese mode's own cross-language switches. */

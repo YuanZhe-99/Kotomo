@@ -15,8 +15,9 @@ import java.io.File
  * Notes: `shared/` holds the data extracted from the assets, in device-protected storage so the
  * keyboard can read it before the first unlock (Direct Boot, PLAN §8.1); [lockedUser] is the
  * throwaway user directory librime uses until then. `user/` the deployed `build/` the
- * keyboard reads plus the user dictionary, `staging/` a deploy in progress. `deployed` names the
- * app version whose data `user/build` holds; `deploy.txt` the last deploy's time and memory;
+ * keyboard reads plus the user dictionary, Kotomo's run-time tables and the fuzzy-pinyin rule
+ * file ([fuzzy]), `staging/` a deploy in progress. `deployed` names the app version and the
+ * fuzzy-pinyin rules ([Fuzzy.hash]) whose data `user/build` holds; `deploy.txt` the last deploy's time and memory;
  * `status.txt` what the deploy process is doing or why it failed (no typed text, only step
  * names and error messages).
  */
@@ -29,6 +30,10 @@ class RimeFiles(context: Context) {
     val user = File(root, "user")
     val staging = File(root, "staging")
     private val deployed = File(root, "deployed")
+    /** The fuzzy-pinyin rule file the settings ask for ([Fuzzy.yaml]); absent when no rule is on. */
+    val fuzzy = File(user, Fuzzy.FILE)
+    /** In a staged deploy: the [Fuzzy.hash] of the rule file that deploy compiled. */
+    private val stagedFuzzy = File(staging, "fuzzy.hash")
     private val report = File(root, "deploy.txt")
     private val statusFile = File(root, "status.txt")
 
@@ -123,8 +128,54 @@ class RimeFiles(context: Context) {
     /** Whether `user/build` exists, deployed from any version. */
     val hasBuild get() = File(user, "build").isDirectory
 
-    /** Whether `user/build` holds this version's data. */
-    val current get() = hasBuild && deployed.isFile && deployed.readText() == stamp
+    /** Reads the [Fuzzy.hash] of the rule file in `user/` now. */
+    private fun fuzzyHash() = Fuzzy.hash(runCatching { fuzzy.readText() }.getOrNull())
+
+    /** Whether `user/build` holds this version's data compiled with the rule file in `user/` now. */
+    val current get() = hasBuild && deployed.isFile && deployed.readText() == "$stamp ${fuzzyHash()}"
+
+    /**
+     * Writes the fuzzy-pinyin rule file, or removes it for null (IO thread).
+     * Returns: whether the file changed.
+     * Side effects: writes through a temporary file and a rename, so the deploy process never
+     * reads half a file.
+     */
+    fun writeFuzzy(text: String?): Boolean {
+        val old = runCatching { fuzzy.readText() }.getOrNull()
+        if (old == text) return false
+        if (text == null) {
+            fuzzy.delete()
+        } else {
+            user.mkdirs()
+            val tmp = File(user, "${Fuzzy.FILE}.tmp")
+            tmp.writeText(text)
+            if (!tmp.renameTo(fuzzy)) {
+                tmp.delete()
+                return false
+            }
+        }
+        return true
+    }
+
+    /**
+     * Copies the rule file in `user/` into the staging directory, where the deploy reads it as
+     * librime's user directory, and records its hash (deploy process).
+     */
+    fun stageFuzzy() {
+        val text = runCatching { fuzzy.readText() }.getOrNull()
+        val staged = File(staging, Fuzzy.FILE)
+        if (text == null) staged.delete() else staged.writeText(text)
+        stagedFuzzy.writeText(Fuzzy.hash(text))
+    }
+
+    /**
+     * Removes `user/build` so librime opens on the prebuilt data in `shared/` again (engine thread,
+     * with librime shut down): what the keyboard does when every fuzzy-pinyin rule is off.
+     */
+    fun dropBuild() {
+        File(user, "build").deleteRecursively()
+        deployed.delete()
+    }
 
     /**
      * Moves a finished staged deploy into `user/` (engine thread, with librime shut down).
@@ -133,11 +184,12 @@ class RimeFiles(context: Context) {
     fun promote(): Boolean {
         val built = File(staging, "build")
         if (!built.isDirectory) return false
+        val compiled = runCatching { stagedFuzzy.readText() }.getOrDefault(Fuzzy.NONE)
         val target = File(user, "build")
         target.deleteRecursively()
         user.mkdirs()
         if (!built.renameTo(target)) return false
-        deployed.writeText(stamp)
+        deployed.writeText("$stamp $compiled")
         staging.deleteRecursively()
         return true
     }
@@ -159,8 +211,9 @@ class RimeFiles(context: Context) {
  *
  * Notes: the keyboard binds to it when the bundled data changed; the work starts on bind, runs on a
  * worker thread (this process's only librime caller) and ends with a broadcast [ACTION_DONE] to
- * this package. It extracts the assets into `shared/`, deploys into `staging/` and writes the
- * report; the keyboard then promotes the staged build.
+ * this package. It extracts the assets into `shared/`, copies the fuzzy-pinyin rule file into
+ * `staging/` ([RimeFiles.stageFuzzy]), deploys there and writes the report; the keyboard then
+ * promotes the staged build, and deploys again if the rules changed meanwhile.
  */
 class RimeDeployService : Service() {
     private var started = false
@@ -187,6 +240,7 @@ class RimeDeployService : Service() {
             // librime creates build/ with std::filesystem before compiling default.yaml and only
             // logs a failure; on a device build/ stayed empty, so it is created here first.
             File(files.staging, "build").mkdirs()
+            files.stageFuzzy()
             // initialize may fail to open a session before anything is deployed; deploy anyway.
             Rime.initialize(files.shared.path, files.staging.path)
             step = "deploy"

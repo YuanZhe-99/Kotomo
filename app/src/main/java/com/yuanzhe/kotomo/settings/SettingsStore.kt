@@ -37,9 +37,15 @@ class SettingsStore(private val data: DataStore<Preferences>, private val scope:
     private val theme = MutableStateFlow<Theme?>(null)
     private val themeLoaded = scope.launch { theme.value = themes?.load() }
 
+    /**
+     * Emits the settings each time a file changes; null until the file's first read, so a reader
+     * that must not act on the defaults (the fuzzy-pinyin deploy) can wait for the stored values.
+     */
+    val loaded: StateFlow<Settings?> = combine(data.data.map(SettingsFormat::read), theme) { s, t -> s.with(t) }
+        .stateIn(scope, SharingStarted.Eagerly, null)
+
     /** Emits the settings each time a file changes; starts with the defaults. */
-    val flow: StateFlow<Settings> = combine(data.data.map(SettingsFormat::read), theme) { s, t -> s.with(t) }
-        .stateIn(scope, SharingStarted.Eagerly, Settings())
+    val flow: StateFlow<Settings> = loaded.map { it ?: Settings() }.stateIn(scope, SharingStarted.Eagerly, Settings())
 
     /** Returns the latest settings read from the file, without I/O. */
     val current: Settings get() = flow.value

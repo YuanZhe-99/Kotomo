@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.yuanzhe.kotomo.ime.FuzzyRule
 import com.yuanzhe.kotomo.ime.Mode
 
 /** Chooses when the keyboard splits into two thumb-zone halves. */
@@ -113,6 +114,8 @@ data class Settings(
     val mixed: Mixed = Mixed(),
     val japanese: CrossLanguage = CrossLanguage(),
     val chineseScript: ChineseScript = ChineseScript.SIMPLIFIED,
+    /** The fuzzy-pinyin rules turned on (PLAN §9.6); none by default. */
+    val chineseFuzzy: Set<FuzzyRule> = emptySet(),
     val englishSuggestions: Boolean = true,
     val englishAutoCapitalize: Boolean = true,
     val split: SplitLayout = SplitLayout.AUTO,
@@ -228,6 +231,7 @@ internal object SettingsFormat {
             ),
             japanese = readCross(p, "japanese"),
             chineseScript = p.enum(chineseScript, ChineseScript.entries, d.chineseScript),
+            chineseFuzzy = FuzzyRule.entries.filterTo(mutableSetOf()) { p[fuzzyKey(it)] ?: (it in d.chineseFuzzy) },
             englishSuggestions = p[englishSuggestions] ?: d.englishSuggestions,
             englishAutoCapitalize = p[englishAutoCapitalize] ?: d.englishAutoCapitalize,
             split = p.enum(split, SplitLayout.entries, d.split),
@@ -280,6 +284,7 @@ internal object SettingsFormat {
         p.put(mixedSpace, old.mixed.space.key, new.mixed.space.key)
         writeCross(p, "japanese", old.japanese, new.japanese)
         p.put(chineseScript, old.chineseScript.key, new.chineseScript.key)
+        FuzzyRule.entries.forEach { p.put(fuzzyKey(it), it in old.chineseFuzzy, it in new.chineseFuzzy) }
         p.put(englishSuggestions, old.englishSuggestions, new.englishSuggestions)
         p.put(englishAutoCapitalize, old.englishAutoCapitalize, new.englishAutoCapitalize)
         p.put(split, old.split.key, new.split.key)
@@ -335,6 +340,9 @@ internal object SettingsFormat {
 
     /** Names the key of one cross-language switch, `<mode>.cross.<name>`. */
     private fun crossKey(mode: String, name: String) = booleanPreferencesKey("$mode.cross.$name")
+
+    /** Names the key of one fuzzy-pinyin rule's switch, `chinese.fuzzy.<rule>`. */
+    private fun fuzzyKey(rule: FuzzyRule) = booleanPreferencesKey("chinese.fuzzy.${rule.key}")
 
     /** Names an enum value as stored: its lowercase constant name. */
     private val Enum<*>.key get() = name.lowercase()

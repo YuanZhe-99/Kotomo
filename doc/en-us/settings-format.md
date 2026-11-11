@@ -9,6 +9,8 @@ app and the keyboard run in the same process and share one `SettingsStore`
 
 - `SettingsStore.flow` is a `StateFlow<Settings>` that emits whenever the file changes; it starts
   with the defaults and holds the file's values a few milliseconds after `SettingsStore.get`.
+- `SettingsStore.loaded` is the same flow but null until the file's first read; the keyboard's
+  fuzzy-pinyin deploy waits for it, so the defaults never trigger a deploy.
 - `SettingsStore.current` returns the latest value without I/O, so the keyboard may read it on the
   main thread and on the key path.
 - `SettingsStore.set` (fire and forget, kept in call order) and `SettingsStore.update` (suspends
@@ -47,6 +49,7 @@ stores and shows them, and they take effect once the mixed coordinator exists.
 | `mixed.space` | string | `separate` | Space while composing in Mixed mode: `separate` (insert a break) or `commit_first` |
 | `mixed.cross.*`, `japanese.cross.*` | boolean | `true` | Cross-language switches of Mixed and Japanese mode: `pinyin_to_kanji`, `pinyin_to_katakana`, `english_to_kanji`, `english_to_katakana`, `whole_sentence`, `readings`, `emoji` |
 | `chinese.script` | string | `simplified` | Chinese output: `simplified` (Mainland), `traditional` (OpenCC standard), `taiwan`, `hong_kong` (with regional phrases); the quick panel also remembers a choice per app in the keyboard's memory (below) |
+| `chinese.fuzzy.<rule>` | boolean | `false` | One switch per fuzzy-pinyin rule (PLAN §9.6): `z_zh`, `c_ch`, `s_sh`, `n_l`, `f_h`, `l_r`, `an_ang`, `en_eng`, `in_ing`, `ian_iang`, `uan_uang`; a key is written once its switch has been changed. The keyboard turns the rules that are on into librime's `kotomo_fuzzy.yaml` and deploys it ([upstream.md](upstream.md)) |
 | `english.suggestions` | boolean | `true` | English corrections and predictions in the candidate bar |
 | `english.auto_capitalize` | boolean | `true` | Capital letter at the start of a sentence |
 | `layout.split` | string | `auto` | Split keyboard: `auto` (by window width), `always`, `never` |

@@ -91,7 +91,7 @@
     <string name="page_mixed">Mixed mode</string>
     <string name="page_mixed_desc">%1$s · cross-language conversion and language weights</string>
     <string name="page_chinese">Chinese</string>
-    <string name="page_chinese_desc">Simplified, Traditional, Taiwan or Hong Kong</string>
+    <string name="page_chinese_desc">Simplified, Traditional, Taiwan or Hong Kong · fuzzy pinyin</string>
     <string name="page_japanese">Japanese</string>
     <string name="page_japanese_desc">Romaji · pinyin and English to Japanese · readings</string>
     <string name="page_english">English</string>

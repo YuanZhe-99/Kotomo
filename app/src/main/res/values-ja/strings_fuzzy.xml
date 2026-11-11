@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fuzzy pinyin on the Chinese settings page (PLAN §9.6). Rule titles are pinyin and the same in every language. -->
+<resources>
+    <string name="fuzzy_initials">あいまい音（ピンイン）：声母</string>
+    <string name="fuzzy_finals">あいまい音（ピンイン）：韻母</string>
+    <string name="fuzzy_note">スイッチごとに、似た二つの音を同じものとして扱います。正確なつづりが引き続き先に並びます。切り替えると中国語の辞書をバックグラウンドで準備し直します。その間も入力できます。</string>
+    <string name="fuzzy_z_zh_desc">zongguo と入力しても 中国 が出ます</string>
+    <string name="fuzzy_c_ch_desc">cifan と入力しても 吃饭 が出ます</string>
+    <string name="fuzzy_s_sh_desc">sijian と入力しても 时间 が出ます</string>
+    <string name="fuzzy_n_l_desc">lihao と入力しても 你好 が出ます</string>
+    <string name="fuzzy_f_h_desc">hangjian と入力しても 房间 が出ます</string>
+    <string name="fuzzy_l_r_desc">luguo と入力しても 如果 が出ます</string>
+    <string name="fuzzy_an_ang_desc">angquan と入力しても 安全 が出ます</string>
+    <string name="fuzzy_en_eng_desc">fengxi と入力しても 分析 が出ます</string>
+    <string name="fuzzy_in_ing_desc">yingwei と入力しても 因为 が出ます</string>
+    <string name="fuzzy_ian_iang_desc">xiangzai と入力しても 现在 が出ます</string>
+    <string name="fuzzy_uan_uang_desc">guangli と入力しても 管理 が出ます</string>
+</resources>

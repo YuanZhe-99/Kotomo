@@ -8,6 +8,8 @@
 
 - `SettingsStore.flow` 是一个 `StateFlow<Settings>`，文件每次变化时发出新值；它从默认值开始，在
   `SettingsStore.get` 之后几毫秒内变为文件中的值。
+- `SettingsStore.loaded` 是同一个流，但在文件第一次读完之前为 null；键盘的模糊音部署等待它，
+  所以默认值永远不会触发部署。
 - `SettingsStore.current` 不做 I/O 即返回最新值，键盘可以在主线程和按键路径上读取。
 - `SettingsStore.set`（不等待，按调用顺序排队）和 `SettingsStore.update`（挂起直到写入完成）应用
   `Settings` 的一个 `copy`，只写入值发生变化的键。
@@ -41,6 +43,7 @@
 | `mixed.space` | string | `separate` | 混合模式组合中的空格：`separate`（插入分隔）或 `commit_first`（提交首选） |
 | `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`、`pinyin_to_katakana`、`english_to_kanji`、`english_to_katakana`、`whole_sentence`、`readings`、`emoji` |
 | `chinese.script` | string | `simplified` | 中文输出：`simplified`（大陆）、`traditional`（OpenCC 标准）、`taiwan`、`hong_kong`（带地区用词）；快捷面板还会在键盘的记忆（见下文）中按 App 记住选择 |
+| `chinese.fuzzy.<rule>` | boolean | `false` | 每条模糊音规则一个开关（PLAN §9.6）：`z_zh`、`c_ch`、`s_sh`、`n_l`、`f_h`、`l_r`、`an_ang`、`en_eng`、`in_ing`、`ian_iang`、`uan_uang`；开关改动过一次后才写入该键。键盘把开启的规则写成 librime 的 `kotomo_fuzzy.yaml` 并部署（[upstream.md](upstream.md)） |
 | `english.suggestions` | boolean | `true` | 候选栏中的英文纠错与预测 |
 | `english.auto_capitalize` | boolean | `true` | 句首自动大写 |
 | `layout.split` | string | `auto` | 分离键盘：`auto`（按窗口宽度）、`always`、`never` |

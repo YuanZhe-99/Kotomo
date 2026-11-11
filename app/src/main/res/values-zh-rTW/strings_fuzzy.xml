@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fuzzy pinyin on the Chinese settings page (PLAN §9.6). Rule titles are pinyin and the same in every language. -->
+<resources>
+    <string name="fuzzy_initials">模糊音：聲母</string>
+    <string name="fuzzy_finals">模糊音：韻母</string>
+    <string name="fuzzy_note">每個開關讓兩個相近的音互相通用，精確的拼寫仍然排在前面。開關變更後會在背景重新準備中文詞庫，期間可以照常輸入。</string>
+    <string name="fuzzy_z_zh_desc">輸入 zongguo 也能得到 中國</string>
+    <string name="fuzzy_c_ch_desc">輸入 cifan 也能得到 吃飯</string>
+    <string name="fuzzy_s_sh_desc">輸入 sijian 也能得到 時間</string>
+    <string name="fuzzy_n_l_desc">輸入 lihao 也能得到 你好</string>
+    <string name="fuzzy_f_h_desc">輸入 hangjian 也能得到 房間</string>
+    <string name="fuzzy_l_r_desc">輸入 luguo 也能得到 如果</string>
+    <string name="fuzzy_an_ang_desc">輸入 angquan 也能得到 安全</string>
+    <string name="fuzzy_en_eng_desc">輸入 fengxi 也能得到 分析</string>
+    <string name="fuzzy_in_ing_desc">輸入 yingwei 也能得到 因為</string>
+    <string name="fuzzy_ian_iang_desc">輸入 xiangzai 也能得到 現在</string>
+    <string name="fuzzy_uan_uang_desc">輸入 guangli 也能得到 管理</string>
+</resources>

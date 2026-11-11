@@ -3,6 +3,9 @@
 # English uses it today, as the previous word), input (the letters typed; empty means nothing typed),
 # expected (acceptable outputs separated by "|"; a leading "!" means none of those outputs may appear
 # within the rank), rank (1, 3, 5; 0 means anywhere), notes.
+# A chinese or mixed mode may carry fuzzy-pinyin rules (PLAN §9.6): `chinese+fuzzy:z_zh,n_l` or
+# `chinese+fuzzy:all`; the line then runs on a librime build deployed with the rule file the app
+# generates for those switches (chinese.fuzzy.*).
 # The corpus measures conversion, not key handling: the runner hands the whole input to the engine
 # the mode uses today (Chinese and Mixed: librime's set_input, where a space or an apostrophe is a
 # syllable delimiter; Japanese: one Mozc session fed letter by letter; English: the English engine
@@ -79,3 +82,32 @@ T07-002	mixed		chidai nikainiikou	池袋に買いに行こう	3	§13.2 (the draf
 T07-003	mixed		chidainikainiikou	池袋に買いに行こう	3	§13.2
 T07-004	mixed		zailiucard	在留カード	3	§13.2
 T07-005	mixed		chocolateokainiikou	チョコレートを買いに行こう	3	§13.2: the particle を typed o after a noun
+T08-001	chinese+fuzzy:z_zh		zongguo	中国	3	fuzzy pinyin z/zh: zongguo for zhongguo (PLAN §9.6)
+T08-002	chinese+fuzzy:c_ch		cifan	吃饭	3	fuzzy pinyin c/ch: cifan for chifan (PLAN §9.6)
+T08-003	chinese+fuzzy:s_sh		sijian	时间	3	fuzzy pinyin s/sh: sijian for shijian (PLAN §9.6)
+T08-004	chinese+fuzzy:n_l		lihao	你好	3	fuzzy pinyin n/l: lihao for nihao (PLAN §9.6)
+T08-005	chinese+fuzzy:f_h		hangjian	房间	3	fuzzy pinyin f/h: hangjian for fangjian (PLAN §9.6)
+T08-006	chinese+fuzzy:l_r		luguo	如果	3	fuzzy pinyin l/r: luguo for ruguo (PLAN §9.6)
+T08-007	chinese+fuzzy:an_ang		angquan	安全	3	fuzzy pinyin an/ang: angquan for anquan (PLAN §9.6)
+T08-008	chinese+fuzzy:en_eng		fengxi	分析	3	fuzzy pinyin en/eng: fengxi for fenxi (PLAN §9.6)
+T08-009	chinese+fuzzy:in_ing		yingwei	因为	3	fuzzy pinyin in/ing: yingwei for yinwei (PLAN §9.6)
+T08-010	chinese+fuzzy:ian_iang		xiangzai	现在	3	fuzzy pinyin ian/iang: xiangzai for xianzai (PLAN §9.6)
+T08-011	chinese+fuzzy:uan_uang		guangli	管理	3	fuzzy pinyin uan/uang: guangli for guanli (PLAN §9.6)
+T08-N01	chinese		zongguo	!中国	5	with z/zh off, zongguo does not stand for zhongguo
+T08-N02	chinese		cifan	!吃饭	5	with c/ch off, cifan does not stand for chifan
+T08-N03	chinese		sijian	!时间	5	with s/sh off, sijian does not stand for shijian
+T08-N04	chinese		lihao	!你好	5	with n/l off, lihao does not stand for nihao
+T08-N05	chinese		hangjian	!房间	5	with f/h off, hangjian does not stand for fangjian
+T08-N06	chinese		luguo	!如果	5	with l/r off, luguo does not stand for ruguo
+T08-N07	chinese		angquan	!安全	5	with an/ang off, angquan does not stand for anquan
+T08-N08	chinese		fengxi	!分析	5	with en/eng off, fengxi does not stand for fenxi
+T08-N09	chinese		yingwei	!因为	5	with in/ing off, yingwei does not stand for yinwei
+T08-N10	chinese		xiangzai	!现在	5	with ian/iang off, xiangzai does not stand for xianzai
+T08-N11	chinese		guangli	!管理	5	with uan/uang off, guangli does not stand for guanli
+T08-020	chinese+fuzzy:all		nihao	你好	1	with every rule on, exact spellings keep their first candidate
+T08-021	chinese+fuzzy:all		zhongguo	中国	1	with every rule on, exact spellings keep their first candidate
+T08-022	chinese+fuzzy:all		shijian	时间	1	with every rule on, exact spellings keep their first candidate
+T08-023	chinese+fuzzy:all		zg	中国	3	abbreviated pinyin still works with every rule on
+T08-024	chinese+fuzzy:all		lihao	你好	3	rules combine: every rule on
+T08-N20	chinese+fuzzy:z_zh		cifan	!吃饭	5	only the rules that are on apply: z/zh on, c/ch off
+T08-N21	chinese+fuzzy:n_l,l_r		rihao	!你好	5	n/l with l/r must not make r stand for n (known gap: librime chains rules that share l)

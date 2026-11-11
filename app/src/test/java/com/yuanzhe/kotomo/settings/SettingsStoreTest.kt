@@ -7,8 +7,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferencesSerializer
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.yuanzhe.kotomo.ime.FuzzyRule
 import com.yuanzhe.kotomo.ime.Mode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +61,7 @@ class SettingsStoreTest {
         ),
         japanese = CrossLanguage(readings = false),
         chineseScript = ChineseScript.TAIWAN,
+        chineseFuzzy = setOf(FuzzyRule.Z_ZH, FuzzyRule.AN_ANG),
         englishAutoCapitalize = false,
         split = SplitLayout.NEVER,
         thumbZoneDp = 300,
@@ -142,6 +145,33 @@ class SettingsStoreTest {
             assertEquals(Settings().heightPercent, s.heightPercent)
             assertEquals(Settings().mixed.weightEmoji, s.mixed.weightEmoji)
             assertEquals(Settings().clipboard.retentionDays, s.clipboard.retentionDays)
+        }
+    }
+
+    /** T08: each fuzzy-pinyin rule is its own switch, `chinese.fuzzy.<rule>`, all off by default. */
+    @Test
+    fun fuzzyRulesAreOneKeyEach() {
+        assertEquals(emptySet<FuzzyRule>(), Settings().chineseFuzzy)
+        withData { data, scope ->
+            val store = SettingsStore(data, scope)
+            store.update { it.copy(chineseFuzzy = setOf(FuzzyRule.N_L)) }
+            val prefs = data.data.first()
+            assertEquals(true, prefs[booleanPreferencesKey("chinese.fuzzy.n_l")])
+            // Rules never turned on are not written.
+            assertEquals(null, prefs[booleanPreferencesKey("chinese.fuzzy.l_r")])
+            store.update { it.copy(chineseFuzzy = emptySet()) }
+            assertEquals(false, data.data.first()[booleanPreferencesKey("chinese.fuzzy.n_l")])
+            assertEquals(emptySet<FuzzyRule>(), SettingsFormat.read(data.data.first()).chineseFuzzy)
+        }
+    }
+
+    /** The keyboard's fuzzy-pinyin deploy waits for [SettingsStore.loaded], which carries the stored values. */
+    @Test
+    fun loadedCarriesTheStoredValues() {
+        withData { data, scope -> SettingsStore(data, scope).update { changed } }
+        withData { data, scope ->
+            val store = SettingsStore(data, scope)
+            assertEquals(changed, store.loaded.first { it != null })
         }
     }
 

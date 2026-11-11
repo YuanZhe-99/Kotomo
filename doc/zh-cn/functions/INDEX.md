@@ -29,7 +29,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |
 | `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来；总览页与 Kotomo 自己的画板模板渲染器 | `index.html`、`support.js`、`Keyboard.dc.html`、`canvas.json` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（中文在两个最佳词之后放原样的字母；日文的整句、补全、片段与假名，各带自己的读音；英文原词在先；Emoji 的位置；Emoji 搜索），以及选择、缩短、延长日文片段时的分段；键盘与转换语料共用 | `chinese`、`japanese`、`pick`、`resize`、`extend` |
-| `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名并报告回退 | `ConversionCorpusTest` |
+| `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名（带 `+fuzzy:` 的模式先部署应用生成的规则文件）并报告回退；`run.sh` 同时运行主机模糊音测试 `FuzzyRimeTest` | `ConversionCorpusTest`、`FuzzyRimeTest` |
 | `app/src/androidTest/`、`app/src/debug/…/fieldtest/` | 在模拟器或真机上经 Kotomo 的键输入的插桩测试，以及它们输入的、只在 debug 构建中存在的输入框 | `FieldTypingTest`、`FieldTestActivity` |
 | `tests/device/` | 里程碑时交给用户的真机检查清单（逐行 PASS / FAIL） | `p1-checklist.md` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Settings.kt`、`SettingsStore.kt` | 设置模型、带版本的 Preferences DataStore 文件（[settings-format.md](../settings-format.md)），以及进程内共用、无需 I/O 即可读取快照的存储 | `Settings`、`SettingsFormat`、`SettingsStore.current` |
@@ -48,7 +48,8 @@
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | `libkotomo_mozc.so` 的 Kotlin 外观：日文模式用 `sessionConvert` 转换、`predict` 预测、`pinnedConvert`（固定片段与固定边界）修改片段 | `sessionConvert`、`pinnedConvert`、`predict` |
 | `scripts/build-mozc.sh` | 为主机或 Android ABI 构建 Mozc 与胶水层（Android 需要 x86_64 Linux 或 macOS）；把 Android 产物放进 `build/mozc-prebuilt`，并与 `build-lock.json` 比较 | `--abi` |
 | `.github/workflows/mozc.yml` | CI（新的 GitHub 仓库建立之前不运行）：主机测试，以及带哈希清单的 Android Mozc 库产物 | `mozc` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | 在独立进程中把 librime 部署到暂存目录、`filesDir/rime` 下的文件布局、构建的换入与部署报告 | `RimeDeployService`、`RimeFiles.promote` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | 在独立进程中把 librime 部署到暂存目录、`filesDir/rime` 下的文件布局、模糊音规则文件与记下它的部署标记、构建的换入、回到预编译数据与部署报告 | `RimeDeployService`、`RimeFiles.promote`、`RimeFiles.writeFuzzy`、`RimeFiles.dropBuild` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Fuzzy.kt` | 模糊音（PLAN §9.6）：十一条规则（每条是一对 librime `fuzz` 规则），以及按开启的开关生成的规则文件 `kotomo_fuzzy.yaml`（纯 Kotlin，有单元测试；同一份文本在 `FuzzyRimeTest` 与语料 T08 中喂给主机上的 librime）；由 `KotomoService.syncRimeBuild` 写出并部署 | `FuzzyRule`、`Fuzzy.yaml` |
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
 | `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定；该运行已于 2026-11-04 随 GitHub 仓库删除，CI 重新存在之前它下载不到任何东西；`build-mozc.sh` 在本地构建同样的文件 | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的工具栏快捷设置：单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用 | `QuickPanel` |

@@ -51,6 +51,9 @@ Latin words only where it helps readability. The input modes are 中文, 英文,
 | decoder | 解码器 |
 | language model | 语言模型 |
 | fuzzy pinyin / fuzzy match | 模糊音 / 模糊匹配 |
+| fuzzy-pinyin rule (one switch) | 模糊音规则 |
+| deploy (librime data) | 部署 |
+| prebuilt data | 预编译数据 |
 | key-proximity correction | 按键纠错 |
 | autocorrect | 自动纠错 |
 | next-word prediction | 下一词预测 |

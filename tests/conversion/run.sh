@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs the conversion corpus (PLAN.md §13.3) on the host: tests/conversion/corpus.tsv through the
 # app's own engine facades and candidate assembly (ConversionCorpusTest), compared line by line
-# with tests/conversion/baseline.tsv.
+# with tests/conversion/baseline.tsv; also the host fuzzy-pinyin test (FuzzyRimeTest, T08), which
+# needs the same host librime.
 #
 # Usage: tests/conversion/run.sh [--update]
 #   --update  accepts this run as the new baseline (copies build/conversion/results.tsv over
@@ -11,7 +12,7 @@
 #   and the Android SDK (ANDROID_HOME) for Gradle.
 # Side effects: builds the host librime and English libraries into build/host/; writes
 #   build/conversion/results.tsv and report.txt, and with --update the baseline.
-# Exit status: 0 when no line regressed against the baseline, non-zero otherwise.
+# Exit status: 0 when no line regressed against the baseline and FuzzyRimeTest passed, non-zero otherwise.
 set -euo pipefail
 
 update=0
@@ -39,7 +40,7 @@ cmake --build build/host/english >/dev/null || die "English build failed"
 rm -f build/conversion/report.txt
 status=0
 KOTOMO_CORPUS=1 ./gradlew --no-daemon -q :app:testDebugUnitTest \
-  --tests com.yuanzhe.kotomo.ime.ConversionCorpusTest --rerun || status=$?
+  --tests com.yuanzhe.kotomo.ime.ConversionCorpusTest --tests com.yuanzhe.kotomo.ime.FuzzyRimeTest --rerun || status=$?
 [[ -f build/conversion/report.txt ]] || die "the corpus did not run (Gradle exit $status)"
 cat build/conversion/report.txt
 
