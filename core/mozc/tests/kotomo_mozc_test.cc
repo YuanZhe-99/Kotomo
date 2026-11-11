@@ -184,6 +184,23 @@ TEST_F(MozcEngineTest, PredictsNothingFromNothing) {
   EXPECT_TRUE(engine_->Predict("", /*incognito=*/true).empty());
 }
 
+// S6, PLAN.md §5.2: romaji goes through Mozc's own romaji table, so the
+// coordinator proposes romaji spans with Mozc's spellings (si/shi, sokuon, ん).
+TEST_F(MozcEngineTest, MapsRomajiToHiragana) {
+  EXPECT_EQ(engine_->ToHiragana("sakura"), "さくら");
+  EXPECT_EQ(engine_->ToHiragana("nihon"), "にほん");
+  EXPECT_EQ(engine_->ToHiragana("sisyou"), engine_->ToHiragana("shishou"));
+  EXPECT_EQ(engine_->ToHiragana("ikka"), "いっか");
+  EXPECT_EQ(engine_->ToHiragana("kainiikou"), "かいにいこう");
+}
+
+// Negative: letters the table cannot map stay ASCII, so `card` and a lone
+// consonant are not romaji readings.
+TEST_F(MozcEngineTest, LeavesUnmappableLettersAsAscii) {
+  EXPECT_NE(engine_->ToHiragana("card").find("rd"), std::string::npos);
+  EXPECT_EQ(engine_->ToHiragana("k"), "k");
+}
+
 // Negative: a span without a reading is rejected rather than converted.
 TEST_F(MozcEngineTest, RejectsEmptySpan) {
   EXPECT_FALSE(engine_->PinnedConvert({{.reading = "", .surface = "池袋"}},

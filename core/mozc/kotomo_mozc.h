@@ -17,6 +17,9 @@
 namespace mozc {
 class Engine;
 class SessionHandler;
+namespace composer {
+class Table;
+}  // namespace composer
 }  // namespace mozc
 
 namespace kotomo::mozc {
@@ -27,6 +30,7 @@ struct Candidate {
   std::string key;     // reading the candidate covers, in hiragana
   uint16_t lid = 0;    // left part-of-speech id from Mozc's dictionary
   uint16_t rid = 0;    // right part-of-speech id
+  int32_t cost = 0;    // Mozc's cost of the candidate in its context; lower is likelier
 };
 
 /// Holds one segment (bunsetsu) of a conversion with its ranked candidates.
@@ -122,11 +126,22 @@ class MozcEngine {
   /// `from_dictionary == false` when Mozc has no such entry.
   PosIds LookupPosIds(std::string_view reading, std::string_view surface) const;
 
+  /// Maps typed romaji to hiragana through Mozc's own romaji table, as a
+  /// session's composer would before conversion (`kka` → っか, a final `n` → ん).
+  /// Inputs: `romaji` is UTF-8 Latin letters (and `-` for ー).
+  /// Returns: the conversion query; letters the table cannot map stay as
+  /// half-width ASCII (`card` → かrd), so a caller tells a full romaji reading
+  /// from a partial one by looking for ASCII letters.
+  /// Notes: the coordinator (core/mixed) uses it to propose romaji spans
+  /// (PLAN.md §5.2); nothing is learned.
+  std::string ToHiragana(std::string_view romaji) const;
+
  private:
   MozcEngine() = default;
 
   ::mozc::Engine* engine_ = nullptr;  // owned by session_handler_
   std::unique_ptr<::mozc::SessionHandler> session_handler_;
+  std::shared_ptr<const ::mozc::composer::Table> romaji_table_;
 };
 
 }  // namespace kotomo::mozc

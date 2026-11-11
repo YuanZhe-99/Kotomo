@@ -17,7 +17,9 @@
 #   --jobs <n>       Bazel --jobs (default: Bazel's own choice)
 #
 # Host output: <out>/host/libkotomo_mozc.so and <out>/host/mozc.data for the
-# conversion corpus (tests/conversion/run.sh).
+# conversion corpus (tests/conversion/run.sh), and <out>/host/kotomo_mozc_service,
+# the line service through which the coordinator's host prototype (core/mixed)
+# reaches Mozc.
 # Android output: <out>/<abi>/libkotomo_mozc.so (16 KB-aligned, JNI symbols
 # only), <out>/mozc.data and <out>/SHA256SUMS, installed into build/mozc-prebuilt
 # for the app build and compared with build-lock.json. Runs on Linux (x86_64 for
@@ -59,7 +61,7 @@ while [[ $# -gt 0 ]]; do
     --ndk) ndk="${2:?}"; shift 2 ;;
     --bazelisk) bazelisk="${2:?}"; shift 2 ;;
     --jobs) jobs="${2:?}"; shift 2 ;;
-    -h|--help) sed -n '2,26p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,28p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
@@ -153,7 +155,7 @@ for abi in "${abis[@]}"; do
     (cd "$src" && "$bazelisk" test --config oss_linux "${bazel_flags[@]}" \
       --test_output=all //kotomo:kotomo_mozc_test) || die "host tests failed"
     (cd "$src" && "$bazelisk" build --config oss_linux "${bazel_flags[@]}" \
-      //kotomo:libkotomo_mozc.so) || die "host library build failed"
+      //kotomo:libkotomo_mozc.so //kotomo:kotomo_mozc_service) || die "host library build failed"
     host_lib="$src/bazel-bin/kotomo/libkotomo_mozc.so"
     # Every exported (global or weak) symbol must be a JNI entry point.
     exported="$(nm -D --defined-only "$host_lib" | awk '$2 ~ /^[A-Z]$/ {print $3}')" \
@@ -164,6 +166,7 @@ for abi in "${abis[@]}"; do
     # The conversion corpus (tests/conversion) loads this library and the data set into a host JVM.
     run install -D -m 0755 "$host_lib" "$out/host/libkotomo_mozc.so"
     run install -D -m 0644 "$src/bazel-bin/data_manager/oss/mozc.data" "$out/host/mozc.data"
+    run install -D -m 0755 "$src/bazel-bin/kotomo/kotomo_mozc_service" "$out/host/kotomo_mozc_service"
     echo "host: tests passed; $(wc -l <<<"$exported") exported symbols, all JNI"
     continue
   fi

@@ -17,6 +17,8 @@ mozc_cc_library(
     deps = [
         "//base:system_util",
         "//base:util",
+        "//composer",
+        "//composer:table",
         "//config:config_handler",
         "//converter",
         "//converter:segments",
@@ -42,6 +44,17 @@ mozc_cc_test(
     deps = [
         ":glue",
         "@com_google_googletest//:gtest",
+    ],
+)
+
+# A line service over the glue for host programs (the coordinator's host
+# prototype in core/mixed); never part of the app.
+mozc_cc_binary(
+    name = "kotomo_mozc_service",
+    srcs = ["kotomo_mozc_service.cc"],
+    deps = [
+        ":glue",
+        "@com_google_absl//absl/strings",
     ],
 )
 

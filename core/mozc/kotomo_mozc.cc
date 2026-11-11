@@ -9,6 +9,8 @@
 
 #include "base/system_util.h"
 #include "base/util.h"
+#include "composer/composer.h"
+#include "composer/table.h"
 #include "config/config_handler.h"
 #include "converter/converter.h"
 #include "converter/segments.h"
@@ -64,7 +66,8 @@ Conversion ToConversion(const Segments& segments, size_t max_candidates) {
          ++i) {
       const ::mozc::converter::Candidate& c = segment.candidate(i);
       out.candidates.push_back(
-          {.value = c.value, .key = c.key, .lid = c.lid, .rid = c.rid});
+          {.value = c.value, .key = c.key, .lid = c.lid, .rid = c.rid,
+           .cost = c.cost});
     }
     if (out.candidates.empty()) {
       out.candidates.push_back({.value = out.key, .key = out.key});
@@ -120,6 +123,12 @@ std::unique_ptr<MozcEngine> MozcEngine::Open(const std::string& data_path,
   self->engine_ = engine->get();
   self->session_handler_ =
       std::make_unique<::mozc::SessionHandler>(*std::move(engine));
+  auto table = std::make_shared<::mozc::composer::Table>();
+  if (!table->InitializeWithRequestAndConfig(
+          commands::Request(), ::mozc::config::ConfigHandler::DefaultConfig())) {
+    return nullptr;
+  }
+  self->romaji_table_ = std::move(table);
   return self;
 }
 
@@ -296,7 +305,8 @@ std::vector<Candidate> MozcEngine::Predict(std::string_view reading,
   for (size_t i = 0; i < segment.candidates_size() && out.size() < max_candidates;
        ++i) {
     const ::mozc::converter::Candidate& c = segment.candidate(i);
-    out.push_back({.value = c.value, .key = c.key, .lid = c.lid, .rid = c.rid});
+    out.push_back({.value = c.value, .key = c.key, .lid = c.lid, .rid = c.rid,
+           .cost = c.cost});
   }
   return out;
 }
@@ -318,6 +328,18 @@ PosIds MozcEngine::LookupPosIds(std::string_view reading,
   }
   const uint16_t noun = modules.GetPosMatcher().GetGeneralNounId();
   return {.lid = noun, .rid = noun, .from_dictionary = false};
+}
+
+std::string MozcEngine::ToHiragana(std::string_view romaji) const {
+  ::mozc::composer::Composer composer(
+      romaji_table_, commands::Request(),
+      ::mozc::config::ConfigHandler::DefaultConfig());
+  for (const char32_t codepoint : ::mozc::Util::Utf8ToUtf32(romaji)) {
+    std::string key;
+    ::mozc::Util::CodepointToUtf8Append(codepoint, &key);
+    composer.InsertCharacter(std::move(key));
+  }
+  return composer.GetQueryForConversion();
 }
 
 }  // namespace kotomo::mozc
