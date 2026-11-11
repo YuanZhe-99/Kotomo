@@ -63,12 +63,27 @@ class FakeEngines : public Engines {
       JapaneseSegment segment{.reading = span.reading, .pinned = !span.surface.empty()};
       if (segment.pinned) {
         segment.words.push_back({span.surface, span.reading, 0});
-      } else if (const auto found = japanese_.find(span.reading); found != japanese_.end()) {
-        segment.words = found->second;
-      } else {
-        segment.words.push_back({span.reading, span.reading, 9000});
+        out.push_back(std::move(segment));
+        continue;
       }
-      out.push_back(std::move(segment));
+      // A free span: the longest known words in turn, and each unknown kana (three UTF-8 bytes)
+      // as a costly segment of its own, much as a converter treats words it does not know.
+      for (size_t at = 0; at < span.reading.size();) {
+        size_t taken = 0;
+        for (size_t length = span.reading.size() - at; length > 0; --length) {
+          const auto found = japanese_.find(span.reading.substr(at, length));
+          if (found == japanese_.end()) continue;
+          out.push_back({.reading = found->first, .pinned = false, .words = found->second});
+          taken = length;
+          break;
+        }
+        if (taken == 0) {
+          taken = std::min<size_t>(3, span.reading.size() - at);
+          const std::string kana = span.reading.substr(at, taken);
+          out.push_back({.reading = kana, .pinned = false, .words = {{kana, kana, 3000}}});
+        }
+        at += taken;
+      }
     }
     return out;
   }
@@ -104,7 +119,7 @@ class FakeEngines : public Engines {
       {"あい", {{"愛", "あい", 3500}, {"あい", "あい", 4500}}},
       {"よむ", {{"読む", "よむ", 3200}}},
       {"かう", {{"買う", "かう", 3300}}},
-      {"ほんよむ", {{"本読む", "ほんよむ", 6500}}},
+      {"いく", {{"行く", "いく", 3000}}},
       {"ねこ", {{"猫", "ねこ", 3100}, {"ねこ", "ねこ", 5200}}}};
   std::map<std::string, std::vector<EnglishForm>> english_ = {
       {"book", {{"book", 200}}}, {"ai", {{"AI", 150}, {"ai", 90}}}, {"the", {{"the", 255}}},

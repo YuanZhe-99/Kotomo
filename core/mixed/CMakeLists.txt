@@ -12,8 +12,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 enable_testing()
 
 add_library(kotomo_mixed STATIC
+  coordinator.cc
   cross_lexicon.cc
   decode.cc
+  finish_chinese.cc
+  finish_japanese.cc
   input.cc
   lattice.cc
   propose_chinese.cc
@@ -26,7 +29,7 @@ target_compile_options(kotomo_mixed PRIVATE -Wall -Wextra -Wno-missing-field-ini
 
 # One executable per test file; each prints PASS/FAIL lines named after the spike or test ID.
 foreach(name snapshot lattice cross_lexicon propose_chinese propose_japanese
-    propose_english decode)
+    propose_english decode coordinator)
   add_executable(kotomo_mixed_${name}_test tests/${name}_test.cc)
   target_link_libraries(kotomo_mixed_${name}_test PRIVATE kotomo_mixed)
   add_test(NAME kotomo_mixed_${name}_test COMMAND kotomo_mixed_${name}_test)
