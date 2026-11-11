@@ -58,13 +58,49 @@ class FieldTypingTest {
         assertEquals("nihao", typeInto(password, 0, "nihao", expected = "nihao", space = false))
     }
 
+    /** T03 positive: Japanese mode converts romaji; space commits the first candidate. */
+    @Test
+    fun japaneseConvertsOnSpace() {
+        inMode("JAPANESE") { assertEquals("日本", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihon", expected = "日本")) }
+    }
+
     /**
-     * Opens a field of the given kind, taps [letters] (then space unless [space] is false) on
+     * T03 negative: Enter keeps the kana as typed instead of converting.
+     * Notes: the field asks for no Enter action, so the key is the plain Enter (a single-line
+     * field would make it Done).
+     */
+    @Test
+    fun japaneseEnterKeepsTheKana() {
+        inMode("JAPANESE") {
+            val text = typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION, "nihon", expected = "にほん", space = false, enter = true)
+            assertEquals("にほん", text)
+        }
+    }
+
+    /**
+     * Runs [block] with Kotomo starting in [mode] in this app (the per-app mode Kotomo keeps in its
+     * preferences), and removes it again afterwards.
+     */
+    private fun inMode(mode: String, block: () -> Unit) {
+        val context = instrumentation.targetContext
+        val prefs = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+        val key = "mode." + context.packageName
+        prefs.edit().putString(key, mode).commit()
+        try {
+            block()
+        } finally {
+            prefs.edit().remove(key).commit()
+        }
+    }
+
+    /**
+     * Opens a field of the given kind, taps [letters] (then space unless [space] is false, then
+     * Enter if [enter]) on
      * Kotomo's keyboard and returns the field's text.
      * Notes: the first field of a run may come up before librime has opened its data; then the
      * letters type directly, so the field is cleared and the typing repeated a few times.
      */
-    private fun typeInto(inputType: Int, imeOptions: Int, letters: String, expected: String, space: Boolean = true): String {
+    private fun typeInto(inputType: Int, imeOptions: Int, letters: String, expected: String, space: Boolean = true, enter: Boolean = false): String {
         val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
             .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, inputType)
             .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, imeOptions)
@@ -74,6 +110,10 @@ class FieldTypingTest {
                 checkNotNull(device.wait(Until.findObject(By.desc(letters.first().toString())), WAIT_MS)) { "Kotomo's keys did not appear" }
                 letters.forEach { device.findObject(By.desc(it.toString())).click() }
                 if (space) device.findObject(By.descStartsWith(SPACE)).click()
+                if (enter) {
+                    Thread.sleep(READ_MS)
+                    device.findObject(By.descStartsWith(ENTER)).click()
+                }
                 device.waitForIdle()
                 text = read(scenario)
                 if (text == expected) return text
@@ -99,6 +139,10 @@ class FieldTypingTest {
         const val IME = "com.yuanzhe.kotomo/.ime.KotomoService"
         /** The space key's description starts with this (R.string.key_space, English). */
         const val SPACE = "Space"
+        /** The Enter key's description starts with this (R.string.key_enter, English). */
+        const val ENTER = "Enter"
+        /** Kotomo's own preferences file (KotomoService.PREFS). */
+        const val PREFS = "ime"
         const val ATTEMPTS = 3
         const val WAIT_MS = 3000L
         const val READS = 3

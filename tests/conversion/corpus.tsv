@@ -50,6 +50,10 @@ T03-007	japanese		shi	し	0	romaji: shi gives the kana し
 T03-008	japanese		si	し	0	romaji: si gives the same kana (PLAN §9.6)
 T03-009	japanese		kitte	切手|きって	3	sokuon: doubled consonant
 T03-010	japanese		konnichiha	こんにちは	3	nn before a vowel
+T03-011	japanese		arigato	ありがとう	3	prediction: an unfinished word completes (PLAN §8.2)
+T03-012	japanese		kyou	今日	3	the reading's words
+T03-N02	japanese		sakura	!さくらんぼ	1	prediction never pushes the exact word from first place
+T03-N03	japanese		nihon	!日本人|!日本語	1	a completion never comes before the reading's own word
 T03-N01	japanese		nihao	!你好	0	pinyin is not converted as Chinese in Japanese mode
 T04-001	mixed		diannao	电脑	3	§2.3: original language first
 T04-002	mixed		diannao	コンピューター	5	§2.3

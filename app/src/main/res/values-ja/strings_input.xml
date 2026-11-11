@@ -39,4 +39,13 @@
 
     <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
     <string name="locked_notice">デバイスのロックを解除すると使えます</string>
+
+    <!-- Japanese mode: the candidate bar's notice when this build carries no Mozc data, and the
+         segment (bunsetsu) controls in the toolbar's place while a conversion is open. -->
+    <string name="bar_japanese_unavailable">このビルドでは日本語を変換できません</string>
+    <string name="segment_edit">文節</string>
+    <string name="segment_shorter">縮める</string>
+    <string name="segment_longer">伸ばす</string>
+    <string name="segment_whole">文全体</string>
+    <string name="segment_position">文節 %1$d / %2$d · %3$s</string>
 </resources>

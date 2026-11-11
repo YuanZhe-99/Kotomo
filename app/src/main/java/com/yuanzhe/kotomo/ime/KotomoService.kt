@@ -119,6 +119,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private lateinit var content: LinearLayout
     private var emojiPanel: ComposeView? = null
     private var candidatesPanel: ComposeView? = null
+    private var segmentPanel: ComposeView? = null
     private var quickPanel: ComposeView? = null
     private var clipboardPanel: ComposeView? = null
     /** The quick-paste strip above the keys (shown in the candidate bar's place). */
@@ -147,6 +148,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var rimeIndexes = emptyList<Int>()
     /** Main thread: the kana reading Mozc gave for the current Japanese composition. */
     private var japaneseReading = ""
+    /** Main thread: the current Japanese conversion's segments (bunsetsu), as Mozc gave them. */
+    private var japaneseSegments = emptyList<Mozc.Segment>()
+    /** Main thread: the Japanese candidates shown, each with its own reading (candidate details). */
+    private var japaneseCandidates = emptyList<Candidates.Japanese>()
+    /** Main thread: the segment being edited in the segment panel, or null for the whole sentence. */
+    private var segmentFocus: Int? = null
+    /** Main thread: Mozc could not open (no data in this build); Japanese mode says so once typing. */
+    private var japaneseUnavailable = false
     /** librime's latest preedit and candidates, as last applied on the main thread. */
     private var chinesePreedit = ""
     private var chineseCandidates = emptyList<String>()
@@ -318,6 +327,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             if (appliedLook != null && appliedLook != (it.theme to it.keyRadiusDp)) {
                 emojiPanel = null
                 candidatesPanel = null
+                segmentPanel = null
                 quickPanel = null
                 clipboardPanel = null
                 setInputView(onCreateInputView())
@@ -500,10 +510,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** Opens or closes the page of every candidate in the keyboard's place. */
     private fun toggleCandidates() {
-        if (panelHost.getChildAt(0) === candidatesPanel) {
+        if (panelHost.getChildAt(0) === candidatesPanel || panelHost.getChildAt(0) === segmentPanel) {
             showKeyboard()
             return
         }
+        if (mode == Mode.JAPANESE && !direct && japaneseSegments.isNotEmpty()) return showSegments()
         val height = keyboard.height
         val panel = candidatesPanel ?: ComposeView(this).also { view ->
             candidatesPanel = view
@@ -618,7 +629,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val reading = when {
             emoji -> ""
             rime != null -> rime.comment.trim()
-            mode == Mode.JAPANESE -> japaneseReading
+            mode == Mode.JAPANESE -> japaneseCandidates.firstOrNull { it.text == text }?.reading ?: japaneseReading
             else -> ""
         }
         val source = getString(
@@ -931,10 +942,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             KeyAction.Enter -> {
                 previousWord = null
                 if (composing.isNotEmpty() && mode == Mode.JAPANESE && japaneseReading.isNotEmpty()) {
-                    // Enter keeps the kana as typed, as Japanese keyboards do.
-                    ic.commitText(japaneseReading, 1)
+                    // Enter keeps the kana as typed, as Japanese keyboards do; after segments were
+                    // chosen it commits the conversion as shown.
+                    ic.commitText(if (japaneseSegments.any { it.pinned }) japaneseCandidates.firstOrNull()?.text ?: japaneseReading else japaneseReading, 1)
                     composing.clear()
                     taps.clear()
+                    clearJapanese()
                 } else if (composing.isNotEmpty()) {
                     commitComposition()
                 } else {
@@ -1163,6 +1176,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         composing.clear()
         taps.clear()
+        clearJapanese()
         updateAutoCaps()
         refresh(0)
     }
@@ -1188,6 +1202,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         currentInputConnection?.finishComposingText()
         composing.clear()
         taps.clear()
+        clearJapanese()
     }
 
     /**
@@ -1249,9 +1264,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         candidateBar.show(candidates, downTime)
         shownCandidates.value = candidates
         candidateBar.details = details
-        candidateBar.hint = notice ?: chineseHint()
+        candidateBar.hint = notice ?: chineseHint() ?: japaneseHint(raw)
         updateQuickStrip()
-        if (raw.isEmpty()) japaneseReading = ""
+        if (raw.isEmpty()) {
+            clearJapanese()
+            if (::panelHost.isInitialized && panelHost.getChildAt(0) === segmentPanel) showKeyboard()
+        }
         if (!direct && mode == Mode.ENGLISH && s.englishSuggestions && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
         if (!direct && mode == Mode.JAPANESE && raw.isNotEmpty()) suggestJapanese(raw, gen)
     }
@@ -1276,24 +1294,156 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /**
      * Converts the romaji composition with Mozc on the engine thread and shows the result if still
      * current: the composition becomes the kana reading; candidates are the whole sentence, the
-     * first segment's alternatives with the rest of the sentence, then hiragana and katakana.
+     * first segment's alternatives with the rest of the sentence, words predicted from the
+     * reading, then hiragana and katakana (PLAN §8.2).
+     * Notes: segments the person already chose in the segment panel stay pinned while more is
+     * typed; a deletion converts afresh. Nothing is learned (Mozc never commits).
      */
     private fun suggestJapanese(typed: String, gen: Int) {
         val incognito = settings.incognito || sensitive
+        val chosen = japaneseSegments
         engine.post {
             if (!mozcTried && !locked) {
                 mozcTried = true
                 mozc = openMozc()
             }
-            val segments = mozc?.sessionConvert(typed, incognito = incognito).orEmpty()
+            val m = mozc
+            val session = m?.sessionConvert(typed, incognito = incognito).orEmpty()
+            val reading = session.joinToString("") { it.reading }
+            val segments = Candidates.extend(chosen, reading)?.let { m?.pinnedConvert(it, incognito) } ?: session
+            val predicted = if (reading.isEmpty()) emptyList() else m?.predict(reading, incognito).orEmpty()
+            val unavailable = m == null
+            main.post {
+                if (gen != generation) return@post
+                japaneseUnavailable = unavailable
+                if (segments.isEmpty()) {
+                    if (unavailable) candidateBar.hint = japaneseHint(typed)
+                    return@post
+                }
+                showJapanese(segments, predicted, typed)
+            }
+        }
+    }
+
+    /**
+     * Shows a Japanese conversion: the composition as its reading (as the chosen conversion once
+     * a segment was chosen), marked with the conversion
+     * candidates (API 37), and the candidate list with emoji.
+     * Notes: main thread.
+     */
+    private fun showJapanese(segments: List<Mozc.Segment>, predicted: List<Mozc.Candidate>, typed: String) {
+        japaneseSegments = segments
+        val reading = segments.joinToString("") { it.reading }
+        japaneseReading = reading
+        japaneseCandidates = Candidates.japanese(segments, predicted)
+        // Once a segment is chosen the field shows the conversion (design: PhoneSegment), so what
+        // Enter commits is what the person sees; until then it shows the reading.
+        val chosen = segments.any { it.pinned }
+        val shown = if (chosen) japaneseCandidates.firstOrNull()?.text ?: reading else reading
+        setComposition(shown, japaneseCandidates.map { it.text }, chosen)
+        candidates = withEmoji(japaneseCandidates.map { it.text }, emojiFor(typed))
+        candidateBar.show(candidates, 0)
+        shownCandidates.value = candidates
+        updateSegmentPanel()
+    }
+
+    /**
+     * Sets the composition text with, on API 37, the conversion candidates and whether the shown
+     * text holds a chosen conversion (TextAttribute, PLAN §8.2).
+     */
+    private fun setComposition(text: String, conversions: List<String>, selected: Boolean) {
+        val ic = currentInputConnection ?: return
+        if (Build.VERSION.SDK_INT >= API_TEXT_SUGGESTION_SELECTED) {
+            val attribute = TextAttribute.Builder()
+                .setTextConversionSuggestions(conversions.take(CONVERSION_HINTS))
+                .setTextSuggestionSelected(selected)
+                .build()
+            ic.setComposingText(text, 1, attribute)
+        } else {
+            ic.setComposingText(text, 1)
+        }
+    }
+
+    /** Forgets the Japanese conversion (main thread). */
+    private fun clearJapanese() {
+        japaneseReading = ""
+        japaneseSegments = emptyList()
+        japaneseCandidates = emptyList()
+        segmentFocus = null
+    }
+
+    /** Says that this build cannot convert Japanese while Japanese mode has letters, or null. */
+    private fun japaneseHint(raw: String): String? =
+        if (mode == Mode.JAPANESE && !direct && japaneseUnavailable && raw.isNotEmpty()) getString(R.string.bar_japanese_unavailable) else null
+
+    private val segmentView = androidx.compose.runtime.mutableStateOf<SegmentView?>(null)
+
+    /** Rebuilds what the segment panel shows from the current conversion. */
+    private fun updateSegmentPanel() {
+        val segments = japaneseSegments
+        val focus = segmentFocus?.takeIf { it in segments.indices }
+        segmentView.value = if (segments.isEmpty()) null else SegmentView(
+            texts = segments.map { it.candidates.firstOrNull()?.value ?: it.reading },
+            readings = segments.map { it.reading },
+            focus = focus,
+            candidates = focus?.let { Candidates.segment(segments[it]).map { c -> c.text } } ?: japaneseCandidates.map { it.text },
+            shorter = focus != null && Candidates.resize(segments, focus, -1) != null,
+            longer = focus != null && Candidates.resize(segments, focus, 1) != null,
+        )
+    }
+
+    /** Opens the segment panel in the keyboard's place (Japanese mode's expand arrow). */
+    private fun showSegments() {
+        val height = keyboard.height
+        val panel = segmentPanel ?: ComposeView(this).also { view ->
+            segmentPanel = view
+            view.setContent {
+                SegmentPanel(
+                    view = segmentView,
+                    onFocus = { segmentFocus = it; updateSegmentPanel() },
+                    onPick = ::pickSegment,
+                    onResize = ::resizeSegment,
+                    onBack = ::showKeyboard,
+                )
+            }
+        }
+        segmentFocus = segmentFocus?.takeIf { it in japaneseSegments.indices }
+        updateSegmentPanel()
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
+    /**
+     * Chooses candidate [index] in the segment panel: for the whole sentence it commits like the
+     * candidate bar; for a segment it pins that segment and converts the rest again around it.
+     */
+    private fun pickSegment(index: Int) {
+        val focus = segmentFocus ?: return run { showKeyboard(); pick(index) }
+        val segment = japaneseSegments.getOrNull(focus) ?: return
+        val surface = Candidates.segment(segment).getOrNull(index)?.text ?: return
+        reconvert(Candidates.pick(japaneseSegments, focus, surface) ?: return, focus + 1)
+    }
+
+    /** Shrinks (−1) or grows (+1) the segment being edited by one character and converts again. */
+    private fun resizeSegment(delta: Int) {
+        val focus = segmentFocus ?: return
+        reconvert(Candidates.resize(japaneseSegments, focus, delta) ?: return, focus)
+    }
+
+    /**
+     * Converts [spans] with Mozc on the engine thread and shows the result, with segment [focus]
+     * (clamped to the result) chosen in the segment panel.
+     */
+    private fun reconvert(spans: List<Mozc.Span>, focus: Int) {
+        val incognito = settings.incognito || sensitive
+        val typed = composing.toString()
+        val gen = ++generation
+        engine.post {
+            val segments = mozc?.pinnedConvert(spans, incognito).orEmpty()
             main.post {
                 if (gen != generation || segments.isEmpty()) return@post
-                val reading = segments.joinToString("") { it.reading }
-                japaneseReading = reading
-                currentInputConnection?.setComposingText(reading, 1)
-                candidates = withEmoji(Candidates.japanese(segments), emojiFor(typed))
-                candidateBar.show(candidates, 0)
-                shownCandidates.value = candidates
+                segmentFocus = focus.coerceIn(0, segments.size - 1)
+                showJapanese(segments, emptyList(), typed)
             }
         }
     }

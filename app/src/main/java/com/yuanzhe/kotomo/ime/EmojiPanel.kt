@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -498,3 +499,123 @@ fun CandidatesPanel(
     }
 }
 
+
+/**
+ * Describes what the segment panel shows: each segment's text and reading, the segment being
+ * edited (null for the whole sentence), the candidates listed, and whether it can shrink or grow.
+ */
+data class SegmentView(
+    val texts: List<String>,
+    val readings: List<String>,
+    val focus: Int?,
+    val candidates: List<String>,
+    val shorter: Boolean,
+    val longer: Boolean,
+)
+
+/**
+ * Shows a Japanese conversion's segments (bunsetsu) in the keyboard's place (the candidate bar's
+ * expand arrow in Japanese mode, PLAN §8.2): the whole sentence and each segment as chips, the
+ * candidates of the chosen one, and Shorter, Longer and Back.
+ *
+ * Inputs: [view] follows the service; [onFocus] chooses a segment (null for the whole sentence);
+ * [onPick] chooses candidate n of what is listed; [onResize] shrinks (−1) or grows (+1) the
+ * chosen segment; [onBack] returns to the keys.
+ * Notes: choosing a segment's candidate pins it and converts the rest again around it; the
+ * segments before it keep their boundaries (PLAN §5.6).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun SegmentPanel(
+    view: androidx.compose.runtime.State<SegmentView?>,
+    onFocus: (Int?) -> Unit,
+    onPick: (Int) -> Unit,
+    onResize: (Int) -> Unit,
+    onBack: () -> Unit,
+) {
+    val v = view.value ?: return
+    val back = stringResource(R.string.candidates_collapse)
+    Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            SegmentChip(stringResource(R.string.segment_whole), v.focus == null) { onFocus(null) }
+            v.texts.forEachIndexed { i, text -> SegmentChip(text, v.focus == i) { onFocus(i) } }
+        }
+        v.focus?.let { f ->
+            Text(
+                stringResource(R.string.segment_position, f + 1, v.texts.size, v.readings[f]),
+                Modifier.padding(horizontal = 12.dp),
+                fontSize = 13.sp,
+                color = kbColor(R.color.kb_ink_secondary),
+            )
+        }
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            v.candidates.forEachIndexed { i, text ->
+                Box(
+                    Modifier
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colorResource(if (i == 0) R.color.kb_accent_container else R.color.kb_key))
+                        .clickable { onPick(i) }
+                        .padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(text, fontSize = 18.sp, color = colorResource(if (i == 0) R.color.kb_on_accent_container else R.color.kb_ink))
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth().height(48.dp).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            SegmentButton(stringResource(R.string.segment_shorter), v.shorter, Modifier.weight(1f)) { onResize(-1) }
+            SegmentButton(stringResource(R.string.segment_longer), v.longer, Modifier.weight(1f)) { onResize(1) }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(kbColor(R.color.kb_key_function))
+                    .clickable(onClick = onBack)
+                    .semantics { contentDescription = back },
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(painterResource(R.drawable.ic_bar_collapse), contentDescription = null, colorFilter = ColorFilter.tint(kbColor(R.color.kb_ink)))
+            }
+        }
+    }
+}
+
+/** Draws one segment chip, filled while it is the one listed. */
+@Composable
+private fun SegmentChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(colorResource(if (selected) R.color.kb_accent_container else R.color.kb_key))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, fontSize = 16.sp, color = colorResource(if (selected) R.color.kb_on_accent_container else R.color.kb_ink))
+    }
+}
+
+/** Draws Shorter or Longer; a disabled one is dimmed and ignores taps. */
+@Composable
+private fun SegmentButton(label: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(12.dp))
+            .background(kbColor(R.color.kb_key_function))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, fontSize = 15.sp, color = kbColor(if (enabled) R.color.kb_ink else R.color.kb_ink_secondary))
+    }
+}

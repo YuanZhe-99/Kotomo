@@ -16,8 +16,8 @@
 | 文档镜像与链接 | `java tool/CheckDocs.java` 通过 |
 | 单元测试（布局与命中判定、延迟百分位、输入框、姿态、Emoji 索引；设置格式与主题文件；剪贴板：记录规则、加密文件、过期、被拒绝的剪贴、验证码、快捷输入；AI 交接） | 2026-11-10 运行 `./gradlew check`（debug）：87 个测试，87 个通过，没有跳过 |
 | Lint | 2026-11-10 运行 `./gradlew check`：没有错误 |
-| 转换语料（T01–T07） | 2026-11-10 运行 `tests/conversion/run.sh`（x86_64 Linux，主机版引擎）：64 行中 43 行通过。T01 中文 19/19，T02 英文 10/10，T03 日文 10/11（T03-001 为私羽日本人，即助词は打成 wa）；T04–T07 混合 4/24，因为协调层完成之前混合模式等同中文模式。这次运行是 `tests/conversion/baseline.tsv` 中的基线。 |
-| 插桩测试（T12、T13） | 2026-11-10 运行 `./gradlew connectedDebugAndroidTest`（模拟器，Android 17，x86_64，16 KB 页，debug）：`FieldTypingTest` 3/3。在 Kotomo 的键上输入 `nihao` 加空格，普通输入框与带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框都得到你好；密码框按原样收到 `nihao` |
+| 转换语料（T01–T07） | 2026-11-10 运行 `tests/conversion/run.sh`（x86_64 Linux，主机版引擎）：68 行中 47 行通过。T01 中文 19/19，T02 英文 10/10，T03 日文 14/15（T03-001 为私羽日本人，即助词は打成 wa）；T04–T07 混合 4/24，因为协调层完成之前混合模式等同中文模式。这次运行是 `tests/conversion/baseline.tsv` 中的基线。 |
+| 插桩测试（T12、T13） | 2026-11-10 运行 `./gradlew connectedDebugAndroidTest`（模拟器，Android 17，x86_64，16 KB 页，debug）：`FieldTypingTest` 5/5。在 Kotomo 的键上输入 `nihao` 加空格，普通输入框与带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框都得到你好；密码框按原样收到 `nihao`；日文模式下 `nihon` 加空格得到日本，回车保留にほん |
 | Release 构建 | 2026-11-10 在设置 `KOTOMO_REQUIRE_MOZC=1` 与 `KOTOMO_REQUIRE_RIME_PREBUILT=1` 的情况下运行 `./gradlew assembleRelease`：启用 R8，以 release 密钥签名（APK 签名方案 v2，经 `apksigner` 验证）；arm64-v8a 27.4 MB，x86_64 27.5 MB，各自带有 librime、Mozc（库 2.9 MB，数据 19 MB）和英文引擎 |
 
 ## 技术验证
@@ -26,7 +26,7 @@
 |---|---|---|
 | S1 IME 骨架 | 真机上 PASS（Galaxy Z Fold，SM-F971U1，Android 17，release 构建，2026-11-04） | 按下到按键绘制 p50 9–10 ms、p95 19–21 ms；按下到候选绘制 p50 15–48 ms、p95 120–130 ms（英文与中文引擎，不计首次调用）；键盘视图到首帧 11–14 ms；Compose Emoji 面板首帧 73 ms；进程内存 61–80 MB。展开屏上为分离布局，外屏为手机布局，按键位于系统栏之上。 |
 | S2 librime | 真机（同一部手机）与主机上 PASS | 使用构建时编译的数据可以输入中文（首次启动解压约 120 ms）。发现并修复了两个只在真机上出现的问题：JNI 字符串转换丢掉了数据路径的最后一个字符；真机上部署时无法创建 build/。诊断页的自检会显示其状态。主机：35 项检查，包括预编译数据、按键路径与运行时词表，另有 9 项 UTF 转换检查（`ctest` 2/2，x86_64 Linux，2026-11-10）。 |
-| S3 Mozc | 主机上 PASS；Android 构建 PASS；真机上 NOT_RUN | Mozc 3.35.6354 与 Kotomo 的胶水层；主机测试 7 项全部通过（x86_64 Linux，2026-11-10）：`わたしはにほんじん` → 私は日本人，固定池袋 + `にかいにいこう` → 池袋に買いに行こう，拼音不是 Mozc 的读音。`scripts/build-mozc.sh` 构建的 arm64-v8a 与 x86_64 库（16 KB 对齐，导出 5 个符号，全部是 JNI）和数据集，SHA-256 与 `build-lock.json` 中已删除的 CI 运行完全相同。在模拟器上（Android 17，x86_64，release），日文模式把 `watashiwanihonjin` 首选转为私羽日本人，即 T03-001 已知的助词差距。没有真机结果的记录。 |
+| S3 Mozc | 主机上 PASS；Android 构建 PASS；真机上 NOT_RUN | Mozc 3.35.6354 与 Kotomo 的胶水层；主机测试 11 项全部通过（x86_64 Linux，2026-11-10）：`わたしはにほんじん` → 私は日本人，固定池袋 + `にかいにいこう` → 池袋に買いに行こう，拼音不是 Mozc 的读音，固定边界让わたし保持一段，ありがと预测出ありがとう。`scripts/build-mozc.sh` 构建 arm64-v8a 与 x86_64 库（16 KB 对齐，导出 6 个符号，全部是 JNI）和数据集；第一次本地构建与已删除的 CI 运行的哈希逐字节一致，`build-lock.json` 现在记录的是带新胶水层的库。在模拟器上（Android 17，x86_64，debug），日文模式把 `watashiwanihonjin` 首选转为私羽日本人，即 T03-001 已知的助词差距，把 `watashihanihonjin` 转为私は日本人；在片段面板中，私は缩短为私 + は，把私改成渡し后，は与日本人保持不变。没有真机结果的记录。 |
 | S4 英文引擎 | 主机上 PASS；真机上 NOT_RUN | `libkotomo_english.so` 可为 arm64-v8a 与 x86_64 构建（去符号后约 360 KB，16 KB 对齐）；2.5 MB 的词典可复现构建；在 x86_64 Linux 上运行 `core/english/tests/run-host.sh`（2026-11-10）：13 项全部通过（`helo` → hello、`teh` → the、邻键误触、补全、下一词预测、反例）。主机上每次调用 4.7 ms，不代表真机延迟。 |
 | S5 跨语言词库 | 主机上 PASS | `java lexicon/CheckSamples.java`（2026-11-10，CC-CEDICT 2026-11-10，JMdict 2026-11-09）：34 条预期映射全部达到要求的名次（`chidai` 下的池袋、`dongjing` 下的東京、`coffee` 下的コーヒー……），8 条反例 0 条出错（`yunshu` 下没有芸術）。拼音 → 日文覆盖 Mozc 中 99.97% 的全汉字词条。 |
 | S6–S8 | NOT_RUN | — |
@@ -44,10 +44,11 @@
 
 ## 已知限制
 
-- 2026-11-09 逐项读代码的结论是 P1 并未完成：混合模式的输入与中文模式完全相同，日文模式没有文节编辑与预测。全部缺口见 `PLAN.md` §8。
+- 2026-11-09 逐项读代码的结论是 P1 并未完成：混合模式的输入与中文模式完全相同。全部缺口见 `PLAN.md` §8。
 
 - P1 的手势、输入框适配、台湾与香港输出、候选详情、Direct Boot 和 API 37 组合属性只经过单元测试或主机测试。P1 检查清单（`tests/device/p1-checklist.md`）按屏幕所见判定，目前尚未逐条记录，因此 G1 仍为 NOT_RUN。首次解锁之前，键盘只用默认设置和内置数据输入：中文不学习、英文可用、没有日文（Mozc 的数据在凭据保护存储中）、没有剪贴板、AI 和最近使用的 Emoji。
 - 英文模式由 S4 引擎提供纠错、补全与下一词预测，并传入每个字母在键上的按下位置，所以靠近邻键的点按也会考虑那个键；输入的原词始终排在第一位，空格提交的就是它。中文模式在两个最佳中文候选之后提供原样的字母。中文模式用构建时编译好的
   数据经 librime（S2）转换拼音；在混合协调层（S6）完成之前，混合模式也这样做。日文模式经 Mozc（S3，库由 `scripts/build-mozc.sh`
-  构建）转换罗马字：组合显示假名，第一个候选是整句，回车保留假名；逐段修改在 P2 实现。
+  构建）转换罗马字：组合显示假名，第一个候选是整句，其后是由读音预测的至多三个补全、首文节的备选与假名；回车保留假名。展开箭头打开片段：
+  选择某段的候选会固定它并重新转换其余部分，缩短与延长移动它的结尾，此后回车按所见提交转换。没有 Mozc 数据的构建会在候选栏中说明。
 - 在 P0 于真机上测量之前，不能对延迟、内存、APK 体积或设备端 AI 作出任何结论。

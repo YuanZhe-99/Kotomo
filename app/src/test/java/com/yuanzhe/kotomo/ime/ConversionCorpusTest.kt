@@ -105,8 +105,8 @@ class ConversionCorpusTest {
      * Lists the candidates the candidate bar would show for [line], with the keyboard's defaults
      * (Simplified Chinese, emoji suggestions on).
      * Notes: Chinese and Mixed hand the whole input to librime (Mixed is Chinese until the
-     * coordinator exists); Japanese converts the letters in one Mozc session; English asks the
-     * English engine, with the context as the previous word.
+     * coordinator exists); Japanese converts the letters in one Mozc session and predicts from
+     * their reading; English asks the English engine, with the context as the previous word.
      */
     private fun candidates(line: Line): List<String> = when (line.mode) {
         Mode.CHINESE, Mode.MIXED -> {
@@ -115,10 +115,12 @@ class ConversionCorpusTest {
             val texts = Rime.getCandidates(Candidates.CHINESE_LIMIT).map { it.text }
             Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition())).map { it.first }
         }
-        Mode.JAPANESE -> Candidates.withEmoji(
-            Candidates.japanese(mozc.sessionConvert(line.input, incognito = false).orEmpty()),
-            Candidates.emoji(emoji, line.input),
-        )
+        Mode.JAPANESE -> {
+            val segments = mozc.sessionConvert(line.input, incognito = false).orEmpty()
+            val reading = segments.joinToString("") { it.reading }
+            val predicted = if (reading.isEmpty()) emptyList() else mozc.predict(reading, incognito = false)
+            Candidates.withEmoji(Candidates.japanese(segments, predicted).map { it.text }, Candidates.emoji(emoji, line.input))
+        }
         Mode.ENGLISH -> if (line.input.isEmpty() && line.context.isEmpty()) {
             emptyList()
         } else {

@@ -40,4 +40,13 @@
 
     <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
     <string name="locked_notice">Unlock your device to use this</string>
+
+    <!-- Japanese mode: the candidate bar's notice when this build carries no Mozc data, and the
+         segment (bunsetsu) controls in the toolbar's place while a conversion is open. -->
+    <string name="bar_japanese_unavailable">Japanese conversion is not available in this build</string>
+    <string name="segment_edit">Segment</string>
+    <string name="segment_shorter">Shorter</string>
+    <string name="segment_longer">Longer</string>
+    <string name="segment_whole">Whole sentence</string>
+    <string name="segment_position">Segment %1$d of %2$d · %3$s</string>
 </resources>
