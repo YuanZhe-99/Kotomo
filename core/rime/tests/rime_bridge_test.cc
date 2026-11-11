@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "rime_bridge.h"
+#include "rime_spellings.h"
 
 namespace rb = kotomo::rime_bridge;
 using Clock = std::chrono::steady_clock;
@@ -77,6 +78,36 @@ int main(int argc, char** argv) {
                                          std::to_string(static_cast<int>(MillisSince(start))) +
                                          " ms");
   Check(rb::SetLearning(true), "S2-schema", "luna_pinyin_simp selected");
+
+  // S6: the coordinator reads syllables from the deployed schema's spelling table.
+  {
+    const std::string prism = (user_dir / "build" / "luna_pinyin_simp.prism.bin").string();
+    Check(rb::OpenSpellings(prism), "S6-spellings-open", "prism of luna_pinyin_simp mapped");
+    std::vector<rb::SpellingMatch> found;
+    const auto has = [&found](std::size_t length, bool fuzzy) {
+      for (const rb::SpellingMatch& m : found) {
+        if (m.length == length && m.fuzzy == fuzzy) return true;
+      }
+      return false;
+    };
+    rb::Spellings("zhongguo", &found);
+    Check(has(5, false), "S6-spellings-zhong", "zhongguo starts with the syllable zhong");
+    rb::Spellings("xian", &found);
+    Check(has(2, false) && has(4, false), "S6-spellings-xi-xian", "xian starts with xi and xian");
+    rb::Spellings("hoa", &found);
+    Check(has(3, true) && !has(3, false), "S6-spellings-correction",
+          "hoa is a syllable only through the schema's correction");
+    // Negative: abbreviations and non-syllables are not syllables.
+    rb::Spellings("zg", &found);
+    Check(found.empty(), "S6-spellings-no-abbreviation", "zg spells no full syllable");
+    rb::Spellings("kq", &found);
+    Check(found.empty(), "S6-spellings-none", "kq spells nothing");
+    Check(!rb::OpenSpellings(prism + ".missing"), "S6-spellings-missing-file",
+          "a missing prism is refused");
+    rb::CloseSpellings();
+    rb::Spellings("zhong", &found);
+    Check(found.empty(), "S6-spellings-closed", "nothing after CloseSpellings");
+  }
 
   // T01: full pinyin, Simplified output.
   const int nihao = RankOf("nihao", "你好");

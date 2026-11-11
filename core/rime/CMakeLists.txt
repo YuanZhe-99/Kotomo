@@ -140,7 +140,7 @@ target_link_libraries(kotomo_librime PUBLIC yaml-cpp leveldb marisa kotomo_openc
 
 # --- Kotomo's bridge -----------------------------------------------------------------------------
 
-add_library(kotomo_rime_bridge STATIC jni/rime_bridge.cc)
+add_library(kotomo_rime_bridge STATIC jni/rime_bridge.cc jni/rime_spellings.cc)
 target_include_directories(kotomo_rime_bridge PUBLIC jni)
 target_link_libraries(kotomo_rime_bridge PUBLIC kotomo_librime)
 
