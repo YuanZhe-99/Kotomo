@@ -4,8 +4,8 @@ import android.content.ClipData
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.text.InputType
 import android.view.inputmethod.EditorInfo
+import com.yuanzhe.kotomo.ime.Fields
 import com.yuanzhe.kotomo.settings.ClipboardSettings
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
@@ -477,25 +477,11 @@ class ClipboardHistory internal constructor(
         /**
          * Decides whether the keyboard may record or offer clips now.
          * Inputs: info is the current field (null when no field is bound).
-         * Returns: false in incognito mode, in password fields and in fields with
-         * IME_FLAG_NO_PERSONALIZED_LEARNING; true otherwise (URL and e-mail fields included,
-         * unlike direct typing).
+         * Returns: false in incognito mode and in sensitive fields ([Fields.sensitive]); true
+         * otherwise (URL and e-mail fields included, unlike direct typing).
          */
         fun allowedIn(info: EditorInfo?, settings: Settings): Boolean =
-            !settings.incognito && (info == null || !sensitiveField(info.inputType, info.imeOptions))
-
-        /** Decides whether a field's input type and options mark it sensitive (PLAN §14). */
-        internal fun sensitiveField(inputType: Int, imeOptions: Int): Boolean {
-            if (imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0) return true
-            val variation = inputType and InputType.TYPE_MASK_VARIATION
-            return when (inputType and InputType.TYPE_MASK_CLASS) {
-                InputType.TYPE_CLASS_TEXT -> variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-                    variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-                    variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
-                InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
-                else -> false
-            }
-        }
+            !settings.incognito && (info == null || !Fields.sensitive(info.inputType, info.imeOptions))
 
         @Volatile private var instance: ClipboardHistory? = null
 

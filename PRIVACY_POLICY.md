@@ -40,9 +40,12 @@ Japanese conversion (Mozc) and English suggestions do not learn from what you ty
 
 ## Sensitive fields
 
-Password fields, fields that set `IME_FLAG_NO_PERSONALIZED_LEARNING`, e-mail and URL fields get
-direct typing: no composition, no candidates, no learning, no history. Incognito mode (in the
-settings and the keyboard's quick settings) turns off learning and history everywhere.
+Password fields and fields that set `IME_FLAG_NO_PERSONALIZED_LEARNING` are sensitive: nothing
+typed in them is learned, no clipboard history is recorded, no emoji recents or per-app settings are
+kept, and writing help is not offered. Password fields also get direct typing (every key types its
+letter, with no composition or candidates); a field that only asks for no learning still converts
+Chinese and Japanese. E-mail and URL fields get direct typing too. Incognito mode (in the settings
+and the keyboard's quick settings) turns off learning and history everywhere.
 
 ## Deleting your data
 

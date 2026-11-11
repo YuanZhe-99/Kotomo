@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime.clipboard
 
+import com.yuanzhe.kotomo.ime.Fields
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import com.yuanzhe.kotomo.settings.ClipboardSettings
@@ -188,12 +189,12 @@ class ClipboardHistoryTest {
     @Test
     fun sensitiveFieldsRecordNothing() { // CLIP-11 (negative)
         val text = InputType.TYPE_CLASS_TEXT
-        assertTrue(ClipboardHistory.sensitiveField(text or InputType.TYPE_TEXT_VARIATION_PASSWORD, 0))
-        assertTrue(ClipboardHistory.sensitiveField(text or InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD, 0))
-        assertTrue(ClipboardHistory.sensitiveField(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD, 0))
-        assertTrue(ClipboardHistory.sensitiveField(text, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
-        assertFalse(ClipboardHistory.sensitiveField(text or InputType.TYPE_TEXT_VARIATION_URI, 0))
-        assertFalse(ClipboardHistory.sensitiveField(text, 0))
+        assertTrue(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_PASSWORD, 0))
+        assertTrue(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD, 0))
+        assertTrue(Fields.sensitive(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD, 0))
+        assertTrue(Fields.sensitive(text, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+        assertFalse(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_URI, 0))
+        assertFalse(Fields.sensitive(text, 0))
     }
 
     @Test
@@ -276,7 +277,7 @@ class ClipboardHistoryTest {
 
     @Test
     fun clipRefusedInAPasswordFieldStaysRefused() { // CLIP-16 (negative)
-        val password = !ClipboardHistory.sensitiveField(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD, 0)
+        val password = !Fields.sensitive(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD, 0)
         withHistory { h ->
             assertNull(h.onCopy(now, password) { "hunter2" })
             // Shown next in an ordinary field with the same clip still on the clipboard.

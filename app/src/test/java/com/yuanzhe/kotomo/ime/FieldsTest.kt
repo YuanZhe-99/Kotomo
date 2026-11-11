@@ -60,6 +60,32 @@ class FieldsTest {
     }
 
     @Test
+    fun sensitiveFieldsAreOneDefinition() { // T12
+        assertTrue(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_PASSWORD, 0))
+        assertTrue(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, 0))
+        assertTrue(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD, 0))
+        assertTrue(Fields.sensitive(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD, 0))
+        assertTrue(Fields.sensitive(text, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+        // Negative: ordinary, e-mail and URL fields are not sensitive (they may learn and record).
+        assertFalse(Fields.sensitive(text, 0))
+        assertFalse(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS, 0))
+        assertFalse(Fields.sensitive(text or InputType.TYPE_TEXT_VARIATION_URI, 0))
+    }
+
+    @Test
+    fun noLearningFieldsStillConvert() { // T12: the flag stops learning, not Chinese or Japanese
+        assertFalse(Fields.direct(text))
+        assertTrue(Fields.sensitive(text, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+        // Negative: passwords, raw keys, e-mail and URLs keep direct typing.
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_PASSWORD))
+        assertTrue(Fields.direct(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD))
+        assertTrue(Fields.direct(InputType.TYPE_NULL))
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS))
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_URI))
+        assertFalse(Fields.direct(InputType.TYPE_CLASS_PHONE))
+    }
+
+    @Test
     fun keypadsHaveDigitsAndTheirSymbols() {
         val phone = Layout.pad(Field.PHONE).rows.flatMap { it.keys }
         assertEquals((0..9).map { "$it" }.toSet(), phone.map { it.label }.filter { it.length == 1 && it[0].isDigit() }.toSet())

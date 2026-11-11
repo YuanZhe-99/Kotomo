@@ -33,6 +33,7 @@ scripts/prebuild-rime.sh                # compiled Chinese data for the APK
 scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test
 scripts/build-mozc.sh --abi arm64-v8a --abi x86_64   # Mozc for the APK into build/mozc-prebuilt, compared with build-lock.json
 cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime && ctest --test-dir build/host/rime -V   # S2 librime host test
+./gradlew connectedDebugAndroidTest    # instrumentation tests on a running emulator or device (debug build)
 tests/conversion/run.sh                 # conversion corpus on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```

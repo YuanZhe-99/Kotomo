@@ -17,6 +17,7 @@
 | 单元测试（布局与命中判定、延迟百分位、输入框、姿态、Emoji 索引；设置格式与主题文件；剪贴板：记录规则、加密文件、过期、被拒绝的剪贴、验证码、快捷输入；AI 交接） | 2026-11-10 运行 `./gradlew check`（debug）：87 个测试，87 个通过，没有跳过 |
 | Lint | 2026-11-10 运行 `./gradlew check`：没有错误 |
 | 转换语料（T01–T07） | 2026-11-10 运行 `tests/conversion/run.sh`（x86_64 Linux，主机版引擎）：58 行中 37 行通过。T01 中文 13/13，T02 英文 10/10，T03 日文 10/11（T03-001 为私羽日本人，即助词は打成 wa）；T04–T07 混合 4/24，因为协调层完成之前混合模式等同中文模式。这次运行是 `tests/conversion/baseline.tsv` 中的基线。 |
+| 插桩测试（T12、T13） | 2026-11-10 运行 `./gradlew connectedDebugAndroidTest`（模拟器，Android 17，x86_64，16 KB 页，debug）：`FieldTypingTest` 3/3。在 Kotomo 的键上输入 `nihao` 加空格，普通输入框与带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框都得到你好；密码框按原样收到 `nihao` |
 | Release 构建 | 2026-11-10 在设置 `KOTOMO_REQUIRE_MOZC=1` 与 `KOTOMO_REQUIRE_RIME_PREBUILT=1` 的情况下运行 `./gradlew assembleRelease`：启用 R8，以 release 密钥签名（APK 签名方案 v2，经 `apksigner` 验证）；arm64-v8a 27.4 MB，x86_64 27.5 MB，各自带有 librime、Mozc（库 2.9 MB，数据 19 MB）和英文引擎 |
 
 ## 技术验证
@@ -44,7 +45,7 @@
 ## 已知限制
 
 - 2026-11-09 逐项读代码的结论是 P1 并未完成：混合模式的输入与中文模式完全相同，日文模式没有文节编辑与预测，英文模式没有把触摸位置
-  传给引擎，要求不做个性化学习的输入框只能直接输入 ASCII。全部缺口见 `PLAN.md` §8。
+  传给引擎。全部缺口见 `PLAN.md` §8。
 
 - P1 的手势、输入框适配、台湾与香港输出、候选详情、Direct Boot 和 API 37 组合属性只经过单元测试或主机测试。P1 检查清单（`tests/device/p1-checklist.md`）按屏幕所见判定，目前尚未逐条记录，因此 G1 仍为 NOT_RUN。首次解锁之前，键盘只用默认设置和内置数据输入：中文不学习、英文可用、没有日文（Mozc 的数据在凭据保护存储中）、没有剪贴板、AI 和最近使用的 Emoji。
 - 英文模式由 S4 引擎提供纠错、补全与下一词预测；输入的原词始终排在第一位，空格提交的就是它。中文模式用构建时编译好的

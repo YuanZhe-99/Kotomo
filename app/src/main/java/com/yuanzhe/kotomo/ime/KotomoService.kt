@@ -88,9 +88,10 @@ import java.io.IOException
  * deploys it in its own process and the new build replaces the old one when it is done, so typing
  * goes on meanwhile. Only before the very first deploy has finished do letters type directly. Mixed mode uses librime too until
  * the mixed coordinator (S6) exists. Each update carries a
- * generation number and a stale engine result never replaces a newer one. Sensitive fields
- * (passwords, no-personalized-learning, e-mail and URL fields) get direct typing with no
- * composition and no candidates. The service is its own LifecycleOwner and SavedStateRegistryOwner
+ * generation number and a stale engine result never replaces a newer one. Password, e-mail, URL
+ * and raw-key fields get direct typing with no composition and no candidates; sensitive fields
+ * ([Fields.sensitive]: passwords and fields asking for no personalized learning) learn and record
+ * nothing, while a field that only asks for no learning still converts Chinese and Japanese. The service is its own LifecycleOwner and SavedStateRegistryOwner
  * so Compose panels can run in its window.
  */
 class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner {
@@ -155,7 +156,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var symbols = false
     private var symbolPage = 0
     private var shift = Shift.OFF
+    /** Main thread: the field gets direct typing ([Fields.direct]). */
     private var direct = false
+    /** Main thread: the field is sensitive ([Fields.sensitive]): nothing is learned or recorded. */
+    private var sensitive = false
     /** Main thread: what the current field is for (e-mail, web address, phone, code, …). */
     private var field = Field.TEXT
     /** Main thread: the Chinese script remembered for the current app, or null to follow the settings (Compose state, so the quick panel follows it). */
@@ -457,14 +461,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /**
      * Passes the settings the engines hold to the engine thread: the Chinese script (the app's
-     * remembered one first) and no learning in incognito mode (sensitive fields never reach
-     * librime).
+     * remembered one first) and no learning in incognito mode, in sensitive fields and before the
+     * first unlock (librime's private schema; T12).
      * Notes: setLearning re-selects the schema, which resets its options, so the script options
      * are set after it; exactly one of them is on, or none for OpenCC standard Traditional.
      */
     private fun applyEngineSettings() {
         val script = appScript ?: settings.chineseScript
-        val learning = !settings.incognito && !locked
+        val learning = !settings.incognito && !locked && !sensitive
         engine.post {
             if (rimeReady) {
                 Rime.setLearning(learning)
@@ -477,11 +481,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /**
      * Changes the Chinese script from the quick panel: for every app, and remembered for the
-     * current one (not in incognito mode or direct fields).
+     * current one (not in incognito mode, sensitive or direct fields).
      */
     private fun setScript(script: ChineseScript) {
         val app = currentInputEditorInfo?.packageName
-        if (app != null && !direct && !settings.incognito) {
+        if (app != null && remembers) {
             appScript = script
             prefs()?.edit { putString("$KEY_SCRIPT.$app", script.name) }
         }
@@ -683,8 +687,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /**
      * Hands the selected text, or the whole field when nothing is selected, to the AI screen.
      * Side effects: commits the composition; starts [AiActivity] in its own task.
-     * Notes: refuses (with a notice) while AI is off, in direct fields (the behavior contract's
-     * sensitive fields among them) and in incognito mode; Chinese-only text is refused because
+     * Notes: refuses (with a notice) while AI is off, in sensitive and direct fields and in
+     * incognito mode; Chinese-only text is refused because
      * Gemini Nano's writing tools do not take Chinese (PLAN §11.1).
      */
     private fun startAi() {
@@ -692,7 +696,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         when {
             locked -> return showNotice(getString(R.string.locked_notice))
             !settings.ai.enabled -> return showNotice(getString(R.string.ai_off_notice))
-            info == null || direct || settings.incognito -> return showNotice(getString(R.string.ai_not_here))
+            info == null || direct || sensitive || settings.incognito -> return showNotice(getString(R.string.ai_not_here))
         }
         commitComposition()
         val ic = currentInputConnection ?: return
@@ -774,7 +778,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        direct = isDirect(info)
+        direct = Fields.direct(info.inputType)
+        sensitive = Fields.sensitive(info.inputType, info.imeOptions)
         field = Fields.of(info.inputType, info.hintText ?: info.label)
         symbolPage = 0
         symbols = false
@@ -787,7 +792,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         previousWord = null
         // Each app comes back in the mode last used in it (only the package name is stored).
         val prefs = prefs()
-        val app = info.packageName?.takeIf { !direct }
+        val app = info.packageName?.takeIf { !direct && !sensitive }
         mode = app?.let { prefs?.getString("$KEY_MODE.$it", null) }?.let { name -> Mode.entries.firstOrNull { it.name == name } }
             ?: if (field == Field.CODE) Mode.ENGLISH else settings.defaultMode
         // Code-like fields start in English even where the app remembers another mode.
@@ -868,7 +873,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val app = currentInputEditorInfo?.packageName
             prefs()?.edit {
                 putString(KEY_MODE, mode.name)
-                if (app != null && !direct && !settings.incognito) putString("$KEY_MODE.$app", mode.name)
+                if (app != null && remembers) putString("$KEY_MODE.$app", mode.name)
             }
             updateAutoCaps()
             refresh(downTime)
@@ -1262,7 +1267,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * first segment's alternatives with the rest of the sentence, then hiragana and katakana.
      */
     private fun suggestJapanese(typed: String, gen: Int) {
-        val incognito = settings.incognito
+        val incognito = settings.incognito || sensitive
         engine.post {
             if (!mozcTried && !locked) {
                 mozcTried = true
@@ -1286,6 +1291,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * mixed coordinator (spike S6) handles pinyin, romaji and English in one string.
      */
     private val usesRime get() = mode == Mode.CHINESE || mode == Mode.MIXED
+
+    /**
+     * Whether this field may leave a trace: the per-app mode and script, emoji recents. False in
+     * incognito mode and in sensitive and direct fields.
+     */
+    private val remembers get() = !direct && !sensitive && !settings.incognito
 
     /**
      * Finds emoji for what is being typed (English words, pinyin, romaji; CLDR keywords), when
@@ -1347,7 +1358,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onBack = ::showKeyboard,
                     // Sensitive fields record nothing, recent emoji included.
-                    recordRecents = !locked && !settings.incognito && (currentInputEditorInfo?.let { !isDirect(it) } ?: false),
+                    recordRecents = !locked && currentInputEditorInfo != null && remembers,
                     personal = !locked,
                 )
             }
@@ -1375,31 +1386,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val SPACE = 0x20
         const val BACKSPACE = 0xff08
         const val RETURN = 0xff0d
-
-        /**
-         * Decides whether a field gets direct typing: no composition, no candidates, no learning.
-         *
-         * Notes: the behavior contract's sensitive fields (passwords, IME_FLAG_NO_PERSONALIZED_LEARNING),
-         * plus fields where a composition gets in the way (e-mail, URL, raw key input).
-         */
-        fun isDirect(info: EditorInfo): Boolean {
-            if (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0) return true
-            val type = info.inputType
-            val variation = type and InputType.TYPE_MASK_VARIATION
-            return when (type and InputType.TYPE_MASK_CLASS) {
-                InputType.TYPE_NULL -> true
-                InputType.TYPE_CLASS_TEXT -> variation in setOf(
-                    InputType.TYPE_TEXT_VARIATION_PASSWORD,
-                    InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
-                    InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD,
-                    InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
-                    InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
-                    InputType.TYPE_TEXT_VARIATION_URI,
-                )
-                InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
-                else -> false
-            }
-        }
     }
 }
 

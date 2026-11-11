@@ -10,7 +10,7 @@ It follows `PLAN.md` §11 and the behavior contract's AI rule.
 | Off by default | `ai.enabled` is `false` ([settings-format.md](settings-format.md)); while off, the AI button only shows a notice and no GenAI client is created |
 | Only when asked | Nothing runs until the person taps the AI button and then picks an action; a model download starts only from its Download button |
 | Never on the key path | The keyboard only hands text over; inference runs in `AiActivity`, a foreground screen, because GenAI serves only the foreground app |
-| Never in sensitive fields | Refused in direct fields (passwords, `IME_FLAG_NO_PERSONALIZED_LEARNING`, e-mail, URL) and in incognito mode |
+| Never in sensitive fields | Refused in sensitive fields (`Fields.sensitive`: passwords, `IME_FLAG_NO_PERSONALIZED_LEARNING`), in direct-typing fields (e-mail, URL) and in incognito mode |
 | Preview, confirm, undo | Suggestions are shown first; the field changes only on Replace, and the candidate bar then offers Undo until the next key |
 | Nothing leaves the device | Kotomo sends no text. AICore downloads the model through the system; the network permission (merged from ML Kit, and used by Kotomo only for the downloads the person starts) carries no typed text |
 | Nothing is logged or stored | Neither the text nor the results are logged; the hand-off lives only in memory, and the selected text is dropped from it when the screen closes without Replace (a configuration change such as a rotation keeps it) |

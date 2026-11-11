@@ -9,9 +9,9 @@
 | `app/build.gradle.kts` | Android 应用构建：SDK 级别、版本号、R8、从 `key.properties` 读取 release 签名 | `signingConfigs`、`buildTypes` |
 | `build-lock.json` | 工具链、上游与数据源的版本及下载哈希 | `toolchain` |
 | `.github/workflows/build.yml` | CI：文档检查、Gradle 检查与构建、签名的 release APK；`v*` 标签时创建 GitHub Release | `android`、`release` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、敏感输入框中的直接输入、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`isDirect`、`refresh` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、按 `Fields` 的判定直接输入与不学习、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`refresh`、`applyEngineSettings` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面（底行随输入框调整的字母页、符号页、电话与数字键盘、在铰链两侧分开的底行）、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.pad`、`Layout.place`、`Layout.hit` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/Fields.kt` | 输入框适配与空格规则（PLAN §8.7、§8.1）：由输入类型和提示判断输入框类别、回车样式、双击空格句号、智能空格（纯 Kotlin，有单元测试） | `Fields.of`、`Fields.enter`、`Fields.period` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Fields.kt` | 输入框适配与空格规则（PLAN §8.7、§8.1）：由输入类型与提示判定输入框种类、敏感输入框与直接输入的唯一定义（PLAN §14）、回车键样式、双击空格句号、智能空格（纯 Kotlin，有单元测试） | `Fields.of`、`Fields.sensitive`、`Fields.direct`、`Fields.enter` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Posture.kt` | 布局所用的窗口尺寸类别与折叠姿态（PLAN §8.10）：何时分离、桌面姿态与矮窗口下的高度上限（有单元测试） | `Posture.split`、`Posture.heightLimit` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、Gboard 式长按弹出（滑动选择、松开输入）、按键预览、在空格上拖动移动光标与从退格向左拖动删除词、退格连删、每个按键的 TalkBack 节点；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏、状态提示、长按后显示的候选详情（读音、来源，学到的词可忘记） | `show`、`hint`、`details`、`onTouchEvent` |
@@ -28,6 +28,7 @@
 | `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来；总览页与 Kotomo 自己的画板模板渲染器 | `index.html`、`support.js`、`Keyboard.dc.html`、`canvas.json` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（日文的整句与片段、英文原词在先、Emoji 的位置），键盘与转换语料共用 | `japanese`、`english`、`emoji`、`withEmoji` |
 | `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名并报告回退 | `ConversionCorpusTest` |
+| `app/src/androidTest/`、`app/src/debug/…/fieldtest/` | 在模拟器或真机上经 Kotomo 的键输入的插桩测试，以及它们输入的、只在 debug 构建中存在的输入框 | `FieldTypingTest`、`FieldTestActivity` |
 | `tests/device/` | 里程碑时交给用户的真机检查清单（逐行 PASS / FAIL） | `p1-checklist.md` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Settings.kt`、`SettingsStore.kt` | 设置模型、带版本的 Preferences DataStore 文件（[settings-format.md](../settings-format.md)），以及进程内共用、无需 I/O 即可读取快照的存储 | `Settings`、`SettingsFormat`、`SettingsStore.current` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Themes.kt`、`app/src/main/java/com/yuanzhe/kotomo/dictionary/Json.kt` | 以带版本的 JSON 文件保存的键盘主题（`files/themes/current.json`，[settings-format.md](../settings-format.md)）及其所用的纯 Kotlin JSON 读写（有单元测试） | `ThemeFormat`、`ThemeFile`、`Json.parse` |

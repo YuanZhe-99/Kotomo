@@ -53,6 +53,51 @@ internal object Fields {
     }
 
     /**
+     * Decides whether a field is sensitive (PLAN §14, the behavior contract): a password field
+     * (`TYPE_TEXT_VARIATION_PASSWORD`, `…_VISIBLE_PASSWORD`, `…_WEB_PASSWORD`,
+     * `TYPE_NUMBER_VARIATION_PASSWORD`) or one that sets `IME_FLAG_NO_PERSONALIZED_LEARNING`.
+     * Returns: true where nothing may be learned, recorded or handed to AI: no learning in the
+     * engines, no clipboard history, no emoji recents, no per-app memory, no writing help.
+     * Notes: the one definition every such rule uses; the platform treats the flag as a request,
+     * Kotomo as a hard rule.
+     */
+    fun sensitive(inputType: Int, imeOptions: Int): Boolean {
+        if (imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0) return true
+        return password(inputType)
+    }
+
+    /**
+     * Decides whether a field gets direct typing: every key types its character, with no
+     * composition and no candidates.
+     * Returns: true for password fields, raw key input (`TYPE_NULL`), e-mail and web addresses;
+     * false for a field that only asks for no personalized learning, which keeps Chinese and
+     * Japanese conversion and learns nothing ([sensitive]).
+     */
+    fun direct(inputType: Int): Boolean {
+        if (password(inputType)) return true
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        return when (inputType and InputType.TYPE_MASK_CLASS) {
+            InputType.TYPE_NULL -> true
+            InputType.TYPE_CLASS_TEXT -> variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
+                variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS ||
+                variation == InputType.TYPE_TEXT_VARIATION_URI
+            else -> false
+        }
+    }
+
+    /** Decides whether an input type is a password's. */
+    private fun password(inputType: Int): Boolean {
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+        return when (inputType and InputType.TYPE_MASK_CLASS) {
+            InputType.TYPE_CLASS_TEXT -> variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+                variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+            InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else -> false
+        }
+    }
+
+    /**
      * Chooses the Enter key's style.
      * Returns: NEWLINE when the field asks for no Enter action or names none; else its action.
      */

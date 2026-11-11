@@ -9,7 +9,7 @@ Kotomo 的写作助手通过 ML Kit GenAI（AICore）用 Gemini Nano 校对和�
 | 默认关闭 | `ai.enabled` 为 `false`（[settings-format.md](settings-format.md)）；关闭时 AI 按钮只显示提示，不创建任何 GenAI 客户端 |
 | 只在请求时运行 | 在用户点按 AI 按钮并选择操作之前不运行任何东西；模型下载只能由“下载”按钮发起 |
 | 不在按键路径上 | 键盘只负责交接文字；推理在前台页面 `AiActivity` 中运行，因为 GenAI 只服务前台应用 |
-| 不在敏感输入框中运行 | 在直接输入的输入框（密码、`IME_FLAG_NO_PERSONALIZED_LEARNING`、电子邮件、URL）和无痕模式中拒绝 |
+| 不在敏感输入框中运行 | 在敏感输入框（`Fields.sensitive`：密码、`IME_FLAG_NO_PERSONALIZED_LEARNING`）、直接输入的输入框（电子邮件、URL）和无痕模式中拒绝 |
 | 预览、确认、撤销 | 先显示建议；只有点按“替换”才改动输入框，之后候选栏提供撤销，直到下一次按键 |
 | 不离开设备 | Kotomo 不发送任何文字。模型由 AICore 通过系统下载；联网权限（由 ML Kit 合并进来，Kotomo 自身只用于用户发起的下载）从不携带输入的文字 |
 | 不记录、不存储 | 文字与结果都不写入日志；交接只保存在内存中，界面未经“替换”就关闭时，选中的文字会从中清除（旋转等配置变化不会清除） |
