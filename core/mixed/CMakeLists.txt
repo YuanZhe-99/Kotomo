@@ -12,12 +12,14 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 enable_testing()
 
 add_library(kotomo_mixed STATIC
+  input.cc
+  lattice.cc
   snapshot.cc)
 target_include_directories(kotomo_mixed PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_options(kotomo_mixed PRIVATE -Wall -Wextra)
 
 # One executable per test file; each prints PASS/FAIL lines named after the spike or test ID.
-foreach(name snapshot)
+foreach(name snapshot lattice)
   add_executable(kotomo_mixed_${name}_test tests/${name}_test.cc)
   target_link_libraries(kotomo_mixed_${name}_test PRIVATE kotomo_mixed)
   add_test(NAME kotomo_mixed_${name}_test COMMAND kotomo_mixed_${name}_test)
