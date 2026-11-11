@@ -32,6 +32,9 @@
     <dimen name="kb_preview_text">28sp</dimen>
     <!-- Gestures: one cursor step per distance along the space bar, one word per distance left of backspace. -->
     <dimen name="kb_cursor_step">14dp</dimen>
+    <!-- One-handed mode: the grip on the keys' inner edge and how far beside it a drag starts. -->
+    <dimen name="kb_one_handed_grip">4dp</dimen>
+    <dimen name="kb_one_handed_grip_slop">12dp</dimen>
     <dimen name="kb_word_step">40dp</dimen>
     <!-- Candidate bar and toolbar -->
     <dimen name="bar_height">52dp</dimen>

@@ -2,6 +2,7 @@ package com.yuanzhe.kotomo.ime
 
 import com.yuanzhe.kotomo.dictionary.Json
 import com.yuanzhe.kotomo.settings.ChineseScript
+import com.yuanzhe.kotomo.settings.OneHanded
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -132,5 +133,24 @@ class MemoryFormatTest {
         assertEquals(listOf("🐶"), Candidates.emojiSearch(index, "DO"))
         assertEquals(emptyList<String>(), Candidates.emojiSearch(index, " "))
         assertEquals(emptyList<String>(), Candidates.emojiSearch(index, "zebra"))
+    }
+
+    /** PLAN §8.10: one-handed mode is kept per screen and orientation, with the old global side as fallback. */
+    @Test
+    fun oneHandedPerScreenAndOrientation() {
+        val portrait = Posture.screenKey(411, landscape = false)
+        val landscape = Posture.screenKey(411, landscape = true)
+        val inner = Posture.screenKey(673, landscape = false)
+        assertEquals("sw411-portrait", portrait)
+        var memory = Memory().withOneHanded(portrait, OneHanded.OFF) { it.copy(side = OneHanded.RIGHT, widthPercent = 70) }
+        memory = memory.withOneHanded(inner, OneHanded.OFF) { it.copy(widthPercent = 90) }
+        val read = MemoryFormat.read(MemoryFormat.write(memory, 1L))!!
+        assertEquals(OneHandedMemory(OneHanded.RIGHT, 70), read.oneHandedOn(portrait, OneHanded.OFF))
+        assertEquals(OneHandedMemory(OneHanded.OFF, 90), read.oneHandedOn(inner, OneHanded.LEFT))
+        // Negative: another orientation is not changed, and follows the settings' old side.
+        assertEquals(OneHandedMemory(OneHanded.LEFT), read.oneHandedOn(landscape, OneHanded.LEFT))
+        // An out-of-range width reads as the default.
+        val bad = MemoryFormat.read("""{"one_handed": {"sw411-portrait": {"side": "left", "width_percent": 10}}}""")!!
+        assertEquals(OneHandedMemory(OneHanded.LEFT, OneHandedMemory.DEFAULT_WIDTH, mapOf("width_percent" to 10L)), bad.oneHandedOn(portrait, OneHanded.OFF))
     }
 }

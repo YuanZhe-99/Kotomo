@@ -187,6 +187,8 @@
     <string name="one_handed_off">关闭</string>
     <string name="one_handed_left">左手</string>
     <string name="one_handed_right">右手</string>
+    <string name="one_handed_width">单手宽度</string>
+    <string name="one_handed_note">按屏幕与方向分别记住；这里修改的是当前这块屏幕与方向。在键盘上拖动按键旁的竖条也能调整。</string>
     <string name="height_title">键盘高度</string>
     <string name="value_percent">%1$d%%</string>
     <string name="keys_long_press">长按输入符号</string>

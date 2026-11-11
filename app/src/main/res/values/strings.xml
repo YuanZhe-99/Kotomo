@@ -201,6 +201,8 @@
     <string name="one_handed_off">Off</string>
     <string name="one_handed_left">Left hand</string>
     <string name="one_handed_right">Right hand</string>
+    <string name="one_handed_width">One-handed width</string>
+    <string name="one_handed_note">Kept for each screen and orientation; this changes the one you are looking at. On the keyboard, drag the bar beside the keys.</string>
     <string name="height_title">Keyboard height</string>
     <string name="value_percent">%1$d%%</string>
     <string name="keys_long_press">Long-press for symbols</string>

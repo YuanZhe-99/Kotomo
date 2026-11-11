@@ -52,4 +52,15 @@ data class Posture(
         if (short) return (heightDp * density * shortShare - reservedPx).toInt().coerceAtLeast(1)
         return 0
     }
+
+    companion object {
+        /**
+         * Names one screen in one orientation, for settings remembered per device and orientation
+         * (one-handed mode, PLAN §8.10): the screen's smallest width in dp tells a foldable's cover
+         * screen from its inner one and a phone from a tablet.
+         * Returns: for example `sw411-portrait` or `sw673-landscape`.
+         */
+        fun screenKey(smallestWidthDp: Int, landscape: Boolean): String =
+            "sw$smallestWidthDp-${if (landscape) "landscape" else "portrait"}"
+    }
 }

@@ -11,10 +11,12 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
+import com.yuanzhe.kotomo.settings.OneHanded
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -107,6 +109,36 @@ class FieldTypingTest {
                 }
                 assertEquals("你好", text)
             }
+        }
+    }
+
+    /**
+     * PLAN §8.10: one-handed mode on this screen and orientation, at the width kept for it, puts
+     * the keys on the right side; back to full width they span the screen.
+     */
+    @Test
+    fun oneHandedWidthIsKeptPerScreen() {
+        val context = instrumentation.targetContext
+        val config = context.resources.configuration
+        val screen = Posture.screenKey(config.smallestScreenWidthDp, config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+        val memory = KeyboardMemory.get(context)
+        val before = memory.current.oneHanded[screen]
+        fun qLeft(): Int {
+            val intent = Intent(context, FieldTestActivity::class.java).putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            ActivityScenario.launch<FieldTestActivity>(intent).use {
+                return checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }.visibleBounds.left
+            }
+        }
+        try {
+            memory.update { m -> m.withOneHanded(screen, OneHanded.OFF) { OneHandedMemory(OneHanded.RIGHT, 70) } }
+            val narrow = qLeft()
+            memory.update { m -> m.withOneHanded(screen, OneHanded.OFF) { OneHandedMemory(OneHanded.OFF, 70) } }
+            val full = qLeft()
+            val width = device.displayWidth
+            assertTrue("one-handed q at $narrow", narrow > width * 0.25)
+            assertTrue("full-width q at $full", full < width * 0.05)
+        } finally {
+            memory.update { m -> m.copy(oneHanded = if (before == null) m.oneHanded - screen else m.oneHanded + (screen to before)) }
         }
     }
 

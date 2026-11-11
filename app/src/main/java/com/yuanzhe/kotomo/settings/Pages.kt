@@ -1,6 +1,7 @@
 package com.yuanzhe.kotomo.settings
 
 import android.content.pm.ApplicationInfo
+import android.content.res.Configuration
 import android.os.Build
 import androidx.annotation.ArrayRes
 import androidx.annotation.StringRes
@@ -44,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -58,6 +60,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.KeyboardMemory
+import com.yuanzhe.kotomo.ime.OneHandedMemory
+import com.yuanzhe.kotomo.ime.Posture
 import com.yuanzhe.kotomo.ime.LearningData
 import com.yuanzhe.kotomo.ime.Mode
 import com.yuanzhe.kotomo.ime.Probe
@@ -326,7 +330,8 @@ internal fun EnglishPage(settings: Settings, store: SettingsStore) {
 
 /**
  * Draws the Layout and size page as in SettingsTablet: large-screen and foldable settings beside
- * the phone settings, stacked when the page is narrower than `settings_columns_min`.
+ * the phone settings, stacked when the page is narrower than `settings_columns_min`. One-handed
+ * mode (side and width) is the one of the screen and orientation the page is shown on (PLAN §8.10).
  */
 @Composable
 internal fun LayoutPage(settings: Settings, store: SettingsStore) {
@@ -342,11 +347,23 @@ internal fun LayoutPage(settings: Settings, store: SettingsStore) {
         }
         SwitchRow(R.string.tabletop_title, R.string.tabletop_desc, settings.tabletopLowerHalf) { on -> store.set { it.copy(tabletopLowerHalf = on) } }
     }
+    val context = LocalContext.current
+    val config = LocalConfiguration.current
+    val memory = remember { KeyboardMemory.get(context) }
+    val remembered by memory.flow.collectAsState()
+    // One-handed mode is kept per screen and orientation: this page changes the one it is shown on.
+    val screen = Posture.screenKey(config.smallestScreenWidthDp, config.orientation == Configuration.ORIENTATION_LANDSCAPE)
+    val hand = remembered.oneHandedOn(screen, settings.oneHanded)
+    fun changeHand(change: (OneHandedMemory) -> OneHandedMemory) = memory.update { it.withOneHanded(screen, settings.oneHanded, change) }
     val phone: @Composable ColumnScope.() -> Unit = {
         Inset {
             Label(stringResource(R.string.one_handed_title))
             val labels = listOf(stringResource(R.string.one_handed_off), stringResource(R.string.one_handed_left), stringResource(R.string.one_handed_right))
-            Choice(labels, settings.oneHanded.ordinal) { i -> store.set { it.copy(oneHanded = OneHanded.entries[i]) } }
+            Choice(labels, hand.side.ordinal) { i -> changeHand { it.copy(side = OneHanded.entries[i]) } }
+            SliderRow(
+                stringResource(R.string.one_handed_width), hand.widthPercent, OneHandedMemory.WIDTH_RANGE, ONE_HANDED_STEP,
+                label = { stringResource(R.string.value_percent, it) }, note = stringResource(R.string.one_handed_note),
+            ) { v -> changeHand { it.copy(widthPercent = v) } }
             SliderRow(
                 stringResource(R.string.height_title), settings.heightPercent, Settings.HEIGHT_RANGE, HEIGHT_STEP,
                 label = { stringResource(R.string.value_percent, it) },
@@ -728,4 +745,5 @@ private const val LONG_VALUE = 40
 private const val WEIGHT_STEP = 10
 private const val THUMB_STEP = 4
 private const val HEIGHT_STEP = 5
+private const val ONE_HANDED_STEP = 2
 private const val RADIUS_STEP = 2

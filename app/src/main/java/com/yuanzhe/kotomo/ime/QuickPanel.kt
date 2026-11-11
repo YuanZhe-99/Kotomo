@@ -45,7 +45,8 @@ import com.yuanzhe.kotomo.settings.label
  *
  * Inputs: [store] is read and changed directly (the keyboard follows it at once); [script] is the
  * Chinese script remembered for the current app (null: the settings' one) and [onScript] changes
- * it (for the app and the settings); [mode] is the mode in use, [pinned] the mode fixed for the
+ * it (for the app and the settings); [oneHanded] is the one-handed side on this screen and
+ * [onOneHanded] changes it there (PLAN §8.10); [mode] is the mode in use, [pinned] the mode fixed for the
  * current app (null: none) and [onPin] fixes the mode in use there or releases it (PLAN §2.3);
  * [onOpenSettings] opens the settings app; [onBack] returns to the keys.
  */
@@ -55,6 +56,8 @@ fun QuickPanel(
     script: ChineseScript?,
     onScript: (ChineseScript) -> Unit,
     mode: State<Mode>,
+    oneHanded: State<OneHanded>,
+    onOneHanded: (OneHanded) -> Unit,
     pinned: State<Mode?>,
     onPin: (Boolean) -> Unit,
     onOpenSettings: () -> Unit,
@@ -70,8 +73,9 @@ fun QuickPanel(
             Choice(
                 stringResource(R.string.one_handed_title),
                 listOf(OneHanded.OFF to R.string.one_handed_off, OneHanded.LEFT to R.string.one_handed_left, OneHanded.RIGHT to R.string.one_handed_right),
-                settings.oneHanded,
-            ) { value -> store.set { it.copy(oneHanded = value) } }
+                oneHanded.value,
+                onPick = onOneHanded,
+            )
             Choice(
                 stringResource(R.string.split_title),
                 listOf(SplitLayout.AUTO to R.string.split_auto, SplitLayout.ALWAYS to R.string.split_always, SplitLayout.NEVER to R.string.split_never),

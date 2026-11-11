@@ -187,6 +187,8 @@
     <string name="one_handed_off">オフ</string>
     <string name="one_handed_left">左手</string>
     <string name="one_handed_right">右手</string>
+    <string name="one_handed_width">片手モードの幅</string>
+    <string name="one_handed_note">画面と向きごとに記憶します。ここでは今見ている画面と向きを変更します。キーボードではキーの横のバーをドラッグして調整できます。</string>
     <string name="height_title">キーボードの高さ</string>
     <string name="value_percent">%1$d%%</string>
     <string name="keys_long_press">長押しで記号を入力</string>

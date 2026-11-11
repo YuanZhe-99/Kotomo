@@ -21,6 +21,8 @@ sealed interface KeyAction {
     data class DeleteWords(val count: Int) : KeyAction
     /** Moves the one-handed keyboard to [side], or back to full width for OFF. */
     data class SetOneHanded(val side: com.yuanzhe.kotomo.settings.OneHanded) : KeyAction
+    /** Sets the one-handed keyboard's width to [percent] of the full width (dragging its inner edge). */
+    data class SetOneHandedWidth(val percent: Int) : KeyAction
 }
 
 /** Input modes the keyboard offers; Mixed accepts pinyin, romaji and English in one string. */

@@ -618,6 +618,33 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         updateQuickStrip()
     }
 
+    /** Main thread: one-handed mode before the first unlock, when nothing may be written (null: none chosen). */
+    private var lockedOneHanded: OneHandedMemory? = null
+    /** Main thread: the one-handed side in force, for the quick panel. */
+    private val quickOneHanded = androidx.compose.runtime.mutableStateOf(com.yuanzhe.kotomo.settings.OneHanded.OFF)
+
+    /** Names the current screen and orientation (PLAN §8.10: one-handed mode is kept per device and orientation). */
+    private fun screenKey(): String = resources.configuration.let {
+        Posture.screenKey(it.smallestScreenWidthDp, it.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+    }
+
+    /**
+     * Returns one-handed mode on this screen in this orientation: as last chosen there, or, on a
+     * screen never set, the side the settings chose before it was kept per screen.
+     */
+    private fun oneHandedHere(): OneHandedMemory =
+        lockedOneHanded ?: memory()?.current?.oneHandedOn(screenKey(), settings.oneHanded) ?: OneHandedMemory(settings.oneHanded)
+
+    /**
+     * Changes one-handed mode on this screen in this orientation (the side buttons, the grip, the
+     * quick panel); before the first unlock only until the keyboard closes.
+     */
+    private fun setOneHanded(change: (OneHandedMemory) -> OneHandedMemory) {
+        val m = memory()
+        if (m == null) lockedOneHanded = change(oneHandedHere()) else m.update { it.withOneHanded(screenKey(), settings.oneHanded, change) }
+        refresh(0)
+    }
+
     /** Main thread: the mode the quick panel shows (set each time it opens). */
     private val quickMode = androidx.compose.runtime.mutableStateOf(Mode.MIXED)
 
@@ -637,6 +664,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     script = appScript,
                     onScript = ::setScript,
                     mode = quickMode,
+                    oneHanded = quickOneHanded,
+                    onOneHanded = { side -> setOneHanded { it.copy(side = side) } },
                     pinned = pinnedHere,
                     onPin = ::pinHere,
                     onOpenSettings = { onTool(Tool.SETTINGS) },
@@ -1010,7 +1039,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 showEmoji()
             }
             is KeyAction.SetMode -> Unit
-            is KeyAction.SetOneHanded -> store.set { it.copy(oneHanded = action.side) }
+            is KeyAction.SetOneHanded -> setOneHanded { it.copy(side = action.side) }
+            is KeyAction.SetOneHandedWidth -> setOneHanded { it.copy(widthPercent = action.percent) }
             is KeyAction.MoveCursor -> {
                 commitComposition()
                 val code = if (action.steps < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
@@ -1274,7 +1304,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.split = split
         keyboard.heightScale = s.heightPercent / 100f
         keyboard.thumbHalf = s.thumbZoneDp * resources.displayMetrics.density
-        keyboard.oneHanded = s.oneHanded
+        val hand = oneHandedHere()
+        keyboard.oneHanded = hand.side
+        keyboard.oneHandedShare = hand.widthPercent / 100f
+        quickOneHanded.value = hand.side
         keyboard.hints = s.keyHints
         keyboard.haptics = s.haptics
         keyboard.longPressSymbols = s.longPressSymbols

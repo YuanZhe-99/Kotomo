@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime
 
+import kotlin.math.roundToInt
 import androidx.core.content.res.ResourcesCompat
 import android.annotation.SuppressLint
 import android.content.Context
@@ -261,6 +262,9 @@ class KeyboardView(
     /** A drag took over the pressed key: releasing it types nothing. */
     private var swiping = false
     private val cursorStep = res.getDimension(R.dimen.kb_cursor_step)
+    private val gripWidth = res.getDimension(R.dimen.kb_one_handed_grip)
+    /** How far beside the grip a touch still starts a drag of the width. */
+    private val gripSlop = res.getDimension(R.dimen.kb_one_handed_grip_slop)
     private val wordStep = res.getDimension(R.dimen.kb_word_step)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var pendingDrawProbe = 0L
@@ -277,8 +281,17 @@ class KeyboardView(
     private val scale get() = heightScale * fit
     private val keyHeight get() = (if (split) keyHeightLarge else keyHeightPhone) * scale
     private val oneHandedActive get() = !split && oneHanded != com.yuanzhe.kotomo.settings.OneHanded.OFF
-    /** Share of the width the one-handed keyboard keeps. */
-    private val oneHandedShare = 0.82f
+    /** Share of the width the one-handed keyboard keeps (the person's width for this screen). */
+    var oneHandedShare = OneHandedMemory.DEFAULT_WIDTH / 100f
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            invalidate()
+        }
+    /** While the one-handed keyboard's edge is dragged: the share shown under the finger, else null. */
+    private var resizing: Float? = null
+    private val shownShare get() = resizing ?: oneHandedShare
     private val side get() = when {
         split -> width * 0.05f
         maxWidth > 0f && width - sidePhone * 2 > maxWidth -> (width - maxWidth) / 2
@@ -411,7 +424,7 @@ class KeyboardView(
     private fun keys(): List<PlacedKey> {
         if (placed.isEmpty() && width > 0) {
             val full = width - side * 2
-            val inner = if (oneHandedActive) full * oneHandedShare else full
+            val inner = if (oneHandedActive) full * shownShare else full
             val x0 = side + if (oneHandedActive && oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) full - inner else 0f
             var splitHalf = if (split) minOf(if (thumbHalf > 0) thumbHalf else half, (inner - gap) / 2) else 0f
             // A hinge between the halves: each half ends before it.
@@ -470,6 +483,11 @@ class KeyboardView(
             }
         }
         sideButtons()?.let { (swap, full) ->
+            // The grip on the keys' inner edge: drag it to change the width.
+            val edge = innerEdge()
+            box.set(edge - gripWidth / 2, height / 2f - keyHeight / 2, edge + gripWidth / 2, height / 2f + keyHeight / 2)
+            keyPaint.color = secondaryColor
+            canvas.drawRoundRect(box, gripWidth / 2, gripWidth / 2, keyPaint)
             val r = keyHeight * 0.45f
             keyPaint.color = functionColor
             canvas.drawCircle(swap.first, swap.second, r, keyPaint)
@@ -489,6 +507,23 @@ class KeyboardView(
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val actions = popupActions
+        if (resizing != null) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> {
+                    resizing = shareAt(event.getX(0))
+                    placed = emptyList()
+                    invalidate()
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val percent = (shareAt(event.getX(0)) * 100).roundToInt()
+                    resizing = null
+                    placed = emptyList()
+                    invalidate()
+                    if (event.actionMasked == MotionEvent.ACTION_UP) onKey(KeyAction.SetOneHandedWidth(percent), false, event.eventTime)
+                }
+            }
+            return true
+        }
         if (actions != null) {
             // While the popup is open only the finger that opened it counts.
             when (event.actionMasked) {
@@ -514,6 +549,14 @@ class KeyboardView(
                     }
                     if (near(full)) {
                         onKey(KeyAction.SetOneHanded(com.yuanzhe.kotomo.settings.OneHanded.OFF), false, event.eventTime)
+                        return true
+                    }
+                    // Anywhere else in the empty strip, or on the grip: drag to change the width.
+                    val edge = innerEdge()
+                    val inStrip = if (oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) x < edge + gripSlop else x > edge - gripSlop
+                    if (inStrip && event.actionMasked == MotionEvent.ACTION_DOWN) {
+                        resizing = shownShare
+                        buzz(HapticFeedbackConstants.LONG_PRESS)
                         return true
                     }
                 }
@@ -610,11 +653,24 @@ class KeyboardView(
         audio.playSoundEffect(effect, -1f)
     }
 
+    /** The one-handed keys' inner edge (toward the empty strip), in view pixels. */
+    private fun innerEdge(): Float {
+        val full = width - side * 2
+        return if (oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) side + full * (1 - shownShare) else side + full * shownShare
+    }
+
+    /** The share of the width the keys would keep with their inner edge at [x], within the allowed widths. */
+    private fun shareAt(x: Float): Float {
+        val full = width - side * 2
+        val share = if (oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) (width - side - x) / full else (x - side) / full
+        return share.coerceIn(OneHandedMemory.WIDTH_RANGE.first / 100f, OneHandedMemory.WIDTH_RANGE.last / 100f)
+    }
+
     /** Centres of the one-handed side buttons (swap side, full width) in the empty strip, or null. */
     private fun sideButtons(): Pair<Pair<Float, Float>, Pair<Float, Float>>? {
         if (!oneHandedActive) return null
         val full = width - side * 2
-        val strip = full * (1 - oneHandedShare)
+        val strip = full * (1 - shownShare)
         val cx = if (oneHanded == com.yuanzhe.kotomo.settings.OneHanded.RIGHT) side + strip / 2 else width - side - strip / 2
         val mid = height / 2f
         return (cx to mid - keyHeight * 0.7f) to (cx to mid + keyHeight * 0.7f)

@@ -7,6 +7,7 @@ import com.yuanzhe.kotomo.dictionary.long
 import com.yuanzhe.kotomo.dictionary.obj
 import com.yuanzhe.kotomo.dictionary.str
 import com.yuanzhe.kotomo.settings.ChineseScript
+import com.yuanzhe.kotomo.settings.OneHanded
 import com.yuanzhe.kotomo.settings.readVersioned
 import com.yuanzhe.kotomo.settings.writeAtomically
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,8 +74,27 @@ data class EmojiMemory(
 }
 
 /**
+ * Holds one-handed mode as chosen on one screen in one orientation (PLAN §8.10): the side the
+ * keys sit on (or off) and their width in percent of the full keyboard.
+ * Notes: [extra] keeps members this version does not know.
+ */
+data class OneHandedMemory(
+    val side: OneHanded = OneHanded.OFF,
+    val widthPercent: Int = DEFAULT_WIDTH,
+    val extra: Map<String, Any?> = emptyMap(),
+) {
+    companion object {
+        /** The width the one-handed keys take until the person changes it, in percent. */
+        const val DEFAULT_WIDTH = 82
+        /** The widths the one-handed keys may take, in percent. */
+        val WIDTH_RANGE = 66..92
+    }
+}
+
+/**
  * Holds the keyboard's own memory, as `files/keyboard/memory.json` stores it: the mode last used
- * anywhere, what is remembered per app, and the emoji history.
+ * anywhere, what is remembered per app, the emoji history, and one-handed mode per screen and
+ * orientation (keys from [Posture.screenKey]).
  *
  * Notes: the layout is documented in `doc/en-us/settings-format.md`; [extra] keeps unknown members
  * (a newer format) so rewriting never drops them.
@@ -83,10 +103,21 @@ data class Memory(
     val lastMode: Mode? = null,
     val apps: Map<String, AppMemory> = emptyMap(),
     val emoji: EmojiMemory = EmojiMemory(),
+    val oneHanded: Map<String, OneHandedMemory> = emptyMap(),
     val extra: Map<String, Any?> = emptyMap(),
 ) {
     /** Returns [app]'s memory (empty when nothing is remembered). */
     fun app(app: String): AppMemory = apps[app] ?: AppMemory()
+
+    /**
+     * Returns one-handed mode on [screen] ([Posture.screenKey]); a screen never set follows
+     * [fallback], the side the settings chose before it was remembered per screen.
+     */
+    fun oneHandedOn(screen: String, fallback: OneHanded): OneHandedMemory = oneHanded[screen] ?: OneHandedMemory(fallback)
+
+    /** Returns a copy with one-handed mode on [screen] changed by [change] (see [oneHandedOn]). */
+    fun withOneHanded(screen: String, fallback: OneHanded, change: (OneHandedMemory) -> OneHandedMemory): Memory =
+        copy(oneHanded = oneHanded + (screen to change(oneHandedOn(screen, fallback))))
 
     /** Returns a copy with [app]'s memory changed by [change]; an emptied entry is removed. */
     fun withApp(app: String, change: (AppMemory) -> AppMemory): Memory {
@@ -120,12 +151,15 @@ internal object MemoryFormat {
     private const val LAST_MODE = "last_mode"
     private const val APPS = "apps"
     private const val EMOJI = "emoji"
+    private const val ONE_HANDED = "one_handed"
+    private const val SIDE = "side"
+    private const val WIDTH = "width_percent"
     private const val MODE = "mode"
     private const val PINNED = "pinned_mode"
     private const val SCRIPT = "script"
     private const val RECENT = "recent"
     private const val USES = "uses"
-    private val KNOWN = setOf(FORMAT, UPDATED, LAST_MODE, APPS, EMOJI)
+    private val KNOWN = setOf(FORMAT, UPDATED, LAST_MODE, APPS, EMOJI, ONE_HANDED)
 
     /**
      * Reads a memory file.
@@ -155,10 +189,19 @@ internal object MemoryFormat {
             val count = (n as? Long)?.takeIf { it in 1..Int.MAX_VALUE }?.toInt()
             if (count == null || emoji.isBlank() || emoji.length > Memory.MAX_EMOJI_LENGTH) null else emoji to count
         }.toMap()
+        val oneHanded = o.obj(ONE_HANDED).orEmpty().mapNotNull { (screen, value) ->
+            @Suppress("UNCHECKED_CAST")
+            val h = value as? Map<String, Any?> ?: return@mapNotNull null
+            val side = h.str(SIDE)?.let { raw -> OneHanded.entries.firstOrNull { it.name.lowercase() == raw } }
+            val width = h.long(WIDTH)?.takeIf { it in OneHandedMemory.WIDTH_RANGE.first..OneHandedMemory.WIDTH_RANGE.last }?.toInt()
+            val read = setOfNotNull(SIDE.takeIf { side != null }, WIDTH.takeIf { width != null })
+            screen to OneHandedMemory(side ?: OneHanded.OFF, width ?: OneHandedMemory.DEFAULT_WIDTH, h - read)
+        }.toMap()
         return Memory(
             lastMode = lastMode,
             apps = apps,
             emoji = EmojiMemory(recent, uses, e - setOf(RECENT, USES)),
+            oneHanded = oneHanded,
             extra = o.filterKeys { it !in KNOWN || it == FORMAT || (it == LAST_MODE && lastMode == null) },
         )
     }
@@ -183,6 +226,12 @@ internal object MemoryFormat {
             put(RECENT, memory.emoji.recent)
             put(USES, memory.emoji.uses)
             putAll(memory.emoji.extra)
+        }
+        out[ONE_HANDED] = memory.oneHanded.toSortedMap().mapValues { (_, h) ->
+            LinkedHashMap<String, Any?>(h.extra).apply {
+                put(SIDE, h.side.name.lowercase())
+                put(WIDTH, h.widthPercent)
+            }
         }
         memory.extra.forEach { (k, v) -> if (k !in KNOWN) out[k] = v }
         return Json.write(out, indent = true)
