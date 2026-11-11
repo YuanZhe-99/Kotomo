@@ -9,6 +9,7 @@ librime（中文）、Mozc（日文）、AOSP LatinIME 的建议引擎（英文�
 
 | 文档 | 内容 |
 |---|---|
+| [decisions.md](decisions.md) | 架构决定记录：决定了什么、为什么，以及什么情况会重新讨论 |
 | [upstream.md](upstream.md) | 上游契约与特殊行为：各引擎、Android 输入法平台、ML Kit、数据集 |
 | [settings-format.md](settings-format.md) | 设置文件：键、默认值、版本，以及键盘如何读取 |
 | [ai.md](ai.md) | 写作助手：用 Gemini Nano 校对与改写、交接流程、遵循的规则 |

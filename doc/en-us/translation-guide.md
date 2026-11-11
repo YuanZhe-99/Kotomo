@@ -90,6 +90,7 @@ Latin words only where it helps readability. The input modes are 中文, 英文,
 | backup / restore / sync | 备份 / 恢复 / 同步 |
 | design reference | 设计参考 |
 | acknowledgements | 致谢 |
+| architecture decision record (ADR) | 架构决定记录（ADR） |
 
 ## 6. Review checklist
 

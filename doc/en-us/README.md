@@ -12,6 +12,7 @@ settings app; a C++ engine reached through JNI carries the mixed-input coordinat
 
 | Document | Covers |
 |---|---|
+| [decisions.md](decisions.md) | Architecture decision records: what was decided, why, and what would reopen it |
 | [upstream.md](upstream.md) | Upstream contracts and quirks: the engines, the Android IME platform, ML Kit, the data sets |
 | [settings-format.md](settings-format.md) | The settings file: keys, defaults, versioning and how the keyboard reads it |
 | [ai.md](ai.md) | Writing help: proofreading and rewriting with Gemini Nano, the hand-off, the rules it follows |

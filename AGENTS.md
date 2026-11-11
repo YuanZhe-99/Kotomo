@@ -42,6 +42,7 @@ about to change, verify against the code, then fix the docs in the same commit.
 | English→Chinese terminology | `doc/en-us/translation-guide.md` |
 | Past releases and the upstream versions they used | `doc/en-us/version-history.md` |
 | Per-module and per-file roles | `doc/en-us/functions/INDEX.md` |
+| Architecture decisions (ADRs): engines, builds, libraries, UI toolkit, permissions | `doc/en-us/decisions.md` |
 | Toolchain, upstream commits, data-source versions and hashes each build uses | `build-lock.json` |
 | The settings file: keys, defaults, versioning | `doc/en-us/settings-format.md` |
 | The clipboard history: recording rules, encrypted file format, verification codes, quick paste | `doc/en-us/clipboard.md` |

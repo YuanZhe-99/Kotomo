@@ -85,6 +85,7 @@ Android 字符串资源中（英文、简体中文、繁体中文和日文），
 | backup / restore / sync | 备份 / 恢复 / 同步 |
 | design reference | 设计参考 |
 | acknowledgements | 致谢 |
+| architecture decision record (ADR) | 架构决定记录（ADR） |
 
 ## 6. 审阅清单
 
