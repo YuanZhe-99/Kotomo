@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Dictionaries page (PLAN §10.5). -->
+<resources>
+    <string name="dict_sources">来源</string>
+    <string name="dict_builtin">内置词库</string>
+    <string name="dict_builtin_desc">Kotomo 自带的中文、日文与英文词汇。始终开启：键盘离不开它们。</string>
+    <string name="dict_custom">你的词库</string>
+    <string name="dict_custom_desc">你添加、导入或用 AI 模型生成的词语</string>
+    <string name="dict_downloads">下载的词库</string>
+    <string name="dict_downloads_desc">你安装的词库包</string>
+    <string name="dict_words">你的词语</string>
+    <string name="dict_search">搜索</string>
+    <string name="dict_add">添加词语</string>
+    <string name="dict_none">还没有词语。</string>
+    <string name="dict_not_used">尚未使用</string>
+    <string name="dict_not_used_note">日文与英文词语现在先保存，键盘会在之后的版本中开始使用。</string>
+    <string name="dict_source_manual">你添加的</string>
+    <string name="dict_source_import">导入的</string>
+    <string name="dict_source_generated">AI 模型生成</string>
+    <string name="dict_source_download">下载的</string>
+    <string name="dict_edit_title">编辑词语</string>
+    <string name="dict_text">词语</string>
+    <string name="dict_reading">读音</string>
+    <string name="dict_reading_hint_zh">拼音，例如 ni hao</string>
+    <string name="dict_reading_hint_ja">假名，例如 にほん</string>
+    <string name="dict_weight">优先级：%1$d</string>
+    <string name="dict_save">保存</string>
+    <string name="dict_delete">删除</string>
+    <string name="dict_cancel">取消</string>
+    <string name="dict_exists">你的词库里已经有这个词和这个读音。</string>
+    <string name="dict_problem_encoding">文件不是 UTF-8 文本</string>
+    <string name="dict_problem_syntax">文件格式不对</string>
+    <string name="dict_problem_newer">文件来自更新版本的 Kotomo</string>
+    <string name="dict_problem_columns">列太多</string>
+    <string name="dict_problem_language">未知的语言（请用 zh、ja 或 en）</string>
+    <string name="dict_problem_empty_text">没有词语</string>
+    <string name="dict_problem_text_long">词语太长</string>
+    <string name="dict_problem_text_chars">词语含有控制字符或换行</string>
+    <string name="dict_problem_no_reading">没有读音</string>
+    <string name="dict_problem_reading">读音不是有效的拼音或假名</string>
+    <string name="dict_problem_reading_count">拼音与字数不一致</string>
+    <string name="dict_problem_weight">权重不是 0 或以上的数字</string>
+    <string name="dict_import">导入</string>
+    <string name="dict_import_file">导入文件</string>
+    <string name="dict_import_note">支持 UTF-8 编码的 TSV、CSV、JSON 与 Rime 词表。添加之前每个文件都会经过检查和预览，导入的词语排在你自己添加的词语之后。</string>
+    <string name="dict_import_language">未写明语言的行使用的语言</string>
+    <string name="dict_import_llm">由 AI 模型生成</string>
+    <string name="dict_import_llm_desc">其中的词语排在最后（优先级最多 20）</string>
+    <string name="dict_line_error">第 %1$d 行：%2$s</string>
+    <string name="dict_conflict_keep">保留我的</string>
+    <string name="dict_conflict_replace">使用文件中的</string>
+    <string name="dict_confirm">添加</string>
+    <string name="dict_import_done">已添加到你的词库。</string>
+    <string name="dict_import_failed">无法读取文件：%1$s。</string>
+    <string name="dict_too_big">无法读取文件，或者文件大于 16 MB。</string>
+    <string name="dict_unknown_format">Kotomo 无法从文件名判断格式，请使用 .tsv、.csv、.json 或 .dict.yaml。</string>
+    <string name="dict_export">导出</string>
+    <string name="dict_export_note">把你的词语保存为文件。导出的文件再导入时与其他文件一样处理。</string>
+    <string name="dict_rollback">恢复上一个版本</string>
+    <string name="dict_rollback_desc">撤销对你的词语的最后一次修改；再点一次可重做。</string>
+    <string name="dict_read_only">你的词库由更新版本的 Kotomo 保存，这里只显示、不修改。</string>
+    <string name="dict_online">获取词库</string>
+    <string name="dict_online_unavailable">在线词库尚未提供，Kotomo 不会下载任何东西。第一次下载之前，Kotomo 会先说明词库的来源并征得你的同意。</string>
+    <string name="dict_online_note">只有在你要求时才下载词库，来源会在第一次下载前写明，每个词库包安装前都会经过校验。</string>
+    <string name="dict_title_language">zh-CN</string>
+    <string name="dict_pack_details">版本 %1$s · %2$d 个词 · %3$s · %4$s</string>
+    <string name="dict_pack_rollback">上一个版本</string>
+    <string name="dict_pack_remove">移除</string>
+    <string name="dict_llm">用 AI 模型制作词库</string>
+    <string name="dict_llm_note">把这段提示词复制到与 AI 模型（LLM）的对话中，再导入它写出的 JSON。其中的词语与任何导入一样经过检查，并排在所有其他词语之后。</string>
+    <string name="dict_llm_show">显示提示词</string>
+    <string name="dict_llm_hide">隐藏提示词</string>
+    <string name="dict_llm_copy">复制提示词</string>
+    <string name="dict_llm_copied">已复制。</string>
+    <plurals name="dict_count">
+        <item quantity="other">你的词库里有 %d 个词</item>
+    </plurals>
+    <plurals name="dict_preview">
+        <item quantity="other">将添加 %d 个词</item>
+    </plurals>
+    <plurals name="dict_preview_refused">
+        <item quantity="other">%d 行未通过检查</item>
+    </plurals>
+    <plurals name="dict_preview_duplicates">
+        <item quantity="other">跳过 %d 个重复的行</item>
+    </plurals>
+    <plurals name="dict_preview_conflicts">
+        <item quantity="other">有 %d 个词已在你的词库里</item>
+    </plurals>
+    <plurals name="dict_more">
+        <item quantity="other">还有 %d 个，搜索可以缩小范围。</item>
+    </plurals>
+</resources>

@@ -120,6 +120,8 @@ it starts and keeps it in memory.
   old files are left as they are, so an older build installed over this one still reads them.
 - The manifest excludes every file from Android backup and device transfer (`data_extraction_rules.xml`).
 
+The dictionaries keep their own versioned files (`files/dictionaries/user.json`, `state.json`), described in [dictionaries.md](dictionaries.md).
+
 ## Direct Boot
 
 Before the first unlock the keyboard cannot read these files (credential-protected storage) and

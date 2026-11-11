@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Dictionaries page (PLAN §10.5). -->
+<resources>
+    <string name="dict_sources">辞書の種類</string>
+    <string name="dict_builtin">内蔵辞書</string>
+    <string name="dict_builtin_desc">Kotomo に付属する中国語・日本語・英語の語彙です。常にオンです（キーボードに必要です）。</string>
+    <string name="dict_custom">ユーザー辞書</string>
+    <string name="dict_custom_desc">自分で追加・インポートした単語や AI モデルで作った単語</string>
+    <string name="dict_downloads">ダウンロードした辞書</string>
+    <string name="dict_downloads_desc">インストールした辞書パック</string>
+    <string name="dict_words">自分の単語</string>
+    <string name="dict_search">検索</string>
+    <string name="dict_add">単語を追加</string>
+    <string name="dict_none">まだ単語はありません。</string>
+    <string name="dict_not_used">まだ使われません</string>
+    <string name="dict_not_used_note">日本語と英語の単語は保存されます。キーボードで使えるのは今後のバージョンからです。</string>
+    <string name="dict_source_manual">自分で追加</string>
+    <string name="dict_source_import">インポート</string>
+    <string name="dict_source_generated">AI モデルで作成</string>
+    <string name="dict_source_download">ダウンロード</string>
+    <string name="dict_edit_title">単語を編集</string>
+    <string name="dict_text">単語</string>
+    <string name="dict_reading">読み</string>
+    <string name="dict_reading_hint_zh">ピンイン（例：ni hao）</string>
+    <string name="dict_reading_hint_ja">かな（例：にほん）</string>
+    <string name="dict_weight">優先度：%1$d</string>
+    <string name="dict_save">保存</string>
+    <string name="dict_delete">削除</string>
+    <string name="dict_cancel">キャンセル</string>
+    <string name="dict_exists">この単語と読みはすでにユーザー辞書にあります。</string>
+    <string name="dict_problem_encoding">ファイルが UTF-8 のテキストではありません</string>
+    <string name="dict_problem_syntax">ファイルの形式が正しくありません</string>
+    <string name="dict_problem_newer">新しいバージョンの Kotomo で作られたファイルです</string>
+    <string name="dict_problem_columns">列が多すぎます</string>
+    <string name="dict_problem_language">不明な言語です（zh・ja・en を使ってください）</string>
+    <string name="dict_problem_empty_text">単語がありません</string>
+    <string name="dict_problem_text_long">単語が長すぎます</string>
+    <string name="dict_problem_text_chars">単語に制御文字か改行が含まれています</string>
+    <string name="dict_problem_no_reading">読みがありません</string>
+    <string name="dict_problem_reading">読みが正しいピンインまたはかなではありません</string>
+    <string name="dict_problem_reading_count">ピンインの音節数が文字数と合いません</string>
+    <string name="dict_problem_weight">重みが 0 以上の数値ではありません</string>
+    <string name="dict_import">インポート</string>
+    <string name="dict_import_file">ファイルをインポート</string>
+    <string name="dict_import_note">UTF-8 の TSV・CSV・JSON・Rime の単語リストに対応します。追加する前にファイルを確認してプレビューします。インポートした単語は自分で追加した単語より後に並びます。</string>
+    <string name="dict_import_language">言語が書かれていない行の言語</string>
+    <string name="dict_import_llm">AI モデルで作成</string>
+    <string name="dict_import_llm_desc">単語は最も後に並びます（優先度は最大 20）</string>
+    <string name="dict_line_error">%1$d 行目：%2$s</string>
+    <string name="dict_conflict_keep">自分のものを残す</string>
+    <string name="dict_conflict_replace">ファイルのものを使う</string>
+    <string name="dict_confirm">追加</string>
+    <string name="dict_import_done">ユーザー辞書に追加しました。</string>
+    <string name="dict_import_failed">ファイルを読めませんでした：%1$s。</string>
+    <string name="dict_too_big">ファイルを読めないか、16 MB より大きいファイルです。</string>
+    <string name="dict_unknown_format">ファイル名から形式が分かりません。.tsv・.csv・.json・.dict.yaml を使ってください。</string>
+    <string name="dict_export">エクスポート</string>
+    <string name="dict_export_note">自分の単語をファイルに保存します。エクスポートしたファイルも、ほかのファイルと同じようにインポートされます。</string>
+    <string name="dict_rollback">前のバージョンに戻す</string>
+    <string name="dict_rollback_desc">単語への最後の変更を取り消します。もう一度押すとやり直します。</string>
+    <string name="dict_read_only">ユーザー辞書は新しいバージョンの Kotomo で保存されています。表示のみで、変更はしません。</string>
+    <string name="dict_online">辞書を入手</string>
+    <string name="dict_online_unavailable">オンライン辞書はまだ利用できません。Kotomo は何もダウンロードしません。最初のダウンロードの前に、辞書の提供元を示して確認します。</string>
+    <string name="dict_online_note">辞書はあなたが求めたときだけ、最初のダウンロードの前に示した提供元からダウンロードし、インストール前に必ず確認します。</string>
+    <string name="dict_title_language">ja</string>
+    <string name="dict_pack_details">バージョン %1$s・%2$d 語・%3$s・%4$s</string>
+    <string name="dict_pack_rollback">前のバージョン</string>
+    <string name="dict_pack_remove">削除</string>
+    <string name="dict_llm">AI モデルで辞書を作る</string>
+    <string name="dict_llm_note">このプロンプトを AI モデル（LLM）とのチャットにコピーし、出力された JSON をインポートしてください。単語はほかのインポートと同じように確認され、ほかのどの単語よりも後に並びます。</string>
+    <string name="dict_llm_show">プロンプトを表示</string>
+    <string name="dict_llm_hide">プロンプトを隠す</string>
+    <string name="dict_llm_copy">プロンプトをコピー</string>
+    <string name="dict_llm_copied">コピーしました。</string>
+    <plurals name="dict_count">
+        <item quantity="other">ユーザー辞書に %d 語あります</item>
+    </plurals>
+    <plurals name="dict_preview">
+        <item quantity="other">%d 語を追加します</item>
+    </plurals>
+    <plurals name="dict_preview_refused">
+        <item quantity="other">%d 行は確認を通りませんでした</item>
+    </plurals>
+    <plurals name="dict_preview_duplicates">
+        <item quantity="other">重複した %d 行を飛ばしました</item>
+    </plurals>
+    <plurals name="dict_preview_conflicts">
+        <item quantity="other">%d 語はすでにユーザー辞書にあります</item>
+    </plurals>
+    <plurals name="dict_more">
+        <item quantity="other">ほかに %d 件あります。検索で絞り込めます。</item>
+    </plurals>
+</resources>

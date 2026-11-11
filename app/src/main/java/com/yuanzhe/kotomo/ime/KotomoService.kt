@@ -71,6 +71,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.yuanzhe.kotomo.R
+import com.yuanzhe.kotomo.dictionary.DictionaryStore
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Mozc
 import androidx.window.layout.FoldingFeature
@@ -366,6 +367,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         launch {
             combine(rimeChecked, store.loaded.filterNotNull().map { it.chineseFuzzy }.distinctUntilChanged(), ::Pair)
                 .collect { (checked, rules) -> if (checked && !locked) syncRimeBuild(rules) }
+        }
+        // The person's dictionaries rewrote librime's tables: re-selecting the schema reloads them
+        // (doc/en-us/dictionaries.md). Their files are personal data, never read before the first unlock.
+        if (!locked) {
+            launch {
+                DictionaryStore.get(this@KotomoService).state.map { it.generation }.distinctUntilChanged()
+                    .collect { if (it > 0) applyEngineSettings() }
+            }
         }
         store.flow.collect {
             // A new theme repaints everything: rebuild the views and drop the cached panels.

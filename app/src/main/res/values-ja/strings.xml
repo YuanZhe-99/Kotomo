@@ -90,7 +90,7 @@
     <string name="page_themes">テーマ</string>
     <string name="page_themes_desc">ライトとダークはシステムに従います</string>
     <string name="page_dictionaries">辞書</string>
-    <string name="page_dictionaries_desc">Kotomo に組み込まれた辞書</string>
+    <string name="page_dictionaries_desc">自分の単語・インポートとエクスポート・内蔵辞書</string>
     <string name="page_privacy">プライバシー</string>
     <string name="page_privacy_desc">Kotomo が保存するもの、決して送信しないもの</string>
     <string name="page_diagnostics_desc">この端末で測定した時間とメモリ</string>
@@ -197,7 +197,6 @@
     <string name="keys_hints_desc">長押しで入力できる記号をキーの角に表示します</string>
     <string name="keys_haptics">キーを押したときのバイブレーション</string>
     <string name="keys_haptics_desc">キーごとに短く振動します</string>
-    <string name="dictionaries_later">辞書の管理と読み込みは今後のバージョンで追加されます。Kotomo はアプリに組み込まれた辞書を使い、何もダウンロードしません。</string>
     <string name="incognito_title">シークレットモード</string>
     <string name="incognito_desc">学習せず、履歴もクリップボードも記録しません</string>
     <string name="learning_clear_title">学習データ</string>

@@ -801,7 +801,7 @@ P1 的代码在 `21cd65c` 提交，`./gradlew check` 当时通过（79 个单元
 - 文档：新增 `doc/en-us/dictionaries.md` 及中文镜像；INDEX、settings-format、`PRIVACY_POLICY.md`、`AGENTS.md` 的"Where to read what"一行。
 - 一个小型原创样例包：每种语言十来个手写的常用词，按在线格式打包，只用于测试。
 
-**现状。** 引擎侧在 `main` 上已完成：三份 librime 运行时词表，主机测试 T17-rime。应用侧**未开始**（Q3）：`main` 上的词库页是占位说明（`dictionaries_later`），没有任何代码写这三份表。
+**现状。** 引擎侧在 `main` 上已完成：三份 librime 运行时词表，主机测试 T17-rime。应用侧（2026-11-11，Q3，分支 `q3`）：**代码完成，主机验证通过；模拟器与真机 NOT_RUN**，长期有效的内容在 `doc/en-us/dictionaries.md`。`dictionary/` 下 `Entries.kt`（模型、读音、权重）、`Formats.kt`（导入、预览、导出）、`DictionaryStore.kt`（带版本的文件、回滚、三份词表）、`Online.kt`（目录、校验下载、词库包读取），设置页 `settings/DictionariesPage.kt`（四种语言），提示词由 Gradle 任务 `llmPrompt` 打包。单元测试 `FormatsTest`、`DictionaryStoreTest`、`OnlineTest`（含原创样例包），主机 `DictionaryRimeTest`（存储写出的词表喂给 librime）。词库包格式定为带表头 `language text reading weight` 的 gzip TSV（含 `language` 列），Q6 的生成器照此写出。与设计的出入：内置词库没有开关（键盘离不开它们）；`user.json` 未加密（§14 要求加密，librime 读取的词表本来就是明文）；在线部分只有框架——目录地址为 null、没有真实的传输层、`dictionaries.online_accepted` 未加（没有联网就没有读取方），等用户决定托管地址与首次联网的披露（决定 2、10）。待在模拟器上运行：`DictionaryKeyboardTest`，以及词库页的截图核对。
 
 实现时注意（上一次尝试在这些地方出过错）：
 

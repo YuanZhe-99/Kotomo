@@ -25,6 +25,7 @@ and device-to-device transfer are turned off for it.
 | Your settings | So the keyboard behaves as you chose | — |
 | Chinese learning data (librime's user dictionary: words and how often you chose them) | Better candidates over time | Sensitive fields, incognito mode |
 | Clipboard history: what you copy while Kotomo is the keyboard, encrypted with a key kept in Android's keystore, removed after the retention you set (7 days by default) unless you pin it; can be turned off and cleared in the settings (turning it off keeps what is already saved until it expires or you delete it). Kotomo cannot tell where text was copied from: a password copied from an app that does not mark it sensitive is kept like any other text if you then use the keyboard in an ordinary field | Pasting it back from the keyboard, and the quick-paste strip for something just copied (60 s) | Password fields, fields that ask not to be learned from, incognito mode, clips that apps mark sensitive |
+| Your dictionary: the words you add, import or make with an AI model (word, reading, priority, where it came from), the previous version of that list so a change can be undone, the switches of the dictionary page, and librime's tables made from them. Imported files are read only when you pick them and are not kept; exported files go where you save them | Your own words among the candidates | — (the words are yours; sensitive fields still learn nothing new) |
 | Recently used emoji (up to 32) and how often each was sent (up to 200 counts) | The Frequently used and Recents groups of the emoji panel | Sensitive fields, incognito mode |
 | Per app: the last input mode used there, the mode you fixed for it and the Chinese script you chose there (the app's package name and those choices only) | The keyboard comes back in that mode and script | Sensitive fields, incognito mode |
 | Writing help (off by default): the text you hand to it, held in memory only while its screen is open and dropped when the screen closes; runs on the device with Gemini Nano, and Android's AICore downloads the model from Google when you tap Download | Proofreading and rewriting you ask for | Never stored or logged; never in sensitive fields or incognito mode |
@@ -57,7 +58,8 @@ above.
 ## Features that are not there yet
 
 Translation, downloadable (online) dictionaries and
-sync are planned. Each will be described here, and disclosed in the app before its first use, in the same
+sync are planned. The dictionary page already explains that online dictionaries are not available;
+Kotomo has no code that downloads them. Each will be described here, and disclosed in the app before its first use, in the same
 change that adds it; none of them will send what you type anywhere without your explicit choice.
 
 ## Contact

@@ -90,7 +90,7 @@
     <string name="page_themes">主題</string>
     <string name="page_themes_desc">淺色與深色跟隨系統</string>
     <string name="page_dictionaries">詞庫</string>
-    <string name="page_dictionaries_desc">Kotomo 內建的詞庫</string>
+    <string name="page_dictionaries_desc">你的詞語 · 匯入與匯出 · 內建詞庫</string>
     <string name="page_privacy">隱私</string>
     <string name="page_privacy_desc">Kotomo 保存什麼，以及從不傳送什麼</string>
     <string name="page_diagnostics_desc">在本機測得的耗時與記憶體</string>
@@ -197,7 +197,6 @@
     <string name="keys_hints_desc">在按鍵角落顯示長按符號</string>
     <string name="keys_haptics">按鍵震動</string>
     <string name="keys_haptics_desc">每次按鍵短暫震動</string>
-    <string name="dictionaries_later">詞庫管理與匯入將在之後的版本提供。Kotomo 使用應用程式內建的詞庫，不下載任何內容。</string>
     <string name="incognito_title">無痕模式</string>
     <string name="incognito_desc">不學習、不記錄歷史與剪貼簿</string>
     <string name="learning_clear_title">學習資料</string>

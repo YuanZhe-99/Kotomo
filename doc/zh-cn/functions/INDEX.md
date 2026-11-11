@@ -29,14 +29,18 @@
 | `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |
 | `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来；总览页与 Kotomo 自己的画板模板渲染器 | `index.html`、`support.js`、`Keyboard.dc.html`、`canvas.json` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（中文在两个最佳词之后放原样的字母；日文的整句、补全、片段与假名，各带自己的读音；英文原词在先；Emoji 的位置；Emoji 搜索），以及选择、缩短、延长日文片段时的分段；键盘与转换语料共用 | `chinese`、`japanese`、`pick`、`resize`、`extend` |
-| `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名（带 `+fuzzy:` 的模式先部署应用生成的规则文件）并报告回退；`run.sh` 同时运行主机模糊音测试 `FuzzyRimeTest` | `ConversionCorpusTest`、`FuzzyRimeTest` |
+| `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名（带 `+fuzzy:` 的模式先部署应用生成的规则文件）并报告回退；`run.sh` 同时运行主机测试 `FuzzyRimeTest`（模糊音）与 `DictionaryRimeTest`（词库词表） | `ConversionCorpusTest`、`FuzzyRimeTest`、`DictionaryRimeTest` |
 | `app/src/androidTest/`、`app/src/debug/…/fieldtest/` | 在模拟器或真机上经 Kotomo 的键输入的插桩测试，以及它们输入的、只在 debug 构建中存在的输入框 | `FieldTypingTest`、`FieldTestActivity` |
 | `tests/device/` | 里程碑时交给用户的真机检查清单（逐行 PASS / FAIL） | `p1-checklist.md` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Settings.kt`、`SettingsStore.kt` | 设置模型、带版本的 Preferences DataStore 文件（[settings-format.md](../settings-format.md)），以及进程内共用、无需 I/O 即可读取快照的存储 | `Settings`、`SettingsFormat`、`SettingsStore.current` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Themes.kt`、`app/src/main/java/com/yuanzhe/kotomo/dictionary/Json.kt` | 以带版本的 JSON 文件保存的键盘主题（`files/themes/current.json`，[settings-format.md](../settings-format.md)）及其所用的纯 Kotlin JSON 读写（有单元测试）；所有带版本的 JSON 文件共用的原子写入与损坏文件处理 | `ThemeFormat`、`ThemeFile`、`writeAtomically`、`Json.parse` |
 | `lexicon/CrossLexicon.java` | 跨语言词库流水线（S5）：获取并校验数据源，在 `build/lexicon/` 中生成拼音 → 日文与英文 → 日文表 | `main`、`SOURCES` |
 | `lexicon/CheckSamples.java` | 用 `tests/lexicon/samples.tsv`（正例与反例）检查生成的表 | `main` |
-| `lexicon/llm-dictionary-prompt.txt` | 词库设置页将提供的提示词（中文，来自用户的草案），用于借助 LLM 制作词库；目前还没有读取方 | — |
+| `lexicon/llm-dictionary-prompt.txt` | 借助 LLM 制作词库的提示词（中文，来自用户的草案）；应用的 `llmPrompt` 任务把它打包为资源，供词库页的复制按钮使用 | — |
+| `app/src/main/java/com/yuanzhe/kotomo/dictionary/Entries.kt`、`Formats.kt` | 词库条目（[dictionaries.md](../dictionaries.md)）：语言、来源、拼音与假名读音、权重；导入（严格 UTF-8、TSV、CSV、JSON、Rime）及预览、重复与冲突，导出（纯 Kotlin，有单元测试） | `Entry`、`Readings`、`Weights`、`Formats.read`、`Formats.preview`、`Formats.write` |
+| `app/src/main/java/com/yuanzhe/kotomo/dictionary/DictionaryStore.kt` | 磁盘上的用户词库：带版本的 `user.json` 与 `user.prev.json`、`state.json`、已安装的词库包及其上一个版本，每次修改后重写 librime 的三份词表；每个进程一个存储，在 IO 调度器上由锁保护 | `DictionaryStore`、`DictionaryFormat`、`Dictionaries` |
+| `app/src/main/java/com/yuanzhe/kotomo/dictionary/Online.kt` | 在线目录、按大小与 SHA-256 校验并报告进度的下载、词库包的读取，基于只有测试实现的 `Transport`（用户决定之前没有目录地址） | `Online.catalog`、`Online.download`、`Online.read`、`Transport` |
+| `app/src/main/java/com/yuanzhe/kotomo/settings/DictionariesPage.kt` | 词库页：来源与开关、用户的词（搜索、添加、编辑、删除）、带预览与确认的导入、导出、回滚、词库包、获取在线词库（尚未提供）、LLM 提示词 | `DictionariesPage`、`ImportSection`、`EntryDialog` |
 | `core/CMakeLists.txt` | 应用的顶层原生构建；每个引擎库一个子目录 | — |
 | `core/english/` | 英文引擎（S4）：LatinIME 核心与 Kotomo 的 JNI 桥接的 CMake 构建；主机测试 | `jni/english_jni.cpp`、`tests/run-host.sh` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | `libkotomo_english.so` 的 Kotlin 外观（只在引擎线程上调用） | `English.open`、`suggestions` |

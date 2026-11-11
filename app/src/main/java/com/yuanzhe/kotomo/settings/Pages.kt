@@ -552,12 +552,6 @@ internal fun AiPage(settings: Settings, store: SettingsStore) {
 /** The clipboard retentions the Privacy page offers, in days. */
 private val RETENTION_CHOICES = listOf(1, 7, 30)
 
-/** Draws a page that only explains what arrives later. */
-@Composable
-internal fun NotePage(@StringRes text: Int) {
-    Section(null) { Inset { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium) } }
-}
-
 /**
  * Draws spike S1's diagnostics: the device, the stored latency and memory summary, the Chinese
  * engine's setup and self-check, with Refresh and Clear.
@@ -729,7 +723,7 @@ private fun RadioRow(@StringRes title: Int, @StringRes desc: Int, selected: Bool
 
 /** Draws a single-choice segmented control over [labels]. */
 @Composable
-private fun Choice(labels: List<String>, selected: Int, select: (Int) -> Unit) {
+internal fun Choice(labels: List<String>, selected: Int, select: (Int) -> Unit) {
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         labels.forEachIndexed { i, label ->
             SegmentedButton(
@@ -768,7 +762,7 @@ private fun SliderRow(
 
 /** Draws a control's label inside a section. */
 @Composable
-private fun Label(text: String) {
+internal fun Label(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium)
 }
 

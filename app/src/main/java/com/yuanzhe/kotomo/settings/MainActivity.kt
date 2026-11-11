@@ -175,7 +175,7 @@ private fun PageContent(page: Page, settings: Settings, store: SettingsStore, op
         Page.LAYOUT -> LayoutPage(settings, store)
         Page.KEYS -> KeysPage(settings, store)
         Page.THEMES -> ThemesPage(settings, store)
-        Page.DICTIONARIES -> NotePage(R.string.dictionaries_later)
+        Page.DICTIONARIES -> DictionariesPage()
         Page.AI -> AiPage(settings, store)
         Page.PRIVACY -> PrivacyPage(settings, store)
         Page.DIAGNOSTICS -> DiagnosticsPage()

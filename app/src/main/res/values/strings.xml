@@ -103,7 +103,7 @@
     <string name="page_themes">Themes</string>
     <string name="page_themes_desc">Light and dark follow the system</string>
     <string name="page_dictionaries">Dictionaries</string>
-    <string name="page_dictionaries_desc">The dictionaries built into Kotomo</string>
+    <string name="page_dictionaries_desc">Your words · import and export · built-in dictionaries</string>
     <string name="page_privacy">Privacy</string>
     <string name="page_privacy_desc">What Kotomo keeps, and what it never sends</string>
     <string name="page_diagnostics_desc">Timings and memory measured on this device</string>
@@ -211,7 +211,6 @@
     <string name="keys_hints_desc">Show the long-press symbol in each key\'s corner</string>
     <string name="keys_haptics">Vibrate on key press</string>
     <string name="keys_haptics_desc">A short vibration with each key</string>
-    <string name="dictionaries_later">Managing and importing dictionaries arrives in a later version. Kotomo uses the dictionaries built into the app and downloads nothing.</string>
     <string name="incognito_title">Incognito mode</string>
     <string name="incognito_desc">No learning, no history, no clipboard recording</string>
     <string name="learning_clear_title">Learning data</string>

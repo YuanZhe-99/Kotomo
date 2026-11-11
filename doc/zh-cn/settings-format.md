@@ -106,6 +106,8 @@ JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值�
   变化写出该文件，旧文件保持原样，因此覆盖安装的旧版本仍能读到它们。
 - 清单把所有文件排除在 Android 备份与设备迁移之外（`data_extraction_rules.xml`）。
 
+词库有自己的带版本文件（`files/dictionaries/user.json`、`state.json`），见 [dictionaries.md](dictionaries.md)。
+
 ## Direct Boot
 
 首次解锁之前，键盘无法读取这些文件（凭据保护存储），也不读写键盘记忆。此时使用默认值，保存在设备保护存储中的一次性

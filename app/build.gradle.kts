@@ -165,6 +165,30 @@ val emojiData = tasks.register<EmojiDataTask>("emojiData") {
 }
 
 /**
+ * Puts the LLM dictionary prompt (lexicon/llm-dictionary-prompt.txt, PLAN appendix B) into the
+ * assets, where the dictionary settings read it for their Copy button.
+ * Notes: the file in lexicon/ is the only copy; nothing under res/ duplicates it.
+ */
+abstract class PromptTask : DefaultTask() {
+    @get:InputFile abstract val prompt: RegularFileProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @get:Inject abstract val files: FileSystemOperations
+
+    @TaskAction
+    fun copy() {
+        files.sync {
+            from(prompt)
+            into(outputDir)
+        }
+    }
+}
+
+val llmPrompt = tasks.register<PromptTask>("llmPrompt") {
+    prompt = rootProject.layout.projectDirectory.file("lexicon/llm-dictionary-prompt.txt")
+    outputDir = layout.buildDirectory.dir("generated/prompt")
+}
+
+/**
  * Puts librime's data into the assets under `rime/`: the prebuilt data from
  * scripts/prebuild-rime.sh (staged data plus the compiled `build/`) when it exists, otherwise only
  * the staged text data from core/rime/stage-data.cmake, which the phone then compiles itself.
@@ -241,6 +265,7 @@ androidComponents {
         variant.sources.assets?.addGeneratedSourceDirectory(englishDict, EnglishDictTask::outputDir)
         variant.sources.assets?.addGeneratedSourceDirectory(rimeData, RimeDataTask::outputDir)
         variant.sources.assets?.addGeneratedSourceDirectory(emojiData, EmojiDataTask::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(llmPrompt, PromptTask::outputDir)
     }
 }
 

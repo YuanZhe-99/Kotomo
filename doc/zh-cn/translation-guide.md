@@ -54,6 +54,10 @@ Android 字符串资源中（英文、简体中文、繁体中文和日文），
 | next-word prediction | 下一词预测 |
 | dictionary (lexicon) | 词库 |
 | user dictionary | 用户词库 |
+| dictionary pack | 词库包 |
+| catalog (online dictionaries) | 目录 |
+| import preview | 导入预览 |
+| rollback | 回滚 |
 | personal learning | 个人学习 |
 | incognito mode | 无痕模式 |
 | schema (Rime) | 方案（schema） |

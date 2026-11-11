@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Dictionaries page (PLAN §10.5). -->
+<resources>
+    <string name="dict_sources">Sources</string>
+    <string name="dict_builtin">Built-in dictionaries</string>
+    <string name="dict_builtin_desc">Chinese, Japanese and English words that come with Kotomo. Always on: the keyboard needs them.</string>
+    <string name="dict_custom">Your dictionary</string>
+    <string name="dict_custom_desc">Words you added, imported or made with an AI model</string>
+    <string name="dict_downloads">Downloaded dictionaries</string>
+    <string name="dict_downloads_desc">Dictionary packs you installed</string>
+    <string name="dict_words">Your words</string>
+    <string name="dict_search">Search</string>
+    <string name="dict_add">Add a word</string>
+    <string name="dict_none">No words yet.</string>
+    <string name="dict_not_used">Not used yet</string>
+    <string name="dict_not_used_note">Japanese and English words are kept now; the keyboard starts using them in a later version.</string>
+    <string name="dict_source_manual">Added by you</string>
+    <string name="dict_source_import">Imported</string>
+    <string name="dict_source_generated">Made with an AI model</string>
+    <string name="dict_source_download">Downloaded</string>
+    <string name="dict_edit_title">Edit word</string>
+    <string name="dict_text">Word</string>
+    <string name="dict_reading">Reading</string>
+    <string name="dict_reading_hint_zh">Pinyin, for example ni hao</string>
+    <string name="dict_reading_hint_ja">Kana, for example にほん</string>
+    <string name="dict_weight">Priority: %1$d</string>
+    <string name="dict_save">Save</string>
+    <string name="dict_delete">Delete</string>
+    <string name="dict_cancel">Cancel</string>
+    <string name="dict_exists">This word with this reading is already in your dictionary.</string>
+    <string name="dict_problem_encoding">the file is not UTF-8 text</string>
+    <string name="dict_problem_syntax">the file is not in the expected format</string>
+    <string name="dict_problem_newer">the file comes from a newer version of Kotomo</string>
+    <string name="dict_problem_columns">too many columns</string>
+    <string name="dict_problem_language">unknown language (use zh, ja or en)</string>
+    <string name="dict_problem_empty_text">no word</string>
+    <string name="dict_problem_text_long">the word is too long</string>
+    <string name="dict_problem_text_chars">the word contains control characters or line breaks</string>
+    <string name="dict_problem_no_reading">no reading</string>
+    <string name="dict_problem_reading">the reading is not valid pinyin or kana</string>
+    <string name="dict_problem_reading_count">the pinyin does not match the number of characters</string>
+    <string name="dict_problem_weight">the weight is not a number of 0 or more</string>
+    <string name="dict_import">Import</string>
+    <string name="dict_import_file">Import a file</string>
+    <string name="dict_import_note">TSV, CSV, JSON or Rime word lists in UTF-8. Every file is checked and previewed before anything is added, and imported words rank below the words you add yourself.</string>
+    <string name="dict_import_language">Language of lines that name none</string>
+    <string name="dict_import_llm">Made with an AI model</string>
+    <string name="dict_import_llm_desc">Its words rank lowest (priority at most 20)</string>
+    <string name="dict_line_error">Line %1$d: %2$s</string>
+    <string name="dict_conflict_keep">Keep mine</string>
+    <string name="dict_conflict_replace">Use the file\'s</string>
+    <string name="dict_confirm">Add</string>
+    <string name="dict_import_done">Added to your dictionary.</string>
+    <string name="dict_import_failed">Could not read the file: %1$s.</string>
+    <string name="dict_too_big">The file could not be read, or it is larger than 16 MB.</string>
+    <string name="dict_unknown_format">Kotomo cannot tell the file\'s format from its name. Use .tsv, .csv, .json or .dict.yaml.</string>
+    <string name="dict_export">Export</string>
+    <string name="dict_export_note">Saves your words as a file. An exported file is imported like any other file.</string>
+    <string name="dict_rollback">Restore the previous version</string>
+    <string name="dict_rollback_desc">Undoes the last change to your words; tap again to redo it.</string>
+    <string name="dict_read_only">Your dictionary was saved by a newer version of Kotomo. It is shown here but not changed.</string>
+    <string name="dict_online">Get dictionaries</string>
+    <string name="dict_online_unavailable">Online dictionaries are not available yet, and Kotomo downloads nothing. Before the first download, Kotomo will say where the dictionaries come from and ask you first.</string>
+    <string name="dict_online_note">Dictionaries are downloaded only when you ask, from the source named before the first download, and every pack is checked before it is installed.</string>
+    <string name="dict_title_language">en</string>
+    <string name="dict_pack_details">Version %1$s · Words: %2$d · %3$s · %4$s</string>
+    <string name="dict_pack_rollback">Previous version</string>
+    <string name="dict_pack_remove">Remove</string>
+    <string name="dict_llm">Make a dictionary with an AI model</string>
+    <string name="dict_llm_note">Copy this prompt into a chat with an AI model (LLM), then import the JSON it writes. Its words are checked like any import and rank below all other words.</string>
+    <string name="dict_llm_show">Show the prompt</string>
+    <string name="dict_llm_hide">Hide the prompt</string>
+    <string name="dict_llm_copy">Copy the prompt</string>
+    <string name="dict_llm_copied">Copied.</string>
+    <plurals name="dict_count">
+        <item quantity="one">%d word in your dictionary</item>
+        <item quantity="other">%d words in your dictionary</item>
+    </plurals>
+    <plurals name="dict_preview">
+        <item quantity="one">%d word to add</item>
+        <item quantity="other">%d words to add</item>
+    </plurals>
+    <plurals name="dict_preview_refused">
+        <item quantity="one">%d line refused</item>
+        <item quantity="other">%d lines refused</item>
+    </plurals>
+    <plurals name="dict_preview_duplicates">
+        <item quantity="one">%d repeated line skipped</item>
+        <item quantity="other">%d repeated lines skipped</item>
+    </plurals>
+    <plurals name="dict_preview_conflicts">
+        <item quantity="one">%d word is already in your dictionary</item>
+        <item quantity="other">%d words are already in your dictionary</item>
+    </plurals>
+    <plurals name="dict_more">
+        <item quantity="one">One more. Search to narrow the list.</item>
+        <item quantity="other">%d more. Search to narrow the list.</item>
+    </plurals>
+</resources>
