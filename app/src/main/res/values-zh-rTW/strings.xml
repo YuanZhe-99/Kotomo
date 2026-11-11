@@ -241,6 +241,11 @@
     <string name="use_wordlist">英文詞彙與詞對</string>
     <string name="note_converted">已轉換為 LatinIME 的二進位字典格式。</string>
     <string name="note_build_input">在建構 Kotomo 的跨語言詞庫時使用。</string>
+    <string name="use_rime_ice">技術英文，以及 THUOCL 詞庫的單字讀音</string>
+    <string name="use_thuocl">中文領域詞表（IT、醫學、法律、財經等）</string>
+    <string name="use_zhwiki">中文網路用語</string>
+    <string name="note_download">只在你要求時從來源下載，並在這台裝置上轉換；不包含在應用程式中。</string>
+    <string name="note_thuocl_cite">Han Shiyi, Zhang Yuhui, Ma Yunshan, Tu Cunchao, Guo Zhipeng, Liu Zhiyuan, Sun Maosong. THUOCL: Tsinghua Open Chinese Lexicon. Tsinghua University, 2016.</string>
     <string name="design_madamada">瑪嗒瑪嗒（Madamada）</string>
     <string name="design_madamada_desc">中文拼音直接輸入日語漢字、英文輸入日語片假名；拼音、英文與日語羅馬字混合連打；整句轉換；候選詞讀音標註；動詞變化與敬語；分類日語詞庫；自動生詞本；城市主題</string>
     <string name="design_gboard">Gboard</string>

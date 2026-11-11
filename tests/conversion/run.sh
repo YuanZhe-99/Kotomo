@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Runs the conversion corpus (PLAN.md §13.3) on the host: tests/conversion/corpus.tsv through the
 # app's own engine facades and candidate assembly (ConversionCorpusTest), compared line by line
-# with tests/conversion/baseline.tsv; also the host tests of fuzzy pinyin (FuzzyRimeTest, T08) and the
-# dictionary tables (DictionaryRimeTest, T17), which need the same host librime.
+# with tests/conversion/baseline.tsv; also the host tests of fuzzy pinyin (FuzzyRimeTest, T08), the
+# dictionary tables (DictionaryRimeTest, T17) and downloaded packs (DictionaryPacksTest, T17-packs;
+# with KOTOMO_PACKS=1 it also converts the pinned dictionary sources in .deps/), which need the same
+# host librime.
 #
 # Then the same corpus through the mixed-input coordinator's host prototype (core/mixed, spike S6):
 # its unit tests, the Mixed lines and the single-language lines as a baseline, compared with
@@ -52,7 +54,7 @@ cmake --build build/host/english >/dev/null || die "English build failed"
 rm -f build/conversion/report.txt
 status=0
 KOTOMO_CORPUS=1 ./gradlew --no-daemon -q :app:testDebugUnitTest \
-  --tests com.yuanzhe.kotomo.ime.ConversionCorpusTest --tests com.yuanzhe.kotomo.ime.FuzzyRimeTest --tests com.yuanzhe.kotomo.dictionary.DictionaryRimeTest --rerun || status=$?
+  --tests com.yuanzhe.kotomo.ime.ConversionCorpusTest --tests com.yuanzhe.kotomo.ime.FuzzyRimeTest --tests com.yuanzhe.kotomo.dictionary.DictionaryRimeTest --tests com.yuanzhe.kotomo.dictionary.DictionaryPacksTest --rerun || status=$?
 [[ -f build/conversion/report.txt ]] || die "the corpus did not run (Gradle exit $status)"
 cat build/conversion/report.txt
 

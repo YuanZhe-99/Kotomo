@@ -17,8 +17,56 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** One installed dictionary pack: its catalog entry, how many entries it holds, its switch, whether a previous version can be restored. */
-data class InstalledPack(val meta: CatalogPack, val count: Int, val enabled: Boolean, val hasPrevious: Boolean)
+/**
+ * Describes one installed dictionary pack, as `packs/<id>/pack.json` keeps it: where it came from
+ * ([DictionarySource]), its license and attribution, the version installed (the release date of
+ * its files, or the day it was downloaded), whether its files were checked against a published
+ * checksum ([checked]; else only HTTPS protected them), and members this version does not know.
+ */
+data class PackInfo(
+    val id: String,
+    val titles: Map<String, String>,
+    val lang: Lang,
+    val category: String,
+    val license: String,
+    val attribution: String,
+    val version: String,
+    val checked: Boolean,
+    val extra: Map<String, Any?> = emptyMap(),
+) {
+    /** The pack's title in the interface [language] (`en`, `zh-CN`, `zh-TW`, `ja`), else English, else any. */
+    fun title(language: String): String = titles[language] ?: titles["en"] ?: titles.values.first()
+
+    /** The pack as `pack.json`'s object, unknown members included. */
+    fun toJson(): Map<String, Any?> = LinkedHashMap<String, Any?>(extra).also {
+        it["id"] = id; it["titles"] = titles; it["language"] = lang.code; it["category"] = category
+        it["license"] = license; it["attribution"] = attribution; it["version"] = version; it["checked"] = checked
+    }
+
+    companion object {
+        private val ID = Regex("[a-z0-9][a-z0-9_-]{0,63}")
+        private val KNOWN = setOf("id", "titles", "language", "category", "license", "attribution", "version", "checked")
+
+        /** Reads a `pack.json` object, or null when a member is missing or invalid (the id names a directory). */
+        fun of(o: Map<String, Any?>): PackInfo? {
+            val titles = o.obj("titles")?.mapNotNull { (k, v) -> (v as? String)?.takeIf { it.isNotBlank() }?.let { k to it } }?.toMap()
+            return PackInfo(
+                id = o.str("id")?.takeIf { ID.matches(it) } ?: return null,
+                titles = titles?.takeIf { it.isNotEmpty() } ?: return null,
+                lang = Lang.of(o.str("language")) ?: return null,
+                category = o.str("category") ?: return null,
+                license = o.str("license") ?: return null,
+                attribution = o.str("attribution") ?: return null,
+                version = o.str("version") ?: return null,
+                checked = o["checked"] as? Boolean ?: return null,
+                extra = o.filterKeys { it !in KNOWN },
+            )
+        }
+    }
+}
+
+/** One installed dictionary pack: what it is, how many entries it holds, its switch, whether a previous version can be restored. */
+data class InstalledPack(val meta: PackInfo, val count: Int, val enabled: Boolean, val hasPrevious: Boolean)
 
 /**
  * Everything the dictionary settings show, as one immutable value.
@@ -34,6 +82,7 @@ data class Dictionaries(
     val downloadsEnabled: Boolean = true,
     val canRollBack: Boolean = false,
     val readOnly: Boolean = false,
+    val onlineAccepted: Int = 0,
     val generation: Long = 0,
 )
 
@@ -57,6 +106,8 @@ internal object DictionaryFormat {
         val custom: Boolean = true,
         val downloads: Boolean = true,
         val packs: Map<String, Boolean> = emptyMap(),
+        /** The version of the download notice the person accepted; 0 for none (PLAN §14 "联网"). */
+        val onlineAccepted: Int = 0,
         val version: Int = VERSION,
         val extra: Map<String, Any?> = emptyMap(),
     )
@@ -117,8 +168,9 @@ internal object DictionaryFormat {
             custom = o["custom_enabled"] as? Boolean ?: true,
             downloads = o["downloads_enabled"] as? Boolean ?: true,
             packs = packs,
+            onlineAccepted = o.long("online_accepted")?.toInt()?.coerceAtLeast(0) ?: 0,
             version = o.long("format_version")?.toInt() ?: VERSION,
-            extra = o.filterKeys { it !in setOf("format_version", "updated_utc_ms", "custom_enabled", "downloads_enabled", "packs") },
+            extra = o.filterKeys { it !in setOf("format_version", "updated_utc_ms", "custom_enabled", "downloads_enabled", "packs", "online_accepted") },
         )
     }
 
@@ -131,25 +183,26 @@ internal object DictionaryFormat {
             put("custom_enabled", state.custom)
             put("downloads_enabled", state.downloads)
             put("packs", state.packs.mapValues { (_, on) -> mapOf("enabled" to on) })
+            if (state.onlineAccepted > 0) put("online_accepted", state.onlineAccepted.toLong())
         },
         indent = true,
     ) + "\n"
 
     /**
-     * Writes librime's three run-time tables from the entries that are in use (Chinese) and
-     * switched on (PLAN §10.5): `custom_phrase.txt` the entries added by hand (quality 1),
-     * `kotomo_packs.txt` the downloaded ones (quality 0), `kotomo_low.txt` the imported and
-     * LLM-made ones (quality −1), each line `word<TAB>pinyin without spaces<TAB>weight`.
+     * Writes two of librime's three run-time tables from the person's entries that are in use
+     * (Chinese) and switched on (PLAN §10.5): `custom_phrase.txt` the entries added by hand
+     * (quality 1), `kotomo_low.txt` the imported and LLM-made ones (quality −1), each line
+     * `word<TAB>pinyin without spaces<TAB>weight`. The third, `kotomo_packs.txt` (downloaded,
+     * quality 0), joins the enabled packs' own tables ([DictionaryStore]).
      * Returns: file name → content; an empty table is an empty file.
      */
-    fun tables(user: List<Entry>, packs: List<Entry>, custom: Boolean, downloads: Boolean): Map<String, String> {
-        fun table(entries: List<Entry>) = entries.filter { it.used }.joinToString("") { "${it.text}\t${it.rimeCode}\t${it.weight}\n" }
-        return linkedMapOf(
-            CUSTOM_TABLE to if (custom) table(user.filter { it.source == Source.MANUAL }) else "",
-            PACKS_TABLE to if (downloads) table(packs) else "",
-            LOW_TABLE to if (custom) table(user.filter { it.source == Source.IMPORT || it.source == Source.GENERATED }) else "",
-        )
-    }
+    fun tables(user: List<Entry>, custom: Boolean): Map<String, String> = linkedMapOf(
+        CUSTOM_TABLE to if (custom) table(user.filter { it.source == Source.MANUAL }) else "",
+        LOW_TABLE to if (custom) table(user.filter { it.source == Source.IMPORT || it.source == Source.GENERATED }) else "",
+    )
+
+    /** One librime table: a line per entry the keyboard uses; empty for none. */
+    fun table(entries: List<Entry>): String = entries.filter { it.used }.joinToString("") { "${it.text}\t${it.rimeCode}\t${it.weight}\n" }
 
     const val CUSTOM_TABLE = "custom_phrase.txt"
     const val PACKS_TABLE = "kotomo_packs.txt"
@@ -253,15 +306,27 @@ class DictionaryStore(
     }
 
     /**
-     * Installs a downloaded and checked pack: the previous version moves to `packs/<id>.prev/`.
+     * Installs a downloaded and converted pack: `entries.tsv` (the normalized TSV), its librime
+     * table `table.txt` and `pack.json`; the previous version moves to `packs/<id>.prev/`.
      * Returns: false when the files cannot be written.
      */
-    suspend fun install(pack: CatalogPack, entries: List<Entry>) = change(user = false) {
+    suspend fun install(pack: PackInfo, entries: Sequence<Entry>) = change(user = false) {
         val target = File(packsDir, pack.id)
         val previous = File(packsDir, "${pack.id}.prev")
         val staging = File(packsDir, "${pack.id}.new").apply { deleteRecursively(); mkdirs() }
-        writeAtomically(File(staging, ENTRIES), Formats.write(entries, Format.TSV))
-        writeAtomically(File(staging, META), Json.write(pack.toJson(), indent = true) + "\n")
+        // One pass over the entries, written as they come (a pack can hold half a million).
+        var count = 0L
+        File(staging, ENTRIES).bufferedWriter().use { tsv ->
+            File(staging, TABLE).bufferedWriter().use { table ->
+                tsv.write(Formats.COLUMNS.joinToString("\t", postfix = "\n"))
+                for (e in entries) {
+                    count++
+                    tsv.write(Formats.tsvLine(e))
+                    if (e.used) table.write("${e.text}\t${e.rimeCode}\t${e.weight}\n")
+                }
+            }
+        }
+        writeAtomically(File(staging, META), Json.write(pack.toJson() + ("count" to count), indent = true) + "\n")
         if (target.isDirectory) {
             previous.deleteRecursively()
             if (!target.renameTo(previous)) return@change false
@@ -277,6 +342,14 @@ class DictionaryStore(
         if (!previous.isDirectory) return@change false
         val swap = File(packsDir, "$id.swap").apply { deleteRecursively() }
         target.renameTo(swap) && previous.renameTo(target) && swap.renameTo(previous)
+    }
+
+    /**
+     * Records that the person accepted version [notice] of the download notice (PLAN §14): only
+     * then do the settings start downloads.
+     */
+    suspend fun acceptOnline(notice: Int) = change(user = false) {
+        saveState(switches.copy(onlineAccepted = notice))
     }
 
     /** Uninstalls a pack and its previous version. */
@@ -334,14 +407,25 @@ class DictionaryStore(
         return true
     }
 
-    /** Writes the three tables and publishes the new state. */
+    /**
+     * Writes the three tables and publishes the new state.
+     * Notes: the packs' table is joined from each enabled pack's `table.txt` by copying files, so
+     * a change never parses hundreds of thousands of pack lines again.
+     */
     private fun publish() {
         val packs = installed()
-        val packEntries = packs.filter { it.enabled }.flatMap { readPack(it.meta.id) }
         rimeUser.mkdirs()
-        DictionaryFormat.tables(user.entries, packEntries, switches.custom, switches.downloads).forEach { (name, text) ->
+        DictionaryFormat.tables(user.entries, switches.custom).forEach { (name, text) ->
             writeAtomically(File(rimeUser, name), text)
         }
+        val joined = File(rimeUser, DictionaryFormat.PACKS_TABLE + ".tmp")
+        FileOutputStream(joined).use { out ->
+            if (switches.downloads) {
+                packs.filter { it.enabled }.forEach { p -> File(File(packsDir, p.meta.id), TABLE).takeIf { it.isFile }?.inputStream()?.use { it.copyTo(out) } }
+            }
+            out.fd.sync()
+        }
+        Files.move(joined.toPath(), File(rimeUser, DictionaryFormat.PACKS_TABLE).toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         _state.value = Dictionaries(
             entries = user.entries,
             packs = packs,
@@ -349,6 +433,7 @@ class DictionaryStore(
             downloadsEnabled = switches.downloads,
             canRollBack = prevFile.isFile,
             readOnly = user.version > DictionaryFormat.VERSION,
+            onlineAccepted = switches.onlineAccepted,
             generation = _state.value.generation + 1,
         )
     }
@@ -359,17 +444,10 @@ class DictionaryStore(
         .sortedBy { it.name }
         .mapNotNull { d ->
             @Suppress("UNCHECKED_CAST")
-            val meta = runCatching { Json.parse(File(d, META).readText()) as Map<String, Any?> }.getOrNull()?.let(Online::pack) ?: return@mapNotNull null
-            val count = runCatching { File(d, ENTRIES).useLines { lines -> lines.count() - 1 } }.getOrDefault(0)
+            val meta = runCatching { Json.parse(File(d, META).readText()) as Map<String, Any?> }.getOrNull()?.let(PackInfo::of) ?: return@mapNotNull null
+            val count = meta.extra.long("count")?.toInt() ?: runCatching { File(d, ENTRIES).useLines { lines -> lines.count() - 1 } }.getOrDefault(0)
             InstalledPack(meta, count, switches.packs[meta.id] ?: true, File(packsDir, "${d.name}.prev").isDirectory)
         }
-
-    /** Reads an installed pack's entries (Kotomo's own normalized TSV). */
-    private fun readPack(id: String): List<Entry> {
-        val file = File(File(packsDir, id), ENTRIES)
-        return runCatching { Formats.read(file.readBytes(), Format.TSV, Lang.ZH, generated = false).entries.map { it.copy(source = Source.DOWNLOAD) } }
-            .getOrDefault(emptyList())
-    }
 
     /** Writes [text] through a temporary file, synced, then an atomic rename. */
     private fun writeAtomically(file: File, text: String) {
@@ -382,6 +460,7 @@ class DictionaryStore(
     companion object {
         private const val ENTRIES = "entries.tsv"
         private const val META = "pack.json"
+        private const val TABLE = "table.txt"
 
         @Volatile private var instance: DictionaryStore? = null
 

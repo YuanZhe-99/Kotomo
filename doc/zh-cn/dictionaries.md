@@ -12,7 +12,7 @@
 | 手动添加（`manual`） | 在词库页输入的词语 | `custom_phrase.txt` | 1 | 你的词库 |
 | 导入（`import`） | 用户选择的文件中的词语 | `kotomo_low.txt` | −1 | 你的词库 |
 | AI 模型生成（`generated`） | 标为 LLM 输出的文件中的词语 | `kotomo_low.txt`，优先级最多 20 | −1 | 你的词库 |
-| 下载（`download`） | 从在线目录安装的词库包 | `kotomo_packs.txt` | 0 | 下载的词库，以及每个包一个开关 |
+| 下载（`download`） | 从数据源下载、在手机上转换的词库 | `kotomo_packs.txt` | 0 | 下载的词库，以及每个包一个开关 |
 
 不可信的词排在后面：导入或生成的词无论文件怎么写都不会进入 `custom_phrase.txt`，文件自称的来源一律忽略。
 每行是 `词<TAB>无空格的拼音<TAB>权重`；没有内容的词表是空文件。只有中文条目进入 librime；日文与英文条目先保存并标为
@@ -59,7 +59,7 @@ TSV、CSV 与 JSON 包含全部条目以及表头或格式版本；Rime 格式�
 | `files/dictionaries/user.json` | 用户的条目 |
 | `files/dictionaries/user.prev.json` | 最后一次修改之前的版本；"恢复上一个版本"交换这两个文件 |
 | `files/dictionaries/state.json` | 开关 |
-| `files/dictionaries/packs/<id>/` | 已安装的词库包：`entries.tsv`（规范化的）与 `pack.json`（它在目录中的条目） |
+| `files/dictionaries/packs/<id>/` | 已安装的词库包：`entries.tsv`（规范化的）、`table.txt`（它的 librime 词表行）与 `pack.json` |
 | `files/dictionaries/packs/<id>.prev/` | 该词库包的上一个版本，用于回滚 |
 | `files/rime/user/custom_phrase.txt`、`kotomo_packs.txt`、`kotomo_low.txt` | librime 的词表，每次修改后重写 |
 
@@ -81,50 +81,91 @@ TSV、CSV 与 JSON 包含全部条目以及表头或格式版本；Rime 格式�
 | `custom_enabled` | 用户自己的词（手动、导入、生成）；默认 `true` |
 | `downloads_enabled` | 全部下载的词库包；默认 `true` |
 | `packs` | 每个已安装的包：`{"<id>": {"enabled": true}}` |
+| `online_accepted` | 用户接受的下载说明的版本；接受之前没有这一项 |
 
-## 词库包与在线目录
+## 下载的词库
 
-目录是 JSON，`format_version` 为 1（其他版本一律拒绝），含 `packs`；不认识的成员保留。词库包的每个成员都是必填项；
-缺少任何一个或值无效的包被拒绝并计数：
+设置 → 词库 → 获取词库 列出下面的来源（`dictionary/Sources.kt`、ADR-011）。Kotomo 不托管任何东西：下载时从作者
+发布的地方取来源本身的文件，在手机上后台转换（`DictionaryDownloads`），用的是主机测试运行的同一份代码。转换出的
+每一行都经过与导入相同的检查（词、读音、音节数、编码、权重）；未通过的行丢弃并按原因计数。
 
-| 成员 | 检查 |
-|---|---|
-| `id` | 小写字母、数字、`_` 与 `-`，最多 64 个（它是目录名） |
-| `titles` | 界面语言（`en`、`zh-CN`、`zh-TW`、`ja`）到标题的对象 |
-| `language`、`category`、`license`、`attribution`、`version` | 非空；`language` 为 `zh`、`ja` 或 `en` |
-| `size`、`sha256` | 压缩文件的字节数（最多 64 MB）及其小写十六进制 SHA-256 |
-| `url` | HTTPS |
-| `format` | `tsv.gz` |
+### 提供的词库
 
-词库包是带表头、读音已规范化、权重 0–100 的 gzip 压缩 TSV，由词库包生成器（Q6）写出：
+| 词库包 | 文件 | 校验值 | 词数（主机，锁定的文件） |
+|---|---|---|---|
+| `zh-web-slang` | fcitx5-pinyin-zhwiki 最新发布的 `web-slang-<日期>.dict.yaml`（9 KB） | GitHub 为该附件公布的 SHA-256 摘要 | 399（丢弃 24 行拼写出的拉丁字母） |
+| `zh-thuocl-it`、`-animal`、`-finance`、`-car`、`-idioms`、`-places`、`-food`、`-law`、`-people`、`-medical`、`-poetry` | 取自 `raw.githubusercontent.com` 的 THUOCL `data/THUOCL_<领域>.txt`（每个 0.1–1 MB）与 rime-ice 的 `cn_dicts/8105.dict.yaml`（0.1 MB） | 无：只有 HTTPS | 1,602 至 43,343（IT 11,565） |
+| `en-ice-tech` | rime-ice 最新发布的 `en_dicts.zip`（0.2 MB）中的 `en_ext.dict.yaml` | GitHub 的摘要 | 2,328（已保存，尚未使用） |
+
+THUOCL 没有拼音。词的读音由 rime-ice 的单字表拼成：一个字最常见的读音至少是次常见读音的十倍时才采用，因此含有真正
+多音字（行 xing / hang）的词作为"有歧义"丢弃，而不是给出错误的读音（IT：1,458 个有歧义，2,976 个含字母或单字表
+没有的字）。主机上的数字来自 `KOTOMO_PACKS=1` 下的 `DictionaryPacksTest`，读的是 `build-lock.json` 锁定的文件；
+设备下载的是来源当前的版本。
+
+### 评估
+
+PLAN §10.5 批准的每个来源，2026-11-11 核查（计数是 Q6 转换保留的结果）：
+
+| 来源 | 手机需要下载的内容 | 是否公布校验值 | 在手机上 | 是否提供 |
+|---|---|---|---|---|
+| rime-ice `base`、`ext` | 发布附件 `cn_dicts.zip` 14.7 MB | GitHub 的 SHA-256 摘要 | base：模拟器上 38–44 秒转换出 543,423 个词，未超出 192 MB 的堆（PSS 232 MB）；但 librime 每次选择方案都把下载的词库包当作文本词表载入，安装后 25 秒键盘才重新能打字 | 否：等预编译的词库包词表 |
+| rime-ice `en_ext`、`8105` | 发布附件 `en_dicts.zip` 0.2 MB；普通文件 `8105.dict.yaml` 0.1 MB | `en_dicts.zip`：摘要；`8105`：无 | 瞬间完成 | 是（`en-ice-tech`；`8105` 用于 THUOCL 的读音） |
+| rime-frost | 44 MB 与 88 MB 的发布整包；普通文件 `base` 与 `ext` 10 MB | 整包：摘要；普通文件：无 | 可行，但与 rime-ice 重叠 | 否 |
+| fcitx5-pinyin-zhwiki `zhwiki` | `zhwiki-<日期>.dict.yaml` 57.7 MB | 摘要 | 170 万行：转换与保存都太大 | 否 |
+| fcitx5-pinyin-zhwiki `web-slang` | 9 KB | 摘要 | 瞬间完成 | 是 |
+| THUOCL | 11 个文本文件，0.1–1 MB | 无 | 每个不到一秒 | 是 |
+| SudachiDict | `small_lex.zip` 13.6 MB、`core_lex.zip` 21.7 MB（Amazon S3） | 无 | 77 万与 86 万行，解压后 100 与 166 MB；只有流式处理才可行 | 否：Mozc 用户词典读取之前日文词条不会被使用 |
+| mecab-ipadic-neologd | `seed/*.csv.xz` 41 MB | 无 | Android 没有 xz 解码器；322 万行；已停更 | 否 |
+| mozcdic-ut | `*.txt.bz2` 0.7–12 MB | 无 | Android 没有 bzip2 解码器；日文尚未使用 | 否 |
+| SCOWLv2 | `rel-<日期>.tar.gz` 2.4 MB 的源文件 | 无 | 生成词表需要 Python 与 SQLite（`make`、`scowl word-list`） | 否 |
+
+### 下载与校验
+
+- 只用 HTTPS，重定向也一样；明文 `http://` 地址或重定向到这样的地址一律拒绝。GitHub 的发布 API（`api.github.com`）
+  给出最新发布的附件、其大小与 SHA-256 摘要；下载必须两者都相符，没有摘要的附件被拒绝。普通文件没有公布的校验值：
+  词库页如实写明，只受 HTTPS 保护。
+- 每个文件最多下载 64 MB，从压缩包解出最多 256 MB；大小在读取时计数，不信任声明。
+- 第一次下载之前的说明写明要连接的主机（`api.github.com`、`github.com`、`release-assets.githubusercontent.com`、
+  `raw.githubusercontent.com`），说明只下载词库文件、不发送任何输入内容；不接受就不联网。接受的版本记在
+  `state.json`（`online_accepted`）；说明的内容有变化时换一个版本，重新询问。
+- 下载显示进度，可以取消。工作文件在应用的缓存中；取消或失败（网络、大小、校验值、文件无法读取、没有可用的词、
+  存储）时已安装的版本不变；结束后删除下载的文件。
+- 转换出的词一次写出（从不整体保存为条目对象）：词库包的 `entries.tsv`（规范化的 TSV，表头
+  `language text reading weight`）、它的 librime 词表 `table.txt` 与 `pack.json`；上一个版本移到 `packs/<id>.prev/`。
+  权重按导入的规则处理（最大频率超过 100 时按对数缩放；没有频率为 50）。
 
 ```text
 language	text	reading	weight
 zh	你好	ni hao	90
 ```
 
-下载最多读取目录给出的大小并报告进度，大小或 SHA-256 不符即拒绝；之后解压（最多 256 MB），按该包的语言像导入的
-TSV 一样读取，未通过检查或语言不同的行丢弃并计数，安装时保留上一个版本。尚不校验签名（PLAN §2.5 决定 9）。
-
-在线词库尚未提供：目录托管在哪里、第一次下载如何告知，等待用户决定（PLAN §2.5 决定 2 与 10）。`Online.CATALOG_URL`
-为 null，应用没有自己的联网传输层（`Transport` 是测试实现的接口），词库页说明不会下载任何东西。
+`pack.json` 保存 `id`、`titles`（`en`、`zh-CN`、`zh-TW`、`ja`）、`language`、`category`、`license`、
+`attribution`、`version`（发布附件的日期，或下载当天）、`checked`（是否核对了公布的校验值）、`count`、
+`license_url`、`dropped`（按原因计的丢弃行数）、`notice`（THUOCL 的引用说明）以及本版本不认识的成员。缺少必填
+成员的 `pack.json` 使该包不显示。
 
 ## 键盘
 
-键盘与设置在同一进程中共用一个 `DictionaryStore`。每次修改后存储重写三份词表并增加代号；键盘随即重新选择 librime
+键盘与设置在同一进程中共用一个 `DictionaryStore`。每次修改后存储重写三份词表（词库包那一份由已启用的包的
+`table.txt` 拼接，修改时不再重新解析词库包）并增加代号；键盘随即重新选择 librime
 的方案，从而重新加载词表（主机测试 T17-rime）。首次解锁之前键盘不读取这些文件。敏感输入框的方案读取同样的词表；
 不会有任何东西学习进这些词表。
 
 ## 测试
 
 `FormatsTest`（读音、编码、各格式、重复、冲突、权重、预览、导出），`DictionaryStoreTest`（带版本的文件、回滚、
-更新版本的文件、开关、词表、词库包），`OnlineTest`（目录、用按完整地址应答的假传输层校验下载、
-`app/src/test/resources/dictionary/` 中的原创样例包，每种语言十来个词），`DictionaryRimeTest`（把存储写出的词表喂给主机上的
-librime，经 `tests/conversion/run.sh` 运行）。
+更新版本的文件、开关、词表、词库包及其 `pack.json`、下载说明），`SourcesTest`（各来源格式的极小原创样例：保留的词、
+读音、权重、按原因丢弃的行；提供的来源），`DownloadsTest`（带自有证书的本地 HTTPS 服务器，经真实的传输层：发布
+摘要与大小、只走 HTTPS 的重定向、缺失的文件、损坏的压缩包、取消、失败时保留已安装的版本），`DictionaryRimeTest`
+与 `DictionaryPacksTest`（存储的词表与转换出的词库包在主机 librime 中按可信程度排序；`KOTOMO_PACKS=1` 时从锁定的
+文件转换每个提供的来源），经 `tests/conversion/run.sh` 运行；模拟器上 `DictionaryKeyboardTest` 与
+`DictionaryDownloadTest`（真实下载后在键盘上打出）。
 
 ## 已知差距
 
 - 内置词库没有开关；没有它们键盘无法输入。
 - `user.json` 没有加密（PLAN §14 要求个人数据加密存储）；librime 读取的词表本来就是明文。
 - 日文与英文条目尚未使用。
-- 在用户决定托管方式与首次使用的告知之前，没有在线下载。
+- 只有 GitHub 的发布附件带有公布的校验值；THUOCL 与 rime-ice 的单字表只受 HTTPS 保护。
+- Mozc 用户词典读取日文词条之前，不提供日文来源。
+- 设备从不按固定的哈希校验词库包：来源会更新，`build-lock.json` 只锁定主机测试读取的文件。

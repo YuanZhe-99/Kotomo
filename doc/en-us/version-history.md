@@ -23,3 +23,8 @@
   4.2, Gradle 9.9.1, Android Gradle Plugin 9.5.1, Kotlin 2.4.21, Compose BOM 2026.09.00, the AndroidX
   libraries, ML Kit GenAI 1.0.0-beta1, NDK r30, platform 37.2, build tools 37.0.0, jmdict-simplified
   3.6.2+20261109214828, Unicode 18.0, CLDR 49.0.0, the rime data repositories and Bazelisk 1.30.0.
+- Dictionary sources checked again 2026-11-11 for Q6, unchanged: rime-ice 2026.06.30, rime-frost
+  1.0.4, fcitx5-pinyin-zhwiki 0.3.1, THUOCL `a30ce79d`, SudachiDict 20261015, mozcdic-ut 2026-11-03,
+  SCOWLv2 rel-2026.02.25. From now on the app downloads the offered ones (THUOCL, rime-ice
+  `en_dicts.zip` and `8105`, the zhwiki web slang) from their sources at their current version;
+  the pins only fix what the host tests convert.

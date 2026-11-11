@@ -39,20 +39,35 @@ Unihan readings, CC BY-SA 4.0 for the pinyin taken from CC-CEDICT, and the notic
 before the first release. Emoji are drawn
 with the system font: no emoji images ship.
 
+## Downloaded on request
+
+These sources are not in the APK. The settings download them from where their authors publish
+them, only when the person asks, and convert them on the device (`dictionaries.md`, ADR-011). The
+data sources page lists each one with its license and authors, and every installed pack keeps its
+license, attribution and (THUOCL) citation in its `pack.json`.
+
+| Component | Repository and version | Used for | License | Modifications | Obligations |
+|---|---|---|---|---|---|
+| rime-ice `en_dicts/en_ext.dict.yaml` (release asset `en_dicts.zip`) and `cn_dicts/8105.dict.yaml` (raw file) | `iDvel/rime-ice`, the latest release (`nightly`); host tests pin 2026.06.30 (`6810e891`) | the pack `en-ice-tech`; character readings for the THUOCL packs | GPL-3.0 | converted: readings normalized, weights scaled to 0–100, invalid lines dropped | GPL-3.0, like Kotomo; credit the authors; the converted pack stays GPL-3.0 |
+| THUOCL (11 domain lists) | `thunlp/THUOCL` `master` (unchanged since 2018-11-21, `a30ce79d`) | the 11 packs `zh-thuocl-*` | MIT; the README asks for the citation | readings derived from rime-ice's character list (polyphones without a dominant reading dropped), weights scaled | keep the MIT notice; cite "THUOCL: Tsinghua Open Chinese Lexicon" (2016); readings are GPL-3.0 (rime-ice) |
+| fcitx5-pinyin-zhwiki `web-slang-<date>.dict.yaml` | `felixonmars/fcitx5-pinyin-zhwiki`, the latest release; host tests pin 0.3.1 (dump 20261018) | the pack `zh-web-slang` | CC BY-SA 4.0 (Wikipedia); converter Unlicense | spelled-out Latin letters dropped | attribution to Wikipedia contributors and a link to the license; the pack stays CC BY-SA 4.0 |
+
 ## Planned components
 
-Nothing below is included yet. Each component enters the inventory with its exact version, files,
-modifications and obligations when P0 adds it; spike S8 completes the audit.
+Nothing below is included or downloaded yet. Each component enters the inventory with its exact
+version, files, modifications and obligations when it is added; spike S8 completes the audit. The
+Q6 evaluation of the dictionary sources not offered for download is in `dictionaries.md`.
 
 | Component | License | Planned use | Notes |
 |---|---|---|---|
-| SudachiDict raw lexicon (`small_lex`, `core_lex`) | Apache-2.0; `small_lex` contains part of UniDic (BSD-3-Clause, see `LEGAL`) | Japanese dictionary packs (Q6); pinned 20261015 in `build-lock.json` | — |
-| rime-ice (`base`, `ext`, `8105`, `41448`, `en_ext`) and rime-frost (`base`, `ext`) | GPL-3.0 | Chinese dictionary packs; `en_ext` for technical English (Q6) | rime-ice `tencent.dict.yaml` is not used: its words come from the Tencent AI Lab Embedding vocabulary, whose license Tencent's own page does not state (one catalog lists CC BY 3.0) |
-| fcitx5-pinyin-zhwiki (`zhwiki`, `web-slang`) | Wikipedia titles CC BY-SA 4.0; converter Unlicense | Chinese proper-name and web-slang packs (Q6) | packs stay CC BY-SA 4.0 |
-| THUOCL (11 domain lists) | MIT; the README asks to cite "THUOCL: Tsinghua Open Chinese Lexicon" (2016) | Chinese domain packs (Q6) | carry the citation |
-| mecab-ipadic-neologd seed (20200910) | Apache-2.0, with the source acknowledgements in `COPYING` | Japanese new-word pack (Q6) | unmaintained since 2020 |
-| mozcdic-ut place names, personal names, jawiki | public domain (Japan Post ZIP code data); Apache-2.0; CC BY-SA 4.0 | Japanese place, name and Wikipedia packs (Q6) | the jawiki pack stays CC BY-SA 4.0 |
-| SCOWLv2 (en-wl/wordlist) | MIT-like (`Copyright`); lists above size 80 add the UKACD terms | English word pack, size 60 and below without vulgar or offensive words (Q6) | built with the bundled `scowl` script |
+| SudachiDict raw lexicon (`small_lex`, `core_lex`) | Apache-2.0; `small_lex` contains part of UniDic (BSD-3-Clause, see `LEGAL`: the UniDic copyright, conditions and disclaimer must ship with it) | Japanese dictionaries, once Mozc's user dictionary reads them; pinned 20261015 in `build-lock.json` | not offered yet (`dictionaries.md`) |
+| rime-frost (`base`, `ext`) | GPL-3.0 | an alternative Chinese base dictionary | not offered: its releases ship only 44–88 MB bundles, its raw files publish no checksum, and it overlaps rime-ice |
+| rime-ice `base.dict.yaml`, `ext.dict.yaml` | GPL-3.0 | Chinese common and extended words | not offered yet: they convert on a phone, but librime loads a downloaded pack as a text table at every schema selection, and half a million lines kept the keyboard from typing for 25 s on the emulator |
+| rime-ice `tencent.dict.yaml`, `41448.dict.yaml` | GPL-3.0 | — | `tencent` is not used: its words come from the Tencent AI Lab Embedding vocabulary, whose license Tencent's own page does not state (one catalog lists CC BY 3.0); `41448` holds single characters without weights |
+| fcitx5-pinyin-zhwiki `zhwiki` | Wikipedia titles CC BY-SA 4.0; converter Unlicense | Chinese proper names | not offered: 57 MB and 1.7 million lines are too much to convert and keep on a phone |
+| mecab-ipadic-neologd seed (20200910) | Apache-2.0, with the source acknowledgements in `COPYING` | Japanese new words | not offered: xz-compressed (no decoder on Android), 3.2 million lines, unmaintained since 2020 |
+| mozcdic-ut place names, personal names, jawiki | public domain (Japan Post ZIP code data); Apache-2.0; CC BY-SA 4.0 | Japanese place names, names, Wikipedia titles | not offered: bzip2-compressed (no decoder on Android); Japanese words are not used yet |
+| SCOWLv2 (en-wl/wordlist) | MIT-like (`Copyright`); lists above size 80 add the UKACD terms | English words | not offered: the release ships only sources that need Python and SQLite to produce a list; English words are not used yet |
 | Noto Emoji | images Apache-2.0, font OFL-1.1, flags public domain | emoji style pack | — |
 | Twemoji (jdecked) | graphics CC BY 4.0, code MIT | emoji style pack | attribution in About |
 | ML Kit GenAI and translation | Google's ML Kit terms | on-device AI and translation | its data handling is checked in spike S8 and stated in the privacy policy |

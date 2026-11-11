@@ -33,6 +33,7 @@ scripts/build-mozc.sh --abi arm64-v8a --abi x86_64   # Mozc for the APK into bui
 cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime && ctest --test-dir build/host/rime -V   # S2 librime host test
 ./gradlew connectedDebugAndroidTest    # instrumentation tests on a running emulator or device (debug build)
 tests/conversion/run.sh                 # conversion corpus and the host fuzzy-pinyin test on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
+KOTOMO_PACKS=1 tests/conversion/run.sh  # also converts every downloadable dictionary from the pinned files in .deps/ (DictionaryPacksTest)
 cmake -S core/mixed -B build/host/mixed -G Ninja && cmake --build build/host/mixed && ctest --test-dir build/host/mixed   # S6 coordinator: unit tests on fake engines, and the host corpus runner
 build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # S6: one composition through the coordinator and the three host engines, with costs and pieces
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
@@ -54,7 +55,7 @@ Mozc、英文词典与 Emoji 数据。基线中通过、这次失败的行是回
 `tests/conversion/baseline-mixed.tsv` 比较。它另外需要跨语言词库（`CrossLexicon.java`）与主机版的 Mozc 行服务。
 应用还没有使用协调层，所以两次运行并列报告。Mozc 的 Bazel 构建需要带 `include/` 目录的 JDK：Android Studio 自带的
 JetBrains 运行时没有，运行 `build-mozc.sh` 时不要设置 `JAVA_HOME`，或让它指向完整的 JDK。
-`run.sh` 还运行 `FuzzyRimeTest`（T08：不学习的方案、暂存部署的换入、回到预编译数据）。`PLAN.md` §17 列出了计划要求、但尚不存在的接口。
+`run.sh` 还运行 `FuzzyRimeTest`（T08：不学习的方案、暂存部署的换入、回到预编译数据）以及词库测试 `DictionaryRimeTest` 与 `DictionaryPacksTest`；`KOTOMO_PACKS=1` 时后者用应用自己的转换器把 `build-lock.json` 锁定的文件（须在 `.deps/` 中）转换为每个可下载的词库，并打印计数、耗时与内存。`DictionaryDownloadTest`（插桩测试）从真实的来源下载，来源无法连接时记为跳过而不是通过。`PLAN.md` §17 列出了计划要求、但尚不存在的接口。
 
 ## 模拟器
 

@@ -76,7 +76,7 @@ internal val DATA = listOf(
         "https://www.unicode.org/license.txt", holder = "© Unicode, Inc.", notes = listOf(R.string.note_build_input),
     ),
     Credit(
-        "CC-CEDICT", "2026-11-10", "CC BY-SA 4.0", R.string.use_cedict, "https://www.mdbg.net/chinese/dictionary?page=cc-cedict",
+        "CC-CEDICT", "2026-11-11", "CC BY-SA 4.0", R.string.use_cedict, "https://www.mdbg.net/chinese/dictionary?page=cc-cedict",
         "https://creativecommons.org/licenses/by-sa/4.0/", holder = "MDBG; based on CEDICT by Paul Andrew Denisowski",
         notes = listOf(R.string.note_build_input),
     ),
@@ -93,6 +93,20 @@ internal val DATA = listOf(
         "English word list (Leipzig Corpora Collection, through HeliBoard's aosp-dictionaries)", "ff0cd52b", "CC BY 4.0",
         R.string.use_wordlist, "https://codeberg.org/Helium314/aosp-dictionaries", "https://creativecommons.org/licenses/by/4.0/",
         holder = "Leipzig Corpora Collection, Universität Leipzig", notes = listOf(R.string.note_converted),
+    ),
+    // The dictionaries the settings download from their sources (dictionary/Sources.kt); none ships in the APK.
+    Credit(
+        "rime-ice", "latest release", "GPL-3.0", R.string.use_rime_ice, "https://github.com/iDvel/rime-ice",
+        "https://www.gnu.org/licenses/gpl-3.0.html", holder = "iDvel and contributors", notes = listOf(R.string.note_download),
+    ),
+    Credit(
+        "THUOCL: Tsinghua Open Chinese Lexicon", "master", "MIT", R.string.use_thuocl, "https://github.com/thunlp/THUOCL",
+        "https://github.com/thunlp/THUOCL/blob/master/LICENSE", holder = "THUNLP", notes = listOf(R.string.note_download, R.string.note_thuocl_cite),
+    ),
+    Credit(
+        "fcitx5-pinyin-zhwiki (web slang from Chinese Wikipedia)", "latest release", "CC BY-SA 4.0", R.string.use_zhwiki,
+        "https://github.com/felixonmars/fcitx5-pinyin-zhwiki", "https://creativecommons.org/licenses/by-sa/4.0/",
+        holder = "Wikipedia contributors; converted by Felix Yan", notes = listOf(R.string.note_download),
     ),
 )
 

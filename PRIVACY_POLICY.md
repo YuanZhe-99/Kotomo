@@ -8,8 +8,8 @@ those (AGENTS.md, "Documentation maintenance").
 
 - Typing works offline, and what you type is never sent over the network. The app holds the
   internet permission, which the ML Kit library for on-device AI declares; Kotomo itself uses the
-  network only for downloads you start (downloadable dictionaries, when they arrive), disclosed
-  before the first one.
+  network only for dictionary downloads you start, after a notice before the first one (see
+  "Downloaded dictionaries").
 - What you type stays on your device. Kotomo has no analytics, no advertising, no crash upload and
   no account.
 - In password fields, in fields that ask not to be learned from, and in incognito mode, Kotomo
@@ -29,6 +29,7 @@ and device-to-device transfer are turned off for it.
 | Recently used emoji (up to 32) and how often each was sent (up to 200 counts) | The Frequently used and Recents groups of the emoji panel | Sensitive fields, incognito mode |
 | Per app: the last input mode used there, the mode you fixed for it and the Chinese script you chose there (the app's package name and those choices only) | The keyboard comes back in that mode and script | Sensitive fields, incognito mode |
 | Writing help (off by default): the text you hand to it, held in memory only while its screen is open and dropped when the screen closes; runs on the device with Gemini Nano, and Android's AICore downloads the model from Google when you tap Download | Proofreading and rewriting you ask for | Never stored or logged; never in sensitive fields or incognito mode |
+| Downloaded dictionaries: the words of each dictionary you downloaded, its previous version, where it came from and its license, and whether you accepted the download notice. The downloaded files are converted and then deleted | The downloaded words among the candidates | — (the files hold none of your data) |
 | Diagnostics: timings of key presses and drawing, memory use, the state of the dictionaries | The Diagnostics page, to find problems | Never what you type |
 
 Japanese conversion (Mozc) and English suggestions do not learn from what you type.
@@ -55,12 +56,30 @@ modes and scripts remembered per app (the modes you fixed for apps, your setting
 clipboard history stay; the clipboard has its own Clear). Uninstalling Kotomo, or clearing its storage in Android's app settings, removes everything listed
 above.
 
+## Downloaded dictionaries
+
+Settings → Dictionaries → Get dictionaries lists dictionaries published by their own authors
+(rime-ice, THUOCL, fcitx5-pinyin-zhwiki). Kotomo connects to the network only when you tap
+Download or Update on one of them, and only after you accepted, once, a notice that names the sites
+it connects to: `api.github.com`, `github.com` and `release-assets.githubusercontent.com` (GitHub
+releases) and `raw.githubusercontent.com` (files on GitHub). If you do not accept it, nothing is
+downloaded.
+
+- A download is an ordinary HTTPS request for a public file. It carries no identifier, no account,
+  nothing you typed, none of your words and nothing from your clipboard; like any connection, it
+  shows your IP address to the site, under GitHub's own privacy statement.
+- Files from GitHub releases are checked against the checksum GitHub publishes for them; files
+  whose source publishes no checksum are protected by the secure connection only, and the page says
+  so. Only HTTPS is used.
+- The files are converted on the device and deleted; the words stay until you remove the
+  dictionary. Downloads run in the background and can be cancelled; a failed or cancelled download
+  changes nothing.
+
 ## Features that are not there yet
 
-Translation, downloadable (online) dictionaries and
-sync are planned. The dictionary page already explains that online dictionaries are not available;
-Kotomo has no code that downloads them. Each will be described here, and disclosed in the app before its first use, in the same
-change that adds it; none of them will send what you type anywhere without your explicit choice.
+Translation and sync are planned. Each will be described here, and disclosed in the app before its
+first use, in the same change that adds it; none of them will send what you type anywhere without
+your explicit choice.
 
 ## Contact
 

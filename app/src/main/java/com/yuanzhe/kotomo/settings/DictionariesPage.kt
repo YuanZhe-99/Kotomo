@@ -49,7 +49,12 @@ import com.yuanzhe.kotomo.dictionary.Formats
 import com.yuanzhe.kotomo.dictionary.ImportException
 import com.yuanzhe.kotomo.dictionary.ImportPreview
 import com.yuanzhe.kotomo.dictionary.Lang
-import com.yuanzhe.kotomo.dictionary.Online
+import com.yuanzhe.kotomo.dictionary.DictionaryDownloads
+import com.yuanzhe.kotomo.dictionary.DictionarySource
+import com.yuanzhe.kotomo.dictionary.DownloadProblem
+import com.yuanzhe.kotomo.dictionary.InstalledPack
+import com.yuanzhe.kotomo.dictionary.Progress
+import com.yuanzhe.kotomo.dictionary.Sources
 import com.yuanzhe.kotomo.dictionary.Problem
 import com.yuanzhe.kotomo.dictionary.Readings
 import com.yuanzhe.kotomo.dictionary.Source
@@ -61,7 +66,8 @@ import kotlin.math.roundToInt
 
 /**
  * Holds what the dictionaries page is in the middle of: the search, the word being edited, the
- * import waiting for confirmation and the last message. One instance per visit of the page.
+ * import waiting for confirmation, the source waiting for the download notice and the last
+ * message. One instance per visit of the page.
  */
 private class DictionaryUi {
     var query by mutableStateOf("")
@@ -70,6 +76,8 @@ private class DictionaryUi {
     /** Whether the editor was opened on an existing entry (which it replaces). */
     var editingExisting by mutableStateOf(false)
     var pending by mutableStateOf<PendingImport?>(null)
+    /** The source whose download waits for the notice to be accepted. */
+    var notice by mutableStateOf<String?>(null)
     var message by mutableStateOf<String?>(null)
 }
 
@@ -86,7 +94,7 @@ private data class PendingImport(
 /**
  * Draws the Dictionaries page (PLAN §10.5): the sources and their switches, the person's words
  * (search, add, edit, delete), import with a preview and confirmation, export, rollback, the
- * downloaded packs, getting dictionaries online (not available yet) and the LLM prompt.
+ * dictionaries that can be downloaded from their sources, and the LLM prompt.
  * Notes: the state lives in [DictionaryStore]; every change goes through it on the IO dispatcher.
  */
 @Composable
@@ -101,9 +109,10 @@ internal fun DictionariesPage() {
     WordsSection(d, ui)
     ImportSection(d, store, ui)
     ExportSection(d)
-    DownloadsSection(d, store)
+    DownloadsSection(d, store, ui)
     PromptSection()
     ui.editing?.let { EntryDialog(it, ui.editingExisting, store, ui) }
+    ui.notice?.let { id -> Sources.of(id)?.let { NoticeDialog(it, store, ui) } }
 }
 
 /** Draws the three sources: built-in (always on), the person's own words, the downloaded packs. */
@@ -344,32 +353,107 @@ private fun ExportSection(d: Dictionaries) {
 }
 
 /**
- * Draws the downloaded packs (switch, previous version, remove) and getting dictionaries online,
- * which is not available until the user decides where packs are hosted (PLAN §2.5).
+ * Draws the dictionaries that can be downloaded (PLAN §10.5, ADR-011): for each source its title,
+ * license, authors and hosts, whether a published checksum protects it, and Download (or Update,
+ * the previous version kept); while it runs, its progress and Cancel; once installed, its switch,
+ * the previous version and Remove.
+ * Notes: downloads run in [DictionaryDownloads], outside the page, so they survive the page being
+ * rebuilt; the first one waits for the notice ([NoticeDialog]).
  */
 @Composable
-private fun DownloadsSection(d: Dictionaries, store: DictionaryStore) {
-    val scope = rememberCoroutineScope()
-    val language = stringResource(R.string.dict_title_language)
+private fun DownloadsSection(d: Dictionaries, store: DictionaryStore, ui: DictionaryUi) {
+    val context = LocalContext.current
+    val tasks by DictionaryDownloads.tasks.collectAsState()
     Section(stringResource(R.string.dict_online)) {
-        d.packs.forEach { p ->
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = dimensionResource(R.dimen.settings_card_pad), vertical = dimensionResource(R.dimen.settings_row_pad)),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(p.meta.title(language), style = MaterialTheme.typography.bodyLarge)
-                    Note(stringResource(R.string.dict_pack_details, p.meta.version, p.count, p.meta.license, p.meta.attribution))
-                    Row {
-                        if (p.hasPrevious) TextButton(onClick = { scope.launch { store.rollBackPack(p.meta.id) } }) { Text(stringResource(R.string.dict_pack_rollback)) }
-                        TextButton(onClick = { scope.launch { store.uninstall(p.meta.id) } }) { Text(stringResource(R.string.dict_pack_remove)) }
-                    }
-                }
-                Switch(p.enabled, { on -> scope.launch { store.setPack(p.meta.id, on) } })
+        Inset { Note(stringResource(R.string.dict_online_note)) }
+        Sources.ALL.forEach { source ->
+            val installed = d.packs.firstOrNull { it.meta.id == source.id }
+            SourceRow(source, installed, tasks[source.id], store) {
+                if (d.onlineAccepted >= NOTICE_VERSION) DictionaryDownloads.start(context, source) else ui.notice = source.id
             }
         }
-        Inset { Note(stringResource(if (Online.CATALOG_URL == null) R.string.dict_online_unavailable else R.string.dict_online_note)) }
     }
+}
+
+/** Draws one downloadable source: what it is, its state, and its actions (wrapping on narrow screens). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SourceRow(source: DictionarySource, installed: InstalledPack?, task: DictionaryDownloads.Task?, store: DictionaryStore, download: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val language = stringResource(R.string.dict_title_language)
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = dimensionResource(R.dimen.settings_card_pad), vertical = dimensionResource(R.dimen.settings_row_pad)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(source.title(language), style = MaterialTheme.typography.bodyLarge)
+            Note(stringResource(R.string.dict_source_from, source.hosts.joinToString(", "), source.license, source.attribution))
+            Note(stringResource(if (source.checked) R.string.dict_source_checked else R.string.dict_source_unchecked))
+            if (source.lang != Lang.ZH) Note(stringResource(R.string.dict_not_used_note))
+            installed?.let { Note(stringResource(R.string.dict_pack_details, it.meta.version, it.count, it.meta.license, it.meta.attribution)) }
+            when (task) {
+                is DictionaryDownloads.Task.Running -> Note(progress(context, task.progress))
+                is DictionaryDownloads.Task.Done -> Note(pluralStringResource(R.plurals.dict_download_done, task.installed.count, task.installed.count))
+                is DictionaryDownloads.Task.Failed -> Text(stringResource(R.string.dict_download_failed, stringResource(task.problem.message)), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                DictionaryDownloads.Task.Cancelled -> Note(stringResource(R.string.dict_download_cancelled))
+                null -> {}
+            }
+            FlowRow {
+                if (task is DictionaryDownloads.Task.Running) {
+                    TextButton(onClick = { DictionaryDownloads.cancel(source.id) }) { Text(stringResource(R.string.dict_download_cancel)) }
+                } else {
+                    TextButton(onClick = { DictionaryDownloads.clear(source.id); download() }) {
+                        Text(stringResource(if (installed == null) R.string.dict_download else R.string.dict_update))
+                    }
+                }
+                if (installed != null && task !is DictionaryDownloads.Task.Running) {
+                    if (installed.hasPrevious) TextButton(onClick = { scope.launch { store.rollBackPack(source.id) } }) { Text(stringResource(R.string.dict_pack_rollback)) }
+                    TextButton(onClick = { scope.launch { store.uninstall(source.id) } }) { Text(stringResource(R.string.dict_pack_remove)) }
+                }
+            }
+        }
+        if (installed != null) Switch(installed.enabled, { on -> scope.launch { store.setPack(source.id, on) } })
+    }
+}
+
+/** Says where a running download is. */
+@Composable
+private fun progress(context: Context, p: Progress): String = when (p.step) {
+    Progress.Step.DOWNLOAD -> {
+        val done = android.text.format.Formatter.formatShortFileSize(context, p.done)
+        val amount = if (p.total > 0) "$done / ${android.text.format.Formatter.formatShortFileSize(context, p.total)}" else done
+        stringResource(R.string.dict_progress_download, maxOf(p.file, 1), maxOf(p.files, 1), amount)
+    }
+    Progress.Step.CONVERT -> stringResource(R.string.dict_progress_convert)
+    Progress.Step.STORE -> stringResource(R.string.dict_progress_store)
+}
+
+/**
+ * Shows the notice before Kotomo's first download (PLAN §14 "联网"): the hosts every offered
+ * source is fetched from, that only dictionary files are downloaded and nothing typed is sent.
+ * Side effects: Allow records [NOTICE_VERSION] in the store and starts the waiting download; Not
+ * now connects to nothing.
+ */
+@Composable
+private fun NoticeDialog(source: DictionarySource, store: DictionaryStore, ui: DictionaryUi) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val hosts = Sources.ALL.flatMap { it.hosts }.distinct().joinToString(", ")
+    AlertDialog(
+        onDismissRequest = { ui.notice = null },
+        title = { Text(stringResource(R.string.dict_notice_title)) },
+        text = { Text(stringResource(R.string.dict_notice_body, hosts)) },
+        confirmButton = {
+            TextButton(onClick = {
+                scope.launch {
+                    if (store.acceptOnline(NOTICE_VERSION)) DictionaryDownloads.start(context, source)
+                    ui.notice = null
+                }
+            }) { Text(stringResource(R.string.dict_notice_accept)) }
+        },
+        dismissButton = { TextButton(onClick = { ui.notice = null }) { Text(stringResource(R.string.dict_notice_decline)) } },
+    )
 }
 
 /** Draws the LLM prompt (PLAN appendix B, packed from lexicon/ at build time): show, copy, and why its words rank low. */
@@ -415,6 +499,19 @@ private val Source.label get() = when (this) {
     Source.DOWNLOAD -> R.string.dict_source_download
 }
 
+/** Says why a download was not installed. */
+@get:StringRes
+private val DownloadProblem.message get() = when (this) {
+    DownloadProblem.INSECURE -> R.string.dict_dl_insecure
+    DownloadProblem.NETWORK -> R.string.dict_dl_network
+    DownloadProblem.HTTP -> R.string.dict_dl_http
+    DownloadProblem.SIZE -> R.string.dict_dl_size
+    DownloadProblem.HASH -> R.string.dict_dl_hash
+    DownloadProblem.UNPACK -> R.string.dict_dl_unpack
+    DownloadProblem.EMPTY -> R.string.dict_dl_empty
+    DownloadProblem.STORAGE -> R.string.dict_dl_storage
+}
+
 /** Says why a line or a file was refused. */
 @get:StringRes
 private val Problem.message get() = when (this) {
@@ -437,5 +534,10 @@ private const val SHOWN = 50
 private const val WEIGHT_STEP = 10
 /** The largest file the import reads. */
 private const val MAX_IMPORT = 16 * 1024 * 1024
+/**
+ * The version of the download notice; raised when what it says changes (another host, another
+ * kind of data), so the person is asked again.
+ */
+private const val NOTICE_VERSION = 1
 /** The prompt's asset name (app/build.gradle.kts, task llmPrompt). */
 private const val PROMPT_ASSET = "llm-dictionary-prompt.txt"

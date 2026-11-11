@@ -255,6 +255,11 @@
     <string name="use_wordlist">English vocabulary and word pairs</string>
     <string name="note_converted">Converted to LatinIME\'s binary dictionary format.</string>
     <string name="note_build_input">Used when building Kotomo\'s cross-language dictionary.</string>
+    <string name="use_rime_ice">Technical English and the character readings of the THUOCL dictionaries</string>
+    <string name="use_thuocl">Chinese domain word lists (IT, medicine, law, finance and more)</string>
+    <string name="use_zhwiki">Chinese web slang</string>
+    <string name="note_download">Downloaded from its source only when you ask, and converted on this phone; not included in the app.</string>
+    <string name="note_thuocl_cite">Han Shiyi, Zhang Yuhui, Ma Yunshan, Tu Cunchao, Guo Zhipeng, Liu Zhiyuan, Sun Maosong. THUOCL: Tsinghua Open Chinese Lexicon. Tsinghua University, 2016.</string>
     <string name="design_madamada">Madamada (玛嗒玛嗒)</string>
     <string name="design_madamada_desc">Japanese kanji from Chinese pinyin and katakana from English; mixed continuous typing of pinyin, English and romaji; whole-sentence conversion; readings on candidates; verb conjugation and keigo; categorized Japanese dictionaries; the vocabulary book; city themes</string>
     <string name="design_gboard">Gboard</string>

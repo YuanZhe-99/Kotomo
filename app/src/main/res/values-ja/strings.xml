@@ -241,6 +241,11 @@
     <string name="use_wordlist">英語の語彙と単語の組</string>
     <string name="note_converted">LatinIME のバイナリ辞書形式に変換しています。</string>
     <string name="note_build_input">Kotomo の言語をまたぐ辞書を作るときに使います。</string>
+    <string name="use_rime_ice">技術英語と、THUOCL 辞書の漢字の読み</string>
+    <string name="use_thuocl">中国語の分野別語彙（IT、医学、法律、金融など）</string>
+    <string name="use_zhwiki">中国語のネットスラング</string>
+    <string name="note_download">求めたときだけ提供元からダウンロードし、この端末で変換します。アプリには含まれていません。</string>
+    <string name="note_thuocl_cite">Han Shiyi, Zhang Yuhui, Ma Yunshan, Tu Cunchao, Guo Zhipeng, Liu Zhiyuan, Sun Maosong. THUOCL: Tsinghua Open Chinese Lexicon. Tsinghua University, 2016.</string>
     <string name="design_madamada">マダマダ（Madamada）</string>
     <string name="design_madamada_desc">中国語ピンインから日本語の漢字、英語からカタカナを直接入力；ピンイン、英語、ローマ字の混在した連続入力；文全体の変換；候補の読み表示；動詞の活用と敬語；分類された日本語辞書；自動単語帳；都市のテーマ</string>
     <string name="design_gboard">Gboard</string>

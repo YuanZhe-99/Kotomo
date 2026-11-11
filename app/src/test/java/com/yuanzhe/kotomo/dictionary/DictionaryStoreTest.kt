@@ -141,12 +141,12 @@ class DictionaryStoreTest {
     @Test
     fun packsInstallRollBackAndUninstall() = runBlocking {
         val s = store()
-        val pack = OnlineTest.pack("sample-zh", Lang.ZH, ByteArray(1))
+        val pack = PackInfo("sample-zh", mapOf("en" to "Sample"), Lang.ZH, "test", "GPL-3.0", "test", "1", checked = false)
         val v1 = listOf(Entry(Lang.ZH, "蔻拓摩", "kou tuo mo", 50, Source.DOWNLOAD))
         val v2 = listOf(Entry(Lang.ZH, "寇拓摩", "kou tuo mo", 60, Source.DOWNLOAD))
-        assertTrue(s.install(pack, v1))
+        assertTrue(s.install(pack, v1.asSequence()))
         assertEquals("蔻拓摩\tkoutuomo\t50\n", table(DictionaryFormat.PACKS_TABLE))
-        assertTrue(s.install(pack.copy(version = "2"), v2))
+        assertTrue(s.install(pack.copy(version = "2"), v2.asSequence()))
         assertEquals("寇拓摩\tkoutuomo\t60\n", table(DictionaryFormat.PACKS_TABLE))
         assertTrue(s.state.value.packs.single().hasPrevious)
         assertTrue(s.rollBackPack(pack.id))
@@ -158,6 +158,29 @@ class DictionaryStoreTest {
         assertEquals("", table(DictionaryFormat.PACKS_TABLE))
         assertTrue(s.uninstall(pack.id))
         assertTrue(s.state.value.packs.isEmpty())
+    }
+
+    @Test
+    fun packInfoSurvivesAndBrokenOnesAreIgnored() = runBlocking {
+        val s = store()
+        val pack = PackInfo("sample-zh", mapOf("en" to "Sample"), Lang.ZH, "test", "GPL-3.0", "test", "2026-11-11", checked = true, extra = mapOf("future" to "kept"))
+        assertTrue(s.install(pack, listOf(Entry(Lang.ZH, "蔻拓摩", "kou tuo mo", 50, Source.DOWNLOAD)).asSequence()))
+        val again = store().also { it.load() }.state.value.packs.single()
+        assertEquals(pack.copy(extra = pack.extra + ("count" to 1L)), again.meta)
+        assertEquals(1, again.count)
+        File(dir, "packs/bad").mkdirs()
+        File(dir, "packs/bad/pack.json").writeText("""{"id": "bad"}""")
+        assertEquals(listOf("sample-zh"), store().also { it.load() }.state.value.packs.map { it.meta.id })
+    }
+
+    @Test
+    fun theDownloadNoticeIsRememberedWithItsVersion() = runBlocking {
+        val s = store()
+        s.load()
+        assertEquals(0, s.state.value.onlineAccepted)
+        assertTrue(s.acceptOnline(1))
+        assertEquals(1, store().also { it.load() }.state.value.onlineAccepted)
+        assertTrue(File(dir, "state.json").readText().contains("\"online_accepted\": 1"))
     }
 
     private companion object {

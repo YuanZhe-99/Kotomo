@@ -60,8 +60,6 @@
     <string name="dict_rollback_desc">撤销对你的词语的最后一次修改；再点一次可重做。</string>
     <string name="dict_read_only">你的词库由更新版本的 Kotomo 保存，这里只显示、不修改。</string>
     <string name="dict_online">获取词库</string>
-    <string name="dict_online_unavailable">在线词库尚未提供，Kotomo 不会下载任何东西。第一次下载之前，Kotomo 会先说明词库的来源并征得你的同意。</string>
-    <string name="dict_online_note">只有在你要求时才下载词库，来源会在第一次下载前写明，每个词库包安装前都会经过校验。</string>
     <string name="dict_title_language">zh-CN</string>
     <string name="dict_pack_details">版本 %1$s · %2$d 个词 · %3$s · %4$s</string>
     <string name="dict_pack_rollback">上一个版本</string>
@@ -89,5 +87,32 @@
     </plurals>
     <plurals name="dict_more">
         <item quantity="other">还有 %d 个，搜索可以缩小范围。</item>
+    </plurals>
+    <string name="dict_online_note">只有在你点“下载”时，Kotomo 才从作者发布词库的地方直接下载，并在这台设备上转换。不会发送你输入的任何内容。</string>
+    <string name="dict_source_checked">已按发布者列出的校验值核对。</string>
+    <string name="dict_source_unchecked">此来源不提供校验值：下载只受安全连接（HTTPS）保护。</string>
+    <string name="dict_source_from">来自 %1$s · %2$s · %3$s</string>
+    <string name="dict_download">下载</string>
+    <string name="dict_update">更新</string>
+    <string name="dict_download_cancel">取消</string>
+    <string name="dict_progress_download">正在下载第 %1$d 个文件（共 %2$d 个）：%3$s</string>
+    <string name="dict_progress_convert">正在转换…</string>
+    <string name="dict_progress_store">正在安装…</string>
+    <string name="dict_download_cancelled">已取消下载，没有任何改变。</string>
+    <string name="dict_download_failed">未安装：%1$s没有任何改变。</string>
+    <string name="dict_dl_insecure">来源没有使用安全连接。</string>
+    <string name="dict_dl_network">无法连接到来源。请检查网络后重试。</string>
+    <string name="dict_dl_http">来源没有这个文件。</string>
+    <string name="dict_dl_size">文件大小与预期不符。</string>
+    <string name="dict_dl_hash">文件与发布的校验值不符。</string>
+    <string name="dict_dl_unpack">无法读取文件。</string>
+    <string name="dict_dl_empty">文件中没有 Kotomo 能用的词。</string>
+    <string name="dict_dl_storage">存储空间不足，无法安装。</string>
+    <string name="dict_notice_title">第一次下载之前</string>
+    <string name="dict_notice_body">下载词库时，Kotomo 会连接 %1$s。它只下载词库文件，不发送你输入的任何内容、你的词或剪贴板中的任何内容。只有在你点“下载”时才会开始下载，下载的词库随时可以移除。</string>
+    <string name="dict_notice_accept">允许下载</string>
+    <string name="dict_notice_decline">暂不</string>
+    <plurals name="dict_download_done">
+        <item quantity="other">已安装 %d 个词。</item>
     </plurals>
 </resources>

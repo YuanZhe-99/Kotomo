@@ -12,10 +12,11 @@ old one stays with its status changed. Dates are when the decision took effect.
 | ADR-004 | One shared library per engine, exporting only its JNI entry points | accepted 2026-11-04 |
 | ADR-005 | The keyboard is a custom View; panels and the settings app use Compose | accepted 2026-11-04 |
 | ADR-006 | Chinese data is compiled at build time; on-device deploys run in their own process | accepted 2026-11-04 |
-| ADR-007 | The network permissions ML Kit brings are accepted | accepted 2026-11-10 |
+| ADR-007 | The network permissions ML Kit brings are accepted | accepted 2026-11-10; Kotomo's first own network feature confirmed 2026-11-11 (ADR-011) |
 | ADR-008 | The coordinator is a fourth library that calls the engines through narrow C functions | default taken 2026-11-11, awaiting the user's confirmation |
 | ADR-009 | Snapshots are a versioned compact binary format | default taken 2026-11-11, awaiting the user's confirmation |
 | ADR-010 | Basic Mixed mode arrives with the coordinator; space separates in Mixed and Japanese compositions | default taken 2026-11-11, awaiting the user's confirmation |
+| ADR-011 | Dictionaries are downloaded from their sources and converted on the device, replacing a hosted catalog | accepted 2026-11-11 (user decision) |
 
 ## ADR-001 Engines
 
@@ -169,3 +170,31 @@ reads a space as a boundary hint, not as a character (`chidai ni kai ni ikou` an
 examples untypable.
 
 **Reopens when.** The user decides either point differently.
+
+## ADR-011 Dictionaries straight from their sources
+
+**Decision.** Kotomo does not host dictionary packs. The settings list the approved sources that
+convert well on a phone (`dictionaries.md`); a download fetches the source's own files from where
+its authors publish them and converts them on the device with the same Kotlin code the host tests
+run (`dictionary/Sources.kt`), into the entry model and pack files of PLAN §10.5. A GitHub release
+asset is checked against the SHA-256 digest GitHub publishes for it; a file whose source publishes
+no checksum is protected by HTTPS only, and the settings say so. Only HTTPS is accepted, redirects
+included. Before the first download a notice names the hosts and says that nothing typed is sent;
+it is accepted once per notice version (`state.json` `online_accepted`). This replaces the hosted
+catalog with its own SHA-256 list and signatures (`PLAN.md` §2.5 decisions 2 and 9); the pinned
+hashes in `build-lock.json` are for host builds only.
+
+**Why.** The user decided it (2026-11-11): no hosting, no release to sign, and the dictionaries
+stay as current as their sources. Converting on the device is feasible for the Chinese and English
+word lists measured in Q6; it is not for sources that need heavy tools or are too large, which the
+settings leave out.
+
+**Cost.** Only GitHub releases come with a published checksum; plain files (THUOCL, rime-ice's
+character list) are trusted as far as HTTPS goes. A source that changes its layout breaks its
+download until the converter follows. Conversion uses the phone's CPU and memory for seconds to
+tens of seconds in the background.
+
+**Reopens when.** A source moves or changes format, a source starts publishing checksums or
+signatures, or a large source (Japanese dictionaries once Mozc's user dictionary reads them) needs
+preconversion after all.
+

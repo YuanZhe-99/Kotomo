@@ -34,19 +34,32 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0，日文读音随附 Mozc `README.txt` 中的声明；
 应用内的许可证页面加入后，在首个版本发布前列出以上全部来源。Emoji 用系统字体绘制：不分发任何 Emoji 图像。
 
+## 按需下载
+
+以下来源不在 APK 中。设置只在用户要求时，从作者发布的地方下载它们并在设备上转换（`dictionaries.md`、ADR-011）。
+数据来源页列出每一项及其许可证与作者，每个已安装的词库包在 `pack.json` 中保留其许可证、署名与（THUOCL 的）引用说明。
+
+| 组件 | 仓库与版本 | 用途 | 许可证 | 修改 | 义务 |
+|---|---|---|---|---|---|
+| rime-ice 的 `en_dicts/en_ext.dict.yaml`（发布附件 `en_dicts.zip`）与 `cn_dicts/8105.dict.yaml`（普通文件） | `iDvel/rime-ice` 最新发布（`nightly`）；主机测试锁定 2026.06.30（`6810e891`） | 词库包 `en-ice-tech`；THUOCL 词库包的单字读音 | GPL-3.0 | 转换：读音规范化、权重缩放到 0–100、丢弃无效行 | 与 Kotomo 同为 GPL-3.0；署名作者；转换后的词库包仍为 GPL-3.0 |
+| THUOCL（11 个领域词表） | `thunlp/THUOCL` `master`（2018-11-21 后未变，`a30ce79d`） | 11 个词库包 `zh-thuocl-*` | MIT；README 要求引用 | 读音由 rime-ice 的单字表推出（没有主导读音的多音字丢弃），权重缩放 | 保留 MIT 声明；引用"THUOCL：清华大学开放中文词库"（2016）；读音为 GPL-3.0（rime-ice） |
+| fcitx5-pinyin-zhwiki 的 `web-slang-<日期>.dict.yaml` | `felixonmars/fcitx5-pinyin-zhwiki` 最新发布；主机测试锁定 0.3.1（转储 20261018） | 词库包 `zh-web-slang` | CC BY-SA 4.0（维基百科）；转换器 Unlicense | 丢弃拼写出的拉丁字母 | 署名维基百科贡献者并链接许可证；词库包保持 CC BY-SA 4.0 |
+
 ## 计划中的组件
 
-以下组件目前都尚未包含。P0 加入某个组件时，连同其确切版本、文件、修改与义务写入上面的清单；技术验证 S8 完成整体审查。
+以下组件目前既未包含、也未提供下载。加入某个组件时，连同其确切版本、文件、修改与义务写入上面的清单；技术验证 S8
+完成整体审查。Q6 对未提供下载的词库来源的评估见 `dictionaries.md`。
 
 | 组件 | 许可证 | 计划用途 | 说明 |
 |---|---|---|---|
-| SudachiDict 原始词表（`small_lex`、`core_lex`） | Apache-2.0；`small_lex` 含 UniDic 的一部分（BSD-3-Clause，见 `LEGAL`） | 日文词库包（Q6）；`build-lock.json` 锁定 20261015 | — |
-| rime-ice（`base`、`ext`、`8105`、`41448`、`en_ext`）与 rime-frost（`base`、`ext`） | GPL-3.0 | 中文词库包；`en_ext` 用作技术英文（Q6） | 不用 rime-ice 的 `tencent.dict.yaml`：其词条来自腾讯 AI Lab 词向量的词表，腾讯自己的页面没有写明许可证（有一个目录标为 CC BY 3.0） |
-| fcitx5-pinyin-zhwiki（`zhwiki`、`web-slang`） | 维基百科标题 CC BY-SA 4.0；转换器 Unlicense | 中文专有名词与网络用语包（Q6） | 词库包保持 CC BY-SA 4.0 |
-| THUOCL（11 个领域词表） | MIT；README 要求引用"THUOCL：清华大学开放中文词库"（2016） | 中文领域词库包（Q6） | 附引用说明 |
-| mecab-ipadic-neologd 种子（20200910） | Apache-2.0，附 `COPYING` 中的来源致谢 | 日文新词包（Q6） | 2020 年起停更 |
-| mozcdic-ut 地名、人名、jawiki | 公有领域（日本邮政邮编数据）；Apache-2.0；CC BY-SA 4.0 | 日文地名、人名与维基百科包（Q6） | jawiki 包保持 CC BY-SA 4.0 |
-| SCOWLv2（en-wl/wordlist） | 类 MIT（`Copyright`）；大于 80 号的词表另附 UKACD 条款 | 英文词库包，60 号及以下、去掉粗俗与冒犯词（Q6） | 用自带的 `scowl` 脚本生成 |
+| SudachiDict 原始词表（`small_lex`、`core_lex`） | Apache-2.0；`small_lex` 含 UniDic 的一部分（BSD-3-Clause，见 `LEGAL`：须随附 UniDic 的版权声明、条件与免责声明） | Mozc 用户词典能读取后的日文词库；`build-lock.json` 锁定 20261015 | 暂不提供（`dictionaries.md`） |
+| rime-frost（`base`、`ext`） | GPL-3.0 | 另一套中文基础词库 | 不提供：它的发布只有 44–88 MB 的整包，普通文件没有校验值，且与 rime-ice 重叠 |
+| rime-ice 的 `base.dict.yaml`、`ext.dict.yaml` | GPL-3.0 | 中文常用词与扩展词 | 暂不提供：能在手机上转换，但 librime 每次选择方案都把下载的词库包当作文本词表载入，模拟器上 50 万行使键盘 25 秒无法打字 |
+| rime-ice 的 `tencent.dict.yaml`、`41448.dict.yaml` | GPL-3.0 | — | 不用 `tencent`：其词条来自腾讯 AI Lab 词向量的词表，腾讯自己的页面没有写明许可证（有一个目录标为 CC BY 3.0）；`41448` 是没有权重的单字 |
+| fcitx5-pinyin-zhwiki 的 `zhwiki` | 维基百科标题 CC BY-SA 4.0；转换器 Unlicense | 中文专有名词 | 不提供：57 MB、170 万行，在手机上转换与保存都太大 |
+| mecab-ipadic-neologd 种子（20200910） | Apache-2.0，附 `COPYING` 中的来源致谢 | 日文新词 | 不提供：xz 压缩（Android 没有解码器）、322 万行、2020 年起停更 |
+| mozcdic-ut 地名、人名、jawiki | 公有领域（日本邮政邮编数据）；Apache-2.0；CC BY-SA 4.0 | 日文地名、人名、维基百科标题 | 不提供：bzip2 压缩（Android 没有解码器）；日文词条尚未使用 |
+| SCOWLv2（en-wl/wordlist） | 类 MIT（`Copyright`）；大于 80 号的词表另附 UKACD 条款 | 英文词 | 不提供：发布只有源文件，要用 Python 与 SQLite 才能生成词表；英文词条尚未使用 |
 | Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |
 | Twemoji（jdecked） | 图形 CC BY 4.0，代码 MIT | Emoji 样式包 | 在"关于"中署名 |
 | ML Kit GenAI 与翻译 | Google 的 ML Kit 条款 | 设备端 AI 与翻译 | 其数据处理方式在技术验证 S8 中核实，并写入隐私政策 |

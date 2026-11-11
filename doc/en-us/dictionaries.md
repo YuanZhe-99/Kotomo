@@ -13,7 +13,7 @@ The person's own words, imported files and downloaded dictionary packs (PLAN §1
 | Added by hand (`manual`) | words typed in on the Dictionaries page | `custom_phrase.txt` | 1 | Your dictionary |
 | Imported (`import`) | words from a file the person picked | `kotomo_low.txt` | −1 | Your dictionary |
 | Made with an AI model (`generated`) | words from a file marked as LLM output | `kotomo_low.txt`, priority at most 20 | −1 | Your dictionary |
-| Downloaded (`download`) | packs installed from the online catalog | `kotomo_packs.txt` | 0 | Downloaded dictionaries, and one switch per pack |
+| Downloaded (`download`) | dictionaries downloaded from their sources and converted on the phone | `kotomo_packs.txt` | 0 | Downloaded dictionaries, and one switch per pack |
 
 Untrusted words rank low: an imported or generated word never reaches `custom_phrase.txt`,
 whatever its file says, and a file's own claims about where its words came from are ignored.
@@ -76,7 +76,7 @@ atomic rename, on the IO dispatcher under one lock.
 | `files/dictionaries/user.json` | the person's entries |
 | `files/dictionaries/user.prev.json` | the version before the last change; "Restore the previous version" swaps the two |
 | `files/dictionaries/state.json` | the switches |
-| `files/dictionaries/packs/<id>/` | an installed pack: `entries.tsv` (normalized) and `pack.json` (its catalog entry) |
+| `files/dictionaries/packs/<id>/` | an installed pack: `entries.tsv` (normalized), `table.txt` (its librime lines) and `pack.json` |
 | `files/dictionaries/packs/<id>.prev/` | the pack's previous version, for rollback |
 | `files/rime/user/custom_phrase.txt`, `kotomo_packs.txt`, `kotomo_low.txt` | librime's tables, rewritten after every change |
 
@@ -99,44 +99,85 @@ verbatim and written back unchanged.
 | `custom_enabled` | the person's own words (hand-added, imported, generated); default `true` |
 | `downloads_enabled` | all downloaded packs; default `true` |
 | `packs` | `{"<id>": {"enabled": true}}` per installed pack |
+| `online_accepted` | the version of the download notice the person accepted; missing until then |
 
-## Packs and the online catalog
+## Downloaded dictionaries
 
-The catalog is JSON with `format_version` 1 (any other version refuses it) and `packs`; members it
-does not know are kept. Every pack member is required; a pack missing one, or with an invalid
-value, is refused and counted:
+Settings → Dictionaries → Get dictionaries lists the sources below (`dictionary/Sources.kt`,
+ADR-011). Kotomo hosts nothing: a download fetches the source's own files from where its authors
+publish them and converts them on the phone, in the background (`DictionaryDownloads`), with the
+same code the host tests run. Every converted line goes through the checks of an import (word,
+reading, syllable count, encoding, weight); lines that fail are dropped and counted per reason.
 
-| Member | Check |
-|---|---|
-| `id` | lowercase letters, digits, `_` and `-`, at most 64 (it names a directory) |
-| `titles` | an object of interface language (`en`, `zh-CN`, `zh-TW`, `ja`) to title |
-| `language`, `category`, `license`, `attribution`, `version` | non-empty; `language` is `zh`, `ja` or `en` |
-| `size`, `sha256` | the compressed file's bytes (at most 64 MB) and its SHA-256 in lowercase hex |
-| `url` | HTTPS |
-| `format` | `tsv.gz` |
+### Offered
 
-A pack is the gzip-compressed TSV with the header, normalized readings and weights 0–100, which
-the dictionary-pack generator (Q6) writes:
+| Pack | Files | Checksum | Words (host, pinned files) |
+|---|---|---|---|
+| `zh-web-slang` | fcitx5-pinyin-zhwiki's latest release, `web-slang-<date>.dict.yaml` (9 KB) | the SHA-256 digest GitHub publishes for the asset | 399 (24 spelled-out Latin letters dropped) |
+| `zh-thuocl-it`, `-animal`, `-finance`, `-car`, `-idioms`, `-places`, `-food`, `-law`, `-people`, `-medical`, `-poetry` | THUOCL `data/THUOCL_<domain>.txt` (0.1–1 MB each) and rime-ice's `cn_dicts/8105.dict.yaml` (0.1 MB) from `raw.githubusercontent.com` | none: HTTPS only | 1,602 to 43,343 (IT 11,565) |
+| `en-ice-tech` | rime-ice's latest release, `en_dicts.zip` (0.2 MB): `en_ext.dict.yaml` | GitHub's digest | 2,328 (stored, not used yet) |
+
+THUOCL has no pinyin. A word's reading is made from rime-ice's character list: a character's most
+frequent reading counts only when it is at least ten times as frequent as its next one, so a word
+with a true polyphone (行 xing / hang) is dropped as ambiguous rather than given a wrong reading
+(IT: 1,458 ambiguous, 2,976 with letters or characters the list lacks). The host numbers come from
+`DictionaryPacksTest` with `KOTOMO_PACKS=1` over the files pinned in `build-lock.json`; a device
+downloads the sources' current versions.
+
+### Evaluation
+
+Every source PLAN §10.5 approved, checked on 2026-11-11 (the counts are what the Q6 conversion kept):
+
+| Source | What a phone would download | Checksum published | On a phone | Offered |
+|---|---|---|---|---|
+| rime-ice `base`, `ext` | release asset `cn_dicts.zip` 14.7 MB | GitHub's SHA-256 digest | base: 543,423 words converted on the emulator in 38–44 s within the 192 MB heap (PSS 232 MB); but librime loads a downloaded pack as a text table at every schema selection, and the keyboard typed again only 25 s after the install | no: waits for compiled pack tables |
+| rime-ice `en_ext`, `8105` | release asset `en_dicts.zip` 0.2 MB; raw `8105.dict.yaml` 0.1 MB | `en_dicts.zip`: digest; `8105`: none | instant | yes (`en-ice-tech`; `8105` for THUOCL's readings) |
+| rime-frost | release bundles of 44 MB and 88 MB; raw `base` and `ext` 10 MB | bundles: digest; raw: none | possible, but it overlaps rime-ice | no |
+| fcitx5-pinyin-zhwiki `zhwiki` | `zhwiki-<date>.dict.yaml` 57.7 MB | digest | 1.7 million lines: too large to convert and keep | no |
+| fcitx5-pinyin-zhwiki `web-slang` | 9 KB | digest | instant | yes |
+| THUOCL | 11 text files, 0.1–1 MB | none | under a second each | yes |
+| SudachiDict | `small_lex.zip` 13.6 MB, `core_lex.zip` 21.7 MB (Amazon S3) | none | 0.77 and 0.86 million rows, 100 and 166 MB unpacked; feasible only with streaming | no: Japanese words are not used until Mozc's user dictionary reads them |
+| mecab-ipadic-neologd | `seed/*.csv.xz` 41 MB | none | xz has no decoder on Android; 3.2 million rows; unmaintained | no |
+| mozcdic-ut | `*.txt.bz2` 0.7–12 MB | none | bzip2 has no decoder on Android; Japanese not used yet | no |
+| SCOWLv2 | `rel-<date>.tar.gz` 2.4 MB of sources | none | a word list needs Python and SQLite (`make`, `scowl word-list`) | no |
+
+### Download and checks
+
+- Only HTTPS, redirects included; a plain `http://` address or a redirect to one is refused.
+  GitHub's release API (`api.github.com`) names the latest release's asset, its size and its
+  SHA-256 digest; the download must match both, and an asset without a digest is refused. A plain
+  file has no published checksum: the page says so, and only HTTPS protects it.
+- At most 64 MB is downloaded per file and 256 MB unpacked from an archive; the sizes are counted
+  while reading, not trusted.
+- Before the first download the notice names the hosts (`api.github.com`, `github.com`,
+  `release-assets.githubusercontent.com`, `raw.githubusercontent.com`), says that only dictionary
+  files are downloaded and nothing typed is sent; without accepting it nothing connects. Its
+  version is kept in `state.json` (`online_accepted`); a notice that says something new gets a new
+  version and is asked again.
+- A download shows its progress and can be cancelled. It works in the app's cache and leaves the
+  installed version untouched when it is cancelled or fails (network, size, checksum, unreadable
+  file, no usable words, storage); the files are deleted afterwards.
+- The converted words are written in one pass (never held as entry objects) as the pack's
+  `entries.tsv` (the normalized TSV, header `language text reading weight`), its librime table
+  `table.txt` and `pack.json`; the previous version moves to `packs/<id>.prev/`. Weights follow the
+  import rule (logarithm against the largest frequency above 100; 50 without one).
 
 ```text
 language	text	reading	weight
 zh	你好	ni hao	90
 ```
 
-A download reads at most the catalog's size, reports progress, and is refused when the size or the
-SHA-256 differs; the pack is then unpacked (at most 256 MB) and read like an imported TSV in its
-language, lines that fail or name another language dropped and counted, and installed with the
-previous version kept. Signatures are not checked yet (PLAN §2.5 decision 9).
-
-Online dictionaries are not available: where the catalog is hosted and how the first download is
-disclosed wait for the user (PLAN §2.5 decisions 2 and 10). `Online.CATALOG_URL` is null, the app
-has no network transport of its own (`Transport` is an interface the tests implement), and the page
-says that nothing is downloaded.
+`pack.json` holds `id`, `titles` (`en`, `zh-CN`, `zh-TW`, `ja`), `language`, `category`,
+`license`, `attribution`, `version` (the release asset's date, or the day of the download),
+`checked` (whether a published checksum was compared), `count`, `license_url`, `dropped` (lines
+dropped by reason), `notice` (THUOCL's citation) and any member this version does not know. A
+`pack.json` missing a required member hides the pack.
 
 ## The keyboard
 
 The keyboard and the settings share one `DictionaryStore` per process. After every change the
-store rewrites the three tables and raises its generation; the keyboard then re-selects librime's
+store rewrites the three tables (the packs' one by joining the enabled packs' `table.txt`, so a
+change never parses a pack again) and raises its generation; the keyboard then re-selects librime's
 schema, which reloads the tables (host test T17-rime). Before the first unlock the keyboard reads
 none of these files. The sensitive-field schema reads the same tables; nothing is learned into
 them.
@@ -144,10 +185,15 @@ them.
 ## Tests
 
 `FormatsTest` (readings, encoding, each format, duplicates, conflicts, weights, preview, export),
-`DictionaryStoreTest` (versioned files, rollback, newer files, switches, the tables, packs),
-`OnlineTest` (catalog, download checks with a fake transport answering by the full URL, the
-original sample packs in `app/src/test/resources/dictionary/`, ten-odd words per language),
-`DictionaryRimeTest` (the store's tables fed to the host librime, through `tests/conversion/run.sh`).
+`DictionaryStoreTest` (versioned files, rollback, newer files, switches, the tables, packs and
+their `pack.json`, the notice), `SourcesTest` (each source format on tiny original samples:
+words kept, readings, weights, lines dropped by reason; the offered sources), `DownloadsTest`
+(a local HTTPS server with its own certificate through the real transport: release digests and
+sizes, HTTPS-only redirects, missing files, damaged archives, cancellation, the installed version
+kept on failure), `DictionaryRimeTest` and `DictionaryPacksTest` (the store's tables and a
+converted pack in the host librime, ranked by trust; with `KOTOMO_PACKS=1` every offered source
+converted from the pinned files), through `tests/conversion/run.sh`; on the emulator
+`DictionaryKeyboardTest` and `DictionaryDownloadTest` (a real download typed on the keyboard).
 
 ## Known gaps
 
@@ -155,4 +201,8 @@ original sample packs in `app/src/test/resources/dictionary/`, ten-odd words per
 - `user.json` is not encrypted (PLAN §14 asks for encrypted personal data); librime reads its
   tables as plain text anyway.
 - Japanese and English entries are not used yet.
-- No online download until the user decides the hosting and the first-use disclosure.
+- Only GitHub release assets come with a published checksum; THUOCL and rime-ice's character
+  list are protected by HTTPS alone.
+- Japanese sources are not offered until Mozc's user dictionary reads Japanese entries.
+- A device never verifies a pack against a pinned hash: sources update, and `build-lock.json`
+  pins only what the host tests read.

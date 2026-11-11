@@ -60,8 +60,6 @@
     <string name="dict_rollback_desc">単語への最後の変更を取り消します。もう一度押すとやり直します。</string>
     <string name="dict_read_only">ユーザー辞書は新しいバージョンの Kotomo で保存されています。表示のみで、変更はしません。</string>
     <string name="dict_online">辞書を入手</string>
-    <string name="dict_online_unavailable">オンライン辞書はまだ利用できません。Kotomo は何もダウンロードしません。最初のダウンロードの前に、辞書の提供元を示して確認します。</string>
-    <string name="dict_online_note">辞書はあなたが求めたときだけ、最初のダウンロードの前に示した提供元からダウンロードし、インストール前に必ず確認します。</string>
     <string name="dict_title_language">ja</string>
     <string name="dict_pack_details">バージョン %1$s・%2$d 語・%3$s・%4$s</string>
     <string name="dict_pack_rollback">前のバージョン</string>
@@ -89,5 +87,32 @@
     </plurals>
     <plurals name="dict_more">
         <item quantity="other">ほかに %d 件あります。検索で絞り込めます。</item>
+    </plurals>
+    <string name="dict_online_note">Kotomo は「ダウンロード」をタップしたときだけ、作者が公開している場所から辞書を直接ダウンロードし、この端末で変換します。入力した内容は送信しません。</string>
+    <string name="dict_source_checked">公開元が示すチェックサムで確認します。</string>
+    <string name="dict_source_unchecked">この提供元はチェックサムを公開していません。ダウンロードを守るのは安全な接続（HTTPS）だけです。</string>
+    <string name="dict_source_from">提供元 %1$s・%2$s・%3$s</string>
+    <string name="dict_download">ダウンロード</string>
+    <string name="dict_update">更新</string>
+    <string name="dict_download_cancel">キャンセル</string>
+    <string name="dict_progress_download">ファイル %1$d / %2$d をダウンロード中：%3$s</string>
+    <string name="dict_progress_convert">変換中…</string>
+    <string name="dict_progress_store">インストール中…</string>
+    <string name="dict_download_cancelled">ダウンロードをキャンセルしました。何も変わっていません。</string>
+    <string name="dict_download_failed">インストールしませんでした：%1$s 何も変わっていません。</string>
+    <string name="dict_dl_insecure">提供元が安全な接続を使いませんでした。</string>
+    <string name="dict_dl_network">提供元に接続できません。接続を確認してもう一度お試しください。</string>
+    <string name="dict_dl_http">提供元にファイルがありませんでした。</string>
+    <string name="dict_dl_size">ファイルのサイズが想定と違います。</string>
+    <string name="dict_dl_hash">ファイルが公開されたチェックサムと一致しません。</string>
+    <string name="dict_dl_unpack">ファイルを読み取れません。</string>
+    <string name="dict_dl_empty">ファイルに Kotomo が使える語がありません。</string>
+    <string name="dict_dl_storage">空き容量が足りないためインストールできません。</string>
+    <string name="dict_notice_title">最初のダウンロードの前に</string>
+    <string name="dict_notice_body">辞書をダウンロードするとき、Kotomo は %1$s に接続します。ダウンロードするのは辞書ファイルだけで、入力した内容、あなたの単語、クリップボードの内容は一切送信しません。ダウンロードは「ダウンロード」をタップしたときだけ始まり、ダウンロードした辞書はいつでも削除できます。</string>
+    <string name="dict_notice_accept">ダウンロードを許可</string>
+    <string name="dict_notice_decline">今はしない</string>
+    <plurals name="dict_download_done">
+        <item quantity="other">%d 語をインストールしました。</item>
     </plurals>
 </resources>

@@ -293,6 +293,9 @@ object Formats {
         }
     }
 
+    /** One entry as a line of the TSV format (with its line break), as [write] writes it. */
+    fun tsvLine(e: Entry): String = cells(e).joinToString("\t", postfix = "\n")
+
     /** The TSV and CSV cells of one entry, in [COLUMNS] order. */
     private fun cells(e: Entry) = listOf(e.lang.code, e.text, e.reading.orEmpty(), e.weight.toString())
 }

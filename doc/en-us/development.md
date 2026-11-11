@@ -35,6 +35,7 @@ scripts/build-mozc.sh --abi arm64-v8a --abi x86_64   # Mozc for the APK into bui
 cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime && ctest --test-dir build/host/rime -V   # S2 librime host test
 ./gradlew connectedDebugAndroidTest    # instrumentation tests on a running emulator or device (debug build)
 tests/conversion/run.sh                 # conversion corpus and the host fuzzy-pinyin test on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
+KOTOMO_PACKS=1 tests/conversion/run.sh  # also converts every downloadable dictionary from the pinned files in .deps/ (DictionaryPacksTest)
 cmake -S core/mixed -B build/host/mixed -G Ninja && cmake --build build/host/mixed && ctest --test-dir build/host/mixed   # S6 coordinator: unit tests on fake engines, and the host corpus runner
 build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # S6: one composition through the coordinator and the three host engines, with costs and pieces
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
@@ -65,7 +66,7 @@ lines with `tests/conversion/baseline-mixed.tsv`. It needs the cross-language le
 yet, so the two runs are reported side by side. Mozc's Bazel build needs a JDK with its
 `include/` directory: the JetBrains runtime inside Android Studio has none, so leave `JAVA_HOME`
 unset or point it at a full JDK for `build-mozc.sh`. `run.sh` also runs
-`FuzzyRimeTest` (T08: the private schema, the staged swap, going back to the prebuilt data). `PLAN.md` §17 lists the interfaces the plan
+`FuzzyRimeTest` (T08: the private schema, the staged swap, going back to the prebuilt data). and the dictionary tests `DictionaryRimeTest` and `DictionaryPacksTest`; with `KOTOMO_PACKS=1` the latter converts every downloadable dictionary from the files `build-lock.json` pins (they must be in `.deps/`) with the app's own converters and prints counts, time and memory. `DictionaryDownloadTest` (instrumentation) downloads from the real sources and is skipped, not passed, when they cannot be reached. `PLAN.md` §17 lists the interfaces the plan
 asks for that do not exist yet.
 
 ## Emulator

@@ -248,8 +248,8 @@ val rimeData = tasks.register<RimeDataTask>("rimeData") {
 }
 
 // The conversion corpus (tests/conversion/run.sh) sets KOTOMO_CORPUS=1: the unit-test JVM then
-// loads the host engine libraries built under build/, and ConversionCorpusTest runs instead of
-// being skipped.
+// loads the host engine libraries built under build/, and ConversionCorpusTest, FuzzyRimeTest,
+// DictionaryRimeTest and DictionaryPacksTest run instead of being skipped.
 if (providers.environmentVariable("KOTOMO_CORPUS").orNull == "1") {
     val root = rootProject.layout.projectDirectory.asFile
     val libraries = listOf("build/host/rime", "build/host/english", "build/mozc/out/host")
@@ -257,6 +257,11 @@ if (providers.environmentVariable("KOTOMO_CORPUS").orNull == "1") {
     tasks.withType<Test>().configureEach {
         systemProperty("java.library.path", libraries)
         systemProperty("kotomo.corpus.root", root.path)
+        // KOTOMO_PACKS=1 also converts the pinned dictionary sources (DictionaryPacksTest), which needs a larger heap.
+        if (providers.environmentVariable("KOTOMO_PACKS").orNull == "1") {
+            systemProperty("kotomo.packs", "1")
+            maxHeapSize = "4g"
+        }
     }
 }
 
