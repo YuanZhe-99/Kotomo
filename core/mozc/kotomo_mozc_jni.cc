@@ -16,6 +16,7 @@
 
 #include "base/util.h"
 #include "kotomo/kotomo_mozc.h"
+#include "kotomo/kotomo_mozc_api.h"
 
 namespace kotomo::mozc {
 namespace {
@@ -113,6 +114,13 @@ JNIEXPORT jlong JNICALL Java_com_yuanzhe_kotomo_engine_Mozc_nativeOpen(
   }
   return static_cast<jlong>(reinterpret_cast<intptr_t>(
       kotomo::mozc::MozcEngine::Open(*data, *profile).release()));
+}
+
+/// Returns the address of the coordinator's function table (kotomo_mozc_api.h)
+/// as a long.
+JNIEXPORT jlong JNICALL Java_com_yuanzhe_kotomo_engine_Mozc_nativeApi(JNIEnv*,
+                                                                      jclass) {
+  return static_cast<jlong>(reinterpret_cast<intptr_t>(KotomoMozcGetApi()));
 }
 
 /// Releases the engine behind a handle; 0 is ignored.

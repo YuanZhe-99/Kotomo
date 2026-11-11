@@ -12,8 +12,14 @@ load("//android/jni:cross_build_binary.bzl", "cross_build_binary")
 
 mozc_cc_library(
     name = "glue",
-    srcs = ["kotomo_mozc.cc"],
-    hdrs = ["kotomo_mozc.h"],
+    srcs = [
+        "kotomo_mozc.cc",
+        "kotomo_mozc_api.cc",
+    ],
+    hdrs = [
+        "kotomo_mozc.h",
+        "kotomo_mozc_api.h",
+    ],
     deps = [
         "//base:system_util",
         "//base:util",

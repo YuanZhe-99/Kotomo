@@ -60,6 +60,12 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
         return List(flat.size / 2) { Candidate(flat[2 * it], flat[2 * it + 1]) }
     }
 
+    /**
+     * The engine's native handle, for [Core]: the mixed-input coordinator converts through this
+     * engine with [api]. Notes: valid until [close]; close the coordinator first.
+     */
+    internal val nativeHandle: Long get() = checkOpen()
+
     /** Releases the native engine; later calls fail. Side effects: frees Mozc's memory. */
     override fun close() {
         nativeClose(handle)
@@ -83,6 +89,12 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
         fun open(dataPath: String, profileDir: String): Mozc? =
             nativeOpen(dataPath, profileDir).takeIf { it != 0L }?.let(::Mozc)
 
+        /**
+         * Returns the address of the library's function table for the mixed-input coordinator
+         * (`core/mozc/kotomo_mozc_api.h`). Notes: valid for the life of the process.
+         */
+        internal fun api(): Long = nativeApi()
+
         /** Decodes the flat array from the JNI layer: reading, pinned, n, then n (value, reading). */
         private fun decode(fields: Array<String>): List<Segment> = buildList {
             var i = 0
@@ -98,6 +110,8 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
         }
 
         @JvmStatic private external fun nativeOpen(dataPath: String, profileDir: String): Long
+
+        @JvmStatic private external fun nativeApi(): Long
 
         @JvmStatic private external fun nativeClose(handle: Long)
 

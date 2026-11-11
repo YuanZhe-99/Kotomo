@@ -78,13 +78,13 @@
         "sha256": "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf"
       },
       "prebuilt": {
-        "source": "scripts/build-mozc.sh --abi arm64-v8a --abi x86_64 on x86_64 Linux (Debian 13, 2026-11-11), with Kotomo's glue at prediction, fixed segment boundaries, the romaji table and candidate costs; the run below is the deleted CI build of the older glue, kept for scripts/fetch-mozc.sh, which will not match these hashes",
+        "source": "scripts/build-mozc.sh --abi arm64-v8a --abi x86_64 on x86_64 Linux (Debian 13, 2026-11-11), with Kotomo's glue at prediction, fixed segment boundaries, the romaji table, candidate costs and the coordinator's function table (kotomo_mozc_api.h); the run below is the deleted CI build of the older glue, kept for scripts/fetch-mozc.sh, which will not match these hashes",
         "repository": "YuanZhe-99/Kotomo",
         "run": "41931242062",
         "commit": "0172e41",
         "sha256": {
-          "arm64-v8a/libkotomo_mozc.so": "a2940f6a22b4c88d2d974147217c663bb332c3c800ff69296ce875f992db2fb8",
-          "x86_64/libkotomo_mozc.so": "2ca6593a17465e8dee8934ff7f4bfa6061f1f6c79ef176302ca1a8f124800a62",
+          "arm64-v8a/libkotomo_mozc.so": "0ff4695b62fc6feea7ee0fb546b36d93ac42fb7374c5ff4cdd7b703e151a25d9",
+          "x86_64/libkotomo_mozc.so": "ba1c057a11221476df4c8b52ce1890420a98fab6bed56ffb6241ea391d84002b",
           "mozc.data": "7a47a2b3958baeb0796345aec2c3f380b1d783d6fa399c8a0c358a197bee6046"
         }
       }

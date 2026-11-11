@@ -14,6 +14,7 @@
 
 #include "gtest/gtest.h"
 #include "kotomo/kotomo_mozc.h"
+#include "kotomo/kotomo_mozc_api.h"
 
 namespace kotomo::mozc {
 namespace {
@@ -202,6 +203,59 @@ TEST_F(MozcEngineTest, LeavesUnmappableLettersAsAscii) {
 }
 
 // Negative: a span without a reading is rejected rather than converted.
+// Q7: the function table the coordinator's library receives.
+TEST_F(MozcEngineTest, ApiTableMapsRomajiAndReportsTheFullSize) {
+  const KotomoMozcApi* api = KotomoMozcGetApi();
+  ASSERT_EQ(api->version, KOTOMO_MOZC_API_VERSION);
+  char out[64];
+  const size_t size = api->hiragana(engine_, "sakura", 6, out, sizeof out);
+  EXPECT_EQ(std::string(out, size), "さくら");
+  // Negative: a buffer that is too small is not overrun, and the size says so.
+  char small[4] = {'x', 'x', 'x', 'x'};
+  EXPECT_EQ(api->hiragana(engine_, "sakura", 6, small, 3), size);
+  EXPECT_EQ(small[3], 'x');
+}
+
+TEST_F(MozcEngineTest, ApiTableConvertsWithAPinnedSpan) {
+  const KotomoMozcApi* api = KotomoMozcGetApi();
+  struct Seen {
+    std::string sentence;
+    int segments = 0;
+    int pinned = 0;
+    bool first = false;
+  } seen;
+  const KotomoMozcSink sink = {
+      .context = &seen,
+      .segment =
+          [](void* context, const char*, size_t, int pinned) {
+            auto* s = static_cast<Seen*>(context);
+            ++s->segments;
+            s->pinned += pinned;
+            s->first = true;
+          },
+      .word =
+          [](void* context, const char* text, size_t size, const char*, size_t,
+             int32_t) {
+            auto* s = static_cast<Seen*>(context);
+            if (s->first) s->sentence.append(text, size);
+            s->first = false;
+          },
+  };
+  const std::string place = "いけぶくろ", surface = "池袋", rest = "にいこう";
+  const KotomoMozcSpan spans[] = {
+      {place.data(), place.size(), surface.data(), surface.size()},
+      {rest.data(), rest.size(), nullptr, 0},
+  };
+  ASSERT_EQ(api->convert(engine_, spans, 2, /*incognito=*/1, &sink), 1);
+  EXPECT_EQ(seen.pinned, 1);
+  EXPECT_GE(seen.segments, 2);
+  EXPECT_EQ(seen.sentence.rfind("池袋", 0), 0u) << seen.sentence;
+  // Negative: no spans convert nothing and the sink stays silent.
+  seen = {};
+  EXPECT_EQ(api->convert(engine_, spans, 0, 1, &sink), 0);
+  EXPECT_EQ(seen.segments, 0);
+}
+
 TEST_F(MozcEngineTest, RejectsEmptySpan) {
   EXPECT_FALSE(engine_->PinnedConvert({{.reading = "", .surface = "池袋"}},
                                       /*incognito=*/true));
