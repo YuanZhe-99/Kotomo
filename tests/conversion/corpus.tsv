@@ -110,4 +110,7 @@ T08-022	chinese+fuzzy:all		shijian	时间	1	with every rule on, exact spellings 
 T08-023	chinese+fuzzy:all		zg	中国	3	abbreviated pinyin still works with every rule on
 T08-024	chinese+fuzzy:all		lihao	你好	3	rules combine: every rule on
 T08-N20	chinese+fuzzy:z_zh		cifan	!吃饭	5	only the rules that are on apply: z/zh on, c/ch off
-T08-N21	chinese+fuzzy:n_l,l_r		rihao	!你好	5	n/l with l/r must not make r stand for n (known gap: librime chains rules that share l)
+T08-N21	chinese+fuzzy:n_l,l_r		rihao	!你好	5	n/l with l/r must not make r stand for n (rules do not chain, decision 16)
+T08-025	chinese+fuzzy:n_l,l_r		lihao	你好	3	with n/l and l/r on, l stands for n
+T08-026	chinese+fuzzy:n_l,l_r		liben	日本	3	with n/l and l/r on, l stands for r
+T08-N22	chinese+fuzzy:n_l,l_r		niben	!日本	5	with n/l and l/r on, n must not stand for r
