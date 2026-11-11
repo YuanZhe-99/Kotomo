@@ -49,7 +49,9 @@ and the keyboard's quick settings) turns off learning and history everywhere.
 
 ## Deleting your data
 
-Uninstalling Kotomo, or clearing its storage in Android's app settings, removes everything listed
+Settings → Privacy → Clear learning data deletes the learned words, the emoji history and the
+modes and scripts remembered per app (the modes you fixed for apps, your settings and the
+clipboard history stay; the clipboard has its own Clear). Uninstalling Kotomo, or clearing its storage in Android's app settings, removes everything listed
 above.
 
 ## Features that are not there yet

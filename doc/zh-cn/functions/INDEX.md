@@ -10,6 +10,7 @@
 | `build-lock.json` | 工具链、上游与数据源的版本及下载哈希 | `toolchain` |
 | `.github/workflows/build.yml` | CI：文档检查、Gradle 检查与构建、签名的 release APK；`v*` 标签时创建 GitHub Release | `android`、`release` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、每个输入框开始时的模式（按 App 固定、按 App 记住、代码输入框）与保留组合的模式切换、在键上输入的 Emoji 搜索、按 `Fields` 的判定直接输入与不学习、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`refresh`、`switchMode`、`applyEngineSettings` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/LearningData.kt` | 清除学习数据（PLAN §8.8）：librime 的用户词典、Mozc 的配置目录与键盘记忆中学到的部分；在运行中的键盘的引擎线程上或在后台进行（有单元测试） | `clear`、`clearFiles`、`forget` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardMemory.kt` | 键盘自己记住的东西，存为带版本的文件 `files/keyboard/memory.json`（[settings-format.md](../settings-format.md)）：上次的模式；按 App 的使用模式、固定模式与字形；Emoji 历史；文件不存在时从旧的 SharedPreferences 读取一次（有单元测试） | `KeyboardMemory`、`MemoryFormat`、`Memory` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面（底行随输入框调整的字母页、符号页、电话与数字键盘、在铰链两侧分开的底行）、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.pad`、`Layout.place`、`Layout.hit` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Fields.kt` | 输入框适配与空格规则（PLAN §8.7、§8.1）：由输入类型与提示判定输入框种类、敏感输入框与直接输入的唯一定义（PLAN §14）、回车键样式、双击空格句号、智能空格（纯 Kotlin，有单元测试） | `Fields.of`、`Fields.sensitive`、`Fields.direct`、`Fields.enter` |
@@ -24,7 +25,7 @@
 | `lexicon/EmojiData.java` | Emoji 数据管线：下载并校验 Unicode Emoji 与 CLDR 数据，生成 `emoji.tsv`（分组、肤色、键；拼音取自 CC-CEDICT 与 Unihan，假名取自 Mozc，罗马字为平文式）；由应用的 `emojiData` 任务调用 | `main`、`SOURCES`、`index` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Probe.kt` | S1 的测量（只有耗时和内存）及其保存的摘要 | `Probe`、`LatencyStats` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用的外壳：带设置引导卡片和试打框的首页、页面导航（单栏加返回栈；840 dp 起导航列表与页面并排）、由 Kotomo 令牌生成的 Material 3 主题 | `SettingsApp`、`Page`、`SetupCard` |
-| `app/src/main/java/com/yuanzhe/kotomo/settings/Pages.kt` | 各设置页（输入模式，含语言选择的顺序、隐藏的模式与固定了模式的 App；混合模式、中文、日文、英文、布局与尺寸、按键与手势、隐私（含剪贴板设置）、之后提供的页面）与诊断页；共用的行与控件 | `MixedPage`、`LayoutPage`、`DiagnosticsPage`、`Section` |
+| `app/src/main/java/com/yuanzhe/kotomo/settings/Pages.kt` | 各设置页（输入模式，含语言选择的顺序、隐藏的模式与固定了模式的 App；混合模式、中文、日文、英文、布局与尺寸、按键与手势、隐私（含清除学习数据与剪贴板设置）、之后提供的页面）与诊断页；共用的行与控件 | `MixedPage`、`LayoutPage`、`DiagnosticsPage`、`Section` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |
 | `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来；总览页与 Kotomo 自己的画板模板渲染器 | `index.html`、`support.js`、`Keyboard.dc.html`、`canvas.json` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（中文在两个最佳词之后放原样的字母；日文的整句、补全、片段与假名，各带自己的读音；英文原词在先；Emoji 的位置；Emoji 搜索），以及选择、缩短、延长日文片段时的分段；键盘与转换语料共用 | `chinese`、`japanese`、`pick`、`resize`、`extend` |

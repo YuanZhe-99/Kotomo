@@ -198,6 +198,13 @@
     <string name="dictionaries_later">词库管理与导入将在之后的版本中提供。Kotomo 使用应用内置的词库，不下载任何内容。</string>
     <string name="incognito_title">无痕模式</string>
     <string name="incognito_desc">不学习、不记录历史与剪贴板</string>
+    <string name="learning_clear_title">学习数据</string>
+    <string name="learning_clear_desc">Kotomo 从你的输入中学到的词与词频、最近使用与常用的 Emoji，以及每个 App 记住的模式与字形。</string>
+    <string name="learning_clear">清除学习数据</string>
+    <string name="learning_cleared">已清除。Kotomo 会随你的输入重新开始学习。</string>
+    <string name="learning_clear_confirm_title">清除学习数据？</string>
+    <string name="learning_clear_confirm">学到的词与词频、Emoji 历史与按 App 记住的模式将从这台设备上删除，无法撤销。你的设置、为 App 固定的模式、你的词库与剪贴板历史会保留。</string>
+    <string name="learning_clear_cancel">取消</string>
     <string name="privacy_offline">离线也能输入。你输入的内容从不经网络发送。</string>
     <string name="privacy_local">你输入的内容留在本机。没有统计分析、没有广告，也不上传崩溃信息。</string>
     <string name="privacy_sensitive">在密码框、要求不学习的输入框和无痕模式下，Kotomo 不学习，也不记录历史。</string>

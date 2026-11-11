@@ -111,6 +111,19 @@ class FieldTypingTest {
     }
 
     /**
+     * PLAN §8.8: clearing the learning data while the keyboard runs closes and reopens librime,
+     * and Chinese still converts afterwards.
+     */
+    @Test
+    fun typingWorksAfterClearingLearningData() {
+        assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihao", expected = "你好"))
+        val cleared = java.util.concurrent.CountDownLatch(1)
+        instrumentation.runOnMainSync { LearningData.clear(instrumentation.targetContext) { cleared.countDown() } }
+        check(cleared.await(WAIT_MS * 3, java.util.concurrent.TimeUnit.MILLISECONDS)) { "clearing did not finish" }
+        assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihao", expected = "你好"))
+    }
+
+    /**
      * PLAN §8.6: the emoji panel's search types "cat" into its own query, never into the field,
      * and Enter sends the first result.
      */

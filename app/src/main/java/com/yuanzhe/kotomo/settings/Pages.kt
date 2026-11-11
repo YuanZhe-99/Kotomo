@@ -20,6 +20,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +33,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.KeyboardMemory
+import com.yuanzhe.kotomo.ime.LearningData
 import com.yuanzhe.kotomo.ime.Mode
 import com.yuanzhe.kotomo.ime.Probe
 import com.yuanzhe.kotomo.ime.RimeFiles
@@ -417,15 +420,37 @@ internal fun ThemesPage(settings: Settings, store: SettingsStore) {
 }
 
 /**
- * Draws the Privacy page: the incognito switch, the clipboard settings (history, how long it
+ * Draws the Privacy page: the incognito switch, clearing the learning data (after a confirmation,
+ * [LearningData]), the clipboard settings (history, how long it
  * keeps unpinned items, quick paste, clearing) and what Kotomo keeps and sends.
  */
 @Composable
 internal fun PrivacyPage(settings: Settings, store: SettingsStore) {
     val context = LocalContext.current
     val clip = settings.clipboard
+    var confirm by remember { mutableStateOf(false) }
+    var cleared by remember { mutableStateOf(false) }
     Section(null) {
         SwitchRow(R.string.incognito_title, R.string.incognito_desc, settings.incognito) { on -> store.set { it.copy(incognito = on) } }
+        Inset {
+            Label(stringResource(R.string.learning_clear_title))
+            Note(stringResource(if (cleared) R.string.learning_cleared else R.string.learning_clear_desc))
+            OutlinedButton(onClick = { confirm = true }) { Text(stringResource(R.string.learning_clear)) }
+        }
+    }
+    if (confirm) {
+        AlertDialog(
+            onDismissRequest = { confirm = false },
+            title = { Text(stringResource(R.string.learning_clear_confirm_title)) },
+            text = { Text(stringResource(R.string.learning_clear_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirm = false
+                    LearningData.clear(context) { cleared = true }
+                }) { Text(stringResource(R.string.learning_clear)) }
+            },
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text(stringResource(R.string.learning_clear_cancel)) } },
+        )
     }
     Section(stringResource(R.string.clip_settings_section)) {
         SwitchRow(R.string.clip_settings_history, R.string.clip_settings_history_desc, clip.history) { on ->

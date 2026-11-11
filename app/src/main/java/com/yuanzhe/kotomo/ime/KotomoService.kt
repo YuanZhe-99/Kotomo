@@ -218,6 +218,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         } else {
             history = ClipboardHistory.get(this)
             clipboard.addPrimaryClipChangedListener(clipListener)
+            LearningData.attach(::clearLearning)
         }
         // Folding, unfolding and half-folding relayout at once; the composition stays as it is.
         lifecycleScope.launch {
@@ -265,6 +266,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         settingsWatch = watchSettings()
         history = ClipboardHistory.get(this)
         clipboard.addPrimaryClipChangedListener(clipListener)
+        LearningData.attach(::clearLearning)
         mode = settings.usable(memory()?.current?.lastMode ?: mode)
         emojiPanel = null
         quickPanel = null
@@ -273,6 +275,26 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             if (rimeReady) Rime.shutdown()
             rimeReady = false
             openRime()
+        }
+    }
+
+    /**
+     * Clears the learning data while the keyboard runs (Privacy → Clear learning data,
+     * [LearningData]): on the engine thread librime and Mozc close, their files go, and librime
+     * opens again on its deployed data (Mozc opens on the next Japanese key).
+     * Side effects: keeps the composition as typed; [done] runs on the main thread.
+     */
+    private fun clearLearning(done: () -> Unit) {
+        main.post { commitComposition() }
+        engine.post {
+            if (rimeReady) Rime.shutdown()
+            rimeReady = false
+            mozc?.close()
+            mozc = null
+            mozcTried = false
+            LearningData.deleteFiles(this)
+            openRime()
+            main.post(done)
         }
     }
 
@@ -885,6 +907,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        LearningData.attach(null)
         unregisterReceiver(deployDone)
         if (locked) unregisterReceiver(unlocked)
         clipboard.removePrimaryClipChangedListener(clipListener)
@@ -1321,7 +1344,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             assets.open(MOZC_DATA).use { input -> data.outputStream().use { input.copyTo(it) } }
             stamp.writeText(version)
         }
-        Mozc.open(data.path, File(dir, "profile").apply { mkdirs() }.path)
+        Mozc.open(data.path, File(filesDir, LearningData.MOZC_PROFILE).apply { mkdirs() }.path)
     }.getOrNull()
 
     /**

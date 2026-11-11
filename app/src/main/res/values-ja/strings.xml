@@ -198,6 +198,13 @@
     <string name="dictionaries_later">辞書の管理と読み込みは今後のバージョンで追加されます。Kotomo はアプリに組み込まれた辞書を使い、何もダウンロードしません。</string>
     <string name="incognito_title">シークレットモード</string>
     <string name="incognito_desc">学習せず、履歴もクリップボードも記録しません</string>
+    <string name="learning_clear_title">学習データ</string>
+    <string name="learning_clear_desc">Kotomo が入力から学習した単語と頻度、最近使った絵文字とよく使う絵文字、アプリごとに記憶したモードと字形です。</string>
+    <string name="learning_clear">学習データを消去</string>
+    <string name="learning_cleared">消去しました。入力に合わせて、また学習を始めます。</string>
+    <string name="learning_clear_confirm_title">学習データを消去しますか？</string>
+    <string name="learning_clear_confirm">学習した単語と頻度、絵文字の履歴、アプリごとに記憶したモードをこの端末から削除します。元に戻せません。設定、アプリに固定したモード、辞書、クリップボードの履歴は残ります。</string>
+    <string name="learning_clear_cancel">キャンセル</string>
     <string name="privacy_offline">オフラインでも入力できます。入力した内容がネットワークで送信されることはありません。</string>
     <string name="privacy_local">入力した内容はこの端末から出ません。分析、広告、クラッシュレポートの送信はありません。</string>
     <string name="privacy_sensitive">パスワード欄、学習しないよう求める入力欄、シークレットモードでは、Kotomo は何も学習せず、履歴も残しません。</string>
