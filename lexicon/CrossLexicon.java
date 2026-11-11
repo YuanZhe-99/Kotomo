@@ -88,9 +88,9 @@ public final class CrossLexicon {
                     new Remote(OPENCC_RAW + "JPShinjitaiPhrases.txt", "JPShinjitaiPhrases.txt", "799c9d69d78fcf96b35110693866bd34a070e4f50e6be55a4ecf8080cd2832d6"))),
             new Source("unihan", "18.0.0", "Unicode-3.0", "https://www.unicode.org/Public/18.0.0/ucd/", List.of(
                     new Remote("https://www.unicode.org/Public/18.0.0/ucd/Unihan.zip", "Unihan.zip", "4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e"))),
-            new Source("cc-cedict", "2026-11-10T08:36:22Z", "CC-BY-SA-4.0",
+            new Source("cc-cedict", "2026-11-11T02:50:39Z", "CC-BY-SA-4.0",
                     "https://www.mdbg.net/chinese/dictionary?page=cc-cedict", List.of(
-                    new Remote("https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip", "cedict_1_0_ts_utf-8_mdbg.zip", "2a55f22fd34e1767b6237a14cfcb29bf78e4fb252171dbc7a36b05417ad9f433"))),
+                    new Remote("https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip", "cedict_1_0_ts_utf-8_mdbg.zip", "67f7d4e9662a076e3a08f7898d7cdd6188e0db3a5ddd32dbed94ca05cc8be762"))),
             new Source("jmdict", "jmdict-simplified 3.6.2+20261109214828 (JMdict 2026-11-09)", "CC-BY-SA-4.0 (EDRDG licence)",
                     "https://github.com/scriptin/jmdict-simplified/releases/tag/3.6.2%2B20261109214828", List.of(
                     new Remote("https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20261109214828/jmdict-eng-3.6.2%2B20261109214828.json.zip",

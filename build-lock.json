@@ -147,9 +147,9 @@
       }
     },
     "cc-cedict": {
-      "version": "2026-11-10T08:36:22Z",
+      "version": "2026-11-11T02:50:39Z",
       "url": "https://www.mdbg.net/chinese/export/cedict/cedict_1_0_ts_utf-8_mdbg.zip",
-      "sha256": "2a55f22fd34e1767b6237a14cfcb29bf78e4fb252171dbc7a36b05417ad9f433"
+      "sha256": "67f7d4e9662a076e3a08f7898d7cdd6188e0db3a5ddd32dbed94ca05cc8be762"
     },
     "jmdict-eng": {
       "version": "jmdict-simplified 3.6.2+20261109214828 (JMdict 2026-11-09)",

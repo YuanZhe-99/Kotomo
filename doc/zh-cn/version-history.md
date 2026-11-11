@@ -14,3 +14,7 @@
 - 词库包的数据源于 2026-11-11 锁定在最新版本（`build-lock.json`；尚未生成、尚未分发）：rime-ice 2026.06.30、rime-frost 1.0.4、
   fcitx5-pinyin-zhwiki 0.3.1（20261018 的转储）、THUOCL `a30ce79d`、SudachiDict 20261015、mecab-ipadic-neologd 种子 20200910、
   mozcdic-ut 2026-11-03、SCOWLv2 rel-2026.02.25。
+- 2026-11-11 核对上游：CC-CEDICT 移到 2026-11-11T02:50:39Z 的文件（S5 样本 34/34，反例 0/8）。核对后未变：librime 1.17.0、
+  Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2、Gradle 9.9.1、Android Gradle Plugin 9.5.1、Kotlin 2.4.21、Compose BOM
+  2026.09.00、各 AndroidX 库、ML Kit GenAI 1.0.0-beta1、NDK r30、平台 37.2、构建工具 37.0.0、jmdict-simplified
+  3.6.2+20261109214828、Unicode 18.0、CLDR 49.0.0、各 rime 数据仓库与 Bazelisk 1.30.0。

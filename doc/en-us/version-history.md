@@ -18,3 +18,8 @@
   generated or shipped yet): rime-ice 2026.06.30, rime-frost 1.0.4, fcitx5-pinyin-zhwiki 0.3.1
   (dump 20261018), THUOCL `a30ce79d`, SudachiDict 20261015, mecab-ipadic-neologd seed 20200910,
   mozcdic-ut 2026-11-03, SCOWLv2 rel-2026.02.25.
+- Upstreams checked 2026-11-11: CC-CEDICT moved to the 2026-11-11T02:50:39Z file (S5 samples 34/34,
+  counter-examples 0/8). Checked, unchanged: librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2, HeliBoard
+  4.2, Gradle 9.9.1, Android Gradle Plugin 9.5.1, Kotlin 2.4.21, Compose BOM 2026.09.00, the AndroidX
+  libraries, ML Kit GenAI 1.0.0-beta1, NDK r30, platform 37.2, build tools 37.0.0, jmdict-simplified
+  3.6.2+20261109214828, Unicode 18.0, CLDR 49.0.0, the rime data repositories and Bazelisk 1.30.0.
