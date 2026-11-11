@@ -113,6 +113,52 @@ class FieldTypingTest {
     }
 
     /**
+     * PLAN §8.2, §5.6 (T03): the segment panel. `watashihanihonjin` converts as 私は + 日本人; the
+     * expand arrow opens the segments; Shorter splits 私は into 私 + は, Longer joins them again,
+     * Shorter once more and choosing 渡し for 私 keeps は and 日本人 (a chosen segment never rewrites
+     * the others); back on the keys Enter commits the conversion as shown.
+     */
+    @Test
+    fun japaneseSegmentPanelShortensLengthensAndCommits() {
+        inMode(Mode.JAPANESE) {
+            val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                "watashihanihonjin".forEach { device.findObject(By.desc(it.toString())).click() }
+                Thread.sleep(READ_MS * 3)
+                // The expand arrow is drawn at the candidate bar's end, right above the keys.
+                val res = instrumentation.targetContext.resources
+                val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+                    res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+                device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+                checkNotNull(device.wait(Until.findObject(By.text(WHOLE)), WAIT_MS)) { "the segment panel did not open" }
+                tap("私は")
+                tap(SHORTER)
+                checkNotNull(device.wait(Until.findObject(By.text("私")), WAIT_MS)) { "Shorter did not split 私は" }
+                tap(LONGER)
+                checkNotNull(device.wait(Until.findObject(By.text("私は")), WAIT_MS)) { "Longer did not join 私 and は again" }
+                tap(SHORTER)
+                checkNotNull(device.wait(Until.findObject(By.text("私")), WAIT_MS))
+                tap("渡し")
+                checkNotNull(device.wait(Until.findObject(By.text("渡し")), WAIT_MS))
+                assertTrue("は and 日本人 stay", device.hasObject(By.text("は")) && device.hasObject(By.text("日本人")))
+                device.findObject(By.desc(BACK)).click()
+                checkNotNull(device.wait(Until.findObject(By.descStartsWith(ENTER)), WAIT_MS)).click()
+                assertEquals("渡しは日本人", read(scenario))
+            }
+        }
+    }
+
+    /** Taps the first view whose text is [text] once it is there (Compose panel content). */
+    private fun tap(text: String) {
+        checkNotNull(device.wait(Until.findObject(By.text(text)), WAIT_MS)) { "no $text" }.click()
+        device.waitForIdle()
+        Thread.sleep(READ_MS)
+    }
+
+    /**
      * PLAN §8.10: one-handed mode on this screen and orientation, at the width kept for it, puts
      * the keys on the right side; back to full width they span the screen.
      */
@@ -264,6 +310,11 @@ class FieldTypingTest {
         const val ENTER = "Enter"
         /** The Emoji key's description starts with this (R.string.key_emoji, English). */
         const val EMOJI = "Emoji"
+        /** The segment panel's labels (R.string.segment_whole, segment_shorter, segment_longer, candidates_collapse; English). */
+        const val WHOLE = "Whole sentence"
+        const val SHORTER = "Shorter"
+        const val LONGER = "Longer"
+        const val BACK = "Back to the keyboard"
         /** The emoji panel's search tab (R.string.emoji_search, English). */
         const val SEARCH = "Search emoji"
         const val ATTEMPTS = 3
