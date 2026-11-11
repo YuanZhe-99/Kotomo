@@ -105,15 +105,21 @@ set(LATINIME_CORE_FILES
 )
 list(TRANSFORM LATINIME_CORE_FILES PREPEND ${LATINIME_SRC}/)
 
-add_library(kotomo_english SHARED ${LATINIME_CORE_FILES} jni/english_jni.cpp)
-target_include_directories(kotomo_english PRIVATE ${LATINIME_SRC})
+# The LatinIME core as a static library: the JNI library below links it, and so does the
+# coordinator's host prototype (core/mixed), which reads the same dictionary without JNI.
+add_library(kotomo_latinime STATIC ${LATINIME_CORE_FILES})
+target_include_directories(kotomo_latinime PUBLIC ${LATINIME_SRC})
 if(NOT ANDROID)
     find_package(JNI REQUIRED COMPONENTS JVM)
-    target_include_directories(kotomo_english PRIVATE ${JNI_INCLUDE_DIRS})
+    target_include_directories(kotomo_latinime PUBLIC ${JNI_INCLUDE_DIRS})
 endif()
-
+set_target_properties(kotomo_latinime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Upstream warnings stay off: the upstream code keeps its own style and is never edited.
-set_source_files_properties(${LATINIME_CORE_FILES} PROPERTIES COMPILE_OPTIONS "-w")
+target_compile_options(kotomo_latinime PRIVATE -w -fvisibility=hidden -fvisibility-inlines-hidden
+    -ffunction-sections -fdata-sections)
+
+add_library(kotomo_english SHARED jni/english_jni.cpp)
+target_link_libraries(kotomo_english PRIVATE kotomo_latinime)
 target_compile_options(kotomo_english PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden
     -ffunction-sections -fdata-sections)
 # Only the Java_com_yuanzhe_kotomo_engine_EnglishJni_* entry points are exported; 16 KB pages.

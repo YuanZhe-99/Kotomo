@@ -34,3 +34,17 @@ foreach(name snapshot lattice cross_lexicon propose_chinese propose_japanese
   target_link_libraries(kotomo_mixed_${name}_test PRIVATE kotomo_mixed)
   add_test(NAME kotomo_mixed_${name}_test COMMAND kotomo_mixed_${name}_test)
 endforeach()
+
+# The host engines and the corpus runner: librime and the LatinIME core linked in, Mozc through
+# the line service scripts/build-mozc.sh builds. Their own projects build the two libraries.
+set(KOTOMO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." CACHE PATH "Kotomo repository root")
+add_subdirectory(../rime rime EXCLUDE_FROM_ALL)
+add_subdirectory(../english english EXCLUDE_FROM_ALL)
+
+add_library(kotomo_mixed_host STATIC host/host_engines.cc host/mozc_client.cc)
+target_include_directories(kotomo_mixed_host PUBLIC host)
+target_link_libraries(kotomo_mixed_host PUBLIC kotomo_mixed
+                      PRIVATE kotomo_rime_bridge kotomo_latinime)
+
+add_executable(kotomo_mixed_corpus host/corpus_main.cc)
+target_link_libraries(kotomo_mixed_corpus PRIVATE kotomo_mixed_host)
