@@ -14,3 +14,7 @@
   1.17.0, Mozc 3.35.6354, OpenCC 1.4.2, HeliBoard 4.2, Kotlin 2.4.21, Compose BOM 2026.09.00, the
   AndroidX libraries, ML Kit GenAI 1.0.0-beta1, NDK r30, Unicode 18.0, CLDR 49.0.0, the rime data
   repositories and Bazelisk 1.30.0.
+- Dictionary-pack sources pinned 2026-11-11 at their latest releases (`build-lock.json`; nothing
+  generated or shipped yet): rime-ice 2026.06.30, rime-frost 1.0.4, fcitx5-pinyin-zhwiki 0.3.1
+  (dump 20261018), THUOCL `a30ce79d`, SudachiDict 20261015, mecab-ipadic-neologd seed 20200910,
+  mozcdic-ut 2026-11-03, SCOWLv2 rel-2026.02.25.

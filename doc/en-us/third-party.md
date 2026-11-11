@@ -46,7 +46,13 @@ modifications and obligations when P0 adds it; spike S8 completes the audit.
 
 | Component | License | Planned use | Notes |
 |---|---|---|---|
-| SudachiDict | Apache-2.0 | extra Japanese names, places, stations and loanwords | optional |
+| SudachiDict raw lexicon (`small_lex`, `core_lex`) | Apache-2.0; `small_lex` contains part of UniDic (BSD-3-Clause, see `LEGAL`) | Japanese dictionary packs (Q6); pinned 20261015 in `build-lock.json` | — |
+| rime-ice (`base`, `ext`, `8105`, `41448`, `en_ext`) and rime-frost (`base`, `ext`) | GPL-3.0 | Chinese dictionary packs; `en_ext` for technical English (Q6) | rime-ice `tencent.dict.yaml` is not used: its words come from the Tencent AI Lab Embedding vocabulary, whose license Tencent's own page does not state (one catalog lists CC BY 3.0) |
+| fcitx5-pinyin-zhwiki (`zhwiki`, `web-slang`) | Wikipedia titles CC BY-SA 4.0; converter Unlicense | Chinese proper-name and web-slang packs (Q6) | packs stay CC BY-SA 4.0 |
+| THUOCL (11 domain lists) | MIT; the README asks to cite "THUOCL: Tsinghua Open Chinese Lexicon" (2016) | Chinese domain packs (Q6) | carry the citation |
+| mecab-ipadic-neologd seed (20200910) | Apache-2.0, with the source acknowledgements in `COPYING` | Japanese new-word pack (Q6) | unmaintained since 2020 |
+| mozcdic-ut place names, personal names, jawiki | public domain (Japan Post ZIP code data); Apache-2.0; CC BY-SA 4.0 | Japanese place, name and Wikipedia packs (Q6) | the jawiki pack stays CC BY-SA 4.0 |
+| SCOWLv2 (en-wl/wordlist) | MIT-like (`Copyright`); lists above size 80 add the UKACD terms | English word pack, size 60 and below without vulgar or offensive words (Q6) | built with the bundled `scowl` script |
 | Noto Emoji | images Apache-2.0, font OFL-1.1, flags public domain | emoji style pack | — |
 | Twemoji (jdecked) | graphics CC BY 4.0, code MIT | emoji style pack | attribution in About |
 | ML Kit GenAI and translation | Google's ML Kit terms | on-device AI and translation | its data handling is checked in spike S8 and stated in the privacy policy |

@@ -40,7 +40,13 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 
 | 组件 | 许可证 | 计划用途 | 说明 |
 |---|---|---|---|
-| SudachiDict | Apache-2.0 | 补充日文人名、地名、车站名与外来语 | 可选 |
+| SudachiDict 原始词表（`small_lex`、`core_lex`） | Apache-2.0；`small_lex` 含 UniDic 的一部分（BSD-3-Clause，见 `LEGAL`） | 日文词库包（Q6）；`build-lock.json` 锁定 20261015 | — |
+| rime-ice（`base`、`ext`、`8105`、`41448`、`en_ext`）与 rime-frost（`base`、`ext`） | GPL-3.0 | 中文词库包；`en_ext` 用作技术英文（Q6） | 不用 rime-ice 的 `tencent.dict.yaml`：其词条来自腾讯 AI Lab 词向量的词表，腾讯自己的页面没有写明许可证（有一个目录标为 CC BY 3.0） |
+| fcitx5-pinyin-zhwiki（`zhwiki`、`web-slang`） | 维基百科标题 CC BY-SA 4.0；转换器 Unlicense | 中文专有名词与网络用语包（Q6） | 词库包保持 CC BY-SA 4.0 |
+| THUOCL（11 个领域词表） | MIT；README 要求引用"THUOCL：清华大学开放中文词库"（2016） | 中文领域词库包（Q6） | 附引用说明 |
+| mecab-ipadic-neologd 种子（20200910） | Apache-2.0，附 `COPYING` 中的来源致谢 | 日文新词包（Q6） | 2020 年起停更 |
+| mozcdic-ut 地名、人名、jawiki | 公有领域（日本邮政邮编数据）；Apache-2.0；CC BY-SA 4.0 | 日文地名、人名与维基百科包（Q6） | jawiki 包保持 CC BY-SA 4.0 |
+| SCOWLv2（en-wl/wordlist） | 类 MIT（`Copyright`）；大于 80 号的词表另附 UKACD 条款 | 英文词库包，60 号及以下、去掉粗俗与冒犯词（Q6） | 用自带的 `scowl` 脚本生成 |
 | Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |
 | Twemoji（jdecked） | 图形 CC BY 4.0，代码 MIT | Emoji 样式包 | 在"关于"中署名 |
 | ML Kit GenAI 与翻译 | Google 的 ML Kit 条款 | 设备端 AI 与翻译 | 其数据处理方式在技术验证 S8 中核实，并写入隐私政策 |
