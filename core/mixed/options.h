@@ -45,9 +45,15 @@ enum class Level : uint8_t { kConservative, kBalanced, kAggressive };
 /// Holds the coordinator's options; every cross-language conversion has its own switch.
 struct Options {
   Level level = Level::kBalanced;
-  bool pinyin_to_japanese = true;
-  bool english_to_japanese = true;
-  bool transliteration = true;
+  bool pinyin_to_japanese = true;   // a kanji word typed by its Chinese reading
+  bool english_to_kanji = true;     // an English word read as the Japanese word that means it
+  bool english_to_katakana = true;  // an English word read as its katakana loanword
+  bool transliteration = true;      // with english_to_katakana: made-up katakana spellings too
+  bool whole_sentence = true;       // false: a cross-language word only for the whole input
+  bool incognito = false;           // the field must leave no trace: Mozc converts incognito
+  // What each target language's candidates cost on top (the per-language weights of PLAN.md
+  // §2.3): 0 at the default weight, negative for a language the person wants more of.
+  int32_t bias[3] = {0, 0, 0};      // indexed by Lang
   size_t beam = 16;         // partial paths kept per position
   size_t paths = 8;         // whole paths finished per target language
   size_t cross_words = 3;   // cross-language words proposed per span and direction

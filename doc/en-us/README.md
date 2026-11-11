@@ -19,6 +19,7 @@ settings app; a C++ engine reached through JNI carries the mixed-input coordinat
 | [clipboard.md](clipboard.md) | The clipboard history: what is recorded, its encrypted file, verification codes, the quick-paste strip |
 | [dictionaries.md](dictionaries.md) | Dictionaries: sources and priority, readings, import and export, the versioned files, packs and the online catalog |
 | [engine-contract.md](engine-contract.md) | The engine ↔ app contract: one facade, one JNI crossing per key, the versioned snapshot, stale updates, how the coordinator reaches the engines |
+| [lexicon-format.md](lexicon-format.md) | The compiled cross-language lexicon: how it is built, its binary layout, how it is read and checked |
 | [third-party.md](third-party.md) | Reused code, data and assets, licenses and obligations; design acknowledgements |
 | [platform-notes.md](platform-notes.md) | What is implemented and verified on each device and Android version, gate status |
 | [development.md](development.md) | Environment, commands, the dev loop |

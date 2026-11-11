@@ -1,94 +1,132 @@
 #include "cross_lexicon.h"
 
-#include <algorithm>
-#include <charconv>
-#include <fstream>
-#include <iterator>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <cstring>
 
 namespace kotomo::mixed {
 namespace {
 
-/// The columns of both tables: key, syllables or class, surface, reading, lid, rid, cost, source.
-constexpr size_t kColumns = 8;
+constexpr size_t kHeaderSize = 32;
+constexpr size_t kKeySize = 8;     // u32 string offset, u32 first entry
+constexpr size_t kEntrySize = 12;  // u32 surface, u32 reading, u16 cost, u8 syllables, u8 class
 
-/// Reads a whole file. Returns: false when it cannot be opened.
-bool ReadFile(const std::string& path, std::string* text) {
-  std::ifstream in(path, std::ios::binary);
-  if (!in) return false;
-  text->assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-  return true;
+/// Reads a little-endian integer of 4 bytes.
+uint32_t U32(const uint8_t* p) {
+  return p[0] | (p[1] << 8) | (p[2] << 16) | (static_cast<uint32_t>(p[3]) << 24);
 }
 
-/// Orders entries by key, then cost; the surface breaks ties so the order is stable across runs.
-bool Less(const CrossEntry& a, const CrossEntry& b) {
-  if (a.key != b.key) return a.key < b.key;
-  if (a.cost != b.cost) return a.cost < b.cost;
-  return a.surface < b.surface;
-}
+/// Reads a little-endian integer of 2 bytes.
+uint32_t U16(const uint8_t* p) { return p[0] | (p[1] << 8); }
 
 }  // namespace
 
-bool CrossLexicon::Parse(std::string_view text, bool english, std::vector<CrossEntry>* out) {
-  size_t line_start = text.find('\n');  // the header line is skipped
-  if (line_start == std::string_view::npos) return false;
-  ++line_start;
-  while (line_start < text.size()) {
-    size_t line_end = text.find('\n', line_start);
-    if (line_end == std::string_view::npos) line_end = text.size();
-    const std::string_view line = text.substr(line_start, line_end - line_start);
-    line_start = line_end + 1;
-    if (line.empty()) continue;
-    std::string_view field[kColumns];
-    size_t at = 0;
-    for (size_t i = 0; i < kColumns; ++i) {
-      const size_t tab = i + 1 < kColumns ? line.find('\t', at) : line.size();
-      if (tab == std::string_view::npos) return false;
-      field[i] = line.substr(at, tab - at);
-      at = tab + 1;
-    }
-    CrossEntry entry{.key = field[0], .surface = field[2], .reading = field[3]};
-    const auto parsed =
-        std::from_chars(field[6].data(), field[6].data() + field[6].size(), entry.cost);
-    if (parsed.ec != std::errc() || parsed.ptr != field[6].data() + field[6].size() ||
-        entry.key.empty() || entry.surface.empty() || entry.reading.empty()) {
-      return false;
-    }
-    entry.transliteration = english && field[1] == "translit";
-    if (!english) {  // the second column spells the key's syllables, separated by spaces
-      entry.syllables = static_cast<uint8_t>(
-          std::min<size_t>(255, 1 + std::count(field[1].begin(), field[1].end(), ' ')));
-    }
-    longest_key_ = std::max(longest_key_, entry.key.size());
-    out->push_back(entry);
+CrossLexicon::~CrossLexicon() {
+  if (map_ != nullptr) munmap(map_, map_size_);
+}
+
+bool CrossLexicon::Open(const uint8_t* data, size_t size) {
+  if (size < kHeaderSize || std::memcmp(data, "KOLX", 4) != 0 || U32(data + 4) != kLexiconVersion) {
+    return false;
   }
-  if (!std::is_sorted(out->begin(), out->end(), Less)) std::sort(out->begin(), out->end(), Less);
+  pinyin_keys_ = U32(data + 8);
+  english_keys_ = U32(data + 12);
+  entries_ = U32(data + 16);
+  strings_size_ = U32(data + 20);
+  longest_key_ = U32(data + 24);
+  // Each key table ends with a sentinel that holds the end of its last key's entries.
+  const uint64_t keys_size = (uint64_t{pinyin_keys_} + english_keys_ + 2) * kKeySize;
+  const uint64_t records_size = uint64_t{entries_} * kEntrySize;
+  if (kHeaderSize + keys_size + records_size + strings_size_ != size) return false;
+  keys_ = data + kHeaderSize;
+  records_ = keys_ + keys_size;
+  strings_ = reinterpret_cast<const char*>(records_ + records_size);
   return true;
 }
 
-std::span<const CrossEntry> CrossLexicon::Find(const std::vector<CrossEntry>& table,
-                                               std::string_view key) {
-  const auto range = std::equal_range(
-      table.begin(), table.end(), CrossEntry{.key = key},
-      [](const CrossEntry& a, const CrossEntry& b) { return a.key < b.key; });
-  return {range.first, range.second};
+std::unique_ptr<CrossLexicon> CrossLexicon::Map(const std::string& path, uint64_t offset,
+                                                uint64_t length) {
+  const int fd = open(path.c_str(), O_RDONLY | O_CLOEXEC);
+  if (fd < 0) return nullptr;
+  struct stat info {};
+  std::unique_ptr<CrossLexicon> lexicon;
+  if (fstat(fd, &info) == 0 && offset <= static_cast<uint64_t>(info.st_size)) {
+    const uint64_t rest = static_cast<uint64_t>(info.st_size) - offset;
+    if (length == 0) length = rest;
+    // mmap wants a page-aligned file offset; an asset inside an APK starts anywhere.
+    const uint64_t page = static_cast<uint64_t>(sysconf(_SC_PAGESIZE));
+    const uint64_t lead = offset % page;
+    if (length <= rest && length >= kHeaderSize) {
+      void* map = mmap(nullptr, length + lead, PROT_READ, MAP_PRIVATE, fd,
+                       static_cast<off_t>(offset - lead));
+      if (map != MAP_FAILED) {
+        lexicon.reset(new CrossLexicon());
+        lexicon->map_ = map;
+        lexicon->map_size_ = length + lead;
+        if (!lexicon->Open(static_cast<const uint8_t*>(map) + lead, length)) lexicon.reset();
+      }
+    }
+  }
+  close(fd);
+  return lexicon;
 }
 
-std::unique_ptr<CrossLexicon> CrossLexicon::FromText(std::string pinyin_ja, std::string en_ja) {
+std::unique_ptr<CrossLexicon> CrossLexicon::FromBytes(std::string bytes) {
   std::unique_ptr<CrossLexicon> lexicon(new CrossLexicon());
-  lexicon->pinyin_text_ = std::move(pinyin_ja);
-  lexicon->english_text_ = std::move(en_ja);
-  if (!lexicon->Parse(lexicon->pinyin_text_, false, &lexicon->pinyin_) ||
-      !lexicon->Parse(lexicon->english_text_, true, &lexicon->english_)) {
+  lexicon->bytes_ = std::move(bytes);
+  if (!lexicon->Open(reinterpret_cast<const uint8_t*>(lexicon->bytes_.data()),
+                     lexicon->bytes_.size())) {
     return nullptr;
   }
   return lexicon;
 }
 
-std::unique_ptr<CrossLexicon> CrossLexicon::Load(const std::string& pinyin_ja,
-                                                 const std::string& en_ja) {
-  std::string pinyin_text, english_text;
-  if (!ReadFile(pinyin_ja, &pinyin_text) || !ReadFile(en_ja, &english_text)) return nullptr;
-  return FromText(std::move(pinyin_text), std::move(english_text));
+std::unique_ptr<CrossLexicon> CrossLexicon::Empty() {
+  return std::unique_ptr<CrossLexicon>(new CrossLexicon());
+}
+
+bool CrossLexicon::String(uint32_t offset, std::string_view* text) const {
+  if (offset >= strings_size_) return false;
+  const size_t size = static_cast<uint8_t>(strings_[offset]);
+  if (size > strings_size_ - offset - 1) return false;
+  *text = std::string_view(strings_ + offset + 1, size);
+  return true;
+}
+
+void CrossLexicon::Find(size_t first_key, size_t keys, std::string_view key,
+                        std::vector<CrossEntry>* out) const {
+  out->clear();
+  size_t low = 0, high = keys;
+  while (low < high) {
+    const size_t middle = low + (high - low) / 2;
+    const uint8_t* record = keys_ + (first_key + middle) * kKeySize;
+    std::string_view found;
+    if (!String(U32(record), &found)) return;
+    const int order = found.compare(key);
+    if (order < 0) {
+      low = middle + 1;
+    } else if (order > 0) {
+      high = middle;
+    } else {
+      const size_t begin = U32(record + 4), end = U32(record + kKeySize + 4);
+      if (begin > end || end > entries_) return;
+      for (size_t i = begin; i < end; ++i) {
+        const uint8_t* entry = records_ + i * kEntrySize;
+        CrossEntry e{.cost = static_cast<int32_t>(U16(entry + 8)), .syllables = entry[10]};
+        if (entry[11] > static_cast<uint8_t>(CrossClass::kTransliteration) ||
+            !String(U32(entry), &e.surface) || !String(U32(entry + 4), &e.reading)) {
+          out->clear();
+          return;
+        }
+        e.kind = static_cast<CrossClass>(entry[11]);
+        out->push_back(e);
+      }
+      return;
+    }
+  }
 }
 
 }  // namespace kotomo::mixed

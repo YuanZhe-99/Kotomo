@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "cross_lexicon.h"
+#include "cross_lexicon_build.h"
 #include "engines.h"
 
 namespace kotomo::mixed::test {
@@ -135,7 +136,8 @@ class FakeEngines : public Engines {
 
 /// Builds the tests' cross-language lexicon: three pinyin keys and three English keys.
 inline std::unique_ptr<CrossLexicon> FakeLexicon() {
-  return CrossLexicon::FromText(
+  std::string error;
+  return CrossLexicon::FromBytes(*CompileLexicon(
       "key\tsyllables\tsurface\treading\tlid\trid\tcost\tsource\n"
       "shu\tshu1\t書\tしょ\t1\t1\t4000\ttest\n"
       "tushuguan\ttu2 shu1 guan3\t図書館\tとしょかん\t1\t1\t3000\ttest\n"
@@ -145,7 +147,8 @@ inline std::unique_ptr<CrossLexicon> FakeLexicon() {
       "book\tsemantic\t本\tほん\t1\t1\t3000\ttest\n"
       "book\tgairaigo\tブック\tぶっく\t1\t1\t4200\ttest\n"
       "note\tgairaigo\tノート\tのーと\t1\t1\t3400\ttest\n"
-      "xq\ttranslit\tエックスキュー\tえっくすきゅー\t1\t1\t5000\ttest\n");
+      "xq\ttranslit\tエックスキュー\tえっくすきゅー\t1\t1\t5000\ttest\n",
+      &error));
 }
 
 }  // namespace kotomo::mixed::test

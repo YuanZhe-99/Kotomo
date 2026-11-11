@@ -53,7 +53,7 @@
 | `scripts/fetch-boost.sh` | 下载并校验 librime 需要的 Boost 头文件 | — |
 | `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换、固定片段与固定边界转换、预测，JNI，主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`kotomo_mozc_service.cc`（供 `core/mixed` 使用的主机行服务）、`tests/kotomo_mozc_test.cc` |
 | `core/mixed/` | 混合输入协调层（S6，目前只在主机上）：输入模型、候选网格及其提议者（拼音、假名与助词、英文、跨语言）、k-best 解码器、按目标语言收尾、引擎 ↔ 应用契约的快照；不链接任何引擎 | `coordinator.h`、`engines.h`、`snapshot.h`、`options.h`、`propose.h`、`decode.h`、`finish.h` |
-| `core/mixed/cross_lexicon.h` | 运行时的跨语言词库：生成器的两张表，按键二分查找 | `CrossLexicon::Load`、`PinyinJa`、`EnJa` |
+| `core/mixed/cross_lexicon.h`、`cross_lexicon_build.h`、`tools/compile_lexicon.cc` | 运行时的跨语言词库（[lexicon-format.md](../lexicon-format.md)）：编译后的文件只读映射、按键二分查找，每个偏移都检查；把生成器的两张表编译成它的主机编译器及其命令行工具 | `CrossLexicon::Map`、`PinyinJa`、`EnJa`、`CompileLexicon` |
 | `core/mixed/host/` | 开发主机上的协调层：`Engines` 背后的三个引擎（直接链接 librime 与 LatinIME 核心，Mozc 经行服务）与语料运行器 | `host_engines.h`、`mozc_client.h`、`corpus_main.cc` |
 | `core/mixed/tests/` | 协调层在假引擎上的单元测试，每个部分一个可执行文件，检查项以 `S6-…` 命名 | `fake_engines.h`、`coordinator_test.cc` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | `libkotomo_mozc.so` 的 Kotlin 外观：日文模式用 `sessionConvert` 转换、`predict` 预测、`pinnedConvert`（固定片段与固定边界）修改片段 | `sessionConvert`、`pinnedConvert`、`predict` |

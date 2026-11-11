@@ -20,7 +20,8 @@
 #   java -Xmx4g lexicon/CrossLexicon.java; CMake, Ninja, a C++ compiler and the Android SDK
 #   (ANDROID_HOME) for Gradle.
 # Side effects: builds the host librime and English libraries and the coordinator into
-#   build/host/; writes build/conversion/results.tsv, report.txt, mixed-results.tsv and
+#   build/host/; compiles the cross-language lexicon into build/lexicon/cross.klx; writes
+#   build/conversion/results.tsv, report.txt, mixed-results.tsv and
 #   mixed-report.txt, and with --update the baselines.
 # Exit status: 0 when no line regressed against either baseline and the host tests passed, non-zero
 #   otherwise.
@@ -62,6 +63,8 @@ cat build/conversion/report.txt
 cmake -S core/mixed -B build/host/mixed -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null 2>&1 || die "coordinator configure failed"
 cmake --build build/host/mixed >/dev/null || die "coordinator build failed"
 ctest --test-dir build/host/mixed --output-on-failure >/dev/null || die "coordinator unit tests failed (ctest --test-dir build/host/mixed)"
+build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexicon/en-ja.tsv build/lexicon/cross.klx >/dev/null \
+  || die "the cross-language lexicon did not compile"
 echo
 mixed_status=0
 build/host/mixed/kotomo_mixed_corpus "$PWD" --baseline tests/conversion/baseline-mixed.tsv || mixed_status=$?

@@ -165,11 +165,10 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "mixed corpus: %s\n", error.c_str());
     return 2;
   }
-  const auto lexicon = CrossLexicon::Load((build / "lexicon/pinyin-ja.tsv").string(),
-                                          (build / "lexicon/en-ja.tsv").string());
+  const auto lexicon = CrossLexicon::Map((build / "lexicon/cross.klx").string());
   if (!lexicon) {
-    std::fprintf(stderr, "mixed corpus: no cross-language lexicon in build/lexicon "
-                         "(run java -Xmx4g lexicon/CrossLexicon.java)\n");
+    std::fprintf(stderr, "mixed corpus: no compiled cross-language lexicon in build/lexicon "
+                         "(run java -Xmx4g lexicon/CrossLexicon.java, then kotomo_lexicon_compile)\n");
     return 2;
   }
   Coordinator coordinator(*engines, *lexicon);
