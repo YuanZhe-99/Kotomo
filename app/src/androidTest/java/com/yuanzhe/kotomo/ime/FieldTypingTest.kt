@@ -52,7 +52,9 @@ class FieldTypingTest {
     /** T12 positive: a field asking for no personalized learning still converts Chinese. */
     @Test
     fun noLearningFieldStillConvertsPinyin() {
-        inMode(Mode.CHINESE) {
+        // Such a field reads nothing remembered per app, not even a fixed mode, so Chinese mode
+        // comes from the default mode here.
+        withSettings({ it.copy(defaultMode = Mode.CHINESE) }) {
             val text = typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING, "nihao", expected = "你好")
             assertEquals("你好", text)
         }
