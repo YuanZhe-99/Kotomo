@@ -44,7 +44,7 @@ add_subdirectory(../english english EXCLUDE_FROM_ALL)
 add_library(kotomo_mixed_host STATIC host/host_engines.cc host/mozc_client.cc)
 target_include_directories(kotomo_mixed_host PUBLIC host)
 target_link_libraries(kotomo_mixed_host PUBLIC kotomo_mixed
-                      PRIVATE kotomo_rime_bridge kotomo_latinime)
+                      PRIVATE kotomo_rime_bridge kotomo_english_api)
 
 add_executable(kotomo_mixed_corpus host/corpus_main.cc)
 target_link_libraries(kotomo_mixed_corpus PRIVATE kotomo_mixed_host)

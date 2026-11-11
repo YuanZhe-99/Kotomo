@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "defines.h"
+#include "english_api.h"
+#include "english_engine.h"
 #include "dictionary/property/ngram_context.h"
 #include "dictionary/structure/dictionary_structure_with_buffer_policy_factory.h"
 #include "suggest/core/dictionary/dictionary.h"
@@ -27,6 +29,7 @@
 
 namespace {
 
+using kotomo::english::Engine;
 using latinime::DicTraverseSession;
 using latinime::Dictionary;
 using latinime::DictionaryStructureWithBufferPolicyFactory;
@@ -46,15 +49,6 @@ constexpr int KEYBOARD_HEIGHT = 4 * KEY_HEIGHT;
 constexpr int GRID_WIDTH = 32;
 constexpr int GRID_HEIGHT = 16;
 constexpr float SEARCH_DISTANCE = 1.2f;
-
-/// Holds one opened dictionary with the session and key geometry its suggestions use.
-struct Engine {
-    std::unique_ptr<Dictionary> dictionary;
-    std::unique_ptr<ProximityInfo> proximity;
-    DicTraverseSession *session = nullptr;
-
-    ~Engine() { DicTraverseSession::releaseSessionInstance(session); }
-};
 
 /// Describes one key of the built-in layout as a rectangle and the code point it types.
 struct Key {
@@ -311,6 +305,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_yuanzhe_kotomo_engine_EnglishJni_suggest
     env->SetIntArrayRegion(outScores, 0, static_cast<jsize>(sortedScores.size()),
             sortedScores.data());
     return words;
+}
+
+/// Returns the address of the coordinator's function table (english_api.h) as a long.
+JNIEXPORT jlong JNICALL Java_com_yuanzhe_kotomo_engine_EnglishJni_api(JNIEnv *, jclass) {
+    return reinterpret_cast<jlong>(KotomoEnglishGetApi());
 }
 
 /// Closes an engine handle from open.

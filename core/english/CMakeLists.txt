@@ -118,8 +118,17 @@ set_target_properties(kotomo_latinime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_options(kotomo_latinime PRIVATE -w -fvisibility=hidden -fvisibility-inlines-hidden
     -ffunction-sections -fdata-sections)
 
+# The coordinator's exact lookup (jni/english_api.h): part of the JNI library, and linked by the
+# coordinator's host tests (core/mixed), which open the dictionary without a JVM.
+add_library(kotomo_english_api STATIC jni/english_api.cc)
+target_include_directories(kotomo_english_api PUBLIC jni)
+target_link_libraries(kotomo_english_api PUBLIC kotomo_latinime)
+set_target_properties(kotomo_english_api PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_options(kotomo_english_api PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden
+    -ffunction-sections -fdata-sections)
+
 add_library(kotomo_english SHARED jni/english_jni.cpp)
-target_link_libraries(kotomo_english PRIVATE kotomo_latinime)
+target_link_libraries(kotomo_english PRIVATE kotomo_english_api)
 target_compile_options(kotomo_english PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden
     -ffunction-sections -fdata-sections)
 # Only the Java_com_yuanzhe_kotomo_engine_EnglishJni_* entry points are exported; 16 KB pages.

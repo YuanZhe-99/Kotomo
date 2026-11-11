@@ -36,6 +36,12 @@ class English private constructor(private var handle: Long) : AutoCloseable {
     }
 
     /**
+     * The engine's native handle, for [Core]: the mixed-input coordinator looks words up in this
+     * dictionary through [api]. Notes: valid until [close]; close the coordinator first.
+     */
+    internal val nativeHandle: Long get() = handle
+
+    /**
      * Releases the native dictionary and session.
      * Side effects: unmaps the dictionary; later calls to [suggestions] throw.
      */
@@ -90,6 +96,12 @@ class English private constructor(private var handle: Long) : AutoCloseable {
         }
 
         /**
+         * Returns the address of the library's function table for the mixed-input coordinator
+         * (`core/english/jni/english_api.h`). Notes: valid for the life of the process.
+         */
+        internal fun api(): Long = EnglishJni.api()
+
+        /**
          * Opens the dictionary stored in [path] from byte [offset] for [length] bytes (the rest
          * of the file when negative), so an uncompressed APK asset can be read in place.
          * Returns: the engine, or null when the file is missing or is not a LatinIME dictionary.
@@ -122,6 +134,9 @@ private object EnglishJni {
         previous: String?,
         outScores: IntArray,
     ): Array<String>?
+
+    /** Returns the address of the coordinator's function table. */
+    @JvmStatic external fun api(): Long
 
     /** Frees a native handle from [open]. */
     @JvmStatic external fun close(handle: Long)

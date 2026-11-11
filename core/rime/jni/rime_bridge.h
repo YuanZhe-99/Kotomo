@@ -27,7 +27,9 @@ struct Candidate {
 ///   user_data_dir is writable and receives the deployed build/, the user dictionary and user.yaml.
 /// Returns: true when a session is open. Before the first deploy() of a fresh user directory there
 ///   is nothing to load, so this may return false; call deploy() and the session opens then.
-/// Side effects: calling it again shuts the previous instance down first.
+/// Side effects: calling it again shuts the previous instance down first; with the session it
+///   maps the schema's spelling table (rime_spellings.h) from the user directory's build/, or
+///   from the shared one when the user directory has none.
 /// Notes: engine thread only; librime is compiled without logging, so nothing typed reaches a log.
 bool Initialize(const std::string& shared_data_dir, const std::string& user_data_dir);
 

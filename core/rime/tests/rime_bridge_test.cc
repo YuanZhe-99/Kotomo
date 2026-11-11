@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "kotomo_rime_api.h"
 #include "rime_bridge.h"
 #include "rime_spellings.h"
 
@@ -78,6 +79,43 @@ int main(int argc, char** argv) {
                                          std::to_string(static_cast<int>(MillisSince(start))) +
                                          " ms");
   Check(rb::SetLearning(true), "S2-schema", "luna_pinyin_simp selected");
+
+  // Q7: the function table the coordinator's library receives (kotomo_rime_api.h). The session mapped
+  // the deployed spelling table by itself.
+  {
+    const KotomoRimeApi* table = KotomoRimeGetApi();
+    Check(table->version == KOTOMO_RIME_API_VERSION, "Q7-rime-api-version", "table version");
+    KotomoRimeSpelling spelled[8];
+    const size_t n = table->spellings("xian", 4, spelled, 8);
+    bool xi = false, xian = false;
+    for (size_t i = 0; i < n; ++i) {
+      xi |= spelled[i].length == 2 && spelled[i].fuzzy == 0;
+      xian |= spelled[i].length == 4 && spelled[i].fuzzy == 0;
+    }
+    Check(xi && xian, "Q7-rime-api-spellings", "xian starts with xi and xian, through the table");
+    Check(table->spellings("xian", 4, spelled, 1) == 1, "Q7-rime-api-capacity",
+          "no more spellings than the caller has room for");
+    Check(table->spellings("kq", 2, spelled, 8) == 0, "Q7-rime-api-no-spelling",
+          "kq spells nothing");
+    struct Words {
+      std::vector<std::string> texts;
+      std::vector<int> composed;
+    } words;
+    const KotomoRimeWordSink sink = [](void* context, const char* text, size_t size, int composed) {
+      auto* out = static_cast<Words*>(context);
+      out->texts.emplace_back(text, size);
+      out->composed.push_back(composed);
+    };
+    table->convert("ni'hao", 6, 3, &words, sink);
+    Check(!words.texts.empty() && words.texts[0] == "你好" && words.composed[0] == 0 &&
+              words.texts.size() <= 3,
+          "Q7-rime-api-convert", "ni'hao -> 你好 first, a dictionary entry, at most 3");
+    Check(rb::Composition().empty(), "Q7-rime-api-convert-clears",
+          "the session's composition is empty after a conversion");
+    words = {};
+    table->convert("kq", 2, 3, &words, sink);
+    Check(words.texts.empty(), "Q7-rime-api-convert-none", "kq converts to nothing");
+  }
 
   // S6: the coordinator reads syllables from the deployed schema's spelling table.
   {

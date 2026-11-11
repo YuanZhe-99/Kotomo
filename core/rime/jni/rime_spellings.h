@@ -19,7 +19,7 @@ struct SpellingMatch {
   bool fuzzy = false;      // no exact spelling: a fuzzy rule or a correction derived it
 };
 
-/// Maps a prism file read-only.
+/// Maps a prism file read-only; the bridge calls it whenever it opens a session.
 /// Inputs: `prism_file` is `<data dir>/build/<schema>.prism.bin` of a deployed or prebuilt schema.
 /// Returns: false when the file is missing or is not a prism.
 /// Side effects: replaces the prism opened before.

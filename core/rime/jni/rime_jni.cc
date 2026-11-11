@@ -8,6 +8,7 @@
 #include <string>
 
 
+#include "kotomo_rime_api.h"
 #include "rime_bridge.h"
 #include "utf.h"
 
@@ -133,6 +134,11 @@ JNIEXPORT void JNICALL Java_com_yuanzhe_kotomo_engine_Rime_setOption(JNIEnv* env
 JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_setLearning(JNIEnv*, jobject,
                                                                             jboolean enabled) {
   return rb::SetLearning(enabled == JNI_TRUE);
+}
+
+/// Returns the address of the coordinator's function table (kotomo_rime_api.h) as a long.
+JNIEXPORT jlong JNICALL Java_com_yuanzhe_kotomo_engine_Rime_api(JNIEnv*, jobject) {
+  return reinterpret_cast<jlong>(KotomoRimeGetApi());
 }
 
 /// Stops librime; see rime_bridge::Shutdown.

@@ -2,6 +2,8 @@
 
 #include "rime_bridge.h"
 
+#include "rime_spellings.h"
+
 #include <rime_api.h>
 #include <rime/candidate.h>
 #include <rime/composition.h>
@@ -42,11 +44,20 @@ bool ApplyLearning() {
          api->select_schema(session, learning ? kSchema : kPrivateSchema);
 }
 
+/// Maps the spelling table of the schema the session runs: the deployed one in the user
+/// directory when there is one (fuzzy-pinyin rules live there), else the prebuilt one.
+/// Notes: both schemas (learning and private) share this table.
+void OpenSchemaSpellings() {
+  const std::string file = std::string("/build/") + kSchema + ".prism.bin";
+  if (!OpenSpellings(user_dir + file) && !OpenSpellings(shared_dir + file)) CloseSpellings();
+}
+
 /// Opens the session and applies the learning choice.
 bool OpenSession() {
   session = api->create_session();
   if (session == 0) return false;
   ApplyLearning();
+  OpenSchemaSpellings();
   return true;
 }
 
@@ -54,6 +65,7 @@ bool OpenSession() {
 void CloseSession() {
   if (session != 0) api->destroy_session(session);
   session = 0;
+  CloseSpellings();
 }
 
 }  // namespace

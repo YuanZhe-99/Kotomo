@@ -111,6 +111,13 @@ object Rime {
      */
     external fun setLearning(enabled: Boolean): Boolean
 
+    /**
+     * Returns the address of the library's function table for the mixed-input coordinator
+     * (`core/rime/jni/kotomo_rime_api.h`); [Core] hands it to its own library, which then calls
+     * librime without another JNI crossing. Notes: valid for the life of the process.
+     */
+    external fun api(): Long
+
     /** Closes the session and stops librime, flushing the user dictionary. */
     external fun shutdown()
 }

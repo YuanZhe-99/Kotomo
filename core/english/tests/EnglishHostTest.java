@@ -52,6 +52,10 @@ public final class EnglishHostTest {
         check("S4-too-long", EnglishJni.suggest(handle, "a".repeat(49), null, null, null,
                 new int[18]) == null, "49 code points rejected");
 
+        // Q7: the coordinator's function table is handed over as an address; its lookup is tested
+        // through the coordinator (core/mixed) and the conversion corpus.
+        check("Q7-english-api", EnglishJni.api() != 0, "the function table has an address");
+
         timing(handle);
         EnglishJni.close(handle);
         System.out.println(failures == 0 ? "english host test: PASS" : "english host test: FAIL");
@@ -135,6 +139,8 @@ final class EnglishJni {
 
     static native String[] suggest(long handle, String typed, int[] xs, int[] ys, String previous,
             int[] outScores);
+
+    static native long api();
 
     static native void close(long handle);
 }
