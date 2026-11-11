@@ -722,14 +722,19 @@ private fun RadioRow(@StringRes title: Int, @StringRes desc: Int, selected: Bool
     }
 }
 
-/** Draws a single-choice segmented control over [labels]. */
+/**
+ * Draws a single-choice segmented control over [labels].
+ * Notes: four or more choices use the smaller label style, so a word such as "Traditional" fits
+ * its segment instead of breaking inside the word.
+ */
 @Composable
 internal fun Choice(labels: List<String>, selected: Int, select: (Int) -> Unit) {
+    val style = if (labels.size > 3) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         labels.forEachIndexed { i, label ->
             SegmentedButton(
                 selected = i == selected, onClick = { select(i) },
-                shape = SegmentedButtonDefaults.itemShape(i, labels.size), label = { Text(label, maxLines = 2) },
+                shape = SegmentedButtonDefaults.itemShape(i, labels.size), label = { Text(label, maxLines = 2, style = style) },
             )
         }
     }
