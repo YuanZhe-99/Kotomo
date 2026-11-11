@@ -34,6 +34,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | rules_android_ndk 获取 NDK 时会运行 NDK 的 clang，而 NDK 只有 x86_64 Linux 与 macOS 的主机工具；只要有 NDK，aarch64 Linux 上连主机构建也会失败 | Android 库在 x86_64 Linux 上构建；2026-11-10 的本地构建（Debian 13）逐字节复现了已删除的 CI 运行的哈希 | 已构建 |
 | Bazel 在每个服务进程中只对 NDK 模块扩展（rules_android_ndk）求值一次：同一服务进程里先做主机构建、再获取 NDK 时，Android 构建找不到 C++ 工具链（"No matching toolchains found"） | `scripts/build-mozc.sh` 在第一条 Bazel 命令之前获取 NDK | 已构建 |
 | `converter::Converter::ApplyConversion` 是公开接口；手工构造的含 `FIXED_VALUE` 片段的分段会保留固定的值，其余部分由 Mozc 分段并转换 | PLAN §5.4 的固定片段转换在转换器层可行，不需要退路：固定池袋 + `にかいにいこう` → 池袋に買いに行こう | 主机测试 |
+| `FIXED_BOUNDARY` 片段经过 `ApplyConversion` 后仍是一段；预测（`StartPrediction`、`PREDICTION`）只有在移动端请求（`mixed_conversion`）下才补全读音，没有 composer 的平假名键还需要 `use_already_typing_corrected_key` | 片段的缩短与延长固定边界；`Predict` 两者都设置（ありがと → ありがとう，主机上 0.4 ms） | 主机测试 |
 | `DictionaryInterface::LookupExact` 返回带 lid 与 rid 的词条（池袋/いけぶくろ：1924/1924）；拼音拼写没有词条 | 固定片段取同一词条的 ID；未知词使用普通名词 | 主机测试 |
 | `//converter`、`//session:session_handler` 与 `//dictionary:dictionary_interface` 只对 Mozc 自身可见 | Kotomo 的胶水层用 `--nocheck_visibility` 构建，而不是打补丁 | 已构建 |
 | 只有提交转换时才学习；`Config.incognito_mode` 与 `Request.is_incognito_mode` 关闭一切可变操作 | 胶水层从不提交，并在敏感输入框中同时设置两者 | 已阅读，主机测试 |

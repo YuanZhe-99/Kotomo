@@ -145,18 +145,23 @@ Java_com_yuanzhe_kotomo_engine_Mozc_nativeSessionConvert(JNIEnv* env, jclass,
 }
 
 /// Converts a reading with pinned spans (MozcEngine::PinnedConvert).
-/// Inputs: parallel arrays; an empty surface leaves its span to Mozc.
+/// Inputs: parallel arrays; an empty surface leaves its span to Mozc, and a
+/// true `fixed` keeps such a span one segment.
 JNIEXPORT jobjectArray JNICALL
 Java_com_yuanzhe_kotomo_engine_Mozc_nativePinnedConvert(
     JNIEnv* env, jclass, jlong handle, jobjectArray readings,
-    jobjectArray surfaces, jboolean incognito) {
-  if (handle == 0 || readings == nullptr || surfaces == nullptr) {
+    jobjectArray surfaces, jbooleanArray fixed, jboolean incognito) {
+  if (handle == 0 || readings == nullptr || surfaces == nullptr ||
+      fixed == nullptr) {
     return nullptr;
   }
   const jsize count = env->GetArrayLength(readings);
-  if (count != env->GetArrayLength(surfaces)) {
+  if (count != env->GetArrayLength(surfaces) ||
+      count != env->GetArrayLength(fixed)) {
     return nullptr;
   }
+  std::vector<jboolean> fixed_flags(static_cast<size_t>(count));
+  env->GetBooleanArrayRegion(fixed, 0, count, fixed_flags.data());
   std::vector<kotomo::mozc::Span> spans;
   spans.reserve(static_cast<size_t>(count));
   for (jsize i = 0; i < count; ++i) {
@@ -172,10 +177,41 @@ Java_com_yuanzhe_kotomo_engine_Mozc_nativePinnedConvert(
       return nullptr;
     }
     spans.push_back({.reading = *std::move(reading),
-                     .surface = *std::move(surface)});
+                     .surface = *std::move(surface),
+                     .fixed = fixed_flags[static_cast<size_t>(i)] == JNI_TRUE});
   }
   return kotomo::mozc::Flatten(
       env, FromHandle(handle)->PinnedConvert(spans, incognito == JNI_TRUE));
+}
+
+/// Predicts from a hiragana reading (MozcEngine::Predict).
+/// Returns: value, reading, value, reading, …; empty when nothing is predicted,
+/// null for a closed handle or an invalid string.
+JNIEXPORT jobjectArray JNICALL
+Java_com_yuanzhe_kotomo_engine_Mozc_nativePredict(JNIEnv* env, jclass,
+                                                  jlong handle, jstring reading,
+                                                  jboolean incognito) {
+  const auto text = kotomo::mozc::ToUtf8(env, reading);
+  if (handle == 0 || !text) {
+    return nullptr;
+  }
+  const auto candidates =
+      FromHandle(handle)->Predict(*text, incognito == JNI_TRUE);
+  jclass string_class = env->FindClass("java/lang/String");
+  jobjectArray array = env->NewObjectArray(
+      static_cast<jsize>(candidates.size() * 2), string_class, nullptr);
+  if (array == nullptr) {
+    return nullptr;  // OutOfMemoryError is pending
+  }
+  jsize i = 0;
+  for (const auto& candidate : candidates) {
+    for (const std::string* field : {&candidate.value, &candidate.key}) {
+      jstring value = kotomo::mozc::ToJava(env, *field);
+      env->SetObjectArrayElement(array, i++, value);
+      env->DeleteLocalRef(value);
+    }
+  }
+  return array;
 }
 
 }  // extern "C"

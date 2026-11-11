@@ -137,6 +137,53 @@ TEST_F(MozcEngineTest, UnknownPinnedSurfaceStaysPinned) {
   EXPECT_NE(conversion->Sentence().find("イケブクロ"), std::string::npos);
 }
 
+// PLAN §8.2 segment editing: a fixed boundary keeps its span one segment, and
+// Mozc converts the rest around it.
+TEST_F(MozcEngineTest, FixedBoundaryStaysOneSegment) {
+  const auto free = engine_->PinnedConvert({{.reading = "わたしはにほんじん"}},
+                                           /*incognito=*/true);
+  ASSERT_TRUE(free);
+  const auto fixed = Timed("fixed わたし + はにほんじん", [] {
+    return engine_->PinnedConvert(
+        {{.reading = "わたし", .fixed = true}, {.reading = "はにほんじん"}},
+        /*incognito=*/true);
+  });
+  ASSERT_TRUE(fixed);
+  ASSERT_GE(fixed->segments.size(), 2u);
+  EXPECT_EQ(fixed->segments.front().key, "わたし");
+  EXPECT_FALSE(fixed->segments.front().pinned);
+  EXPECT_EQ(fixed->Sentence(), "私は日本人");
+}
+
+// Negative: without a fixed boundary Mozc chooses its own first segment.
+TEST_F(MozcEngineTest, FreeSpanIsSegmentedByMozc) {
+  const auto free = engine_->PinnedConvert({{.reading = "わたしはにほんじん"}},
+                                           /*incognito=*/true);
+  ASSERT_TRUE(free);
+  EXPECT_GE(free->segments.size(), 2u);
+  EXPECT_NE(free->segments.front().key, "わたしはにほんじん");
+}
+
+// PLAN §8.2 prediction: a reading's prefix predicts the whole word.
+TEST_F(MozcEngineTest, PredictsFromAPrefix) {
+  std::vector<Candidate> predicted;
+  const auto start = std::chrono::steady_clock::now();
+  predicted = engine_->Predict("ありがと", /*incognito=*/true);
+  const std::chrono::duration<double, std::milli> elapsed =
+      std::chrono::steady_clock::now() - start;
+  std::printf("[predict ありがと] %.2f ms:", elapsed.count());
+  for (const Candidate& c : predicted) std::printf(" %s", c.value.c_str());
+  std::printf("\n");
+  bool found = false;
+  for (const Candidate& c : predicted) found = found || c.value == "ありがとう";
+  EXPECT_TRUE(found);
+}
+
+// Negative: nothing typed predicts nothing.
+TEST_F(MozcEngineTest, PredictsNothingFromNothing) {
+  EXPECT_TRUE(engine_->Predict("", /*incognito=*/true).empty());
+}
+
 // Negative: a span without a reading is rejected rather than converted.
 TEST_F(MozcEngineTest, RejectsEmptySpan) {
   EXPECT_FALSE(engine_->PinnedConvert({{.reading = "", .surface = "池袋"}},

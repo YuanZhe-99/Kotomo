@@ -16,8 +16,11 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
     /** Holds one segment (bunsetsu) with its candidates, best first; `pinned` marks a caller's span. */
     data class Segment(val reading: String, val pinned: Boolean, val candidates: List<Candidate>)
 
-    /** Describes one span of a reading; a non-null [surface] pins the span to it. */
-    data class Span(val reading: String, val surface: String? = null)
+    /**
+     * Describes one span of a reading: a non-null [surface] pins the span to it; otherwise a true
+     * [fixed] keeps the span one segment (bunsetsu shrinking and extending) and Mozc converts it.
+     */
+    data class Span(val reading: String, val surface: String? = null, val fixed: Boolean = false)
 
     /** Returns the version of the loaded Mozc data set. */
     val dataVersion: String
@@ -43,8 +46,19 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
             checkOpen(),
             Array(spans.size) { spans[it].reading },
             Array(spans.size) { spans[it].surface.orEmpty() },
+            BooleanArray(spans.size) { spans[it].fixed },
             incognito,
         )?.let(::decode)
+
+    /**
+     * Predicts words and phrases that start with a hiragana [reading].
+     * Returns: candidates best first with the reading each covers; empty when there is none.
+     * Notes: nothing is learned.
+     */
+    fun predict(reading: String, incognito: Boolean): List<Candidate> {
+        val flat = nativePredict(checkOpen(), reading, incognito) ?: return emptyList()
+        return List(flat.size / 2) { Candidate(flat[2 * it], flat[2 * it + 1]) }
+    }
 
     /** Releases the native engine; later calls fail. Side effects: frees Mozc's memory. */
     override fun close() {
@@ -101,7 +115,11 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
             handle: Long,
             readings: Array<String>,
             surfaces: Array<String>,
+            fixed: BooleanArray,
             incognito: Boolean,
         ): Array<String>?
+
+        @JvmStatic
+        private external fun nativePredict(handle: Long, reading: String, incognito: Boolean): Array<String>?
     }
 }

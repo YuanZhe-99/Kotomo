@@ -59,7 +59,8 @@ coordinator to come) is reachable only from inside its workspace.
 **Amended 2026-11-10.** The Android libraries were first built by GitHub Actions and pinned by
 hash, because the development host was Windows on ARM64 and the NDK has no aarch64 Linux host
 tools. That repository was deleted; the development host is now x86_64 Linux, and the libraries
-are built there. The first local build matched the pinned hashes byte for byte.
+are built there. The first local build matched the pinned hashes byte for byte; the hashes
+move with every change to the glue (prediction and fixed boundaries were added the same day).
 
 **Reopens when.** Mozc gains a supported way to embed its converter, or the build cost becomes a
 problem for releases.

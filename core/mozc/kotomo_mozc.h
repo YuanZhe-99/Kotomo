@@ -48,6 +48,7 @@ struct Conversion {
 struct Span {
   std::string reading;  // hiragana
   std::string surface;  // empty: Mozc converts the span; otherwise pinned
+  bool fixed = false;   // with an empty surface: the span stays one segment
 };
 
 /// Holds the part-of-speech ids for a pinned surface.
@@ -94,15 +95,26 @@ class MozcEngine {
 
   /// Converts a hiragana reading in which some spans are pinned to a surface.
   /// Pinned spans enter Mozc's converter as FIXED_VALUE segments with the
-  /// lid/rid of the same entry in Mozc's dictionary (PLAN.md §5.4); Mozc
-  /// segments and converts the free spans around them with its dictionary,
-  /// connection costs and conjugation rules.
+  /// lid/rid of the same entry in Mozc's dictionary (PLAN.md §5.4); a `fixed`
+  /// span without a surface enters as FIXED_BOUNDARY and stays one segment
+  /// (shrinking or extending a bunsetsu); Mozc segments and converts the free
+  /// spans around them with its dictionary, connection costs and conjugation
+  /// rules.
   /// Inputs: `spans` in reading order, at least one, none with an empty reading.
   /// Returns: segments with candidates for every segment; nullopt when the
   /// spans are invalid or Mozc returns no segments.
   std::optional<Conversion> PinnedConvert(const std::vector<Span>& spans,
                                           bool incognito,
                                           size_t max_candidates = 10) const;
+
+  /// Predicts words and phrases that start with a hiragana reading (Mozc's
+  /// dictionary and its realtime conversion), for the candidate bar while typing.
+  /// Inputs: `reading` in hiragana; `max_candidates` caps the list.
+  /// Returns: candidates best first, each with the reading it covers; empty for
+  /// an empty reading or when Mozc predicts nothing.
+  /// Side effects: none; nothing is learned.
+  std::vector<Candidate> Predict(std::string_view reading, bool incognito,
+                                 size_t max_candidates = 10) const;
 
   /// Looks up the part-of-speech ids of `surface` read as `reading` in Mozc's
   /// dictionary, preferring the lowest-cost entry.

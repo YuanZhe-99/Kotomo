@@ -216,7 +216,8 @@ std::optional<Conversion> MozcEngine::PinnedConvert(
     ::mozc::Segment* segment = segments.add_segment();
     segment->set_key(span.reading);
     if (span.surface.empty()) {
-      segment->set_segment_type(::mozc::Segment::FREE);
+      segment->set_segment_type(span.fixed ? ::mozc::Segment::FIXED_BOUNDARY
+                                           : ::mozc::Segment::FREE);
       continue;
     }
     // ImmutableConverter::Resegment inserts candidate 0 of a FIXED_VALUE
@@ -255,6 +256,49 @@ std::optional<Conversion> MozcEngine::PinnedConvert(
     return std::nullopt;
   }
   return ToConversion(segments, max_candidates);
+}
+
+std::vector<Candidate> MozcEngine::Predict(std::string_view reading,
+                                           bool incognito,
+                                           size_t max_candidates) const {
+  std::vector<Candidate> out;
+  const auto converter =
+      std::dynamic_pointer_cast<const ::mozc::converter::Converter>(
+          engine_->GetConverter());
+  if (reading.empty() || !converter) {
+    return out;
+  }
+  ::mozc::config::Config config = ::mozc::config::ConfigHandler::DefaultConfig();
+  config.set_incognito_mode(incognito);
+  // A software keyboard's request, as Mozc's own mobile clients send it: mixed
+  // conversion turns on dictionary prediction (completions, not only the
+  // reading's conversions).
+  commands::Request request;
+  request.set_is_incognito_mode(incognito);
+  request.set_zero_query_suggestion(true);
+  request.set_mixed_conversion(true);
+  const ConversionRequest conversion_request =
+      ConversionRequestBuilder()
+          .SetRequestView(request)
+          .SetConfigView(config)
+          // The reading is already hiragana, so the dictionary looks it up as
+          // given rather than through a composer's romaji expansion.
+          .SetOptions({.request_type = ConversionRequest::PREDICTION,
+                       .use_already_typing_corrected_key = true})
+          .SetKey(reading)
+          .Build();
+  Segments segments;
+  if (!converter->StartPrediction(conversion_request, &segments) ||
+      segments.conversion_segments_size() == 0) {
+    return out;
+  }
+  const ::mozc::Segment& segment = segments.conversion_segment(0);
+  for (size_t i = 0; i < segment.candidates_size() && out.size() < max_candidates;
+       ++i) {
+    const ::mozc::converter::Candidate& c = segment.candidate(i);
+    out.push_back({.value = c.value, .key = c.key, .lid = c.lid, .rid = c.rid});
+  }
+  return out;
 }
 
 PosIds MozcEngine::LookupPosIds(std::string_view reading,
