@@ -58,7 +58,7 @@ class HostEngines : public Engines {
   }
 
   std::optional<std::vector<JapaneseSegment>> Japanese(
-      const std::vector<JapaneseSpan>& spans) override {
+      const std::vector<JapaneseSpan>& spans, bool /*incognito*/) override {
     return mozc_->Convert(spans);
   }
 

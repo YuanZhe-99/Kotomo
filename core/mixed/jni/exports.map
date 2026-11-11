@@ -1,0 +1,8 @@
+/* libkotomo_core.so exports only its JNI entry points; it reaches the engines through the
+   function tables their libraries hand over, never through their symbols (ADR-008). */
+{
+  global:
+    Java_com_yuanzhe_kotomo_engine_Core_*;
+  local:
+    *;
+};

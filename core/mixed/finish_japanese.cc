@@ -18,7 +18,8 @@ Origin PinnedOrigin(EdgeKind kind) {
 /// Notes: a segment boundary Mozc puts inside a kana edge moves to the end of that edge, and a
 ///   segment left without letters joins the piece before it, so pieces always tile the input.
 int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_t last,
-                       Engines& engines, std::vector<Piece>* pieces, std::vector<JapaneseWord>* only) {
+                       Engines& engines, bool incognito, std::vector<Piece>* pieces,
+                       std::vector<JapaneseWord>* only) {
   std::vector<JapaneseSpan> spans;
   bool free_run = false;
   for (size_t i = first; i < last; ++i) {
@@ -32,7 +33,7 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
       free_run = false;
     }
   }
-  const auto segments = engines.Japanese(spans);
+  const auto segments = engines.Japanese(spans, incognito);
   if (!segments || segments->empty()) return -1;
 
   int32_t cost = 0;
@@ -97,7 +98,7 @@ void FinishJapanese(const Input& input, const Path& path, Engines& engines, cons
         has_free = true;
       }
     }
-    const int32_t mozc_cost = ConvertStretch(input, path, i, end, engines, &sentence.pieces,
+    const int32_t mozc_cost = ConvertStretch(input, path, i, end, engines, options.incognito, &sentence.pieces,
                                              one_free_run ? &alternatives : nullptr);
     if (mozc_cost < 0) return;
     sentence.cost += mozc_cost + (has_free ? costs.japanese_bias : 0);

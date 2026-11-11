@@ -65,6 +65,7 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation)
     FinishEnglish(*input, path, &found);
   }
 
+  for (Candidate& candidate : found) candidate.cost += options_.bias[static_cast<int>(candidate.target)];
   std::stable_sort(found.begin(), found.end(),
                    [](const Candidate& a, const Candidate& b) { return a.cost < b.cost; });
   std::unordered_set<std::string> seen;

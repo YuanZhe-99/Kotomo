@@ -252,7 +252,7 @@ val rimeData = tasks.register<RimeDataTask>("rimeData") {
 // DictionaryRimeTest and DictionaryPacksTest run instead of being skipped.
 if (providers.environmentVariable("KOTOMO_CORPUS").orNull == "1") {
     val root = rootProject.layout.projectDirectory.asFile
-    val libraries = listOf("build/host/rime", "build/host/english", "build/mozc/out/host")
+    val libraries = listOf("build/host/rime", "build/host/english", "build/mozc/out/host", "build/host/mixed")
         .joinToString(File.pathSeparator) { root.resolve(it).path }
     tasks.withType<Test>().configureEach {
         systemProperty("java.library.path", libraries)

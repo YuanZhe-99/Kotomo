@@ -80,9 +80,11 @@ class Engines {
   virtual std::string Hiragana(std::string_view romaji) = 0;
 
   /// Converts a reading in which some spans are pinned, with Mozc's converter.
+  /// Inputs: `incognito` for a field that must leave no trace (Mozc then switches every mutable
+  ///   operation off; nothing is committed in either case).
   /// Returns: the segments in reading order, or nullopt when Mozc converts nothing.
   virtual std::optional<std::vector<JapaneseSegment>> Japanese(
-      const std::vector<JapaneseSpan>& spans) = 0;
+      const std::vector<JapaneseSpan>& spans, bool incognito) = 0;
 
   /// Looks an English word up in the English dictionary, exactly (no correction).
   /// Inputs: `word` in lower case.

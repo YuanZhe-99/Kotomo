@@ -3,63 +3,10 @@
 #include <algorithm>
 #include <limits>
 
+#include "wire.h"
+
 namespace kotomo::mixed {
 namespace {
-
-/// Appends little-endian integers and length-prefixed strings to a buffer.
-class Writer {
- public:
-  explicit Writer(std::string* out) : out_(out) {}
-
-  template <typename T>
-  void Int(T value) {
-    const auto bits = static_cast<std::make_unsigned_t<T>>(value);
-    for (size_t i = 0; i < sizeof(T); ++i) {
-      out_->push_back(static_cast<char>((bits >> (8 * i)) & 0xff));
-    }
-  }
-
-  void Str(std::string_view text) {
-    const size_t size = std::min<size_t>(text.size(), std::numeric_limits<uint16_t>::max());
-    Int(static_cast<uint16_t>(size));
-    out_->append(text.substr(0, size));
-  }
-
- private:
-  std::string* out_;
-};
-
-/// Reads what Writer wrote; every read fails once the buffer is exhausted.
-class Reader {
- public:
-  explicit Reader(std::string_view in) : in_(in) {}
-
-  template <typename T>
-  bool Int(T* value) {
-    if (in_.size() - pos_ < sizeof(T)) return false;
-    std::make_unsigned_t<T> bits = 0;
-    for (size_t i = 0; i < sizeof(T); ++i) {
-      bits |= static_cast<std::make_unsigned_t<T>>(static_cast<uint8_t>(in_[pos_ + i])) << (8 * i);
-    }
-    pos_ += sizeof(T);
-    *value = static_cast<T>(bits);
-    return true;
-  }
-
-  bool Str(std::string* text) {
-    uint16_t size = 0;
-    if (!Int(&size) || in_.size() - pos_ < size) return false;
-    text->assign(in_.substr(pos_, size));
-    pos_ += size;
-    return true;
-  }
-
-  bool Done() const { return pos_ == in_.size(); }
-
- private:
-  std::string_view in_;
-  size_t pos_ = 0;
-};
 
 /// Clamps a count to the u16 the encoding stores.
 uint16_t Count(size_t n) {
@@ -76,6 +23,7 @@ std::string Encode(const Snapshot& snapshot) {
   w.Int(snapshot.stage);
   w.Str(snapshot.input);
   w.Int(snapshot.cursor);
+  w.Str(snapshot.commit);
   const uint16_t candidates = Count(snapshot.candidates.size());
   w.Int(candidates);
   for (uint16_t c = 0; c < candidates; ++c) {
@@ -108,7 +56,7 @@ std::optional<Snapshot> Decode(std::string_view bytes) {
   uint16_t candidates = 0;
   if (!r.Int(&version) || version != kContractVersion || !r.Int(&s.generation) ||
       !r.Int(&s.stage) || !r.Str(&s.input) || !r.Int(&s.cursor) || s.cursor > s.input.size() ||
-      !r.Int(&candidates)) {
+      !r.Str(&s.commit) || !r.Int(&candidates)) {
     return std::nullopt;
   }
   s.candidates.resize(candidates);

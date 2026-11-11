@@ -71,6 +71,28 @@ class CandidatesTest {
     }
 
     @Test
+    fun mixedKeepsTheEnginesOrderAndPlacesEmojiByWeight() { // T04, PLAN §2.3
+        val texts = listOf("一", "二", "三", "四", "五", "六")
+        // The default emoji weight (30) puts emoji after five candidates; the letters come last.
+        val list = Candidates.mixed(texts, "yi er", listOf("🙂"), Candidates.mixedEmojiPosition(30))
+        assertEquals(listOf("一", "二", "三", "四", "五", "🙂", "六", "yi er"), list.map { it.first })
+        assertEquals(listOf(0, 1, 2, 3, 4, Candidates.MIXED_EMOJI, 5, Candidates.MIXED_TYPED), list.map { it.second })
+        assertEquals(2, Candidates.mixedEmojiPosition(100))
+        assertEquals(7, Candidates.mixedEmojiPosition(0))
+        // Fewer candidates than the position: the emoji follow them all.
+        assertEquals(listOf("一", "🙂", "yi"), Candidates.mixed(listOf("一"), "yi", listOf("🙂"), 5).map { it.first })
+    }
+
+    @Test
+    fun mixedNeverListsATextTwice() { // negative
+        // The letters are already a candidate (an English word), and an emoji equals a candidate.
+        val list = Candidates.mixed(listOf("book", "本", "🙂"), "book", listOf("🙂"), 1)
+        assertEquals(listOf("book", "🙂", "本"), list.map { it.first })
+        // Nothing typed and nothing found lists nothing.
+        assertEquals(emptyList<Pair<String, Int>>(), Candidates.mixed(emptyList(), " ", emptyList(), 2))
+    }
+
+    @Test
     fun tapsMapIntoTheEnglishEnginesLayout() {
         // The centre of r is (350, 75); a tap at its left edge lands next to e.
         assertEquals(350 to 75, English.touchPoint('r', 0f, 0f))

@@ -1,0 +1,138 @@
+package com.yuanzhe.kotomo.engine
+
+import java.nio.BufferUnderflowException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
+
+/** Names a language: the one a span was typed in, or the one a candidate is written in. */
+enum class Lang { CHINESE, JAPANESE, ENGLISH }
+
+/** Names where a piece's text came from (the contract's origin codes, in order). */
+enum class Origin { RIME, MOZC, ENGLISH, PINYIN_JA, EN_JA, RULE }
+
+/**
+ * Holds one piece of a candidate: the byte range of the composition it stands for, what it
+ * commits, its [reading] (hiragana for a Japanese piece, otherwise the letters typed), the
+ * language the span was [typed] in, the [origin] of the text and whether it entered Mozc
+ * [pinned].
+ */
+data class Piece(
+    val begin: Int,
+    val end: Int,
+    val text: String,
+    val reading: String,
+    val typed: Lang,
+    val origin: Origin,
+    val pinned: Boolean,
+)
+
+/**
+ * Holds one candidate: the [text] choosing it commits, the language it is written in, the
+ * engine's [cost] (lower first, comparable within one snapshot only), its flags and [pieces].
+ */
+data class SnapshotCandidate(
+    val text: String,
+    val target: Lang,
+    val cost: Int,
+    val flags: Int,
+    val pieces: List<Piece>,
+) {
+    /** Whether a piece of it was typed in another language than it is written in. */
+    val crossLanguage: Boolean get() = flags and FLAG_CROSS != 0
+
+    /** Whether it was reached through fuzzy pinyin or a spelling correction. */
+    val fuzzy: Boolean get() = flags and FLAG_FUZZY != 0
+
+    companion object {
+        const val FLAG_CROSS = 1
+        const val FLAG_FUZZY = 2
+        const val FLAG_EMOJI = 4
+        const val FLAG_SENTENCE = 8
+    }
+}
+
+/**
+ * Holds what the engine answers to one request (doc/en-us/engine-contract.md): the composition
+ * as typed, the cursor's byte offset in it, text to [commit] first, and the candidates, best
+ * first, for one [generation] and [stage].
+ */
+data class Snapshot(
+    val generation: Long,
+    val stage: Int,
+    val input: String,
+    val cursor: Int,
+    val commit: String,
+    val candidates: List<SnapshotCandidate>,
+) {
+    companion object {
+        /** The contract version this decoder reads (`kContractVersion` in core/mixed/snapshot.h). */
+        const val VERSION = 2
+
+        /**
+         * Decodes the bytes the engine returned.
+         * Returns: null for another contract version or any buffer that fails a check: the magic,
+         * a length that runs past the end, bytes left over, text that is not UTF-8, a language or
+         * origin outside its range, a cursor or piece range outside the composition. A snapshot
+         * is dropped whole, never half-read.
+         * Notes: the app's side of the JNI boundary, so everything is checked.
+         */
+        fun decode(bytes: ByteArray): Snapshot? = try {
+            val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            if (b.get() != 'K'.code.toByte() || b.get() != 'S'.code.toByte()) return null
+            if (b.short.toInt() and 0xffff != VERSION) return null
+            val generation = b.long
+            val stage = b.get().toInt() and 0xff
+            val inputBytes = b.bytes()
+            val input = inputBytes.text()
+            val cursor = b.short.toInt() and 0xffff
+            if (cursor > inputBytes.size) return null
+            val commit = b.bytes().text()
+            val candidates = List(b.short.toInt() and 0xffff) {
+                val text = b.bytes().text()
+                val target = Lang.entries.getOrNull(b.get().toInt() and 0xff) ?: return null
+                val cost = b.int
+                val flags = b.get().toInt() and 0xff
+                val pieces = List(b.short.toInt() and 0xffff) {
+                    val begin = b.short.toInt() and 0xffff
+                    val end = b.short.toInt() and 0xffff
+                    if (begin > end || end > inputBytes.size) return null
+                    val pieceText = b.bytes().text()
+                    val reading = b.bytes().text()
+                    val typed = Lang.entries.getOrNull(b.get().toInt() and 0xff) ?: return null
+                    val origin = Origin.entries.getOrNull(b.get().toInt() and 0xff) ?: return null
+                    val pinned = b.get().toInt().also { if (it != 0 && it != 1) return null } == 1
+                    Piece(begin, end, pieceText, reading, typed, origin, pinned)
+                }
+                SnapshotCandidate(text, target, cost, flags, pieces)
+            }
+            if (b.hasRemaining()) null else Snapshot(generation, stage, input, cursor, commit, candidates)
+        } catch (_: BufferUnderflowException) {
+            null
+        } catch (_: CharacterCodingException) {
+            null
+        }
+
+        /**
+         * Decides whether an update may replace the one on screen: only a newer generation, or a
+         * later stage of the same generation. A stale update never replaces a newer one, in
+         * every language alike (AGENTS.md, "The key path").
+         */
+        fun replaces(generation: Long, stage: Int, shownGeneration: Long, shownStage: Int): Boolean =
+            generation > shownGeneration || (generation == shownGeneration && stage > shownStage)
+
+        /** Reads a string's bytes: a u16 length, then that many bytes. */
+        private fun ByteBuffer.bytes(): ByteArray {
+            val size = short.toInt() and 0xffff
+            if (size > remaining()) throw BufferUnderflowException()
+            return ByteArray(size).also { get(it) }
+        }
+
+        /** Decodes strict UTF-8; malformed bytes throw instead of becoming replacement characters. */
+        private fun ByteArray.text(): String = Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(this)).toString()
+    }
+}

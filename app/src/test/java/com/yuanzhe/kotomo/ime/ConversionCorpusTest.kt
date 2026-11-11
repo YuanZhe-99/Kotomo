@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime
 
+import com.yuanzhe.kotomo.engine.Core
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Mozc
 import com.yuanzhe.kotomo.engine.Rime
@@ -46,6 +47,9 @@ class ConversionCorpusTest {
 
     private lateinit var mozc: Mozc
     private lateinit var english: English
+    private var core: Core? = null
+    private lateinit var lexicon: File
+    private var generation = 0L
     private lateinit var emoji: EmojiIndex
     private lateinit var rimeShared: File
     private lateinit var tmp: File
@@ -66,6 +70,7 @@ class ConversionCorpusTest {
                 .associate { it.id to judge(it, candidates(it)) }
             report(root, lines, outcomes)
         } finally {
+            core?.close()
             Rime.shutdown()
             if (::mozc.isInitialized) mozc.close()
             if (::english.isInitialized) english.close()
@@ -130,23 +135,42 @@ class ConversionCorpusTest {
         english = checkNotNull(English.open(build.resolve("lexicon/english/main_en_us.dict").path)) {
             "the English dictionary did not open"
         }
+        lexicon = build.resolve("lexicon/cross.klx")
+        check(lexicon.isFile) { "no compiled cross-language lexicon (kotomo_lexicon_compile)" }
         emoji = build.resolve("emoji/emoji.tsv").bufferedReader().useLines { EmojiIndex.parse(it.toList().asSequence()) }
     }
 
     /**
      * Lists the candidates the candidate bar would show for [line], with the keyboard's defaults
      * (Simplified Chinese, emoji suggestions on).
-     * Notes: Chinese and Mixed hand the whole input to librime (Mixed is Chinese until the
-     * coordinator exists); Japanese converts the letters in one Mozc session and predicts from
+     * Notes: Chinese hands the whole input to librime; Mixed types it key by key into the
+     * coordinator through [Core], as the keyboard does, and assembles the snapshot with the
+     * default emoji weight; Japanese converts the letters in one Mozc session and predicts from
      * their reading; English asks the English engine, with the context as the previous word.
      */
     private fun candidates(line: Line): List<String> = when (line.mode) {
-        Mode.CHINESE, Mode.MIXED -> {
+        Mode.CHINESE -> {
             useRules(line.fuzzy)
             Rime.clear()
             Rime.setInput(line.input)
             val texts = Rime.getCandidates(Candidates.CHINESE_LIMIT).map { it.text }
             Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition())).map { it.first }
+        }
+        Mode.MIXED -> {
+            useRules(line.fuzzy)
+            Rime.clear()
+            val c = core ?: checkNotNull(Core.open(rime = true, mozc, english, lexicon.path)) { "the coordinator did not open" }.also {
+                core = it
+                check(it.lexiconEntries > 0) { "the cross-language lexicon did not map" }
+            }
+            c.clear(++generation)
+            var snapshot = checkNotNull(c.clear(++generation))
+            for (key in line.input) snapshot = checkNotNull(c.key(++generation, key)) { "no snapshot for a key of ${line.id}" }
+            check(snapshot.generation == generation && snapshot.input == line.input) { "${line.id}: the snapshot answers another request" }
+            Candidates.mixed(
+                snapshot.candidates.map { it.text }, snapshot.input, Candidates.emoji(emoji, line.input),
+                Candidates.mixedEmojiPosition(MIXED_EMOJI_WEIGHT),
+            ).map { it.first }
         }
         Mode.JAPANESE -> {
             val segments = mozc.sessionConvert(line.input, incognito = false).orEmpty()
@@ -246,6 +270,8 @@ class ConversionCorpusTest {
     private companion object {
         /** Candidates kept per line in the results and the report. */
         const val SHOWN = 5
+        /** The default of `mixed.weight_emoji`. */
+        const val MIXED_EMOJI_WEIGHT = 30
         const val RESULTS_HEADER = "id\tstatus\tposition\tshown"
     }
 }

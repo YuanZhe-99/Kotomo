@@ -52,6 +52,13 @@ cmake --build build/host/rime --target kotomo_rime >/dev/null || die "librime bu
 cmake -S core/english -B build/host/english -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null || die "English configure failed"
 cmake --build build/host/english >/dev/null || die "English build failed"
 
+# The coordinator: its library for the app's route, its unit tests and the compiled lexicon.
+cmake -S core/mixed -B build/host/mixed -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null 2>&1 || die "coordinator configure failed"
+cmake --build build/host/mixed >/dev/null || die "coordinator build failed"
+ctest --test-dir build/host/mixed --output-on-failure >/dev/null || die "coordinator unit tests failed (ctest --test-dir build/host/mixed)"
+build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexicon/en-ja.tsv build/lexicon/cross.klx >/dev/null \
+  || die "the cross-language lexicon did not compile"
+
 rm -f build/conversion/report.txt
 status=0
 KOTOMO_CORPUS=1 ./gradlew --no-daemon -q :app:testDebugUnitTest \
@@ -59,12 +66,7 @@ KOTOMO_CORPUS=1 ./gradlew --no-daemon -q :app:testDebugUnitTest \
 [[ -f build/conversion/report.txt ]] || die "the corpus did not run (Gradle exit $status)"
 cat build/conversion/report.txt
 
-# The coordinator's host prototype: unit tests, then the corpus through the three real engines.
-cmake -S core/mixed -B build/host/mixed -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null 2>&1 || die "coordinator configure failed"
-cmake --build build/host/mixed >/dev/null || die "coordinator build failed"
-ctest --test-dir build/host/mixed --output-on-failure >/dev/null || die "coordinator unit tests failed (ctest --test-dir build/host/mixed)"
-build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexicon/en-ja.tsv build/lexicon/cross.klx >/dev/null \
-  || die "the cross-language lexicon did not compile"
+# The same corpus through the coordinator alone, with the three host engines linked in.
 echo
 mixed_status=0
 build/host/mixed/kotomo_mixed_corpus "$PWD" --baseline tests/conversion/baseline-mixed.tsv || mixed_status=$?

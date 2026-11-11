@@ -16,6 +16,7 @@ Snapshot Sample() {
   s.stage = 1;
   s.input = "hon wo";
   s.cursor = 6;
+  s.commit = "本";
   Candidate ja;
   ja.text = "本を";
   ja.target = Lang::kJapanese;

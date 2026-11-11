@@ -117,12 +117,39 @@ internal object Candidates {
         return (head + letters + emoji.map { it to EMOJI } + tail).filter { seen.add(it.first) }
     }
 
-    /** Puts [emoji] into [list] at [EMOJI_POSITION], without duplicates. */
-    fun withEmoji(list: List<String>, emoji: List<String>): List<String> {
+    /** Puts [emoji] into [list] after its first [position] entries, without duplicates. */
+    fun withEmoji(list: List<String>, emoji: List<String>, position: Int = EMOJI_POSITION): List<String> {
         if (emoji.isEmpty()) return list
-        val at = minOf(EMOJI_POSITION, list.size)
+        val at = minOf(position, list.size)
         return (list.take(at) + emoji + list.drop(at)).distinct()
     }
+
+    /** Marks an entry of [mixed] that is not one of the snapshot's candidates. */
+    const val MIXED_TYPED = -2
+    const val MIXED_EMOJI = -1
+
+    /**
+     * Lists Mixed-mode candidates from the coordinator's snapshot (PLAN §2.3): its candidates in
+     * the engine's order, the emoji after the first [emojiPosition] of them, and last the letters
+     * as typed when no candidate is exactly them, so anything typed can always be committed.
+     * Inputs: [texts] are the snapshot's candidate texts, best first; [typed] is its composition.
+     * Returns: each entry's text with where it comes from: its index in the snapshot,
+     * [MIXED_EMOJI] or [MIXED_TYPED]; no text twice.
+     */
+    fun mixed(texts: List<String>, typed: String, emoji: List<String>, emojiPosition: Int): List<Pair<String, Int>> {
+        val indexed = texts.withIndex().map { it.value to it.index }
+        val at = minOf(emojiPosition, indexed.size)
+        val letters = typed.trim().let { if (it.isEmpty() || it in texts) emptyList() else listOf(it to MIXED_TYPED) }
+        val seen = HashSet<String>()
+        return (indexed.take(at) + emoji.map { it to MIXED_EMOJI } + indexed.drop(at) + letters).filter { seen.add(it.first) }
+    }
+
+    /**
+     * Places emoji in Mixed mode by the emoji weight (`mixed.weight_emoji`, 0–100): after the two
+     * best candidates at 100, one place later for every 20 points below, so at the default of 30
+     * they follow the cross-language candidates as in PLAN §2.3's examples.
+     */
+    fun mixedEmojiPosition(weight: Int): Int = EMOJI_POSITION + (100 - weight.coerceIn(0, 100)) / 20
 
     /**
      * Builds the spans that choosing [surface] for segment [index] asks Mozc to convert: the

@@ -34,8 +34,8 @@ class Coordinator {
   /// Inputs: `composition` holds letters, with spaces and apostrophes as boundary hints (PLAN.md
   ///   §5.1); `generation` is the app's count of keys and commands, returned in the snapshot.
   /// Returns: a snapshot (stage 0) with the composition, the cursor at its end and up to
-  ///   `Options::candidates` candidates, cheapest first, each covering the whole input and no
-  ///   text twice. Below the aggressive level a cross-language candidate is never first while a
+  ///   `Options::candidates` candidates, cheapest first after `Options::bias` of their target
+  ///   language, each covering the whole input and no text twice. Below the aggressive level a cross-language candidate is never first while a
   ///   candidate in the language its cross-language pieces were typed in exists. A composition
   ///   ParseInput refuses gets no candidates.
   /// Side effects: asks the engines (librime's spelling table and conversion, Mozc's romaji table

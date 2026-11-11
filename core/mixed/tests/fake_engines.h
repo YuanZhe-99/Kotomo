@@ -62,7 +62,7 @@ class FakeEngines : public Engines {
   }
 
   std::optional<std::vector<JapaneseSegment>> Japanese(
-      const std::vector<JapaneseSpan>& spans) override {
+      const std::vector<JapaneseSpan>& spans, bool /*incognito*/) override {
     ++japanese_calls;
     std::vector<JapaneseSegment> out;
     for (const JapaneseSpan& span : spans) {
