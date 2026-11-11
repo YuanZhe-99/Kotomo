@@ -83,6 +83,20 @@ internal object Candidates {
         return index?.lookup(key, EMOJI_SUGGESTIONS).orEmpty()
     }
 
+    /**
+     * Finds emoji for the emoji search's [query] (PLAN §8.6): English words, pinyin or romaji
+     * matched against the CLDR keywords, spaces ignored (the keys are stored without them).
+     * Returns: up to [EMOJI_SEARCH_RESULTS] emoji, best first; none for an empty query.
+     */
+    fun emojiSearch(index: EmojiIndex?, query: String): List<String> {
+        val key = query.lowercase().filter { !it.isWhitespace() }
+        if (key.isEmpty()) return emptyList()
+        return index?.lookup(key, EMOJI_SEARCH_RESULTS).orEmpty()
+    }
+
+    /** The most results the emoji search shows (the bar scrolls; the expand arrow shows all). */
+    const val EMOJI_SEARCH_RESULTS = 48
+
     /** Marks an entry of [chinese] that is not one of librime's candidates. */
     const val TYPED = -2
     const val EMOJI = -1

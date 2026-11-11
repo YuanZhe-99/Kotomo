@@ -62,18 +62,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** What the panel needs before it can draw: the emoji data and the recents as the panel opened. */
-private class PanelData(val index: EmojiIndex, val shownRecents: List<String>)
+/**
+ * What the panel needs before it can draw: the emoji data, and the frequently used and recent
+ * emoji as the panel opened.
+ */
+private class PanelData(val index: EmojiIndex, val frequent: List<String>, val shownRecents: List<String>)
 
-/** Returns [memory] with [emoji] first in the history, which keeps at most [Memory.MAX_RECENT]. */
-internal fun withRecent(memory: Memory, emoji: String): Memory {
-    val recent = (listOf(emoji) + memory.emoji.recent.filter { it != emoji }).take(Memory.MAX_RECENT)
-    return memory.copy(emoji = memory.emoji.copy(recent = recent))
-}
-
-/** One cell of the emoji grid: a section title, the empty-recents hint or an emoji. */
+/**
+ * One cell of the emoji grid: a section title (a [tab] title starts a section of the bottom bar),
+ * the empty-recents hint or an emoji.
+ */
 private sealed interface Cell {
-    data class Title(val label: Int) : Cell
+    data class Title(val label: Int, val tab: Boolean = true) : Cell
     data object Empty : Cell
     data class Emoji(val text: String, val toned: Boolean) : Cell
 }
@@ -96,15 +96,15 @@ private fun groupTitle(id: String): Int = when (id) {
 
 /**
  * Shows the emoji panel in the keyboard's place, after Gboard's: every emoji of the system font
- * in one adaptive grid with a title per group, Recents first, and the group tabs between ABC and
- * backspace at the bottom; long-pressing an emoji with skin tones (marked in its corner) opens a
+ * in one adaptive grid with a title per group, Frequently used and Recents first, and Search and
+ * the group tabs between ABC and backspace at the bottom; long-pressing an emoji with skin tones (marked in its corner) opens a
  * tone picker above it.
  *
  * Inputs: [onEmoji] commits one emoji (a base emoji or a chosen tone); [onBackspace] deletes
  * before the cursor; [onBack] returns to the keyboard; [recordRecents] adds sent emoji to Recents
  * and must be false in sensitive fields and incognito (passwords, IME_FLAG_NO_PERSONALIZED_LEARNING);
  * [memory] is the keyboard's memory, null before the first unlock (then Recents is neither read
- * nor shown).
+ * nor shown); [onSearch] opens the emoji search over the keys (PLAN §8.6).
  * Side effects: reads the emoji asset on an I/O thread; records sent emoji in [memory] when
  * [recordRecents] is true.
  * Notes: built with Compose inside the input method window (S1's Compose check); the first frame
@@ -119,12 +119,14 @@ fun EmojiPanel(
     onBack: () -> Unit,
     recordRecents: Boolean = false,
     memory: KeyboardMemory? = null,
+    onSearch: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val data by produceState<PanelData?>(null) {
         value = withContext(Dispatchers.IO) {
             // Before the first unlock (Direct Boot) there is no memory: no Recents.
-            PanelData(EmojiIndex.load(context), memory?.current?.emoji?.recent.orEmpty())
+            val history = memory?.current?.emoji
+            PanelData(EmojiIndex.load(context), history?.frequent().orEmpty(), history?.recent.orEmpty())
         }
     }
     val grid = rememberLazyGridState()
@@ -132,13 +134,13 @@ fun EmojiPanel(
     var picker by remember { mutableStateOf<Picker?>(null) }
     val loaded = data
     val cells = remember(loaded) { loaded?.let(::cells).orEmpty() }
-    val starts = remember(cells) { cells.indices.filter { cells[it] is Cell.Title } }
+    val starts = remember(cells) { cells.indices.filter { (cells[it] as? Cell.Title)?.tab == true } }
     val current by remember(starts) {
         derivedStateOf { starts.indices.lastOrNull { starts[it] <= grid.firstVisibleItemIndex } ?: 0 }
     }
     val send = { emoji: String ->
         onEmoji(emoji)
-        if (recordRecents) memory?.update { withRecent(it, emoji) }
+        if (recordRecents) memory?.update { it.copy(emoji = it.emoji.sent(emoji)) }
     }
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -170,13 +172,24 @@ fun EmojiPanel(
             },
             onBackspace = onBackspace,
             onBack = onBack,
+            onSearch = {
+                picker = null
+                onSearch()
+            },
         )
     }
 }
 
-/** Lays out the grid's cells: Recents (or its hint), then each group under its title. */
+/**
+ * Lays out the grid's cells: Frequently used (when any emoji was sent twice) and Recents (or its
+ * hint) under the first tab, then each group under its title.
+ */
 private fun cells(data: PanelData): List<Cell> = buildList {
-    add(Cell.Title(R.string.emoji_recent))
+    if (data.frequent.isNotEmpty()) {
+        add(Cell.Title(R.string.emoji_frequent))
+        data.frequent.forEach { add(Cell.Emoji(it, false)) }
+    }
+    add(Cell.Title(R.string.emoji_recent, tab = data.frequent.isEmpty()))
     if (data.shownRecents.isEmpty()) add(Cell.Empty)
     data.shownRecents.forEach { add(Cell.Emoji(it, false)) }
     for (g in data.index.groups) {
@@ -317,7 +330,7 @@ private fun TonePicker(p: Picker, modifier: Modifier, onPick: (String) -> Unit) 
 }
 
 /**
- * Draws the bottom row: ABC, a tab per section (Recents, then each group) and backspace.
+ * Draws the bottom row: ABC, Search, a tab per section (Recents, then each group) and backspace.
  * Inputs: [current] is the section at the top of the grid; [onTab] receives a section index.
  */
 @Composable
@@ -327,6 +340,7 @@ private fun BottomBar(
     onTab: (Int) -> Unit,
     onBackspace: () -> Unit,
     onBack: () -> Unit,
+    onSearch: () -> Unit,
 ) {
     val back = stringResource(R.string.emoji_back)
     val ink = kbColor(R.color.kb_ink)
@@ -345,6 +359,14 @@ private fun BottomBar(
             Text("ABC", fontSize = dimensionResource(R.dimen.kb_function_text).asText(), color = ink)
         }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            Tab(stringResource(R.string.emoji_search), false, tab, onSearch) {
+                Image(
+                    painterResource(R.drawable.ic_key_search),
+                    contentDescription = null,
+                    modifier = Modifier.size(dimensionResource(R.dimen.emoji_tab_icon)),
+                    colorFilter = ColorFilter.tint(ink),
+                )
+            }
             Tab(stringResource(R.string.emoji_recent), current == 0, tab, { onTab(0) }) {
                 Image(
                     painterResource(R.drawable.ic_emoji_recent),

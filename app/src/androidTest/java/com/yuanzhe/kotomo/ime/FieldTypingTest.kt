@@ -111,6 +111,28 @@ class FieldTypingTest {
     }
 
     /**
+     * PLAN §8.6: the emoji panel's search types "cat" into its own query, never into the field,
+     * and Enter sends the first result.
+     */
+    @Test
+    fun emojiSearchSendsTheFirstResult() {
+        val expected = Candidates.emojiSearch(runBlocking { EmojiIndex.load(instrumentation.targetContext) }, "cat").first()
+        val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+        ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+            checkNotNull(device.wait(Until.findObject(By.descStartsWith(EMOJI)), WAIT_MS)) { "Kotomo's keys did not appear" }.click()
+            checkNotNull(device.wait(Until.findObject(By.desc(SEARCH)), WAIT_MS)) { "no emoji search" }.click()
+            checkNotNull(device.wait(Until.findObject(By.desc("c")), WAIT_MS)) { "the keys did not come back" }
+            "cat".forEach { device.findObject(By.desc(it.toString())).click() }
+            // Negative: the query stays in the keyboard.
+            assertEquals("", read(scenario))
+            device.findObject(By.descStartsWith(ENTER)).click()
+            assertEquals(expected, read(scenario))
+        }
+    }
+
+    /**
      * Runs [block] with the current app fixed to [mode] in Kotomo's memory (the quick panel's
      * "Fix this mode here"), and releases it afterwards.
      */
@@ -195,6 +217,10 @@ class FieldTypingTest {
         const val SPACE = "Space"
         /** The Enter key's description starts with this (R.string.key_enter, English). */
         const val ENTER = "Enter"
+        /** The Emoji key's description starts with this (R.string.key_emoji, English). */
+        const val EMOJI = "Emoji"
+        /** The emoji panel's search tab (R.string.emoji_search, English). */
+        const val SEARCH = "Search emoji"
         const val ATTEMPTS = 3
         const val WAIT_MS = 3000L
         const val READS = 3

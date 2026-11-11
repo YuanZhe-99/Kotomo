@@ -9,6 +9,9 @@
 
     <string name="emoji_back">Back to keyboard</string>
     <string name="emoji_recent">Recent</string>
+    <string name="emoji_frequent">Frequently used</string>
+    <string name="emoji_search">Search emoji</string>
+    <string name="emoji_search_prompt">Search emoji in English, pinyin or romaji</string>
     <string name="emoji_recent_empty">Emoji you use show up here</string>
     <string name="emoji_smileys">Smileys and emotions</string>
     <string name="emoji_people">People and body</string>

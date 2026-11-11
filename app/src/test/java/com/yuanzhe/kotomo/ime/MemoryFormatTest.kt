@@ -97,11 +97,40 @@ class MemoryFormatTest {
 
     @Test
     fun recentEmojiMoveToTheFrontAndAreCapped() {
-        var memory = Memory()
-        repeat(Memory.MAX_RECENT + 5) { memory = withRecent(memory, "e$it") }
-        memory = withRecent(memory, "e10")
-        assertEquals(Memory.MAX_RECENT, memory.emoji.recent.size)
-        assertEquals("e10", memory.emoji.recent.first())
-        assertEquals(1, memory.emoji.recent.count { it == "e10" })
+        var emoji = EmojiMemory()
+        repeat(Memory.MAX_RECENT + 5) { emoji = emoji.sent("e$it") }
+        emoji = emoji.sent("e10")
+        assertEquals(Memory.MAX_RECENT, emoji.recent.size)
+        assertEquals("e10", emoji.recent.first())
+        assertEquals(1, emoji.recent.count { it == "e10" })
+    }
+
+    /** PLAN §8.6 "Frequently used": emoji sent twice or more, most used first, counts kept and capped. */
+    @Test
+    fun frequentlyUsedEmoji() {
+        var emoji = EmojiMemory()
+        listOf("🐱", "👍", "🐱", "😀", "👍", "🐱").forEach { emoji = emoji.sent(it) }
+        assertEquals(listOf("🐱", "👍"), emoji.frequent())
+        // Negative: an emoji sent once is recent but not frequent.
+        assertTrue("😀" in emoji.recent && "😀" !in emoji.frequent())
+        val read = MemoryFormat.read(MemoryFormat.write(Memory(emoji = emoji), 1L))!!
+        assertEquals(mapOf("🐱" to 3, "👍" to 2, "😀" to 1), read.emoji.uses)
+        repeat(Memory.MAX_USES + 10) { emoji = emoji.sent("x$it") }
+        assertEquals(Memory.MAX_USES, emoji.uses.size)
+        assertEquals(3, emoji.uses["🐱"])
+    }
+
+    /** PLAN §8.6 search: English, pinyin and romaji keys, spaces ignored; nothing for an empty query. */
+    @Test
+    fun emojiSearch() {
+        val index = EmojiIndex.parse(
+            sequenceOf("#kotomo-emoji\t1\temoji 18.0", "g\tanimals", "e\t🐱", "e\t🐶", "k\tcat\t0", "k\tcatface\t0", "k\tdog\t1", "k\tmao\t0", "k\tneko\t0"),
+        )
+        assertEquals(listOf("🐱"), Candidates.emojiSearch(index, "cat"))
+        assertEquals(listOf("🐱"), Candidates.emojiSearch(index, "cat face"))
+        assertEquals(listOf("🐱"), Candidates.emojiSearch(index, "neko"))
+        assertEquals(listOf("🐶"), Candidates.emojiSearch(index, "DO"))
+        assertEquals(emptyList<String>(), Candidates.emojiSearch(index, " "))
+        assertEquals(emptyList<String>(), Candidates.emojiSearch(index, "zebra"))
     }
 }

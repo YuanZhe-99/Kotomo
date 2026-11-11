@@ -33,13 +33,44 @@ data class AppMemory(
 }
 
 /**
- * Holds the emoji the person sent from the panel: the most recent first.
+ * Holds the emoji the person sent from the panel or its search: the most recent first, and how
+ * often each was sent (PLAN §8.6, "Frequently used").
  * Notes: [extra] keeps members this version does not know.
  */
 data class EmojiMemory(
     val recent: List<String> = emptyList(),
+    val uses: Map<String, Int> = emptyMap(),
     val extra: Map<String, Any?> = emptyMap(),
-)
+) {
+    /**
+     * Returns the emoji sent at least twice, most often first (the more recent first on a tie),
+     * at most [limit].
+     */
+    fun frequent(limit: Int = Memory.MAX_FREQUENT): List<String> {
+        val order = recent.withIndex().associate { (i, e) -> e to i }
+        return uses.filterValues { it >= 2 }.keys
+            .sortedWith(compareByDescending<String> { uses.getValue(it) }.thenBy { order[it] ?: Int.MAX_VALUE })
+            .take(limit)
+    }
+
+    /**
+     * Returns a copy with [emoji] sent once more: first in [recent] and counted in [uses].
+     * Notes: keeps at most [Memory.MAX_RECENT] recent emoji and [Memory.MAX_USES] counts,
+     * dropping the least used (the least recent on a tie).
+     */
+    fun sent(emoji: String): EmojiMemory {
+        val nextRecent = (listOf(emoji) + recent.filter { it != emoji }).take(Memory.MAX_RECENT)
+        var nextUses = uses + (emoji to (uses[emoji] ?: 0) + 1)
+        if (nextUses.size > Memory.MAX_USES) {
+            val order = nextRecent.withIndex().associate { (i, e) -> e to i }
+            val drop = nextUses.keys.filter { it != emoji }
+                .sortedWith(compareBy<String> { nextUses.getValue(it) }.thenByDescending { order[it] ?: Int.MAX_VALUE })
+                .take(nextUses.size - Memory.MAX_USES)
+            nextUses = nextUses - drop.toSet()
+        }
+        return copy(recent = nextRecent, uses = nextUses)
+    }
+}
 
 /**
  * Holds the keyboard's own memory, as `files/keyboard/memory.json` stores it: the mode last used
@@ -66,6 +97,10 @@ data class Memory(
     companion object {
         /** The most emoji kept in the history (four rows of a phone-width grid). */
         const val MAX_RECENT = 32
+        /** The most emoji whose use is counted. */
+        const val MAX_USES = 200
+        /** The most emoji under "Frequently used" (two rows of a phone-width grid). */
+        const val MAX_FREQUENT = 16
         /** Longer than any emoji sequence; anything longer in the file is not an emoji. */
         const val MAX_EMOJI_LENGTH = 32
     }
@@ -89,6 +124,7 @@ internal object MemoryFormat {
     private const val PINNED = "pinned_mode"
     private const val SCRIPT = "script"
     private const val RECENT = "recent"
+    private const val USES = "uses"
     private val KNOWN = setOf(FORMAT, UPDATED, LAST_MODE, APPS, EMOJI)
 
     /**
@@ -115,10 +151,14 @@ internal object MemoryFormat {
         val recent = e.list(RECENT).orEmpty().filterIsInstance<String>()
             .filter { it.isNotBlank() && it.length <= Memory.MAX_EMOJI_LENGTH }.distinct().take(Memory.MAX_RECENT)
         val lastMode = mode(o.str(LAST_MODE))
+        val uses = e.obj(USES).orEmpty().mapNotNull { (emoji, n) ->
+            val count = (n as? Long)?.takeIf { it in 1..Int.MAX_VALUE }?.toInt()
+            if (count == null || emoji.isBlank() || emoji.length > Memory.MAX_EMOJI_LENGTH) null else emoji to count
+        }.toMap()
         return Memory(
             lastMode = lastMode,
             apps = apps,
-            emoji = EmojiMemory(recent, e - RECENT),
+            emoji = EmojiMemory(recent, uses, e - setOf(RECENT, USES)),
             extra = o.filterKeys { it !in KNOWN || it == FORMAT || (it == LAST_MODE && lastMode == null) },
         )
     }
@@ -141,6 +181,7 @@ internal object MemoryFormat {
         }
         out[EMOJI] = LinkedHashMap<String, Any?>().apply {
             put(RECENT, memory.emoji.recent)
+            put(USES, memory.emoji.uses)
             putAll(memory.emoji.extra)
         }
         memory.extra.forEach { (k, v) -> if (k !in KNOWN) out[k] = v }

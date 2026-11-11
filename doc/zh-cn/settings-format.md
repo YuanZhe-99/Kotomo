@@ -81,7 +81,7 @@ JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值�
 
 键盘自己记住的东西（而不是用户设置的东西）存放在 `files/keyboard/memory.json`（`ime/KeyboardMemory.kt`）：
 上次使用的模式；按 App 记住的上次使用的模式、为它固定的模式（快捷面板的"在此固定这个模式"，PLAN §2.3）
-和在其中选择的中文字形；以及 Emoji 历史。每次变化后在后台线程经临时文件原子替换整份写入；键盘在启动时
+和在其中选择的中文字形；以及 Emoji 历史（最近使用与每个的发送次数）。每次变化后在后台线程经临时文件原子替换整份写入；键盘在启动时
 读取一次并保存在内存中。
 
 | 成员 | 类型 | 含义 |
@@ -90,7 +90,8 @@ JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值�
 | `updated_utc_ms` | int | 写入时间，UTC 毫秒 |
 | `last_mode` | string | 在任何地方最后选择的模式（`mixed`、`chinese`、`japanese`、`english`） |
 | `apps` | object | 按包名：`mode`（上次在其中使用的）、`pinned_mode`（为它固定的）、`script`（`chinese.script` 的值）；每项都可以缺省 |
-| `emoji.recent` | 字符串数组 | 从面板发送的 Emoji，最新的在前，最多 32 个 |
+| `emoji.recent` | 字符串数组 | 从面板或其搜索发送的 Emoji，最新的在前，最多 32 个 |
+| `emoji.uses` | object | 每个 Emoji 发送的次数（Emoji → 次数 ≥ 1），最多 200 个，先去掉用得最少的；发送两次及以上的列为"常用" |
 
 - 只保存包名，从不保存输入的内容。在敏感输入框、直接输入的输入框和无痕模式下，不按 App 记录任何东西，
   也不记录 Emoji 历史（PLAN §14）；那里只会写入全局的 `last_mode`。

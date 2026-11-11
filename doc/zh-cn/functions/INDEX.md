@@ -9,14 +9,14 @@
 | `app/build.gradle.kts` | Android 应用构建：SDK 级别、版本号、R8、从 `key.properties` 读取 release 签名 | `signingConfigs`、`buildTypes` |
 | `build-lock.json` | 工具链、上游与数据源的版本及下载哈希 | `toolchain` |
 | `.github/workflows/build.yml` | CI：文档检查、Gradle 检查与构建、签名的 release APK；`v*` 标签时创建 GitHub Release | `android`、`release` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、每个输入框开始时的模式（按 App 固定、按 App 记住、代码输入框）与保留组合的模式切换、按 `Fields` 的判定直接输入与不学习、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`refresh`、`switchMode`、`applyEngineSettings` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、每个输入框开始时的模式（按 App 固定、按 App 记住、代码输入框）与保留组合的模式切换、在键上输入的 Emoji 搜索、按 `Fields` 的判定直接输入与不学习、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`refresh`、`switchMode`、`applyEngineSettings` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardMemory.kt` | 键盘自己记住的东西，存为带版本的文件 `files/keyboard/memory.json`（[settings-format.md](../settings-format.md)）：上次的模式；按 App 的使用模式、固定模式与字形；Emoji 历史；文件不存在时从旧的 SharedPreferences 读取一次（有单元测试） | `KeyboardMemory`、`MemoryFormat`、`Memory` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面（底行随输入框调整的字母页、符号页、电话与数字键盘、在铰链两侧分开的底行）、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.pad`、`Layout.place`、`Layout.hit` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Fields.kt` | 输入框适配与空格规则（PLAN §8.7、§8.1）：由输入类型与提示判定输入框种类、敏感输入框与直接输入的唯一定义（PLAN §14）、回车键样式、双击空格句号、智能空格（纯 Kotlin，有单元测试） | `Fields.of`、`Fields.sensitive`、`Fields.direct`、`Fields.enter` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Posture.kt` | 布局所用的窗口尺寸类别与折叠姿态（PLAN §8.10）：何时分离、桌面姿态与矮窗口下的高度上限（有单元测试） | `Posture.split`、`Posture.heightLimit` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、Gboard 式长按弹出（滑动选择、松开输入）、按键预览、在空格上拖动移动光标与从退格向左拖动删除词、退格连删、每个按键的 TalkBack 节点；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏、状态提示、长按后显示的候选详情（读音、来源，学到的词可忘记） | `show`、`hint`、`details`、`onTouchEvent` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | 在键盘位置显示的 Compose 面板：Emoji 面板（按分组列出系统字体能显示的全部 Emoji；仅在输入框允许学习时把最近使用的记入键盘记忆；长按选择肤色）、全部候选，以及日文片段修改（整句与各片段的按钮、所选片段的候选、缩短、延长） | `EmojiPanel`、`Recents`、`TonePicker`、`CandidatesPanel`、`SegmentPanel` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏、状态提示、Emoji 搜索的查询词（结果之前）、长按后显示的候选详情（读音、来源，学到的词可忘记） | `show`、`hint`、`details`、`onTouchEvent` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | 在键盘位置显示的 Compose 面板：Emoji 面板（按分组列出系统字体能显示的全部 Emoji；从键盘记忆读取常用与最近使用（仅在输入框允许学习时记录）、搜索标签；长按选择肤色）、全部候选，以及日文片段修改（整句与各片段的按钮、所选片段的候选、缩短、延长） | `EmojiPanel`、`Recents`、`TonePicker`、`CandidatesPanel`、`SegmentPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`load` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardHistory.kt` | 剪贴板历史（[clipboard.md](../clipboard.md)）：只在允许时记录（敏感输入框、敏感剪贴与无痕模式不记录）、去重、固定与快捷短语、保留期与数量上限、以 Keystore 密钥加密的 AES-GCM 文件、内存快照；剪贴分类 | `onPrimaryClip`、`allowedIn`、`items`、`ClipFile`、`ClipKind.of` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/VerificationCodes.kt` | 从复制的文本中识别验证码：带上下文的排序结果，排除日期、价格、电话与订单号（纯 Kotlin，有单元测试） | `find`、`bare` |
@@ -27,7 +27,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Pages.kt` | 各设置页（输入模式，含语言选择的顺序、隐藏的模式与固定了模式的 App；混合模式、中文、日文、英文、布局与尺寸、按键与手势、隐私（含剪贴板设置）、之后提供的页面）与诊断页；共用的行与控件 | `MixedPage`、`LayoutPage`、`DiagnosticsPage`、`Section` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |
 | `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来；总览页与 Kotomo 自己的画板模板渲染器 | `index.html`、`support.js`、`Keyboard.dc.html`、`canvas.json` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（中文在两个最佳词之后放原样的字母；日文的整句、补全、片段与假名，各带自己的读音；英文原词在先；Emoji 的位置），以及选择、缩短、延长日文片段时的分段；键盘与转换语料共用 | `chinese`、`japanese`、`pick`、`resize`、`extend` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（中文在两个最佳词之后放原样的字母；日文的整句、补全、片段与假名，各带自己的读音；英文原词在先；Emoji 的位置；Emoji 搜索），以及选择、缩短、延长日文片段时的分段；键盘与转换语料共用 | `chinese`、`japanese`、`pick`、`resize`、`extend` |
 | `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名并报告回退 | `ConversionCorpusTest` |
 | `app/src/androidTest/`、`app/src/debug/…/fieldtest/` | 在模拟器或真机上经 Kotomo 的键输入的插桩测试，以及它们输入的、只在 debug 构建中存在的输入框 | `FieldTypingTest`、`FieldTestActivity` |
 | `tests/device/` | 里程碑时交给用户的真机检查清单（逐行 PASS / FAIL） | `p1-checklist.md` |

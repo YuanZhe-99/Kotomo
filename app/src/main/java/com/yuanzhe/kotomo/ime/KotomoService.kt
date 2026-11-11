@@ -403,7 +403,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         val popups = PopupLayer(this)
         keyboard = KeyboardView(this, popups, ::onKey)
-        candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::showDetails, ::onDetails)
+        candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::showDetails, ::onDetails) { leaveSearch(toPanel = true) }
         panelHost = FrameLayout(this).apply { addView(keyboard) }
         keyboard.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
             override fun onDraw() {
@@ -814,6 +814,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         symbols = false
         // The emoji panel is built per field, since whether it may record recents depends on it.
         emojiPanel = null
+        emojiSearch = null
+        if (::candidateBar.isInitialized) candidateBar.search = null
         lastSpaceAt = 0L
         autoSpaced = false
         details = null
@@ -900,6 +902,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val ic = currentInputConnection ?: return
         aiUndo = null
         details = null
+        emojiSearch?.let { if (searchKey(action, it)) return }
         if (action != KeyAction.Space) lastSpaceAt = 0L
         val spaced = autoSpaced
         autoSpaced = false
@@ -1154,6 +1157,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun pick(index: Int) {
         aiUndo?.let { return undoAi(it) }
+        if (emojiSearch != null) return pickFound(index)
         if (usesRime && !direct) {
             val rimeIndex = rimeIndexes.getOrElse(index) { index }
             if (rimeIndex < 0) {
@@ -1267,6 +1271,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.shift = shift
         keyboard.mode = mode
         keyboard.modes = s.modes
+        emojiSearch?.let { query ->
+            // The keys type into the emoji search: its results replace the candidates.
+            ++generation
+            candidates = Candidates.emojiSearch(emojiIndex, query.toString())
+            emojiShown = candidates.toSet()
+            candidateBar.search = query.toString()
+            candidateBar.show(candidates, downTime)
+            candidateBar.details = null
+            candidateBar.hint = null
+            updateQuickStrip()
+            return
+        }
         val raw = composing.toString()
         val gen = ++generation
         candidates = when {
@@ -1588,6 +1604,62 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
     }
 
+    /** Main thread: the emoji search's query while the keys type into it (PLAN §8.6), or null. */
+    private var emojiSearch: StringBuilder? = null
+
+    /**
+     * Starts the emoji search (the emoji panel's Search tab): the letter keys come back and type
+     * into the query shown in the candidate bar, never into the field.
+     */
+    private fun startSearch() {
+        emojiSearch = StringBuilder()
+        symbols = false
+        shift = Shift.OFF
+        showKeyboard()
+        refresh(0)
+    }
+
+    /**
+     * Handles a key while the emoji search is open: letters, digits and space extend [query],
+     * backspace shortens it (and leaves the search when it is empty), Enter sends the first
+     * result, the Emoji key returns to the panel and choosing a mode leaves the search.
+     * Returns: true when the key was the search's; false lets page and Shift keys work as usual.
+     */
+    private fun searchKey(action: KeyAction, query: StringBuilder): Boolean {
+        when (action) {
+            is KeyAction.Text -> query.append(action.text.lowercase()).also { if (shift == Shift.ONCE) shift = Shift.OFF }
+            KeyAction.Space -> if (query.isNotEmpty() && query.last() != ' ') query.append(' ')
+            KeyAction.Backspace -> if (query.isEmpty()) return true.also { leaveSearch(toPanel = true) } else query.setLength(query.length - 1)
+            KeyAction.Enter -> return true.also { if (candidates.isNotEmpty()) pickFound(0) else leaveSearch(toPanel = false) }
+            KeyAction.Emoji -> return true.also { leaveSearch(toPanel = true) }
+            is KeyAction.SetMode -> {
+                leaveSearch(toPanel = false)
+                return false
+            }
+            is KeyAction.MoveCursor, is KeyAction.DeleteWords -> Unit
+            else -> return false
+        }
+        refresh(0)
+        return true
+    }
+
+    /** Sends search result [index] to the field and leaves the search, counting it as used. */
+    private fun pickFound(index: Int) {
+        val emoji = candidates.getOrNull(index) ?: return
+        currentInputConnection?.commitText(emoji, 1)
+        if (!locked && remembers) memory()?.update { it.copy(emoji = it.emoji.sent(emoji)) }
+        leaveSearch(toPanel = false)
+    }
+
+    /** Leaves the emoji search, back to the emoji panel ([toPanel]) or to the keys. */
+    private fun leaveSearch(toPanel: Boolean) {
+        emojiSearch = null
+        candidateBar.search = null
+        candidates = emptyList()
+        if (toPanel) showEmoji()
+        refresh(0)
+    }
+
     private fun showKeyboard() {
         if (!::panelHost.isInitialized || panelHost.getChildAt(0) === keyboard) return
         panelHost.removeAllViews()
@@ -1610,6 +1682,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 EmojiPanel(
                     onEmoji = { currentInputConnection?.commitText(it, 1) },
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
+                    onSearch = ::startSearch,
                     onBack = ::showKeyboard,
                     // Sensitive fields record nothing, recent emoji included.
                     recordRecents = !locked && currentInputEditorInfo != null && remembers,

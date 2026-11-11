@@ -3,6 +3,9 @@
 
     <string name="emoji_back">キーボードに戻る</string>
     <string name="emoji_recent">最近使った絵文字</string>
+    <string name="emoji_frequent">よく使う絵文字</string>
+    <string name="emoji_search">絵文字を検索</string>
+    <string name="emoji_search_prompt">英語・ピンイン・ローマ字で絵文字を検索</string>
     <string name="emoji_recent_empty">使った絵文字がここに表示されます</string>
     <string name="emoji_smileys">スマイリーと感情</string>
     <string name="emoji_people">人と体</string>

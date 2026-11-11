@@ -35,6 +35,8 @@ class CandidateBar(
     private val onLongPick: (index: Int) -> Unit = {},
     /** Receives a tap on the details: the Forget button (its index), or elsewhere (null: close). */
     private val onDetails: (forget: Int?) -> Unit = {},
+    /** Receives a tap on the emoji search's query (leave the search). */
+    private val onSearchTap: () -> Unit = {},
 ) : View(context) {
 
     private val res = context.resources
@@ -66,6 +68,8 @@ class CandidateBar(
 
     private fun icon(id: Int) = ResourcesCompat.getDrawable(context.resources, id, context.theme)!!.mutate().apply { setTint(inkColor) }
     private val expandIcon = icon(R.drawable.ic_bar_expand)
+    private val searchIcon = icon(R.drawable.ic_key_search)
+    private val searchPrompt = res.getString(R.string.emoji_search_prompt)
     private val tools = listOf(
         Tool.MORE to icon(R.drawable.ic_tool_more),
         Tool.CLIPBOARD to icon(R.drawable.ic_tool_clipboard),
@@ -98,17 +102,40 @@ class CandidateBar(
             invalidate()
         }
 
+    /**
+     * The emoji search's query while the keys type into it (PLAN §8.6): drawn with a magnifier
+     * before the results ("" shows the prompt); null when not searching. A tap on it leaves the
+     * search ([onSearchTap]).
+     */
+    var search: String? = null
+        set(value) {
+            field = value
+            measure()
+            invalidate()
+        }
+
+    /** The width the search query takes before the candidates, or 0 when not searching. */
+    private fun searchWidth(): Float {
+        val q = search ?: return 0f
+        return iconSize + pad + (if (q.isEmpty()) hintPaint else textPaint).measureText(q.ifEmpty { searchPrompt }) + pad * 2
+    }
+
     /** Replaces the candidates; [downTime] is the touch that caused it, or 0. */
     fun show(list: List<String>, downTime: Long) {
         if (list != candidates) scroll = 0f
         candidates = list
-        bounds = FloatArray(list.size + 1)
-        bounds[0] = padStart
-        list.forEachIndexed { i, text ->
-            bounds[i + 1] = bounds[i] + textPaint.measureText(text) + (if (i == 0) padFirst else pad) * 2
-        }
+        measure()
         if (downTime != 0L) pendingProbe = downTime
         invalidate()
+    }
+
+    /** Computes the candidates' left edges after the search query, if any. */
+    private fun measure() {
+        bounds = FloatArray(candidates.size + 1)
+        bounds[0] = padStart + searchWidth()
+        candidates.forEachIndexed { i, text ->
+            bounds[i + 1] = bounds[i] + textPaint.measureText(text) + (if (i == 0) padFirst else pad) * 2
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -121,6 +148,10 @@ class CandidateBar(
         val shownDetails = details
         when {
             shownDetails != null -> drawDetails(canvas, shownDetails)
+            search != null -> {
+                drawSearch(canvas)
+                if (candidates.isNotEmpty()) drawCandidates(canvas)
+            }
             candidates.isNotEmpty() -> drawCandidates(canvas)
             hint != null -> {
                 val baseline = height / 2 - (hintPaint.descent() + hintPaint.ascent()) / 2
@@ -152,9 +183,19 @@ class CandidateBar(
         }
     }
 
+    /** Draws the emoji search's magnifier and query (or its prompt) at the start of the row. */
+    private fun drawSearch(canvas: Canvas) {
+        val q = search ?: return
+        drawIcon(canvas, searchIcon, padStart + pad + iconSize / 2f)
+        val baseline = height / 2 - (hintPaint.descent() + hintPaint.ascent()) / 2
+        val paint = if (q.isEmpty()) hintPaint else textPaint
+        canvas.drawText(q.ifEmpty { searchPrompt }, padStart + pad + iconSize + pad, baseline, paint)
+    }
+
     private fun drawCandidates(canvas: Canvas) {
         val baseline = height / 2 - (textPaint.descent() + textPaint.ascent()) / 2
-        canvas.withClip(0f, 0f, listEnd, height.toFloat()) {
+        // While searching, scrolled results stay clear of the query.
+        canvas.withClip(if (search != null) bounds[0] - pad else 0f, 0f, listEnd, height.toFloat()) {
             candidates.forEachIndexed { i, text ->
                 val x = bounds[i] - scroll
                 if (x > listEnd || bounds[i + 1] - scroll < 0) return@forEachIndexed
@@ -237,7 +278,9 @@ class CandidateBar(
             onDetails(if (d.forget != null && x >= width - padStart - forgetWidth(d)) d.index else null)
             return
         }
+        if (search != null && x < padStart + searchWidth()) return onSearchTap()
         when {
+            search != null && candidates.isEmpty() -> Unit
             candidates.isNotEmpty() -> if (x >= listEnd) {
                 onExpand()
             } else {

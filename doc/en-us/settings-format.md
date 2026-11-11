@@ -90,7 +90,7 @@ moved aside to `current.json.unreadable` and the defaults apply.
 What the keyboard remembers by itself, rather than what the person sets, lives in
 `files/keyboard/memory.json` (`ime/KeyboardMemory.kt`): the mode last used, per app the mode last
 used there, the mode fixed for it ("Fix this mode here" in the quick panel, PLAN §2.3) and the
-Chinese script chosen there, and the emoji history. It is written whole through a temporary file
+Chinese script chosen there, and the emoji history (recent and how often each was sent). It is written whole through a temporary file
 and an atomic replace on a background thread after each change; the keyboard reads it once when
 it starts and keeps it in memory.
 
@@ -100,7 +100,8 @@ it starts and keeps it in memory.
 | `updated_utc_ms` | int | When it was written, UTC milliseconds |
 | `last_mode` | string | The mode last chosen anywhere (`mixed`, `chinese`, `japanese`, `english`) |
 | `apps` | object | Per package name: `mode` (last used there), `pinned_mode` (fixed for it), `script` (a `chinese.script` value); each may be missing |
-| `emoji.recent` | array of strings | Emoji sent from the panel, newest first, at most 32 |
+| `emoji.recent` | array of strings | Emoji sent from the panel or its search, newest first, at most 32 |
+| `emoji.uses` | object | How often each emoji was sent (emoji → count ≥ 1), at most 200, the least used dropped first; those sent twice or more are "Frequently used" |
 
 - Only package names are stored, never anything typed. Nothing is recorded per app, and no emoji
   history, in sensitive and direct fields or in incognito mode (PLAN §14); the global `last_mode`
