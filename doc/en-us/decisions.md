@@ -129,8 +129,8 @@ libraries still export nothing but JNI entry points: the first plan, exporting t
 symbols for the coordinator's library to link, was dropped when the device side was built
 (2026-11-11), because a table needs no symbol resolved across libraries, works unchanged in the
 host JVM that runs the conversion corpus, and lets a build without Mozc leave its table out. This is option (b) of `PLAN.md`
-§2.5 decision 4, taken as the plan's default: the user has not confirmed it yet, and only the
-host prototype (spike S6) is built on it.
+§2.5 decision 4 (a fourth library, one JNI crossing per key), confirmed by the user on
+2026-11-11; how the C functions are handed over is this record's own choice.
 
 **Why.** A Kotlin coordinator (a) would cross JNI several times per key and put the lattice and
 the decoder on the managed heap, against the one-crossing contract. One merged library (c) would
@@ -148,8 +148,8 @@ their per-key cost breaks the latency budget.
 
 ## ADR-009 The snapshot format
 
-**Decision.** The engine answers every call with one snapshot in a compact binary encoding of its
-own: a magic, the contract version, then fixed-width little-endian integers and length-prefixed
+**Decision.** Confirmed by the user on 2026-11-11. The engine answers every call with one
+snapshot in a compact binary encoding of its own: a magic, the contract version, then fixed-width little-endian integers and length-prefixed
 UTF-8 strings (`engine-contract.md`). The decoder checks every length and range and drops a
 buffer that fails. A snapshot carries a generation and a stage, and replaces the one on screen
 only when it is newer.
@@ -164,8 +164,8 @@ codec error-prone; protobuf-lite is then the replacement, behind the same versio
 
 ## ADR-010 Basic Mixed mode and the space key
 
-**Decision.** Two plan defaults are taken until the user decides (`PLAN.md` §2.5 decisions 5 and
-6). Basic Mixed mode is not built as a separate word-level merge in Kotlin: Mixed mode arrives
+**Decision.** The two plan defaults of `PLAN.md` §2.5 decisions 5 and 6, confirmed by the user on
+2026-11-11. Basic Mixed mode is not built as a separate word-level merge in Kotlin: Mixed mode arrives
 with the coordinator's device integration, and gate G1 judges the three single-language modes
 only. In Mixed and Japanese compositions the space key inserts a delimiter and does not commit;
 Enter or a tap on a candidate commits; in Chinese mode space still chooses the first candidate.
@@ -174,6 +174,11 @@ Enter or a tap on a candidate commits; in Chinese mode space still chooses the f
 reads a space as a boundary hint, not as a character (`chidai ni kai ni ikou` and
 `chidainikainiikou` convert alike), so a space that committed would make the plan's own sentence
 examples untypable.
+
+**Status.** Mixed mode follows it since the coordinator was wired in (2026-11-11); the setting
+`mixed.space` lets a person choose that space commits the first candidate instead. Japanese mode
+still commits its first candidate on space: it converts through Mozc's session, not through the
+coordinator, and takes the delimiter when it moves there.
 
 **Reopens when.** The user decides either point differently.
 
