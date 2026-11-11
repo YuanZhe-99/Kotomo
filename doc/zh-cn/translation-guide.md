@@ -93,6 +93,23 @@ Android 字符串资源中（英文、简体中文、繁体中文和日文），
 | design reference | 设计参考 |
 | acknowledgements | 致谢 |
 | architecture decision record (ADR) | 架构决定记录（ADR） |
+| lattice | 候选网格 |
+| edge (of the lattice) | 边 |
+| proposer | 提议者 |
+| decoder | 解码器 |
+| finishing (per target language) | 收尾 |
+| target language | 目标语言 |
+| cross-language | 跨语言 |
+| snapshot | 快照 |
+| generation (of a snapshot) | 代号 |
+| stage (of a snapshot) | 阶段 |
+| piece (of a candidate) | 片段 |
+| pinned span | 固定片段 |
+| boundary hint | 边界提示 |
+| particle | 助词 |
+| engine ↔ app contract | 引擎 ↔ 应用契约 |
+| facade | 外观类 |
+| line service | 行服务 |
 
 ## 6. 审阅清单
 

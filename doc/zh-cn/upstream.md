@@ -21,6 +21,8 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | `RimeDeployWorkspace` 同步部署，期间拒绝会话（主机：全新部署 5–15 s，未变化时约 0.2 s；峰值 RSS 294 MB） | librime 把 `<shared>/build` 当作预编译数据；会话可以在空的用户目录上直接打开，不编译任何东西（主机：30 ms） | 应用随附在 Linux 主机上编译好的数据（`scripts/prebuild-rime.sh`、CI），手机上只需解压 | 主机测试 |
 | `RimeDeployService` 在独立进程（`:deploy`）中部署到暂存目录，键盘期间继续使用上一份构建的会话，完成后再换入新构建（PLAN §4.2）；会话可以在挪过来的构建上直接打开而无需部署（主机：30 ms），转换结果不变；只有第一次部署完成前，中文模式才直接输入字母，候选栏会给出提示 | 已在主机上测试；真机上 NOT_RUN |
 | 会话接口（`set_input` 与候选遍历）在主机上每个前缀约 0.2 ms | 足以按片段调用（PLAN §5.4） | 仅主机 |
+| 已部署方案的 prism（`build/<schema>.prism.bin`）是方案接受的全部拼写的双数组 trie；`Prism::CommonPrefixSearch` 列出某个串开头的拼写，`QuerySpelling` 给出每个拼写的类型（正常、模糊、简拼、补全）以及它是否由纠错规则派生；它可以只读映射，不需要会话 | 协调层从这张表取拼音音节（`rime_spellings.h`），所以模糊音与纠错规则同中文模式一样生效，Kotomo 自己不带音节表 | 主机测试（S6-spellings） |
+| 音节之间用撇号连接（`ni'hao`）时，会话在整段的转换旁边也列出只覆盖前缀的词；类型为 `sentence` 的候选由更短的词拼成，其它类型是词典条目 | 协调层只保留每个音节一个字的候选，并让拼成的整段付出更高的代价，由此区分 `mian'jie` 与 `mi'an'jie` 这样的偶然切分 | 语料经协调层运行（S6） |
 | 子模块不遵循仓库的 `.gitattributes`，而 CMake 的 `file(READ)`/`file(WRITE)` 在 Windows 上会转换换行符 | `core/rime/stage-data.cmake` 用 `configure_file(… NEWLINE_STYLE LF)` 写出共享数据，在各主机上逐字节相同 | 已在 Windows 与 Linux 上构建 |
 
 ## Mozc
@@ -42,6 +44,9 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | `//converter`、`//session:session_handler` 与 `//dictionary:dictionary_interface` 只对 Mozc 自身可见 | Kotomo 的胶水层用 `--nocheck_visibility` 构建，而不是打补丁 | 已构建 |
 | 只有提交转换时才学习；`Config.incognito_mode` 与 `Request.is_incognito_mode` 关闭一切可变操作 | 胶水层从不提交，并在敏感输入框中同时设置两者 | 已阅读，主机测试 |
 | 助词は的罗马字 `wa` 会转为わ：普通会话中 `watashiwanihonjin` → 私羽日本人 | 语料行 T03-001 需要协调层处理 | 主机测试 |
+| 组合器的罗马字表能映射的就映射，其余字母保留为 ASCII（`card` → かrd）；`nn` 是 ん，单独的 `n` 只在辅音之前或末尾成为 ん，所以 `konnichiwa` 读作 こんいちわ | 协调层按这张表的最短拼写提出假名边，并让 n + ni 胜过 nn + i | 主机测试、语料经协调层运行（S6） |
+| 自由片段的候选带有包含连接代价的代价（あい 5194、日本 4211、に 之后的 買いに行こう 8339）；`FIXED_VALUE` 片段报告的是一个很大的负数 | 协调层对自由片段累加 Mozc 的代价，对固定的词取词库中的词代价加上平均的连接份额 | 语料经协调层运行（S6） |
+| 在两个自由片段之间固定 は（`わたし`、は、`にほんじん`）转换为 私は日本人，总代价低于 わたしわにほんじん（私羽日本人） | 助词规则（wa → は、o → を、e → へ）就是一个固定片段，由 Mozc 的代价在两种读法之间取舍 | 语料行 T03-001 经协调层运行（S6） |
 
 ## OpenCC
 
@@ -58,6 +63,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 核心的 `ProximityInfo`、`Dictionary` 与 `SuggestionResults` 需要 `JNIEnv` 和 Java 数组；结果按分数从低到高输出，且可能重复列出同一个词 | 桥接层自己构建 QWERTY 邻近网格（32 × 16 格，与 `ProximityInfo.computeNearestNeighbors` 相同），按分数从高到低排序并去重；触摸点使用固定的 1000 × 600 QWERTY 坐标系 | 已在主机上测试 |
 | 主词典为二进制格式 202（单个只读文件），按路径、偏移与长度打开；AOSP 的 dicttool（`127336e9`）可直接用 `javac` 编译，`makedict -2` 把 `.combined` 词表转为该格式，结果逐字节可复现 | `tool/BuildEnglishDict.java`；应用直接从 APK 中映射未压缩的资源文件 | 已在主机上测试 |
 | 输入时给出纠错与补全（`helo` → hello、`teh` → the）以及二元组预测；乱码会得到多词拆分，LatinIME 的 Java 层原本会过滤它们 | Kotomo 在任何自动替换之前都需要自己的置信度阈值 | 已在主机上测试 |
+| 精确查找不需要 `JNIEnv`：结构策略的 `getWordId` 与 `getWordAttributesInContext` 给出一个词的概率（0–255）与标志；词表中有些词只有首字母大写或全大写的写法，`AI` 被标为可能冒犯（f=113）而 `ai` 只有 f=41，另有许多很短的条目（`Le`、`Rd`、`Chi`） | 协调层按三种大小写查找一段字母，很短的词或可能冒犯的词只有作为整个输入时才提出 | 经协调层的主机运行（S6） |
 | 手势解码为空实现；手势输入需要 Google 的闭源库 | 手势输入等待开源解码器 | 已阅读 |
 
 ## Android 输入法平台

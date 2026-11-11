@@ -15,6 +15,7 @@ librime（中文）、Mozc（日文）、AOSP LatinIME 的建议引擎（英文�
 | [ai.md](ai.md) | 写作助手：用 Gemini Nano 校对与改写、交接流程、遵循的规则 |
 | [clipboard.md](clipboard.md) | 剪贴板历史：记录什么、加密文件、验证码、快捷输入条 |
 | [dictionaries.md](dictionaries.md) | 词库：来源与优先级、读音、导入与导出、带版本的文件、词库包与在线目录 |
+| [engine-contract.md](engine-contract.md) | 引擎 ↔ 应用契约：一个外观类、每键一次 JNI、带版本的快照、过期的更新、协调层怎样调用各引擎 |
 | [third-party.md](third-party.md) | 复用的代码、数据与素材，许可证与义务；设计致谢 |
 | [platform-notes.md](platform-notes.md) | 各设备与 Android 版本上已实现与已验证的内容、关卡状态 |
 | [development.md](development.md) | 环境、命令、开发流程 |

@@ -28,11 +28,13 @@ java lexicon/EmojiData.java             # emoji asset into build/emoji/emoji.tsv
 sh core/english/tests/run-host.sh       # S4 host test; needs the dictionary from BuildEnglishDict
 scripts/fetch-boost.sh                  # Boost headers for librime; needed before any native build
 scripts/prebuild-rime.sh                # compiled Chinese data for the APK
-scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test
+scripts/build-mozc.sh --abi host        # S3 Mozc and glue host build and test; also the line service the S6 host prototype uses
 scripts/build-mozc.sh --abi arm64-v8a --abi x86_64   # Mozc for the APK into build/mozc-prebuilt, compared with build-lock.json
 cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime && ctest --test-dir build/host/rime -V   # S2 librime host test
 ./gradlew connectedDebugAndroidTest    # instrumentation tests on a running emulator or device (debug build)
 tests/conversion/run.sh                 # conversion corpus and the host fuzzy-pinyin test on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
+cmake -S core/mixed -B build/host/mixed -G Ninja && cmake --build build/host/mixed && ctest --test-dir build/host/mixed   # S6 coordinator: unit tests on fake engines, and the host corpus runner
+build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # S6: one composition through the coordinator and the three host engines, with costs and pieces
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```
 
@@ -46,6 +48,12 @@ librime 与英文库，再在设置 `KOTOMO_CORPUS=1` 的情况下运行 `Conver
 Mozc、英文词典与 Emoji 数据。基线中通过、这次失败的行是回退，会让运行失败；在基线中也失败的行是已知差距。每次改动引擎、
 词库或排序前后都运行它，读过报告之后才用 `--update` 接受新的基线。中文或混合模式的行可以在模式后写出模糊音规则
 （`chinese+fuzzy:z_zh,n_l`、`chinese+fuzzy:all`）：运行器先在预编译数据上部署应用生成的规则文件，再在这份构建上转换。
+`run.sh` 随后让同一份语料经过混合输入协调层的主机原型（`core/mixed/`，技术验证 S6）：先跑它的单元测试，再运行
+`kotomo_mixed_corpus`——它转换混合行，并把单语行作为基线、在各自语言的候选中判定，写出
+`build/conversion/mixed-report.txt`（每个未通过的行带有差距分类），并把混合行与
+`tests/conversion/baseline-mixed.tsv` 比较。它另外需要跨语言词库（`CrossLexicon.java`）与主机版的 Mozc 行服务。
+应用还没有使用协调层，所以两次运行并列报告。Mozc 的 Bazel 构建需要带 `include/` 目录的 JDK：Android Studio 自带的
+JetBrains 运行时没有，运行 `build-mozc.sh` 时不要设置 `JAVA_HOME`，或让它指向完整的 JDK。
 `run.sh` 还运行 `FuzzyRimeTest`（T08：不学习的方案、暂存部署的换入、回到预编译数据）。`PLAN.md` §17 列出了计划要求、但尚不存在的接口。
 
 ## 模拟器

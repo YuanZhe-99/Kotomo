@@ -13,6 +13,9 @@ old one stays with its status changed. Dates are when the decision took effect.
 | ADR-005 | The keyboard is a custom View; panels and the settings app use Compose | accepted 2026-11-04 |
 | ADR-006 | Chinese data is compiled at build time; on-device deploys run in their own process | accepted 2026-11-04 |
 | ADR-007 | The network permissions ML Kit brings are accepted | accepted 2026-11-10 |
+| ADR-008 | The coordinator is a fourth library that calls the engines through narrow C functions | default taken 2026-11-11, awaiting the user's confirmation |
+| ADR-009 | Snapshots are a versioned compact binary format | default taken 2026-11-11, awaiting the user's confirmation |
+| ADR-010 | Basic Mixed mode arrives with the coordinator; space separates in Mixed and Japanese compositions | default taken 2026-11-11, awaiting the user's confirmation |
 
 ## ADR-001 Engines
 
@@ -112,3 +115,57 @@ downloads) is confirmed with the user before it is added and goes into the priva
 
 **Reopens when.** The user asks for a build without ML Kit (for example for F-Droid, which does not
 accept it): writing help then moves into its own build variant.
+
+## ADR-008 Where the coordinator lives
+
+**Decision.** The mixed-input coordinator (`core/mixed/`) is C++ with no engine linked in. On the
+device it becomes a fourth shared library with the app's one JNI facade; librime's, Mozc's and the
+English core's libraries each export, next to their JNI entry points, the few plain C functions
+that answer the coordinator's questions (`engine-contract.md`). This is option (b) of `PLAN.md`
+§2.5 decision 4, taken as the plan's default: the user has not confirmed it yet, and only the
+host prototype (spike S6) is built on it.
+
+**Why.** A Kotlin coordinator (a) would cross JNI several times per key and put the lattice and
+the decoder on the managed heap, against the one-crossing contract. One merged library (c) would
+break the symbol isolation of ADR-004 and cannot include Mozc, which Bazel builds separately
+(ADR-003). With (b) the engines stay separate libraries with hidden internals, one key is one JNI
+crossing, and the same coordinator code runs on the host against the same five questions.
+
+**Cost.** Each engine library exports a small C surface besides JNI (a version script per
+library), and the libraries must load in an order that lets the coordinator resolve them.
+On the host Mozc cannot be linked into a CMake program, so the prototype reaches it through a
+line service; device latency of the five calls is unmeasured.
+
+**Reopens when.** The exported C functions cannot be resolved across the libraries on a device
+(the namespace or loader forbids it), or their per-key cost breaks the latency budget.
+
+## ADR-009 The snapshot format
+
+**Decision.** The engine answers every call with one snapshot in a compact binary encoding of its
+own: a magic, the contract version, then fixed-width little-endian integers and length-prefixed
+UTF-8 strings (`engine-contract.md`). The decoder checks every length and range and drops a
+buffer that fails. A snapshot carries a generation and a stage, and replaces the one on screen
+only when it is newer.
+
+**Why.** The plan asked for a compact binary format or protobuf-lite, never JSON per key. The
+snapshot has three record types and no optional fields, so a hand-written codec is about a
+hundred lines on each side and adds no dependency; protobuf-lite would add a second copy of the
+runtime next to the one hidden inside Mozc's library (ADR-004).
+
+**Reopens when.** The snapshot grows optional or repeated structures that make the hand-written
+codec error-prone; protobuf-lite is then the replacement, behind the same version number.
+
+## ADR-010 Basic Mixed mode and the space key
+
+**Decision.** Two plan defaults are taken until the user decides (`PLAN.md` §2.5 decisions 5 and
+6). Basic Mixed mode is not built as a separate word-level merge in Kotlin: Mixed mode arrives
+with the coordinator's device integration, and gate G1 judges the three single-language modes
+only. In Mixed and Japanese compositions the space key inserts a delimiter and does not commit;
+Enter or a tap on a candidate commits; in Chinese mode space still chooses the first candidate.
+
+**Why.** A Kotlin merge would be replaced as soon as the coordinator is wired in. The coordinator
+reads a space as a boundary hint, not as a character (`chidai ni kai ni ikou` and
+`chidainikainiikou` convert alike), so a space that committed would make the plan's own sentence
+examples untypable.
+
+**Reopens when.** The user decides either point differently.

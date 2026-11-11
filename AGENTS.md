@@ -48,6 +48,7 @@ about to change, verify against the code, then fix the docs in the same commit.
 | The clipboard history: recording rules, encrypted file format, verification codes, quick paste | `doc/en-us/clipboard.md` |
 | Writing help (on-device AI): rules, the keyboard ↔ AI screen hand-off, actions, failures | `doc/en-us/ai.md` |
 | Dictionaries: sources and priority, readings, import formats and checks, the versioned files, packs and the online catalog | `doc/en-us/dictionaries.md` |
+| The engine ↔ app contract: calls in, the versioned snapshot out, stale updates, the questions the coordinator asks the engines | `doc/en-us/engine-contract.md` |
 | Screens, wording and tokens from the design agent (keyboard, candidate bar, panels, settings) | `design/` (start at `design/README.md`) |
 
 The concept docs added from P0 on (the
