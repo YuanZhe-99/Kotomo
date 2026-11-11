@@ -21,3 +21,6 @@
 - 2026-11-11 为 Q6 再次核对词库数据源，未变：rime-ice 2026.06.30、rime-frost 1.0.4、fcitx5-pinyin-zhwiki 0.3.1、
   THUOCL `a30ce79d`、SudachiDict 20261015、mozcdic-ut 2026-11-03、SCOWLv2 rel-2026.02.25。此后应用直接从来源下载提供的
   词库（THUOCL、rime-ice 的 `en_dicts.zip` 与 `8105`、zhwiki 的网络用语），取来源当前的版本；锁定只固定主机测试转换的文件。
+- 2026-11-11 为协调层的设备接入（Q7）再次核对上游，未变：librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2 与 HeliBoard 4.2
+  （按各自的标签；HeliBoard 唯一更新的标签是预发布的 4.3-beta1）；工具链与数据源同上一条。Kotomo 的 Mozc 胶水层
+  加入了给协调层的函数表，因此重新构建了两个 Android 库，并把它们的哈希记入 `build-lock.json`；`mozc.data` 未变。

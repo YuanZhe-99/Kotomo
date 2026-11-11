@@ -28,3 +28,8 @@
   SCOWLv2 rel-2026.02.25. From now on the app downloads the offered ones (THUOCL, rime-ice
   `en_dicts.zip` and `8105`, the zhwiki web slang) from their sources at their current version;
   the pins only fix what the host tests convert.
+- Upstreams checked again on 2026-11-11 for the coordinator's device integration (Q7), unchanged:
+  librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2 and HeliBoard 4.2 by their tags (HeliBoard's only
+  newer tag is the pre-release 4.3-beta1); the toolchain and data sources as in the line above.
+  Kotomo's Mozc glue gained the coordinator's function table, so both Android libraries were
+  rebuilt and their hashes recorded in `build-lock.json`; `mozc.data` is unchanged.

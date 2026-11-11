@@ -1002,10 +1002,10 @@ P1 的代码在 `21cd65c` 提交，`./gradlew check` 当时通过（79 个单元
 | T01 | 中文单语语料 | 全拼、整句、同音词、简拼 | P1 | `tests/conversion/` 13 行；rime 主机检查（T01-S2） |
 | T02 | 英文单语语料 | 预测、纠错、大小写 | P1 | `tests/conversion/` 10 行；英文主机测试 13 项（S4） |
 | T03 | 日文单语语料 | 罗马字、整句、文节 | P1 | `tests/conversion/` 11 行；Mozc 主机测试 7 项 |
-| T04 | 混合词级语料 | §2.3 的示例、原语言优先、`ai` | P1 | `tests/conversion/` 13 行（3 行通过） |
+| T04 | 混合词级语料 | §2.3 的示例、原语言优先、`ai` | P1 | `tests/conversion/` 16 行（应用路线 15 行通过，2026-11-11；T04-002 没有数据来源）；模拟器 `MixedTypingTest` NOT_RUN |
 | T05 | 拼音 → 日文 | §5.9 的样本与反例 | P2 | 词库层面：`tests/lexicon/samples.tsv`（S5） |
 | T06 | 英文 → 日文 | 外来语、语义词、音译的排序 | P2 | 同上 |
-| T07 | 整句混合 | §13.2 | P2 | `tests/conversion/` 5 行：应用路线 0/5，协调层主机原型 5/5（`baseline-mixed.tsv`，S6） |
+| T07 | 整句混合 | §13.2 | P2 | `tests/conversion/` 5 行：应用路线 5/5（经 `Core`，2026-11-11），协调层路线 5/5（`baseline-mixed.tsv`）；模拟器 `MixedTypingTest` 10/10 |
 | T08 | 模糊音与纠错 | 声母、韵母、罗马字变体、长音与促音、误触、连续输入中的拼写错误 | P2 | 中文模糊音：`tests/conversion/` 32 行（含 `+fuzzy:` 的行）、`FuzzyTest`、`FuzzyRimeTest` 3 项、模拟器 `FuzzySettingsTest` 2 项；罗马字变体与纠错无 |
 | T09 | 局部修改 | 锁定、重算、撤销、恢复原始输入 | P2 | 无 |
 | T10 | 排序与学习 | 原语言优先、词频、词库优先级、Emoji、歧义、语言偏好、衰减 | P2 | 无 |
