@@ -579,6 +579,7 @@ internal fun DiagnosticsPage() {
             )
             Measure(stringResource(R.string.diag_key), summary.keyDraw?.let { stringResource(R.string.diag_series, it.p50, it.p95, it.max, it.count) })
             Measure(stringResource(R.string.diag_candidates), summary.candidateDraw?.let { stringResource(R.string.diag_series, it.p50, it.p95, it.max, it.count) })
+            Measure(stringResource(R.string.diag_engine), summary.engineWork?.let { stringResource(R.string.diag_series, it.p50, it.p95, it.max, it.count) })
             Measure(stringResource(R.string.diag_cold), summary.coldStartMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
             Measure(stringResource(R.string.diag_compose), summary.composeFirstFrameMs?.let { stringResource(R.string.diag_ms, it.toInt()) })
             RimeFiles(context).readCheck()?.let { Measure(stringResource(R.string.diag_rime_check), it) }

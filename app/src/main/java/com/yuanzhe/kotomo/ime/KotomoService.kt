@@ -541,10 +541,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /**
      * Reads the window's size and the fold's position for the layout (PLAN §8.10).
      * Notes: main thread; the fold comes from the WindowManager flow collected in onCreate, in
-     * the same window coordinates as the window metrics.
+     * the same window coordinates as the window metrics [bounds] (read once per refresh).
      */
-    private fun posture(): Posture {
-        val bounds = WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this).bounds
+    private fun posture(bounds: android.graphics.Rect): Posture {
         val density = resources.displayMetrics.density
         val f = fold
         val hinge = f?.bounds
@@ -1150,11 +1149,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun rimeKey(keycode: Int, downTime: Long, onlyIfComposing: Boolean = false, fallback: () -> Unit) {
         engine.post {
-            val composingNow = rimeReady && Rime.getComposition().isNotEmpty()
-            val skip = onlyIfComposing && !composingNow
+            val started = SystemClock.uptimeMillis()
+            // Only keys that commit the top candidate first ask whether anything is composed.
+            val skip = onlyIfComposing && !(rimeReady && Rime.getComposition().isNotEmpty())
             val handled = rimeReady && !skip && Rime.processKey(keycode, 0)
             val state = rimeState(handled)
+            val work = SystemClock.uptimeMillis() - started
             main.post {
+                if (downTime != 0L) Probe.engineWork.add(work)
                 applyChinese(state, downTime)
                 if (!state.handled && !skip) fallback()
             }
@@ -1345,7 +1347,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (!::keyboard.isInitialized) return
         val pad = field == Field.PHONE || field == Field.NUMBER || field == Field.DATETIME
         val s = settings
-        val posture = posture()
+        val window = WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this).bounds
+        val posture = posture(window)
         val split = posture.split(s.split) && !pad
         val density = resources.displayMetrics.density
         keyboard.hinge = posture.hingeX?.takeIf { split }?.let { h ->
@@ -1354,7 +1357,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         keyboard.maxWidth = if (posture.wide && !split) resources.getDimension(R.dimen.kb_max_width) else 0f
         keyboard.heightLimit = posture.heightLimit(
-            WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this).bounds.height(),
+            window.height(),
             (candidateBar.height.takeIf { it > 0 } ?: resources.getDimensionPixelSize(R.dimen.bar_height)) + content.paddingBottom,
             density, ResourcesCompat.getFloat(resources, R.dimen.kb_short_window_share), s.tabletopLowerHalf,
         )
@@ -1407,7 +1410,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             raw.isEmpty() -> emptyList()
             else -> listOf(raw, raw.replaceFirstChar(Char::uppercase), raw.uppercase()).distinct()
         }
-        candidateBar.show(candidates, downTime)
+        // Chinese candidates are librime's answer, drawn by applyChinese; what is shown here is the
+        // previous key's, so the probe waits for that answer.
+        candidateBar.show(candidates, if (usesRime && !direct) 0 else downTime)
         shownCandidates.value = candidates
         candidateBar.details = details
         candidateBar.hint = notice ?: chineseHint() ?: japaneseHint(raw)
@@ -1453,13 +1458,16 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 mozcTried = true
                 mozc = openMozc()
             }
+            val started = SystemClock.uptimeMillis()
             val m = mozc
             val session = m?.sessionConvert(typed, incognito = incognito).orEmpty()
             val reading = session.joinToString("") { it.reading }
             val segments = Candidates.extend(chosen, reading)?.let { m?.pinnedConvert(it, incognito) } ?: session
             val predicted = if (reading.isEmpty()) emptyList() else m?.predict(reading, incognito).orEmpty()
             val unavailable = m == null
+            val work = SystemClock.uptimeMillis() - started
             main.post {
+                Probe.engineWork.add(work)
                 if (gen != generation) return@post
                 japaneseUnavailable = unavailable
                 if (segments.isEmpty()) {
@@ -1707,8 +1715,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val xs = points?.map { it.first }?.toIntArray()
         val ys = points?.map { it.second }?.toIntArray()
         engine.post {
+            val started = SystemClock.uptimeMillis()
             val words = english?.suggestions(typed, xs, ys, previous)?.map { it.word }.orEmpty()
+            val work = SystemClock.uptimeMillis() - started
             main.post {
+                Probe.engineWork.add(work)
                 if (gen != generation) return@post
                 candidates = withEmoji(Candidates.english(typed, words), emojiFor(typed))
                 candidateBar.show(candidates, 0)

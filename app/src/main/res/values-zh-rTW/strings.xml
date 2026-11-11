@@ -30,7 +30,8 @@
     <string name="diag_title">診斷</string>
     <string name="diag_note">在本機打字時測得。只保留耗時與記憶體，不儲存你輸入的任何內容。</string>
     <string name="diag_key">按下到按鍵繪製</string>
-    <string name="diag_candidates">按下到候選繪製</string>
+    <string name="diag_candidates">按鍵生效到候選繪製</string>
+    <string name="diag_engine">每鍵的引擎耗時</string>
     <string name="diag_cold">鍵盤視圖到首幀</string>
     <string name="diag_compose">Emoji 面板首幀</string>
     <string name="diag_rime">中文引擎準備</string>

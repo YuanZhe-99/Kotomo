@@ -42,6 +42,32 @@ Verified on the development host, x86_64 Linux (Debian 13, JDK 21.0.13), from a 
 | G4 AI and personalization | NOT_RUN |
 | G5 1.0 | NOT_RUN |
 
+## First-candidate latency (Q2, 2026-11-11)
+
+S1's device baseline, press → candidates drawn p95 120–130 ms (Galaxy Z Fold, release,
+2026-11-04), counted from the touch going down. Kotomo types a key when the finger lifts, so that
+number also held how long the finger rested on the key, which no keyboard code can shorten. From
+2026-11-11 the diagnostics page counts from the key being typed ("Key typed to candidates drawn",
+stored under a new name so old and new samples never mix) and shows a third series, "Engine work
+per key", the engine thread's share. One Chinese key goes:
+
+| Step | Where | Emulator, debug, 2026-11-11 (composition only, not device latency) |
+|---|---|---|
+| Release → `onKey` | input dispatch | 3–9 ms |
+| `onKey` and `refresh` | main thread | 1.5–4 ms |
+| Hand-off to the engine thread, librime, hand-back | engine thread; librime's own work p50 2 ms, p95 21 ms (n = 41) | 10–40 ms between the two main-thread steps |
+| `applyChinese` (composing text, candidate list, emoji lookup) | main thread | 1–5 ms |
+| Next frame that draws the bar | render thread | 40–100 ms; the emulator renders slowly (press → key drawn p50 67 ms there, 9–10 ms on the Fold) |
+
+Measured with temporary duration logs (no text) while tapping `nihao` with `adb shell input tap`.
+Changed in the shell: librime gets 5 JNI crossings per letter instead of 6 (the composition is read
+before the key only for punctuation, which commits the top candidate first); one window-metrics
+read per refresh instead of two; the keyboard's setters skip a redraw when nothing changed; the
+Chinese path's first candidate update no longer counts the previous key's list as "drawn". Left as
+gaps: the per-key JNI design (one call per key with a versioned snapshot) is the engine ↔ app
+contract of Q4; the frame wait and the engine time on a device are unmeasured until the user runs
+the new APK (G1 checklist).
+
 ## Known limitations
 
 - A reading of the code on 2026-11-09 found P1 incomplete: Mixed mode types exactly as Chinese

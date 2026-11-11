@@ -125,6 +125,7 @@ class KeyboardView(
     /** Corner hints on the keys (the Emoji key's mode badge stays). */
     var hints = true
         set(value) {
+            if (field == value) return
             field = value
             invalidate()
         }
@@ -150,18 +151,21 @@ class KeyboardView(
     /** What the Enter key shows: a new line or the field's action (search, send, …). */
     var enterStyle = EnterStyle.NEWLINE
         set(value) {
+            if (field == value) return
             field = value
             invalidate()
         }
 
     var shift = Shift.OFF
         set(value) {
+            if (field == value) return
             field = value
             invalidate()
         }
 
     var mode = Mode.MIXED
         set(value) {
+            if (field == value) return
             field = value
             invalidate()
         }
@@ -181,6 +185,7 @@ class KeyboardView(
     /** Key corner radius in pixels (Settings.keyRadiusDp; the design's 12 dp by default). */
     var radius = res.getDimension(R.dimen.kb_key_radius)
         set(value) {
+            if (field == value) return
             field = value
             invalidate()
         }
@@ -535,7 +540,7 @@ class KeyboardView(
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                if (pressed != null) release(commit = true)
+                if (pressed != null) release(commit = true, at = event.eventTime)
                 val i = event.actionIndex
                 sideButtons()?.let { (swap, full) ->
                     val x = event.getX(i)
@@ -582,7 +587,7 @@ class KeyboardView(
                 val key = pressed
                 if (index >= 0 && key != null) drag(key, event.getX(index))
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (pressed != null) release(commit = true)
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (pressed != null) release(commit = true, at = event.eventTime)
             MotionEvent.ACTION_CANCEL -> release(commit = false)
         }
         return true
@@ -686,7 +691,12 @@ class KeyboardView(
 
     private fun showPreview(key: PlacedKey) = popupLayer.showPreview(key.key.label, key, this)
 
-    private fun release(commit: Boolean) {
+    /**
+     * Lets go of the pressed key: types it (or ends its drag) when [commit].
+     * Inputs: [at] is the release's event time (uptime); the key is typed then, so it is the time
+     * handed on, from which [Probe.candidateDraw] counts (the press itself is in [Probe.keyDraw]).
+     */
+    private fun release(commit: Boolean, at: Long = SystemClock.uptimeMillis()) {
         removeCallbacks(longPress)
         removeCallbacks(repeatBackspace)
         popupLayer.hidePreview()
@@ -694,11 +704,11 @@ class KeyboardView(
         pressed = null
         when {
             swiping -> if (commit && key.key.action == KeyAction.Backspace && deleteWords > 0) {
-                onKey(KeyAction.DeleteWords(deleteWords), true, pressDownTime)
+                onKey(KeyAction.DeleteWords(deleteWords), true, at)
             }
             commit && !longPressed -> {
                 lastTap = ((downX - key.centerX) / (key.right - key.left)) to ((downY - key.centerY) / (key.bottom - key.top))
-                onKey(key.key.action, false, pressDownTime)
+                onKey(key.key.action, false, at)
                 lastTap = null
             }
         }

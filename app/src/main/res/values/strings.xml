@@ -36,7 +36,8 @@
     <string name="diag_title">Diagnostics</string>
     <string name="diag_note">Measured on this device while you type. Only timings and memory are kept; nothing you type is stored.</string>
     <string name="diag_key">Press to key drawn</string>
-    <string name="diag_candidates">Press to candidates drawn</string>
+    <string name="diag_candidates">Key typed to candidates drawn</string>
+    <string name="diag_engine">Engine work per key</string>
     <string name="diag_cold">Keyboard view to first frame</string>
     <string name="diag_compose">Emoji panel first frame</string>
     <string name="diag_rime">Chinese engine setup</string>

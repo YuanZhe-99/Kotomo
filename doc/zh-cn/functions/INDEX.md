@@ -23,7 +23,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/VerificationCodes.kt` | 从复制的文本中识别验证码：带上下文的排序结果，排除日期、价格、电话与订单号（纯 Kotlin，有单元测试） | `find`、`bare` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardPanel.kt`、`QuickPaste.kt` | 在键盘位置显示的剪贴板面板（分类标签、两列卡片、页脚、长按操作）与键盘上方的快捷输入条及其提供规则（60 秒、每条剪贴一次） | `ClipboardPanel`、`QuickPaste`、`QuickPasteStrip` |
 | `lexicon/EmojiData.java` | Emoji 数据管线：下载并校验 Unicode Emoji 与 CLDR 数据，生成 `emoji.tsv`（分组、肤色、键；拼音取自 CC-CEDICT 与 Unihan，假名取自 Mozc，罗马字为平文式）；由应用的 `emojiData` 任务调用 | `main`、`SOURCES`、`index` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/Probe.kt` | S1 的测量（只有耗时和内存）及其保存的摘要 | `Probe`、`LatencyStats` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Probe.kt` | S1 的测量（只有耗时和内存：按下 → 键绘制、按键生效 → 候选绘制、每键的引擎耗时、冷启动、内存）及其保存的摘要 | `Probe`、`LatencyStats` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用的外壳：带设置引导卡片和试打框的首页、页面导航（单栏加返回栈；840 dp 起导航列表与页面并排）、由 Kotomo 令牌生成的 Material 3 主题 | `SettingsApp`、`Page`、`SetupCard` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Pages.kt` | 各设置页（输入模式，含语言选择的顺序、隐藏的模式与固定了模式的 App；混合模式、中文、日文、英文、布局与尺寸、按键与手势、隐私（含清除学习数据与剪贴板设置）、之后提供的页面）与诊断页；共用的行与控件 | `MixedPage`、`LayoutPage`、`DiagnosticsPage`、`Section` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |

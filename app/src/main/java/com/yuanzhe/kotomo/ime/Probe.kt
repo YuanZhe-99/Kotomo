@@ -49,8 +49,14 @@ class LatencyStats(private val capacity: Int = 512) {
 object Probe {
     /** Touch down → the keyboard's next onDraw (the pressed key highlighted). */
     val keyDraw = LatencyStats()
-    /** Touch down → the candidate bar's next onDraw after the key changed the composition. */
+    /**
+     * Key typed (the finger lifted, when the key takes effect) → the candidate bar's next onDraw
+     * with the engine's result. Until 2026-11-11 this counted from the touch down, so it also held
+     * how long the finger rested on the key.
+     */
     val candidateDraw = LatencyStats()
+    /** One key's work on the engine thread (the engine calls and their JNI crossings), per key that reached an engine. */
+    val engineWork = LatencyStats()
     /** Service onCreate → first keyboard onDraw, for the most recent cold start. */
     var coldStartMs: Long? = null
     /** Emoji panel (Compose) attach → first onDraw, for the first opening in this process. */
@@ -64,6 +70,7 @@ object Probe {
     data class Summary(
         val keyDraw: Series?,
         val candidateDraw: Series?,
+        val engineWork: Series?,
         val coldStartMs: Long?,
         val composeFirstFrameMs: Long?,
         val pssKb: Long?,
@@ -88,7 +95,8 @@ object Probe {
                 putLong("$name.max", s.max)
             }
             put("key", keyDraw.series())
-            put("candidates", candidateDraw.series())
+            put("typed_candidates", candidateDraw.series())
+            put("engine", engineWork.series())
             coldStartMs?.let { putLong("cold", it) }
             composeFirstFrameMs?.let { putLong("compose", it) }
             pssKb?.let { putLong("pss", it) }
@@ -105,13 +113,14 @@ object Probe {
             null
         }
         fun long(name: String) = if (p.contains(name)) p.getLong(name, 0) else null
-        return Summary(series("key"), series("candidates"), long("cold"), long("compose"), long("pss"), deploy?.first, deploy?.second)
+        return Summary(series("key"), series("typed_candidates"), series("engine"), long("cold"), long("compose"), long("pss"), deploy?.first, deploy?.second)
     }
 
     /** Clears stored and in-memory measurements. */
     fun clear(context: Context) {
         keyDraw.clear()
         candidateDraw.clear()
+        engineWork.clear()
         coldStartMs = null
         composeFirstFrameMs = null
         pssKb = null
