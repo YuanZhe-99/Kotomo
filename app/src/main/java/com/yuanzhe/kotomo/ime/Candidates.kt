@@ -55,6 +55,26 @@ internal object Candidates {
         return index?.lookup(key, EMOJI_SUGGESTIONS).orEmpty()
     }
 
+    /** Marks an entry of [chinese] that is not one of librime's candidates. */
+    const val TYPED = -2
+    const val EMOJI = -1
+
+    /**
+     * Lists Chinese candidates: librime's two best, then the letters as typed (English typed in
+     * Chinese mode, PLAN §8.2), then the emoji, then the rest of librime's candidates.
+     * Inputs: [texts] are librime's candidates, best first; [typed] is librime's raw input.
+     * Returns: each entry's text with where it comes from: its index in [texts], [TYPED] or
+     * [EMOJI]; no text twice. The typed letters are left out when they are empty or are already
+     * one of librime's candidates.
+     */
+    fun chinese(texts: List<String>, typed: String, emoji: List<String>): List<Pair<String, Int>> {
+        val head = texts.withIndex().take(EMOJI_POSITION).map { it.value to it.index }
+        val tail = texts.withIndex().drop(EMOJI_POSITION).map { it.value to it.index }
+        val letters = if (typed.isEmpty() || typed in texts) emptyList() else listOf(typed to TYPED)
+        val seen = HashSet<String>()
+        return (head + letters + emoji.map { it to EMOJI } + tail).filter { seen.add(it.first) }
+    }
+
     /** Puts [emoji] into [list] at [EMOJI_POSITION], without duplicates. */
     fun withEmoji(list: List<String>, emoji: List<String>): List<String> {
         if (emoji.isEmpty()) return list

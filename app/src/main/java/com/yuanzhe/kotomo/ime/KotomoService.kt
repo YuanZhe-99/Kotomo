@@ -152,6 +152,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var chineseCandidates = emptyList<String>()
     /** The last word committed in English mode, for predictions and bigram context. */
     private var previousWord: String? = null
+    /**
+     * Main thread: where each letter of [composing] was tapped, in the English engine's layout
+     * space ([English.touchPoint]); null for a letter typed without a position.
+     */
+    private val taps = ArrayList<Pair<Int, Int>?>()
     private var mode = Mode.MIXED
     private var symbols = false
     private var symbolPage = 0
@@ -609,7 +614,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val rimeIndex = rimeIndexes.getOrElse(index) { index }
         val chinese = usesRime && !direct
         val rime = if (chinese && rimeIndex >= 0) rimeCandidates.getOrNull(rimeIndex) else null
-        val emoji = text in emojiShown || (chinese && rimeIndex < 0)
+        val emoji = text in emojiShown || (chinese && rimeIndex == Candidates.EMOJI)
         val reading = when {
             emoji -> ""
             rime != null -> rime.comment.trim()
@@ -788,6 +793,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         details = null
         shift = Shift.OFF
         composing.clear()
+        taps.clear()
         clearChinese()
         previousWord = null
         // Each app comes back in the mode last used in it (only the package name is stored).
@@ -828,6 +834,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     override fun onFinishInputView(finishingInput: Boolean) {
         currentInputConnection?.finishComposingText()
         composing.clear()
+        taps.clear()
         clearChinese()
         super.onFinishInputView(finishingInput)
     }
@@ -838,6 +845,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if ((composing.isNotEmpty() || chinesePreedit.isNotEmpty()) && (newSelStart != candidatesEnd || newSelEnd != candidatesEnd)) {
             currentInputConnection?.finishComposingText()
             composing.clear()
+            taps.clear()
             clearChinese()
             previousWord = null
             refresh(0)
@@ -888,6 +896,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 val letter = action.text.length == 1 && action.text[0].let { it in 'a'..'z' || it in 'A'..'Z' }
                 if (letter && !direct && !longPress) {
                     composing.append(action.text)
+                    taps += keyboard.lastTap?.let { (dx, dy) -> English.touchPoint(action.text[0], dx, dy) }
                     ic.setComposingText(composing, 1)
                 } else if (spaced && composing.isEmpty() && settings.gestures.smartSpace && Fields.attaches(action.text) &&
                     ic.getTextBeforeCursor(1, 0)?.toString() == " "
@@ -913,6 +922,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
             KeyAction.Backspace -> if (composing.isNotEmpty()) {
                 composing.setLength(composing.length - 1)
+                if (taps.isNotEmpty()) taps.removeAt(taps.size - 1)
                 if (composing.isEmpty()) ic.commitText("", 1) else ic.setComposingText(composing, 1)
             } else {
                 sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
@@ -924,6 +934,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     // Enter keeps the kana as typed, as Japanese keyboards do.
                     ic.commitText(japaneseReading, 1)
                     composing.clear()
+                    taps.clear()
                 } else if (composing.isNotEmpty()) {
                     commitComposition()
                 } else {
@@ -1011,12 +1022,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /** librime's state after one call, read on the engine thread. */
-    private class RimeState(val handled: Boolean, val commit: String?, val preedit: String, val candidates: List<Rime.Candidate>)
+    private class RimeState(val handled: Boolean, val commit: String?, val preedit: String, val input: String, val candidates: List<Rime.Candidate>)
 
     private fun rimeState(handled: Boolean) = if (rimeReady) {
-        RimeState(handled, Rime.getCommit(), Rime.getComposition(), Rime.getCandidates(Candidates.CHINESE_LIMIT))
+        RimeState(handled, Rime.getCommit(), Rime.getComposition(), Rime.getInput(), Rime.getCandidates(Candidates.CHINESE_LIMIT))
     } else {
-        RimeState(false, null, "", emptyList())
+        RimeState(false, null, "", "", emptyList())
     }
 
     /** Applies a librime result to the field and the candidate bar (main thread). */
@@ -1042,12 +1053,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         chinesePreedit = state.preedit
         rimeCandidates = state.candidates
-        val texts = state.candidates.map { it.text }
         val emoji = emojiFor(state.preedit)
-        val at = minOf(Candidates.EMOJI_POSITION, texts.size)
-        chineseCandidates = withEmoji(texts, emoji)
-        rimeIndexes = if (emoji.isEmpty()) state.candidates.indices.toList()
-        else (0 until at).toList() + List(chineseCandidates.size - state.candidates.size) { -1 } + (at until state.candidates.size).toList()
+        emojiShown = emoji.toSet()
+        val entries = Candidates.chinese(state.candidates.map { it.text }, state.input, emoji)
+        chineseCandidates = entries.map { it.first }
+        rimeIndexes = entries.map { it.second }
         if (usesRime) {
             candidates = chineseCandidates
             candidateBar.show(candidates, downTime)
@@ -1118,12 +1128,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (usesRime && !direct) {
             val rimeIndex = rimeIndexes.getOrElse(index) { index }
             if (rimeIndex < 0) {
-                // An emoji: it replaces the whole composition.
-                val emoji = candidates.getOrNull(index) ?: return
+                // An emoji or the letters as typed: either replaces the whole composition.
+                val text = candidates.getOrNull(index) ?: return
                 engine.post {
                     if (rimeReady) Rime.clear()
                     main.post {
-                        currentInputConnection?.commitText(emoji, 1)
+                        currentInputConnection?.commitText(text, 1)
                         chinesePreedit = ""
                         chineseCandidates = emptyList()
                         rimeIndexes = emptyList()
@@ -1152,6 +1162,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             ic.commitText(text, 1)
         }
         composing.clear()
+        taps.clear()
         updateAutoCaps()
         refresh(0)
     }
@@ -1176,6 +1187,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (composing.isEmpty()) return
         currentInputConnection?.finishComposingText()
         composing.clear()
+        taps.clear()
     }
 
     /**
@@ -1321,10 +1333,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
     }
 
-    /** Asks the engine thread for English suggestions and shows them if still current. */
+    /**
+     * Asks the engine thread for English suggestions and shows them if still current.
+     * Notes: the letters' tap positions go along when every letter has one, so the engine weighs
+     * a tap near a neighbouring key (key correction, PLAN §9.7); otherwise each letter counts as
+     * a tap on its key's centre.
+     */
     private fun suggestEnglish(typed: String, previous: String?, gen: Int) {
+        val points = taps.takeIf { it.size == typed.length && it.all { p -> p != null } }?.map { it!! }
+        val xs = points?.map { it.first }?.toIntArray()
+        val ys = points?.map { it.second }?.toIntArray()
         engine.post {
-            val words = english?.suggestions(typed, previous = previous)?.map { it.word }.orEmpty()
+            val words = english?.suggestions(typed, xs, ys, previous)?.map { it.word }.orEmpty()
             main.post {
                 if (gen != generation) return@post
                 candidates = withEmoji(Candidates.english(typed, words), emojiFor(typed))

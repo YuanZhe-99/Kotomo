@@ -113,7 +113,7 @@ class ConversionCorpusTest {
             Rime.clear()
             Rime.setInput(line.input)
             val texts = Rime.getCandidates(Candidates.CHINESE_LIMIT).map { it.text }
-            Candidates.withEmoji(texts, Candidates.emoji(emoji, Rime.getComposition()))
+            Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition())).map { it.first }
         }
         Mode.JAPANESE -> Candidates.withEmoji(
             Candidates.japanese(mozc.sessionConvert(line.input, incognito = false).orEmpty()),

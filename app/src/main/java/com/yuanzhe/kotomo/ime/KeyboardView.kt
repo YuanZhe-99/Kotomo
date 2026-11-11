@@ -240,6 +240,15 @@ class KeyboardView(
     private var longPressed = false
     /** Where the pressed key's finger went down, for the space and backspace drags. */
     private var downX = 0f
+    private var downY = 0f
+
+    /**
+     * Where the last tap that typed fell on its key, as a fraction of the key's size from its
+     * centre (−0.5…0.5 each way), or null for a tap with no position (accessibility, popups).
+     * Notes: main thread; read by the service right after [onKey] for English key correction.
+     */
+    var lastTap: Pair<Float, Float>? = null
+        private set
     /** The pointer that pressed the current key. */
     private var pointerId = 0
     /** Cursor steps already sent while dragging along the space bar. */
@@ -507,6 +516,7 @@ class KeyboardView(
                 pressDownTime = event.eventTime
                 longPressed = false
                 downX = event.getX(i)
+                downY = event.getY(i)
                 pointerId = event.getPointerId(i)
                 movedSteps = 0
                 deleteWords = 0
@@ -624,7 +634,11 @@ class KeyboardView(
             swiping -> if (commit && key.key.action == KeyAction.Backspace && deleteWords > 0) {
                 onKey(KeyAction.DeleteWords(deleteWords), true, pressDownTime)
             }
-            commit && !longPressed -> onKey(key.key.action, false, pressDownTime)
+            commit && !longPressed -> {
+                lastTap = ((downX - key.centerX) / (key.right - key.left)) to ((downY - key.centerY) / (key.bottom - key.top))
+                onKey(key.key.action, false, pressDownTime)
+                lastTap = null
+            }
         }
         swiping = false
         invalidate()

@@ -16,7 +16,7 @@ Verified on the development host, x86_64 Linux (Debian 13, JDK 21.0.13), from a 
 | Documentation mirror and links | `java tool/CheckDocs.java` passes |
 | Unit tests (layout and hit testing, latency percentiles, fields, posture, emoji index; settings format and theme file; clipboard: recording rules, the encrypted file, expiry, refused clips, verification codes, quick paste; the AI hand-off) | `./gradlew check` on 2026-11-10 (debug): 87 tests, 87 pass, none skipped |
 | Lint | `./gradlew check` on 2026-11-10: no errors |
-| Conversion corpus (T01–T07) | `tests/conversion/run.sh` on 2026-11-10 (x86_64 Linux, host engines): 37 of 58 lines pass. T01 Chinese 13/13, T02 English 10/10, T03 Japanese 10/11 (T03-001 私羽日本人, the particle は typed wa); T04–T07 Mixed 4/24, because Mixed mode is Chinese mode until the coordinator exists. The run is the baseline in `tests/conversion/baseline.tsv`. |
+| Conversion corpus (T01–T07) | `tests/conversion/run.sh` on 2026-11-10 (x86_64 Linux, host engines): 43 of 64 lines pass. T01 Chinese 19/19, T02 English 10/10, T03 Japanese 10/11 (T03-001 私羽日本人, the particle は typed wa); T04–T07 Mixed 4/24, because Mixed mode is Chinese mode until the coordinator exists. The run is the baseline in `tests/conversion/baseline.tsv`. |
 | Instrumentation tests (T12, T13) | `./gradlew connectedDebugAndroidTest` on 2026-11-10 (emulator, Android 17, x86_64, 16 KB pages, debug): `FieldTypingTest` 3 of 3. Typing `nihao` and space on Kotomo's keys gives 你好 in an ordinary field and in a field with `IME_FLAG_NO_PERSONALIZED_LEARNING`; a password field receives `nihao` as typed |
 | Release build | `./gradlew assembleRelease` on 2026-11-10 with `KOTOMO_REQUIRE_MOZC=1` and `KOTOMO_REQUIRE_RIME_PREBUILT=1`: R8 on, signed with the release key (APK Signature Scheme v2, verified with `apksigner`); arm64-v8a 27.4 MB, x86_64 27.5 MB, each with librime, Mozc (2.9 MB library, 19 MB data) and the English engine |
 
@@ -45,11 +45,12 @@ Verified on the development host, x86_64 Linux (Debian 13, JDK 21.0.13), from a 
 ## Known limitations
 
 - A reading of the code on 2026-11-09 found P1 incomplete: Mixed mode types exactly as Chinese
-  mode, Japanese mode has no segment editing or prediction and English mode does not pass touch
-  positions to its engine. `PLAN.md` §8 lists every gap.
+  mode, Japanese mode has no segment editing or prediction. `PLAN.md` §8 lists every gap.
 
-- English mode suggests corrections, completions and next words from the S4 engine; the typed word
-  stays first and is what space commits. Chinese mode converts pinyin through librime (S2) with data
+- English mode suggests corrections, completions and next words from the S4 engine, with each
+  letter's tap position on its key, so a tap near a neighbouring key weighs that key too; the typed
+  word stays first and is what space commits. Chinese mode offers the letters as typed after the
+  two best Chinese candidates. Chinese mode converts pinyin through librime (S2) with data
   compiled at build time; Mixed mode does the same until the mixed coordinator (S6) exists. Japanese
   mode converts romaji through Mozc (S3, libraries built with `scripts/build-mozc.sh`): the composition shows kana, the
   first candidate is the whole sentence, Enter keeps the kana; editing single segments comes in P2.

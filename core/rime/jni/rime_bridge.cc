@@ -151,6 +151,12 @@ bool SetInput(const std::string& input) {
   return session != 0 && api->set_input(session, input.c_str());
 }
 
+std::string Input() {
+  if (session == 0) return {};
+  const char* input = api->get_input(session);
+  return input ? input : "";
+}
+
 bool ProcessKey(int keycode, int mask) {
   return session != 0 && api->process_key(session, keycode, mask);
 }

@@ -65,6 +65,30 @@ class English private constructor(private var handle: Long) : AutoCloseable {
         /** Height of one key row in the built-in layout. */
         const val KEY_HEIGHT = 150
 
+        /** The built-in layout's letter rows and the offset of each row's first key. */
+        private val rows = listOf("qwertyuiop" to 0, "asdfghjkl" to KEY_WIDTH / 2, "zxcvbnm" to KEY_WIDTH * 3 / 2)
+
+        /**
+         * Maps a tap on [letter]'s key to the built-in layout's space.
+         * Inputs: [dx] and [dy], where the tap fell on the key as a fraction of its width and
+         * height from its centre (−0.5…0.5; a little beyond for taps in the gaps).
+         * Returns: the point, or null for a character the layout has no key for.
+         * Notes: the keyboard's own key sizes vary with the screen; the fraction of the key keeps
+         * what matters for correction, how close the tap came to the neighbouring key.
+         */
+        fun touchPoint(letter: Char, dx: Float, dy: Float): Pair<Int, Int>? {
+            val c = letter.lowercaseChar()
+            rows.forEachIndexed { row, (keys, offset) ->
+                val i = keys.indexOf(c)
+                if (i >= 0) {
+                    val x = offset + i * KEY_WIDTH + KEY_WIDTH / 2 + (dx.coerceIn(-1f, 1f) * KEY_WIDTH).toInt()
+                    val y = row * KEY_HEIGHT + KEY_HEIGHT / 2 + (dy.coerceIn(-1f, 1f) * KEY_HEIGHT).toInt()
+                    return x.coerceIn(0, KEYBOARD_WIDTH - 1) to y.coerceIn(0, KEYBOARD_HEIGHT - 1)
+                }
+            }
+            return null
+        }
+
         /**
          * Opens the dictionary stored in [path] from byte [offset] for [length] bytes (the rest
          * of the file when negative), so an uncompressed APK asset can be read in place.

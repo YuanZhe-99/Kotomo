@@ -66,6 +66,9 @@ object Rime {
     /** Returns the preedit text of the composition, or an empty string. */
     external fun getComposition(): String
 
+    /** Returns the raw input as typed (letters and delimiters), or an empty string. */
+    external fun getInput(): String
+
     /** Returns up to [limit] candidates of the current segment, best first. */
     fun getCandidates(limit: Int): List<Candidate> {
         val flat = nativeCandidates(limit)

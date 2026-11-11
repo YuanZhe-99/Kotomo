@@ -22,6 +22,12 @@ T01-008	chinese		woxiangqubeijing	我想去北京	1	sentence
 T01-009	chinese		dianhua	电话	1	word
 T01-010	chinese		xian	先|西安|现	3	syllable boundary ambiguity: xian / xi'an
 T01-011	chinese		xi'an	西安	1	apostrophe forces the boundary
+T01-012	chinese		nihoa	你好	3	spelling correction: luna_pinyin's key_correction rule ao/oa
+T01-015	chinese		tain	天|田|甜	3	spelling correction: ia/ai swapped (tain is tian)
+T01-013	chinese		zhongguo	zhongguo	5	the letters as typed are a candidate (PLAN §8.2)
+T01-014	chinese		coffee	coffee	5	English typed in Chinese mode is offered as typed
+T01-N03	chinese		nihao	!nihoa	0	correction never offers a misspelling
+T01-N04	chinese		nihao	!nihao	1	the typed letters never take first place from the Chinese words
 T01-N01	chinese		nihao	!こんにちは	0	Chinese mode offers no Japanese
 T01-N02	chinese		zhongguo	!中國	5	Simplified script: no Traditional 中國
 T02-001	english		helo	hello	3	spelling correction: dropped letter

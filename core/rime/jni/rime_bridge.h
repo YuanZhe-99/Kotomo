@@ -68,6 +68,9 @@ bool ProcessKey(int keycode, int mask);
 /// Returns: the preedit text of the composition, or empty when nothing is being composed.
 std::string Composition();
 
+/// Returns: the raw input as typed (letters and delimiters), or empty when nothing is composed.
+std::string Input();
+
 /// Returns: up to `limit` candidates of the current segment, best first, across pages, each with
 ///   its comment and the type of its translation.
 std::vector<Candidate> Candidates(std::size_t limit);

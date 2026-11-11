@@ -9,6 +9,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 |---|---|---|
 | BSD-3-Clause；CMake 与 C++17；需要 Boost ≥ 1.74、LevelDB、marisa、OpenCC ≥ 1.0.2 和 yaml-cpp ≥ 0.5（glog 可选） | 作为子模块用 NDK 从源码构建 | 已阅读 |
 | 嵌入接口 `rime_api.h`：会话、`process_key`、`set_input`、`get_context`（预编辑、光标、候选页）、`get_commit`、候选选择与迭代、`set_option`、`register_module` | 拼音片段可以经 `set_input` 与 `get_context` 转换；更深的接入走插件模块 | 已阅读 |
+| luna_pinyin 的拼写运算已经应用 `pinyin:/spelling_correction` 与 `pinyin:/key_correction`（`hoa` → hao，`tain` → tian）；`translator/enable_correction` 会加载 `.correction.bin`，而 1.17 的词典编译器从不写出它（那段代码在 `#if 0` 中），会话因找不到文件而中止 | 中文拼写纠错来自方案的规则；`enable_correction` 保持关闭 | 主机测试，语料 T01-012、T01-015 |
 | 模糊音和双拼都是方案中的 `speller/algebra` 规则 | 修改模糊音开关会改写方案并重新部署，所以部署耗时很重要 | 已阅读 |
 | Trime 用 Gradle 的 CMake 集成构建 librime（NDK 30.0.16248370）；fcitx5-android 链接独立 prebuilder 产出的静态库 | 两种构建方式都可用 | 已阅读 |
 | 1.17.0 可用 NDK 30 与 CMake 3.22.1，按 Kotomo 自己的目标列表（`core/rime/CMakeLists.txt`）为 Android 构建；它对 Boost 的使用全部只需头文件，Boost 1.92.0 的头文件即可；没有 glog 时使用 `no_logging.h` | `libkotomo_rime.so`，每个 ABI 去符号后约 2.9 MB，16 KB 页面，只导出 JNI；输入内容不可能进入日志 | 已构建（arm64-v8a、x86_64），已在主机上测试 |

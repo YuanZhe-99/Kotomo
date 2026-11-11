@@ -75,6 +75,11 @@ JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_processKey(JNIEnv
   return rb::ProcessKey(keycode, mask);
 }
 
+/// Returns the raw input; see rime_bridge::Input.
+JNIEXPORT jstring JNICALL Java_com_yuanzhe_kotomo_engine_Rime_getInput(JNIEnv* env, jobject) {
+  return ToJava(env, rb::Input());
+}
+
 /// Returns the preedit text; see rime_bridge::Composition.
 JNIEXPORT jstring JNICALL Java_com_yuanzhe_kotomo_engine_Rime_getComposition(JNIEnv* env,
                                                                              jobject) {
