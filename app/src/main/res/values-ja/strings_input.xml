@@ -36,6 +36,7 @@
     <string name="source_symbol">記号</string>
     <string name="source_emoji">絵文字</string>
     <string name="source_typed">入力どおり</string>
+    <string name="source_cross_language">他の言語から変換</string>
 
     <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
     <string name="locked_notice">デバイスのロックを解除すると使えます</string>

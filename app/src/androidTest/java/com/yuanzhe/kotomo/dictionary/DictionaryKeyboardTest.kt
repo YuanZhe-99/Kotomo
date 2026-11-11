@@ -10,6 +10,8 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
+import com.yuanzhe.kotomo.ime.KeyboardMemory
+import com.yuanzhe.kotomo.ime.Mode
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -25,7 +27,7 @@ import org.junit.runner.RunWith
  * is gone again once deleted or switched off.
  *
  * Notes: needs Kotomo installed as a debug build; selects it as FieldTypingTest does and types in
- * the default mode (librime). Runs in the app's process, so it changes the same [DictionaryStore]
+ * Chinese mode, fixed for the test's own field (the default mode, Mixed, commits with Enter). Runs in the app's process, so it changes the same [DictionaryStore]
  * the keyboard watches. The test word is made up, on a reading no built-in word has.
  */
 @RunWith(AndroidJUnit4::class)
@@ -33,6 +35,8 @@ class DictionaryKeyboardTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
     private val store = DictionaryStore.get(instrumentation.targetContext)
+    private val memory = KeyboardMemory.get(instrumentation.targetContext)
+    private val app = instrumentation.targetContext.packageName
     private val word = Entry(Lang.ZH, "考拓莫", "kao tuo mo", 90, Source.MANUAL)
 
     @Before
@@ -40,10 +44,12 @@ class DictionaryKeyboardTest {
         device.executeShellCommand("ime enable $IME")
         device.executeShellCommand("ime set $IME")
         device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
+        memory.update { m -> m.withApp(app) { it.copy(pinned = Mode.CHINESE) } }
     }
 
     @After
     fun cleanUp() = runBlocking {
+        memory.update { m -> m.withApp(app) { it.copy(pinned = null) } }
         if (store.state.value.locked) store.unlock(PASSWORD.toCharArray())
         if (store.state.value.protected) store.unprotect()
         store.delete(word)

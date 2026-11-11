@@ -34,26 +34,29 @@ cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime 
 ./gradlew connectedDebugAndroidTest    # instrumentation tests on a running emulator or device (debug build)
 tests/conversion/run.sh                 # conversion corpus and the host fuzzy-pinyin test on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
 KOTOMO_PACKS=1 tests/conversion/run.sh  # also converts every downloadable dictionary from the pinned files in .deps/ (DictionaryPacksTest)
-cmake -S core/mixed -B build/host/mixed -G Ninja && cmake --build build/host/mixed && ctest --test-dir build/host/mixed   # S6 coordinator: unit tests on fake engines, and the host corpus runner
-build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # S6: one composition through the coordinator and the three host engines, with costs and pieces
+cmake -S core/mixed -B build/host/mixed -G Ninja && cmake --build build/host/mixed && ctest --test-dir build/host/mixed   # the coordinator: unit tests on fake engines, libkotomo_core.so for the host JVM, the lexicon compiler, the corpus runner
+build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexicon/en-ja.tsv build/lexicon/cross.klx   # the compiled cross-language lexicon the APK packs (lexicon-format.md)
+build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # one composition through the coordinator and the three host engines, with costs and pieces
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```
 
 从全新克隆构建时依次运行：`git submodule update --init --recursive`、`scripts/fetch-boost.sh`、
-`scripts/prebuild-rime.sh`、上面构建 Android 版 Mozc 的那一行，再在设置 `KOTOMO_REQUIRE_MOZC=1` 与
-`KOTOMO_REQUIRE_RIME_PREBUILT=1` 的情况下运行 Gradle，使 APK 不会在缺少日文或缺少预编译中文数据时产出。
+`scripts/prebuild-rime.sh`、上面构建 Android 版 Mozc 的那一行、`java -Xmx4g lexicon/CrossLexicon.java`
+以及构建并运行 `kotomo_lexicon_compile` 的那两行 `core/mixed` 命令，再在设置 `KOTOMO_REQUIRE_MOZC=1`、
+`KOTOMO_REQUIRE_RIME_PREBUILT=1` 与 `KOTOMO_REQUIRE_LEXICON=1` 的情况下运行 Gradle，使 APK 不会在缺少日文、
+缺少预编译中文数据或缺少跨语言词库时产出。
 `scripts/fetch-mozc.sh` 改为从 GitHub Actions 的运行下载同样的库；它锁定的运行已随仓库删除，只有 CI 重新存在后才能再用。
 
 转换语料（`tests/conversion/corpus.tsv`）在主机的 JVM 中经应用自己的引擎外观与候选组装运行：`run.sh` 先构建主机版
-librime 与英文库，再在设置 `KOTOMO_CORPUS=1` 的情况下运行 `ConversionCorpusTest`。它需要预编译的中文数据、主机版
-Mozc、英文词典与 Emoji 数据。基线中通过、这次失败的行是回退，会让运行失败；在基线中也失败的行是已知差距。每次改动引擎、
+librime、英文库与协调层的库（`libkotomo_core.so`），编译跨语言词库，再在设置 `KOTOMO_CORPUS=1` 的情况下运行
+`ConversionCorpusTest`。混合模式的行经 `Core` 逐键输入，所以跨过的是与手机上相同的 JNI 边界与函数表。它需要预编译的
+中文数据、主机版 Mozc、英文词典、Emoji 数据与词库的两张表（`CrossLexicon.java`）。基线中通过、这次失败的行是回退，会让运行失败；在基线中也失败的行是已知差距。每次改动引擎、
 词库或排序前后都运行它，读过报告之后才用 `--update` 接受新的基线。中文或混合模式的行可以在模式后写出模糊音规则
 （`chinese+fuzzy:z_zh,n_l`、`chinese+fuzzy:all`）：运行器先在预编译数据上部署应用生成的规则文件，再在这份构建上转换。
-`run.sh` 随后让同一份语料经过混合输入协调层的主机原型（`core/mixed/`，技术验证 S6）：先跑它的单元测试，再运行
-`kotomo_mixed_corpus`——它转换混合行，并把单语行作为基线、在各自语言的候选中判定，写出
-`build/conversion/mixed-report.txt`（每个未通过的行带有差距分类），并把混合行与
-`tests/conversion/baseline-mixed.tsv` 比较。它另外需要跨语言词库（`CrossLexicon.java`）与主机版的 Mozc 行服务。
-应用还没有使用协调层，所以两次运行并列报告。Mozc 的 Bazel 构建需要带 `include/` 目录的 JDK：Android Studio 自带的
+`run.sh` 随后让同一份语料单独经过协调层（`core/mixed/host/`）：`kotomo_mixed_corpus` 转换混合行，并把单语行作为
+基线、在各自语言的候选中判定，写出 `build/conversion/mixed-report.txt`（每个未通过的行带有差距分类），并把混合行与
+`tests/conversion/baseline-mixed.tsv` 比较。它另外需要主机版的 Mozc 行服务。两次运行并列报告：应用路线给出键盘会
+显示的内容（含 Emoji 与原样的字母），协调层路线给出代价与片段。Mozc 的 Bazel 构建需要带 `include/` 目录的 JDK：Android Studio 自带的
 JetBrains 运行时没有，运行 `build-mozc.sh` 时不要设置 `JAVA_HOME`，或让它指向完整的 JDK。
 `run.sh` 还运行 `FuzzyRimeTest`（T08：不学习的方案、暂存部署的换入、回到预编译数据）以及词库测试 `DictionaryRimeTest` 与 `DictionaryPacksTest`；`KOTOMO_PACKS=1` 时后者用应用自己的转换器把 `build-lock.json` 锁定的文件（须在 `.deps/` 中）转换为每个可下载的词库，并打印计数、耗时与内存。`DictionaryDownloadTest`（插桩测试）从真实的来源下载，来源无法连接时记为跳过而不是通过。`PLAN.md` §17 列出了计划要求、但尚不存在的接口。
 

@@ -121,9 +121,14 @@ accept it): writing help then moves into its own build variant.
 ## ADR-008 Where the coordinator lives
 
 **Decision.** The mixed-input coordinator (`core/mixed/`) is C++ with no engine linked in. On the
-device it becomes a fourth shared library with the app's one JNI facade; librime's, Mozc's and the
-English core's libraries each export, next to their JNI entry points, the few plain C functions
-that answer the coordinator's questions (`engine-contract.md`). This is option (b) of `PLAN.md`
+device it is a fourth shared library, `libkotomo_core.so`, with the app's one JNI facade;
+librime's, Mozc's and the English core's libraries each hold a static table of the few plain C
+functions that answer the coordinator's questions and return its address through a JNI getter,
+and the app hands the addresses to the coordinator's library (`engine-contract.md`). The
+libraries still export nothing but JNI entry points: the first plan, exporting the C functions as
+symbols for the coordinator's library to link, was dropped when the device side was built
+(2026-11-11), because a table needs no symbol resolved across libraries, works unchanged in the
+host JVM that runs the conversion corpus, and lets a build without Mozc leave its table out. This is option (b) of `PLAN.md`
 §2.5 decision 4, taken as the plan's default: the user has not confirmed it yet, and only the
 host prototype (spike S6) is built on it.
 
@@ -133,13 +138,13 @@ break the symbol isolation of ADR-004 and cannot include Mozc, which Bazel build
 (ADR-003). With (b) the engines stay separate libraries with hidden internals, one key is one JNI
 crossing, and the same coordinator code runs on the host against the same five questions.
 
-**Cost.** Each engine library exports a small C surface besides JNI (a version script per
-library), and the libraries must load in an order that lets the coordinator resolve them.
-On the host Mozc cannot be linked into a CMake program, so the prototype reaches it through a
-line service; device latency of the five calls is unmeasured.
+**Cost.** Each engine library carries a small C surface besides JNI, versioned per table, and
+the app must close the coordinator before an engine whose handle it holds. On the host Mozc
+cannot be linked into a CMake program, so the coordinator's own corpus runner reaches it through
+a line service; device latency of the five calls is unmeasured.
 
-**Reopens when.** The exported C functions cannot be resolved across the libraries on a device
-(the namespace or loader forbids it), or their per-key cost breaks the latency budget.
+**Reopens when.** The tables' functions cannot be called across the libraries on a device, or
+their per-key cost breaks the latency budget.
 
 ## ADR-009 The snapshot format
 

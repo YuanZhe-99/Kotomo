@@ -36,34 +36,39 @@ cmake -S core/rime -B build/host/rime -G Ninja && cmake --build build/host/rime 
 ./gradlew connectedDebugAndroidTest    # instrumentation tests on a running emulator or device (debug build)
 tests/conversion/run.sh                 # conversion corpus and the host fuzzy-pinyin test on the host, compared with tests/conversion/baseline.tsv; --update accepts the run
 KOTOMO_PACKS=1 tests/conversion/run.sh  # also converts every downloadable dictionary from the pinned files in .deps/ (DictionaryPacksTest)
-cmake -S core/mixed -B build/host/mixed -G Ninja && cmake --build build/host/mixed && ctest --test-dir build/host/mixed   # S6 coordinator: unit tests on fake engines, and the host corpus runner
-build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # S6: one composition through the coordinator and the three host engines, with costs and pieces
+cmake -S core/mixed -B build/host/mixed -G Ninja && cmake --build build/host/mixed && ctest --test-dir build/host/mixed   # the coordinator: unit tests on fake engines, libkotomo_core.so for the host JVM, the lexicon compiler, the corpus runner
+build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexicon/en-ja.tsv build/lexicon/cross.klx   # the compiled cross-language lexicon the APK packs (lexicon-format.md)
+build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # one composition through the coordinator and the three host engines, with costs and pieces
 ./gradlew --no-daemon check             # when Gradle finds no SDK packages: a sandboxed daemon of another agent was reused
 ```
 
 A build from a fresh clone runs, in order: `git submodule update --init --recursive`,
 `scripts/fetch-boost.sh`, `scripts/prebuild-rime.sh`, the Android `scripts/build-mozc.sh` line,
-then Gradle with `KOTOMO_REQUIRE_MOZC=1` and `KOTOMO_REQUIRE_RIME_PREBUILT=1`, so an APK never ships
-without Japanese or without compiled Chinese data. `scripts/fetch-mozc.sh` downloads the same
+`java -Xmx4g lexicon/CrossLexicon.java` and the two `core/mixed` lines that build and run
+`kotomo_lexicon_compile`, then Gradle with `KOTOMO_REQUIRE_MOZC=1`, `KOTOMO_REQUIRE_RIME_PREBUILT=1`
+and `KOTOMO_REQUIRE_LEXICON=1`, so an APK never ships without Japanese, without compiled Chinese
+data or without the cross-language lexicon. `scripts/fetch-mozc.sh` downloads the same
 libraries from a GitHub Actions run instead; the run it pins was deleted with the repository and it
 works again only once CI exists.
 
 The conversion corpus (`tests/conversion/corpus.tsv`) runs through the app's own engine facades
-and candidate assembly in a host JVM: `run.sh` builds the host librime and English libraries,
-then runs `ConversionCorpusTest` with `KOTOMO_CORPUS=1`. It needs the prebuilt Chinese data, the
-host Mozc build, the English dictionary and the emoji asset. A line that passed in the baseline
+and candidate assembly in a host JVM: `run.sh` builds the host librime and English libraries and
+the coordinator's (`libkotomo_core.so`), compiles the cross-language lexicon, then runs
+`ConversionCorpusTest` with `KOTOMO_CORPUS=1`. Mixed lines are typed key by key through `Core`,
+so they cross the same JNI boundary and the same function tables as on a phone. It needs the
+prebuilt Chinese data, the host Mozc build, the English dictionary, the emoji asset and the
+lexicon's two tables (`CrossLexicon.java`). A line that passed in the baseline
 and fails now is a regression and fails the run; lines that fail in the baseline too are known
 gaps. Run it before and after every change to an engine, a lexicon or ranking, and accept a new
 baseline (`--update`) only after reading the report. A Chinese or Mixed line can name fuzzy-pinyin
 rules after its mode (`chinese+fuzzy:z_zh,n_l`, `chinese+fuzzy:all`): the runner then deploys the
 rule file the app generates on the prebuilt data and converts on that build. `run.sh` then runs the
-same corpus through the mixed-input coordinator's host prototype (`core/mixed/`, spike S6): its
-unit tests, then `kotomo_mixed_corpus`, which converts the Mixed lines and, as a baseline, the
-single-language lines among the candidates of their language, writes
-`build/conversion/mixed-report.txt` with a gap class for every failed line and compares the Mixed
-lines with `tests/conversion/baseline-mixed.tsv`. It needs the cross-language lexicon
-(`CrossLexicon.java`) and the host Mozc service besides. The app does not use the coordinator
-yet, so the two runs are reported side by side. Mozc's Bazel build needs a JDK with its
+same corpus through the coordinator alone (`core/mixed/host/`): `kotomo_mixed_corpus` converts
+the Mixed lines and, as a baseline, the single-language lines among the candidates of their
+language, writes `build/conversion/mixed-report.txt` with a gap class for every failed line and
+compares the Mixed lines with `tests/conversion/baseline-mixed.tsv`. It needs the host Mozc
+service besides. The two runs are reported side by side: the app's shows what the keyboard would
+show (emoji and the letters as typed included), the coordinator's shows costs and pieces. Mozc's Bazel build needs a JDK with its
 `include/` directory: the JetBrains runtime inside Android Studio has none, so leave `JAVA_HOME`
 unset or point it at a full JDK for `build-mozc.sh`. `run.sh` also runs
 `FuzzyRimeTest` (T08: the private schema, the staged swap, going back to the prebuilt data). and the dictionary tests `DictionaryRimeTest` and `DictionaryPacksTest`; with `KOTOMO_PACKS=1` the latter converts every downloadable dictionary from the files `build-lock.json` pins (they must be in `.deps/`) with the app's own converters and prints counts, time and memory. `DictionaryDownloadTest` (instrumentation) downloads from the real sources and is skipped, not passed, when they cannot be reached. `PLAN.md` §17 lists the interfaces the plan

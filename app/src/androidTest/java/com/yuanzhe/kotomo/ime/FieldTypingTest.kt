@@ -43,17 +43,19 @@ class FieldTypingTest {
         device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
     }
 
-    /** Positive: an ordinary field converts pinyin; space commits the first candidate. */
+    /** Positive: an ordinary field converts pinyin in Chinese mode; space commits the first candidate. */
     @Test
     fun ordinaryFieldConvertsPinyin() {
-        assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihao", expected = "你好"))
+        inMode(Mode.CHINESE) { assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihao", expected = "你好")) }
     }
 
     /** T12 positive: a field asking for no personalized learning still converts Chinese. */
     @Test
     fun noLearningFieldStillConvertsPinyin() {
-        val text = typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING, "nihao", expected = "你好")
-        assertEquals("你好", text)
+        inMode(Mode.CHINESE) {
+            val text = typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING, "nihao", expected = "你好")
+            assertEquals("你好", text)
+        }
     }
 
     /** T12 negative: a password field gets direct typing, never a conversion. */
@@ -232,7 +234,7 @@ class FieldTypingTest {
      * and Chinese still converts afterwards.
      */
     @Test
-    fun typingWorksAfterClearingLearningData() {
+    fun typingWorksAfterClearingLearningData() = inMode(Mode.CHINESE) {
         assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihao", expected = "你好"))
         val cleared = java.util.concurrent.CountDownLatch(1)
         instrumentation.runOnMainSync { LearningData.clear(instrumentation.targetContext) { cleared.countDown() } }

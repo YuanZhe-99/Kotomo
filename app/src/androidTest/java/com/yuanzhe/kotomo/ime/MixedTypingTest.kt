@@ -1,0 +1,249 @@
+package com.yuanzhe.kotomo.ime
+
+import android.content.Intent
+import android.text.InputType
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
+import com.yuanzhe.kotomo.engine.Core
+import com.yuanzhe.kotomo.engine.English
+import com.yuanzhe.kotomo.engine.Rime
+import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
+import com.yuanzhe.kotomo.settings.CompositionSpace
+import com.yuanzhe.kotomo.settings.Settings
+import com.yuanzhe.kotomo.settings.SettingsStore
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * Mixed mode on an emulator or device (PLAN §8.3, §9.1, §9.2, §9.10; T04, T05, T07, T12): the
+ * keyboard types through the coordinator in `libkotomo_core.so`, which reaches librime, Mozc and
+ * the English dictionary through the function tables their libraries hand over (ADR-008). This
+ * is where that hand-over is proven on Android: a conversion that needs all of them only comes
+ * out when every table was reached across the libraries.
+ *
+ * Notes: needs Kotomo installed as a debug build with the prebuilt Mozc and the compiled
+ * lexicon; selects it as FieldTypingTest does and fixes Mixed mode for the test's own field.
+ * Enter is the plain Enter key (the fields ask for no Enter action). Emulator results cover
+ * behavior only, never latency.
+ */
+@RunWith(AndroidJUnit4::class)
+class MixedTypingTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val device = UiDevice.getInstance(instrumentation)
+    private val context = instrumentation.targetContext
+    private val store = SettingsStore.get(context)
+    private lateinit var before: Settings
+
+    @Before
+    fun selectKotomoInMixedMode() {
+        device.executeShellCommand("ime enable $IME")
+        device.executeShellCommand("ime set $IME")
+        device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
+        before = store.current
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.MIXED) } }
+    }
+
+    @After
+    fun restore() = runBlocking {
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = null) } }
+        store.update { before }
+    }
+
+    /** T04 positive: pinyin typed in Mixed mode converts to Chinese; Enter commits the best candidate. */
+    @Test
+    fun enterCommitsTheBestCandidate() {
+        assertEquals("你好", type("nihao", expected = "你好"))
+    }
+
+    /** ADR-010 negative: space only marks a boundary; the letters stay uncommitted in the field. */
+    @Test
+    fun spaceSeparatesAndDoesNotCommit() {
+        assertEquals("nihao ", type("nihao ", expected = "nihao ", enter = false))
+    }
+
+    /** `mixed.space` = commit_first: space commits the first candidate, as in Chinese mode. */
+    @Test
+    fun spaceCommitsWhenThePersonChoseSo() {
+        change { it.copy(mixed = it.mixed.copy(space = CompositionSpace.COMMIT_FIRST)) }
+        assertEquals("你好", type("nihao ", expected = "你好", enter = false))
+    }
+
+    /**
+     * T07-001 positive: one composition with pinyin for a Japanese place name and romaji converts
+     * as a whole sentence. It needs the lexicon (pinyin → Japanese), librime's spelling table,
+     * Mozc's romaji table and Mozc's converter with a pinned span, all through the hand-over.
+     */
+    @Test
+    fun wholeSentenceAcrossLanguages() {
+        assertEquals(SENTENCE, type(SENTENCE_KEYS, expected = SENTENCE))
+    }
+
+    /** PLAN §9.10 negative: with pinyin → Japanese switched off the same keys give another sentence. */
+    @Test
+    fun crossLanguageSwitchOffStopsTheConversion() {
+        change { it.copy(mixed = it.mixed.copy(cross = it.mixed.cross.copy(pinyinToKanji = false))) }
+        val text = type(SENTENCE_KEYS, expected = "", attempts = 1)
+        assertTrue("something is committed", text.isNotEmpty())
+        assertNotEquals(SENTENCE, text)
+    }
+
+    /** T04 positive: an English word typed in Mixed mode stays English (original language first). */
+    @Test
+    fun englishWordStaysEnglish() {
+        assertEquals("coffee", type("coffee", expected = "coffee"))
+    }
+
+    /** T12 positive: a field that asks for no personalized learning still converts in Mixed mode. */
+    @Test
+    fun noLearningFieldStillConverts() {
+        assertEquals("你好", type("nihao", expected = "你好", imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+    }
+
+    /** T12 negative: a password field types letters directly, whatever the mode. */
+    @Test
+    fun passwordFieldTypesLettersDirectly() {
+        val password = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        assertEquals("nihao", type("nihao", expected = "nihao", enter = false, inputType = password))
+    }
+
+    /** Commits follow the keys in order: two words typed and committed back to back both arrive whole. */
+    @Test
+    fun commitsKeepTheirOrder() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            var text = ""
+            repeat(ATTEMPTS) {
+                keys("nihao")
+                enter()
+                keys("coffee")
+                enter()
+                text = read(scenario)
+                if (text == "你好coffee") return
+                clear(scenario)
+            }
+            assertEquals("你好coffee", text)
+        }
+    }
+
+    /**
+     * ADR-008's reopening condition, checked directly in the app's process: the coordinator opens
+     * over the tables of the libraries the APK ships, maps the lexicon out of the APK and gets an
+     * answer from the English dictionary's table (the keyboard's own librime session is left alone).
+     */
+    @Test
+    fun coordinatorOpensOverTheShippedLibraries() {
+        val english = context.assets.openFd(ENGLISH_DICT).use { English.open(context.applicationInfo.sourceDir, it.startOffset, it.length) }
+        checkNotNull(english) { "the English dictionary did not open" }
+        try {
+            assertTrue("librime hands a table over", Rime.api() != 0L)
+            val lexicon = context.assets.openFd(LEXICON)
+            val core = lexicon.use { Core.open(rime = false, mozc = null, english = english, context.applicationInfo.sourceDir, it.startOffset, it.length) }
+            checkNotNull(core) { "the coordinator did not open" }
+            core.use {
+                assertTrue("the lexicon is mapped from the APK", it.lexiconEntries > 0)
+                val snapshot = checkNotNull(it.set(1, "coffee")) { "no snapshot" }
+                assertEquals("coffee", snapshot.candidates.firstOrNull()?.text)
+                // The lexicon alone (no Mozc here) cannot write Japanese; nothing may crash for it.
+                assertTrue(snapshot.candidates.none { c -> c.text.isEmpty() })
+            }
+        } finally {
+            english.close()
+        }
+    }
+
+    /** Applies [update] to the settings and gives the keyboard a moment to follow the store. */
+    private fun change(update: (Settings) -> Settings) = runBlocking {
+        store.update(update)
+        Thread.sleep(READ_MS)
+    }
+
+    /**
+     * Opens a field, taps [keys] (a space taps the space bar) and then Enter unless [enter] is
+     * false, and returns the field's text.
+     * Notes: the first field of a run may come up before the engines opened; the typing is then
+     * repeated a few times, as in FieldTypingTest.
+     */
+    private fun type(
+        keys: String, expected: String, enter: Boolean = true,
+        inputType: Int = InputType.TYPE_CLASS_TEXT, imeOptions: Int = 0, attempts: Int = ATTEMPTS,
+    ): String {
+        launch(inputType, imeOptions or EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            var text = ""
+            repeat(attempts) {
+                keys(keys)
+                if (enter) enter()
+                text = read(scenario)
+                if (text == expected) return text
+                clear(scenario)
+            }
+            return text
+        }
+    }
+
+    private fun launch(inputType: Int, imeOptions: Int): ActivityScenario<FieldTestActivity> {
+        val intent = Intent(context, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, inputType)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, imeOptions)
+        return ActivityScenario.launch(intent)
+    }
+
+    /** Taps [keys] on Kotomo's keyboard once it shows. */
+    private fun keys(keys: String) {
+        checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+        for (key in keys) {
+            val target = if (key == ' ') By.descStartsWith(SPACE) else By.desc(key.toString())
+            device.findObject(target).click()
+        }
+    }
+
+    /** Lets the last key's candidates arrive, then taps Enter. */
+    private fun enter() {
+        Thread.sleep(READ_MS)
+        device.findObject(By.descStartsWith(ENTER)).click()
+        device.waitForIdle()
+    }
+
+    /** Empties the field between attempts and lets the keyboard settle. */
+    private fun clear(scenario: ActivityScenario<FieldTestActivity>) {
+        scenario.onActivity { it.findViewById<EditText>(FieldTestActivity.FIELD_ID).setText("") }
+        Thread.sleep(WAIT_MS)
+    }
+
+    /** Reads the field's text, waiting briefly for the keyboard's last commit to land. */
+    private fun read(scenario: ActivityScenario<FieldTestActivity>): String {
+        var text = ""
+        repeat(READS) {
+            Thread.sleep(READ_MS)
+            scenario.onActivity { text = it.findViewById<EditText>(FieldTestActivity.FIELD_ID).text.toString() }
+        }
+        return text
+    }
+
+    private companion object {
+        const val IME = "com.yuanzhe.kotomo/.ime.KotomoService"
+        /** The space and Enter keys' descriptions start with these (R.string.key_space, key_enter; English). */
+        const val SPACE = "Space"
+        const val ENTER = "Enter"
+        /** The assets the keyboard maps in place (KotomoService.ENGLISH_DICT, LEXICON). */
+        const val ENGLISH_DICT = "main_en_us.dict"
+        const val LEXICON = "cross.klx"
+        /** Corpus line T07-001. */
+        const val SENTENCE_KEYS = "chidai ni kai ni ikou"
+        const val SENTENCE = "池袋に買いに行こう"
+        const val ATTEMPTS = 3
+        const val WAIT_MS = 3000L
+        const val READS = 3
+        const val READ_MS = 300L
+    }
+}

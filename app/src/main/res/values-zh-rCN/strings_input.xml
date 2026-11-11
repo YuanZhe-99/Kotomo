@@ -36,6 +36,7 @@
     <string name="source_symbol">符号</string>
     <string name="source_emoji">Emoji</string>
     <string name="source_typed">原样输入</string>
+    <string name="source_cross_language">跨语言转换</string>
 
     <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
     <string name="locked_notice">解锁设备后才能使用</string>

@@ -30,18 +30,19 @@
 
 ## 键
 
-键盘目前还不读取 `mixed.level`、各 `mixed.weight_*` 键、`mixed.space`，以及除 `mixed.cross.emoji` 之外的所有
-`mixed.cross.*` 与 `japanese.cross.*` 开关：设置应用保存并显示它们，混合协调层完成后才生效。
+混合模式在每次按键时读取它的各个键（混合输入协调层把它们作为选项接收，见 `engine-contract.md`）。尚未读取的有：
+`mixed.cross.pinyin_to_katakana` 与 `mixed.cross.readings`，以及全部 `japanese.cross.*` 开关，因为日文模式
+还没有经协调层转换；设置应用保存并显示它们。
 
 | 键 | 类型 | 默认值 | 设置 |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | 键盘启动时的模式：`mixed`、`chinese`、`japanese`、`english`；隐藏的模式改用第一个显示的模式 |
 | `modes.order` | string | `mixed,chinese,japanese,english,pc` | 语言选择的顺序，模式名以逗号连接；缺少的模式排到最后，本版本不认识的名称保留在已知名称之后 |
 | `modes.hidden` | string | 空 | 语言选择中不提供的模式，以逗号连接；全部隐藏时全部提供 |
-| `mixed.level` | string | `balanced` | 混合模式的智能程度：`conservative`、`balanced`、`aggressive` |
-| `mixed.weight_chinese`、`mixed.weight_english`、`mixed.weight_japanese`、`mixed.weight_emoji` | int 0–100 | 70、60、60、30 | 混合模式中各语言的候选权重 |
-| `mixed.space` | string | `separate` | 混合模式组合中的空格：`separate`（插入分隔）或 `commit_first`（提交首选） |
-| `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`、`pinyin_to_katakana`、`english_to_kanji`、`english_to_katakana`、`whole_sentence`、`readings`、`emoji` |
+| `mixed.level` | string | `balanced` | 混合模式的智能程度：`conservative` 使跨语言词的代价加倍，`aggressive` 使其减半并允许跨语言候选排在首位；`balanced` 保持原语言优先 |
+| `mixed.weight_chinese`、`mixed.weight_english`、`mixed.weight_japanese`、`mixed.weight_emoji` | int 0–100 | 70、60、60、30 | 混合模式中各语言的候选权重。某种语言的候选按它的权重偏离默认值的多少上移或下移（取默认值时不移动）；Emoji 权重决定 Emoji 的位置：100 时排在最好的两个候选之后，每低 20 点后移一位 |
+| `mixed.space` | string | `separate` | 混合模式组合中的空格：`separate` 在组合内标出一处边界、不提交任何内容（回车或点选才提交），`commit_first` 提交首选候选 |
+| `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`（按中文读音键入的日文汉字词）、`pinyin_to_katakana`、`english_to_kanji`（英文词对应的同义日文词）、`english_to_katakana`（对应的外来语）、`whole_sentence`（关闭时跨语言词只在它就是整个组合时提供）、`readings`、`emoji` |
 | `chinese.script` | string | `simplified` | 中文输出：`simplified`（大陆）、`traditional`（OpenCC 标准）、`taiwan`、`hong_kong`（带地区用词）；快捷面板还会在键盘的记忆（见下文）中按 App 记住选择 |
 | `chinese.fuzzy.<rule>` | boolean | `false` | 每条模糊音规则一个开关（PLAN §9.6）：`z_zh`、`c_ch`、`s_sh`、`n_l`、`f_h`、`l_r`、`an_ang`、`en_eng`、`in_ing`、`ian_iang`、`uan_uang`；开关改动过一次后才写入该键。键盘把开启的规则写成 librime 的 `kotomo_fuzzy.yaml` 并部署（[upstream.md](upstream.md)） |
 | `english.suggestions` | boolean | `true` | 候选栏中的英文纠错与预测 |

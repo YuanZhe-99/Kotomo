@@ -43,8 +43,9 @@ android {
         }
     }
 
-    // Dictionaries are memory-mapped straight from the APK, so they must stay uncompressed.
-    androidResources { noCompress += "dict" }
+    // The English dictionary and the cross-language lexicon are memory-mapped straight from the
+    // APK, so they must stay uncompressed.
+    androidResources { noCompress += listOf("dict", "klx") }
 
     // Mozc is built by scripts/build-mozc.sh (x86_64 Linux or macOS), which puts the libraries and
     // data into build/mozc-prebuilt and compares them with the hashes in build-lock.json. Without
@@ -189,6 +190,39 @@ val llmPrompt = tasks.register<PromptTask>("llmPrompt") {
 }
 
 /**
+ * Puts the compiled cross-language lexicon (build/lexicon/cross.klx, doc/en-us/lexicon-format.md)
+ * into the assets, where Mixed mode maps it in place.
+ * Notes: the file comes from kotomo_lexicon_compile on the host. Without it the app builds with
+ * no cross-language conversion; with KOTOMO_REQUIRE_LEXICON set its absence fails the build, so a
+ * release never ships without it. Build output, never committed.
+ */
+abstract class LexiconTask : DefaultTask() {
+    @get:Internal abstract val compiled: RegularFileProperty
+    @get:Input abstract val require: Property<Boolean>
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @get:Inject abstract val files: FileSystemOperations
+
+    @TaskAction
+    fun copy() {
+        val file = compiled.get().asFile
+        check(file.isFile || !require.get()) { "no compiled lexicon at $file; see doc/en-us/lexicon-format.md" }
+        if (!file.isFile) logger.warn("crossLexicon: no compiled lexicon; Mixed mode will offer no cross-language words")
+        files.sync {
+            if (file.isFile) from(file)
+            into(outputDir)
+        }
+    }
+}
+
+val crossLexicon = tasks.register<LexiconTask>("crossLexicon") {
+    compiled = rootProject.layout.projectDirectory.file("build/lexicon/cross.klx")
+    require = providers.environmentVariable("KOTOMO_REQUIRE_LEXICON").map { it == "1" }.orElse(false)
+    outputDir = layout.buildDirectory.dir("generated/lexicon")
+    // The compiled file is rebuilt outside Gradle; the sync copies only when it changed.
+    outputs.upToDateWhen { false }
+}
+
+/**
  * Puts librime's data into the assets under `rime/`: the prebuilt data from
  * scripts/prebuild-rime.sh (staged data plus the compiled `build/`) when it exists, otherwise only
  * the staged text data from core/rime/stage-data.cmake, which the phone then compiles itself.
@@ -271,6 +305,7 @@ androidComponents {
         variant.sources.assets?.addGeneratedSourceDirectory(rimeData, RimeDataTask::outputDir)
         variant.sources.assets?.addGeneratedSourceDirectory(emojiData, EmojiDataTask::outputDir)
         variant.sources.assets?.addGeneratedSourceDirectory(llmPrompt, PromptTask::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(crossLexicon, LexiconTask::outputDir)
     }
 }
 

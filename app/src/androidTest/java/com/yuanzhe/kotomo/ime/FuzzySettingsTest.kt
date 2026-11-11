@@ -27,7 +27,8 @@ import org.junit.runner.RunWith
  * fuzzy spelling converts. Turning every switch off goes back to the prebuilt data.
  *
  * Notes: needs Kotomo installed as a debug build; selects it as FieldTypingTest does and types
- * through its keys in the default mode (which converts with librime). The test runs in the app's
+ * through its keys in Chinese mode, fixed for the test's own field (the default mode, Mixed, commits
+ * with Enter rather than space). The test runs in the app's
  * process, so it changes the settings through the same [SettingsStore] the keyboard watches.
  */
 @RunWith(AndroidJUnit4::class)
@@ -43,10 +44,14 @@ class FuzzySettingsTest {
         device.executeShellCommand("ime enable $IME")
         device.executeShellCommand("ime set $IME")
         device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.CHINESE) } }
     }
 
     @After
-    fun rulesOff() = runBlocking { store.update { it.copy(chineseFuzzy = emptySet()) } }
+    fun rulesOff() = runBlocking {
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = null) } }
+        store.update { it.copy(chineseFuzzy = emptySet()) }
+    }
 
     /** Positive: with z/zh on, `zongguo` commits 中国 once the deploy is done. */
     @Test

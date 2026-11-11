@@ -120,6 +120,10 @@ Latin words only where it helps readability. The input modes are 中文, 英文,
 | engine ↔ app contract | 引擎 ↔ 应用契约 |
 | facade | 外观类 |
 | line service | 行服务 |
+| function table (of an engine library) | 函数表 |
+| request (of the contract) | 请求 |
+| session (of the coordinator) | 会话 |
+| compiled lexicon | 编译后的词库 |
 
 ## 6. Review checklist
 

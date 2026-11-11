@@ -41,6 +41,7 @@ import com.yuanzhe.kotomo.ime.clipboard.ClipboardPanel
 import com.yuanzhe.kotomo.ime.clipboard.QuickPaste
 import com.yuanzhe.kotomo.ime.clipboard.QuickPasteStrip
 import com.yuanzhe.kotomo.settings.ChineseScript
+import com.yuanzhe.kotomo.settings.CompositionSpace
 import com.yuanzhe.kotomo.settings.PcWide
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
@@ -74,13 +75,16 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.dictionary.DictionaryStore
+import com.yuanzhe.kotomo.engine.Core
 import com.yuanzhe.kotomo.engine.English
+import com.yuanzhe.kotomo.engine.Lang
 import com.yuanzhe.kotomo.engine.Mozc
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 import androidx.window.layout.WindowMetricsCalculator
 import java.io.File
 import com.yuanzhe.kotomo.engine.Rime
+import com.yuanzhe.kotomo.engine.Snapshot
 import java.io.IOException
 
 /**
@@ -155,6 +159,28 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var aiUndo: AiUndo? = null
 
     private val composing = StringBuilder()
+    /** Engine thread: Mixed mode's coordinator and the composition it holds. */
+    private val mixed = MixedEngine()
+    /** Engine thread: where the compiled cross-language lexicon lies in the APK, looked up once. */
+    private var lexicon: MixedEngine.Lexicon? = null
+    private var lexiconTried = false
+    /** Main thread: the snapshot whose candidates Mixed mode shows, or null before it arrived. */
+    private var mixedSnapshot: Snapshot? = null
+    /** Main thread: for each shown Mixed candidate, its index in the snapshot, or a negative marker. */
+    private var mixedIndexes = emptyList<Int>()
+    /** Main thread: the engine may still hold a Mixed composition that the keyboard dropped. */
+    private var mixedHeld = false
+    /** Main thread: the engine thread is deciding what a Mixed commit commits; keys wait in line. */
+    private var mixedAwaiting = false
+    private val queuedKeys = ArrayDeque<Triple<KeyAction, Boolean, Long>>()
+    /** Main thread: counts the fields and cursor moves a late commit must not cross. */
+    private var fieldSerial = 0
+    /** Main thread: the generation and stage of the candidates on screen ([takes]). */
+    private var shownGeneration = 0L
+    private var shownStage = 0
+    /** Main thread: librime calls asked and answered; candidates are drawn for the last one only. */
+    private var rimeAsked = 0
+    private var rimeAnswered = 0
     private var candidates = emptyList<String>()
     private var generation = 0
     /** Main thread: the emoji index (loaded off the main thread at start), for emoji suggestions. */
@@ -309,6 +335,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun clearLearning(done: () -> Unit) {
         main.post { commitComposition() }
         engine.post {
+            mixed.detach()
             if (rimeReady) Rime.shutdown()
             rimeReady = false
             mozc?.close()
@@ -761,8 +788,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val chinese = usesRime && !direct
         val rime = if (chinese && rimeIndex >= 0) rimeCandidates.getOrNull(rimeIndex) else null
         val emoji = text in emojiShown || (chinese && rimeIndex == Candidates.EMOJI)
+        val inMixed = mode == Mode.MIXED && !direct
+        val mixedCandidate = if (inMixed) mixedIndexes.getOrNull(index)?.takeIf { it >= 0 }?.let { mixedSnapshot?.candidates?.getOrNull(it) } else null
         val reading = when {
             emoji -> ""
+            // A Japanese candidate shows how it is read (池袋 / いけぶくろ, PLAN §9.3).
+            mixedCandidate != null -> if (mixedCandidate.target == Lang.JAPANESE) mixedCandidate.pieces.joinToString("") { it.reading } else ""
             rime != null -> rime.comment.trim()
             mode == Mode.JAPANESE -> japaneseCandidates.firstOrNull { it.text == text }?.reading ?: japaneseReading
             else -> ""
@@ -770,6 +801,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val source = getString(
             when {
                 emoji -> R.string.source_emoji
+                mixedCandidate != null -> when {
+                    mixedCandidate.crossLanguage -> R.string.source_cross_language
+                    mixedCandidate.target == Lang.JAPANESE -> R.string.source_japanese
+                    mixedCandidate.target == Lang.ENGLISH -> R.string.source_english
+                    else -> R.string.source_chinese
+                }
                 rime != null -> when (rime.type) {
                     "user_phrase" -> R.string.source_learned
                     "user_table" -> R.string.source_your_dictionaries
@@ -804,6 +841,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (!usesRime || direct) return
         val rimeIndex = rimeIndexes.getOrElse(index) { index }
         if (rimeIndex < 0) return
+        rimeAsked++
         engine.post {
             val removed = rimeReady && Rime.deleteCandidate(rimeIndex)
             val state = rimeState(true)
@@ -947,6 +985,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         composing.clear()
         taps.clear()
         clearChinese()
+        fieldSerial++
         previousWord = null
         // An app fixed to a mode always starts in it; otherwise each app comes back in the mode
         // last used in it, and code-like fields start in English (only the package name is stored).
@@ -991,6 +1030,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         composing.clear()
         taps.clear()
         clearChinese()
+        fieldSerial++
         super.onFinishInputView(finishingInput)
     }
 
@@ -1002,6 +1042,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             composing.clear()
             taps.clear()
             clearChinese()
+            fieldSerial++
             previousWord = null
             refresh(0)
         }
@@ -1015,6 +1056,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         clipboard.removePrimaryClipChangedListener(clipListener)
         if (deployBound) unbindService(deployConnection)
         engine.post {
+            mixed.detach()
             english?.close()
             mozc?.close()
             if (rimeReady) Rime.shutdown()
@@ -1024,6 +1066,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     private fun onKey(action: KeyAction, longPress: Boolean, downTime: Long) {
+        if (mixedAwaiting) {
+            // A Mixed commit is on its way from the engine thread: this key acts after it.
+            queuedKeys += Triple(action, longPress, downTime)
+            return
+        }
         val ic = currentInputConnection ?: return
         aiUndo = null
         details = null
@@ -1055,7 +1102,20 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         when (action) {
             is KeyAction.Text -> {
                 val letter = action.text.length == 1 && action.text[0].let { it in 'a'..'z' || it in 'A'..'Z' }
-                if (letter && !direct && !longPress) {
+                val mixedOpen = mode == Mode.MIXED && !direct && composing.isNotEmpty()
+                if (mixedOpen && !longPress && (action.text == "'" || letter) && composing.length >= Core.MAX_COMPOSITION) {
+                    // The coordinator converts no longer composition; the key is dropped.
+                } else if (mixedOpen && action.text == "'" && !longPress) {
+                    // An apostrophe marks a boundary inside a Mixed composition (xi'an), as a space does.
+                    composing.append('\'')
+                    taps += null
+                    ic.setComposingText(composing, 1)
+                } else if (mixedOpen && !(letter && !longPress)) {
+                    // Punctuation, digits and long-press symbols commit the best candidate first.
+                    if (shift == Shift.ONCE) shift = Shift.OFF
+                    commitMixed(null, null, then = action.text)
+                    return
+                } else if (letter && !direct && !longPress) {
                     composing.append(action.text)
                     taps += keyboard.lastTap?.let { (dx, dy) -> English.touchPoint(action.text[0], dx, dy) }
                     ic.setComposingText(composing, 1)
@@ -1074,7 +1134,19 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 }
                 if (shift == Shift.ONCE) shift = Shift.OFF
             }
-            KeyAction.Space -> if (composing.isNotEmpty()) {
+            KeyAction.Space -> if (composing.isNotEmpty() && mode == Mode.MIXED && !direct) {
+                // Mixed mode (ADR-010, `mixed.space`): space marks a boundary and commits nothing,
+                // unless the person chose that it commits the first candidate.
+                if (settings.mixed.space == CompositionSpace.COMMIT_FIRST) {
+                    commitMixed(null, null)
+                    return
+                }
+                if (composing.last() != ' ' && composing.length < Core.MAX_COMPOSITION) {
+                    composing.append(' ')
+                    taps += null
+                    ic.setComposingText(composing, 1)
+                }
+            } else if (composing.isNotEmpty()) {
                 pick(0)
                 return
             } else {
@@ -1098,6 +1170,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     composing.clear()
                     taps.clear()
                     clearJapanese()
+                } else if (composing.isNotEmpty() && mode == Mode.MIXED && !direct) {
+                    // Enter commits the best candidate (ADR-010); the letters as typed stay a candidate.
+                    commitMixed(null, null)
+                    return
                 } else if (composing.isNotEmpty()) {
                     commitComposition()
                 } else {
@@ -1194,9 +1270,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * [fallback] runs when librime did not take the key (or is not ready yet).
      * Inputs: [onlyIfComposing] sends the key only while librime has a composition, and then skips
      * the fallback otherwise.
-     * Notes: results are applied in key order and never dropped, since they can carry commits.
+     * Notes: results are applied in key order and never dropped, since they can carry commits;
+     * only the candidates of a result that a later key already superseded are not drawn.
      */
     private fun rimeKey(keycode: Int, downTime: Long, onlyIfComposing: Boolean = false, fallback: () -> Unit) {
+        rimeAsked++
         engine.post {
             val started = SystemClock.uptimeMillis()
             // Only keys that commit the top candidate first ask whether anything is composed.
@@ -1221,8 +1299,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         RimeState(false, null, "", "", emptyList())
     }
 
-    /** Applies a librime result to the field and the candidate bar (main thread). */
+    /**
+     * Applies a librime result to the field and the candidate bar (main thread).
+     * Notes: the commit and the composition always apply; the candidates are drawn only for the
+     * newest call asked, so a stale list never replaces a newer one.
+     */
     private fun applyChinese(state: RimeState, downTime: Long) {
+        val newest = ++rimeAnswered == rimeAsked
         val ic = currentInputConnection ?: return
         when {
             state.commit != null -> ic.commitText(state.commit, 1)
@@ -1250,7 +1333,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val entries = Candidates.chinese(state.candidates.map { it.text }, state.input, emoji)
         chineseCandidates = entries.map { it.first }
         rimeIndexes = entries.map { it.second }
-        if (usesRime) {
+        if (usesRime && newest) {
             candidates = chineseCandidates
             candidateBar.show(candidates, downTime)
             shownCandidates.value = candidates
@@ -1317,8 +1400,21 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Side effects: in English mode also types a space and asks for next-word predictions.
      */
     private fun pick(index: Int) {
+        if (mixedAwaiting) return
         aiUndo?.let { return undoAi(it) }
         if (emojiSearch != null) return pickFound(index)
+        if (mode == Mode.MIXED && !direct && composing.isNotEmpty()) {
+            // A candidate of the snapshot is committed through the engine; an emoji or the letters
+            // as typed (negative markers) replace the composition directly, below.
+            val at = mixedIndexes.getOrNull(index)
+            val text = candidates.getOrNull(index) ?: return
+            if (at != null && at >= 0) {
+                // The list on screen may be one key behind while the engine answers; a tap then
+                // waits for the list of what is typed now rather than commit an older reading.
+                if (mixedSnapshot?.input != composing.toString()) return
+                return commitMixed(at, text)
+            }
+        }
         if (usesRime && !direct) {
             val rimeIndex = rimeIndexes.getOrElse(index) { index }
             if (rimeIndex < 0) {
@@ -1336,6 +1432,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 }
                 return
             }
+            rimeAsked++
             engine.post {
                 val handled = rimeReady && Rime.selectCandidate(rimeIndex)
                 val state = rimeState(handled)
@@ -1439,7 +1536,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.modes = s.modes
         emojiSearch?.let { query ->
             // The keys type into the emoji search: its results replace the candidates.
-            ++generation
+            takes(++generation, 0)
             candidates = Candidates.emojiSearch(emojiIndex, query.toString())
             emojiShown = candidates.toSet()
             candidateBar.search = query.toString()
@@ -1451,10 +1548,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         val raw = composing.toString()
         val gen = ++generation
+        takes(gen, 0)
+        if (mode != Mode.MIXED || raw.isEmpty()) {
+            mixedSnapshot = null
+            mixedIndexes = emptyList()
+        }
         candidates = when {
             direct -> emptyList()
             aiUndo != null && raw.isEmpty() && chinesePreedit.isEmpty() -> listOf(getString(R.string.ai_undo))
             usesRime -> chineseCandidates
+            // Until the engine answers this key, Mixed keeps the previous key's list (as Chinese
+            // does) rather than flash the bare letters; the first key shows its letter at once.
+            mode == Mode.MIXED -> if (raw.isBlank()) emptyList() else if (mixedSnapshot != null) candidates else listOf(raw.trim())
             mode == Mode.ENGLISH -> if (raw.isEmpty()) emptyList() else listOf(raw)
             mode == Mode.JAPANESE -> if (raw.isEmpty()) emptyList() else listOf(raw)
             raw.isEmpty() -> emptyList()
@@ -1462,7 +1567,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         // Chinese candidates are librime's answer, drawn by applyChinese; what is shown here is the
         // previous key's, so the probe waits for that answer.
-        candidateBar.show(candidates, if (usesRime && !direct) 0 else downTime)
+        candidateBar.show(candidates, if ((usesRime || mode == Mode.MIXED) && !direct) 0 else downTime)
         shownCandidates.value = candidates
         candidateBar.details = details
         candidateBar.hint = notice ?: chineseHint() ?: japaneseHint(raw)
@@ -1473,6 +1578,140 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         if (!direct && mode == Mode.ENGLISH && s.englishSuggestions && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
         if (!direct && mode == Mode.JAPANESE && raw.isNotEmpty()) suggestJapanese(raw, gen)
+        if (!direct && mode == Mode.MIXED && raw.isNotEmpty()) suggestMixed(raw, gen, downTime)
+        if (mixedHeld && (direct || mode != Mode.MIXED || raw.isEmpty())) {
+            // The keyboard dropped its Mixed composition (deleted, committed, another mode): the
+            // engine drops its copy, in order with the keys before and after.
+            mixedHeld = false
+            val options = mixedOptions()
+            engine.post { mixed.type("", emptyList(), options) }
+        }
+    }
+
+    /**
+     * Whether an update for generation [gen] and [stage] may replace the candidates on screen,
+     * recording it when it may: the list drawn at once for a key is stage 0, an engine's answer
+     * stage 1, and a stale answer never replaces a newer list, in every mode alike
+     * ([Snapshot.replaces], doc/en-us/engine-contract.md).
+     */
+    private fun takes(gen: Int, stage: Int): Boolean {
+        if (!Snapshot.replaces(gen.toLong(), stage, shownGeneration, shownStage)) return false
+        shownGeneration = gen.toLong()
+        shownStage = stage
+        return true
+    }
+
+    /**
+     * Mixed mode's options from the settings in force (PLAN §9.10): the level, each
+     * cross-language switch, each language's weight as its distance from the default, and
+     * incognito wherever the field may leave no trace.
+     * Notes: `pinyin_to_katakana` and `readings` have no reader yet.
+     */
+    private fun mixedOptions(): Core.Options {
+        val m = settings.mixed
+        val d = com.yuanzhe.kotomo.settings.Mixed()
+        return Core.Options(
+            level = m.level.ordinal,
+            pinyinToJapanese = m.cross.pinyinToKanji,
+            englishToKanji = m.cross.englishToKanji,
+            englishToKatakana = m.cross.englishToKatakana,
+            wholeSentence = m.cross.wholeSentence,
+            incognito = settings.incognito || sensitive || locked,
+            chineseWeight = m.weightChinese - d.weightChinese,
+            japaneseWeight = m.weightJapanese - d.weightJapanese,
+            englishWeight = m.weightEnglish - d.weightEnglish,
+        )
+    }
+
+    /**
+     * Opens Mixed mode's coordinator over the engines that are open, opening Mozc and locating
+     * the lexicon asset on first use (engine thread).
+     * Notes: a build without Mozc or without the compiled lexicon still converts with what is
+     * there; before the first unlock Mozc stays closed, as in Japanese mode.
+     */
+    private fun attachMixed() {
+        if (!mozcTried && !locked) {
+            mozcTried = true
+            mozc = openMozc()
+        }
+        if (!lexiconTried) {
+            lexiconTried = true
+            lexicon = runCatching {
+                assets.openFd(LEXICON).use { MixedEngine.Lexicon(applicationInfo.sourceDir, it.startOffset, it.length) }
+            }.getOrNull()
+        }
+        mixed.attach(rimeReady, mozc, english, lexicon)
+    }
+
+    /**
+     * Converts the Mixed composition with the coordinator on the engine thread and shows the
+     * snapshot if it is still current (PLAN §8.3, §9.1).
+     * Inputs: [downTime] the touch that typed the last key (0 for none), for [Probe].
+     * Notes: one request per key in the common case; the key's touch position goes along.
+     */
+    private fun suggestMixed(raw: String, gen: Int, downTime: Long) {
+        val touches = taps.toList()
+        val options = mixedOptions()
+        mixedHeld = true
+        engine.post {
+            val started = SystemClock.uptimeMillis()
+            attachMixed()
+            val snapshot = mixed.type(raw, touches, options)
+            val work = SystemClock.uptimeMillis() - started
+            main.post {
+                Probe.engineWork.add(work)
+                if (!takes(gen, 1)) return@post
+                mixedSnapshot = snapshot
+                val emoji = emojiFor(raw)
+                emojiShown = emoji.toSet()
+                val entries = Candidates.mixed(
+                    snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji,
+                    Candidates.mixedEmojiPosition(settings.mixed.weightEmoji),
+                )
+                mixedIndexes = entries.map { it.second }
+                candidates = entries.map { it.first }
+                candidateBar.show(candidates, downTime)
+                shownCandidates.value = candidates
+            }
+        }
+    }
+
+    /**
+     * Commits a Mixed composition: candidate [index] of the snapshot on screen showing
+     * [expected], or the best candidate when both are null; [then] is typed right after it.
+     * Notes: what is committed is decided on the engine thread, in order with the keys before it,
+     * so a fast Enter or comma never commits a list older than the letters. Keys pressed
+     * meanwhile wait in [queuedKeys]; a commit that arrives after the field changed is dropped
+     * (the field kept the letters as typed).
+     */
+    private fun commitMixed(index: Int?, expected: String?, then: String = "") {
+        val raw = composing.toString()
+        val touches = taps.toList()
+        val options = mixedOptions()
+        val serial = fieldSerial
+        composing.clear()
+        taps.clear()
+        mixedSnapshot = null
+        mixedIndexes = emptyList()
+        mixedHeld = false
+        mixedAwaiting = true
+        engine.post {
+            // Whatever happens on the way, the keys waiting in line must be let through again.
+            val text = runCatching {
+                attachMixed()
+                mixed.commit(raw, touches, options, index, expected)
+            }.getOrDefault(expected ?: raw.trim())
+            main.post {
+                mixedAwaiting = false
+                if (serial == fieldSerial) currentInputConnection?.commitText(text + then, 1) else queuedKeys.clear()
+                previousWord = null
+                refresh(0)
+                while (!mixedAwaiting && queuedKeys.isNotEmpty()) {
+                    val (action, longPress, downTime) = queuedKeys.removeFirst()
+                    onKey(action, longPress, downTime)
+                }
+            }
+        }
     }
 
     /**
@@ -1518,7 +1757,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val work = SystemClock.uptimeMillis() - started
             main.post {
                 Probe.engineWork.add(work)
-                if (gen != generation) return@post
+                if (!takes(gen, 1)) return@post
                 japaneseUnavailable = unavailable
                 if (segments.isEmpty()) {
                     if (unavailable) candidateBar.hint = japaneseHint(typed)
@@ -1645,7 +1884,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         engine.post {
             val segments = mozc?.pinnedConvert(spans, incognito).orEmpty()
             main.post {
-                if (gen != generation || segments.isEmpty()) return@post
+                if (segments.isEmpty() || !takes(gen, 1)) return@post
                 segmentFocus = focus.coerceIn(0, segments.size - 1)
                 showJapanese(segments, emptyList(), typed)
             }
@@ -1655,7 +1894,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /**
      * Switches to mode [to], keeping an open composition (PLAN §2.3): its letters move to the new
      * mode's engine uncommitted, so "nihao" typed in Chinese becomes にはお in Japanese and the
-     * letters in English. Mixed and Chinese share librime, so between them nothing moves.
+     * letters in English. A Mixed composition leaves its spaces and apostrophes behind.
      * Inputs: [downTime] is the touch that chose the mode (0 for none), for [Probe].
      * Side effects: replaces the composing text in the field; segment choices and the English tap
      * positions of the old mode are dropped. When librime is not open, letters moving into Chinese
@@ -1663,6 +1902,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun switchMode(to: Mode, downTime: Long) {
         val fromRime = usesRime
+        if (mode == Mode.MIXED && to != Mode.MIXED && composing.isNotEmpty()) {
+            // The boundary marks of a Mixed composition mean nothing to the other engines.
+            val letters = composing.filter { it != ' ' && it != '\'' }
+            composing.clear().append(letters)
+            taps.clear()
+            repeat(letters.length) { taps += null }
+        }
         previousWord = null
         mode = to
         val ic = currentInputConnection
@@ -1682,6 +1928,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 composing.clear()
                 taps.clear()
                 clearJapanese()
+                rimeAsked++
                 engine.post {
                     val state = if (rimeReady) {
                         Rime.clear()
@@ -1720,10 +1967,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /**
-     * Whether pinyin goes through librime: Chinese mode, and for now Mixed mode too, until the
-     * mixed coordinator (spike S6) handles pinyin, romaji and English in one string.
+     * Whether the composition lives in librime's session: Chinese mode only. Mixed mode keeps its
+     * letters in [composing] and converts them through the coordinator ([MixedEngine]), which
+     * borrows the same session between keys.
      */
-    private val usesRime get() = mode == Mode.CHINESE || mode == Mode.MIXED
+    private val usesRime get() = mode == Mode.CHINESE
 
     /**
      * Whether this field may leave a trace: the per-app mode and script, emoji recents. False in
@@ -1747,7 +1995,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** Says why Chinese mode cannot convert yet (dictionary being prepared or failed), or null. */
     private fun chineseHint(): String? {
-        if (!usesRime || direct || rimeOpen) return null
+        if (!(usesRime || mode == Mode.MIXED) || direct || rimeOpen) return null
         return when (RimeFiles(this).readStatus()) {
             is RimeFiles.Status.Failed -> getString(R.string.bar_rime_failed)
             else -> getString(R.string.bar_rime_preparing)
@@ -1770,7 +2018,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val work = SystemClock.uptimeMillis() - started
             main.post {
                 Probe.engineWork.add(work)
-                if (gen != generation) return@post
+                if (!takes(gen, 1)) return@post
                 candidates = withEmoji(Candidates.english(typed, words), emojiFor(typed))
                 candidateBar.show(candidates, 0)
                 shownCandidates.value = candidates
@@ -1871,6 +2119,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private companion object {
         const val ENGLISH_DICT = "main_en_us.dict"
         const val MOZC_DATA = "mozc.data"
+        /** The compiled cross-language lexicon (doc/en-us/lexicon-format.md), stored uncompressed. */
+        const val LEXICON = "cross.klx"
         const val NOTICE_MS = 1500L
         /** The API level that added TextAttribute.Builder.setTextSuggestionSelected. */
         const val API_TEXT_SUGGESTION_SELECTED = 37

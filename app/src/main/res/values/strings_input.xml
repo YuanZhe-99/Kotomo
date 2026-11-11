@@ -37,6 +37,7 @@
     <string name="source_symbol">Symbol</string>
     <string name="source_emoji">Emoji</string>
     <string name="source_typed">As typed</string>
+    <string name="source_cross_language">Typed in another language</string>
 
     <!-- Before the first unlock (Direct Boot): the clipboard and AI need the person's data. -->
     <string name="locked_notice">Unlock your device to use this</string>

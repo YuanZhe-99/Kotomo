@@ -9,7 +9,7 @@
 | `app/build.gradle.kts` | Android 应用构建：SDK 级别、版本号、R8、从 `key.properties` 读取 release 签名 | `signingConfigs`、`buildTypes` |
 | `build-lock.json` | 工具链、上游与数据源的版本及下载哈希 | `toolchain` |
 | `.github/workflows/build.yml` | CI：文档检查、Gradle 检查与构建、签名的 release APK；`v*` 标签时创建 GitHub Release | `android`、`release` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、每个输入框开始时的模式（按 App 固定、按 App 记住、代码输入框）与保留组合的模式切换、在键上输入的 Emoji 搜索、按 `Fields` 的判定直接输入与不学习、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`refresh`、`switchMode`、`applyEngineSettings` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/KotomoService.kt` | 输入法服务：各模式与引擎线程上的引擎、每个输入框开始时的模式（按 App 固定、按 App 记住、代码输入框）与保留组合的模式切换、经协调层的混合模式（来自设置的选项、空格作为边界标记、在引擎线程上按按键顺序决定的提交）、所有模式共用的候选过期规则、在键上输入的 Emoji 搜索、按 `Fields` 的判定直接输入与不学习、生效中的设置（SettingsStore）、Compose 面板的宿主 | `onKey`、`refresh`、`takes`、`suggestMixed`、`commitMixed`、`switchMode`、`applyEngineSettings` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/LearningData.kt` | 清除学习数据（PLAN §8.8）：librime 的用户词典、Mozc 的配置目录与键盘记忆中学到的部分；在运行中的键盘的引擎线程上或在后台进行（有单元测试） | `clear`、`clearFiles`、`forget` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardMemory.kt` | 键盘自己记住的东西，存为带版本的文件 `files/keyboard/memory.json`（[settings-format.md](../settings-format.md)）：上次的模式；按 App 的使用模式、固定模式与字形；Emoji 历史；按屏幕与方向的单手模式；文件不存在时从旧的 SharedPreferences 读取一次（有单元测试） | `KeyboardMemory`、`MemoryFormat`、`Memory` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面（底行随输入框调整的字母页、符号页、电话与数字键盘、在铰链两侧分开的底行）、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.pad`、`Layout.place`、`Layout.hit` |
@@ -29,9 +29,9 @@
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Pages.kt` | 各设置页（输入模式，含语言选择的顺序、隐藏的模式与固定了模式的 App；混合模式、中文、日文、英文、布局与尺寸、按键与手势、隐私（含清除学习数据与剪贴板设置）、之后提供的页面）与诊断页；共用的行与控件 | `MixedPage`、`LayoutPage`、`DiagnosticsPage`、`Section` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/About.kt` | 关于、开源许可证、数据来源与设计致谢；其中的致谢列表与 [third-party.md](../third-party.md) 一致 | `CODE`、`DATA`、`AboutPage` |
 | `design/` | 设计 Agent 的设计稿：每个界面一个 HTML 画板（手机、折叠屏、平板、设置）和共用的键盘按键区组件，从设计画布固化而来；总览页与 Kotomo 自己的画板模板渲染器 | `index.html`、`support.js`、`Keyboard.dc.html`、`canvas.json` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（中文在两个最佳词之后放原样的字母；日文的整句、补全、片段与假名，各带自己的读音；英文原词在先；Emoji 的位置；Emoji 搜索），以及选择、缩短、延长日文片段时的分段；键盘与转换语料共用 | `chinese`、`japanese`、`pick`、`resize`、`extend` |
-| `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名（带 `+fuzzy:` 的模式先部署应用生成的规则文件）并报告回退；`baseline-mixed.tsv` 是同一份语料经协调层主机原型（`core/mixed/host/corpus_main.cc`）运行的已认可结果，`run.sh` 接着运行它；`run.sh` 同时运行主机测试 `FuzzyRimeTest`（模糊音）与 `DictionaryRimeTest`（词库词表） | `ConversionCorpusTest`、`FuzzyRimeTest`、`DictionaryRimeTest` |
-| `app/src/androidTest/`、`app/src/debug/…/fieldtest/` | 在模拟器或真机上经 Kotomo 的键输入的插桩测试，以及它们输入的、只在 debug 构建中存在的输入框 | `FieldTypingTest`、`FieldTestActivity` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Candidates.kt` | 由各引擎的结果组装候选栏的列表（中文在两个最佳词之后放原样的字母；日文的整句、补全、片段与假名，各带自己的读音；英文原词在先；混合模式取自协调层的快照，Emoji 按权重放置，原样的字母在最后；Emoji 的位置；Emoji 搜索），以及选择、缩短、延长日文片段时的分段；键盘与转换语料共用 | `chinese`、`japanese`、`mixed`、`pick`、`resize`、`extend` |
+| `tests/conversion/` | 转换语料（`corpus.tsv`）、已接受的结果（`baseline.tsv`）与运行器（`run.sh`）；`app/src/test/…/ConversionCorpusTest.kt` 给每一行排名（混合模式的行在加载了四个主机库的 JVM 中经 `Core` 逐键输入；带 `+fuzzy:` 的模式先部署应用生成的规则文件）并报告回退；`baseline-mixed.tsv` 是同一份语料单独经协调层（`core/mixed/host/corpus_main.cc`）运行的已认可结果，`run.sh` 接着运行它；`run.sh` 同时运行主机测试 `FuzzyRimeTest`（模糊音）与 `DictionaryRimeTest`（词库词表） | `ConversionCorpusTest`、`FuzzyRimeTest`、`DictionaryRimeTest` |
+| `app/src/androidTest/`、`app/src/debug/…/fieldtest/` | 在模拟器或真机上经 Kotomo 的键输入的插桩测试，以及它们输入的、只在 debug 构建中存在的输入框 | `FieldTypingTest`、`MixedTypingTest`、`FieldTestActivity` |
 | `tests/device/` | 里程碑时交给用户的真机检查清单（逐行 PASS / FAIL） | `p1-checklist.md` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Settings.kt`、`SettingsStore.kt` | 设置模型、带版本的 Preferences DataStore 文件（[settings-format.md](../settings-format.md)），以及进程内共用、无需 I/O 即可读取快照的存储 | `Settings`、`SettingsFormat`、`SettingsStore.current` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/Themes.kt`、`app/src/main/java/com/yuanzhe/kotomo/dictionary/Json.kt` | 以带版本的 JSON 文件保存的键盘主题（`files/themes/current.json`，[settings-format.md](../settings-format.md)）及其所用的纯 Kotlin JSON 读写（有单元测试）；所有带版本的 JSON 文件共用的原子写入与损坏文件处理 | `ThemeFormat`、`ThemeFile`、`writeAtomically`、`Json.parse` |
@@ -45,18 +45,21 @@
 | `app/src/main/java/com/yuanzhe/kotomo/dictionary/Downloads.kt` | Kotomo 唯一的联网代码：只用 HTTPS 的传输层、按 GitHub 公布的 SHA-256 核对发布附件、经 HTTPS 下载普通文件、限制大小、可取消、转换与安装；在设置页之外运行的后台下载 | `Downloader`、`HttpsTransport`、`DictionaryDownloads`、`DownloadProblem` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/DictionariesPage.kt` | 词库页：来源与开关、用户的词（搜索、添加、编辑、删除）、带预览与确认的导入、导出、回滚、可下载的词库（进度、取消与第一次下载前的说明）、LLM 提示词；未完成的操作在界面重建后保留 | `DictionariesPage`、`ImportSection`、`EntryDialog`、`DownloadsSection`、`NoticeDialog` |
 | `core/CMakeLists.txt` | 应用的顶层原生构建；每个引擎库一个子目录 | — |
-| `core/english/` | 英文引擎（S4）：LatinIME 核心与 Kotomo 的 JNI 桥接的 CMake 构建；主机测试 | `jni/english_jni.cpp`、`tests/run-host.sh` |
+| `core/english/` | 英文引擎（S4）：LatinIME 核心与 Kotomo 的 JNI 桥接的 CMake 构建；主机测试 | `jni/english_jni.cpp`、`jni/english_api.h`（交给协调层的函数表）、`tests/run-host.sh` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | `libkotomo_english.so` 的 Kotlin 外观（只在引擎线程上调用） | `English.open`、`suggestions` |
 | `tool/BuildEnglishDict.java` | 用 AOSP 的 dicttool 从锁定的词表构建英文词典 | `main` |
-| `core/rime/` | 中文引擎（S2）：把 librime 及其依赖构建为 `libkotomo_rime.so` 的 CMake 构建、桥接层、数据整理与主机测试 | `jni/rime_bridge.h`、`jni/rime_spellings.h`（方案的拼写表，供协调层使用）、`stage-data.cmake`、`tests/rime_bridge_test.cc` |
+| `core/rime/` | 中文引擎（S2）：把 librime 及其依赖构建为 `libkotomo_rime.so` 的 CMake 构建、桥接层、数据整理与主机测试 | `jni/rime_bridge.h`、`jni/rime_spellings.h`（方案的拼写表）、`jni/kotomo_rime_api.h`（交给协调层的函数表）、`stage-data.cmake`、`tests/rime_bridge_test.cc` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Rime.kt` | `libkotomo_rime.so` 的 Kotlin 外观（只在引擎线程上调用） | `initialize`、`deploy`、`processKey`、`setLearning` |
 | `scripts/fetch-boost.sh` | 下载并校验 librime 需要的 Boost 头文件 | — |
-| `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换、固定片段与固定边界转换、预测，JNI，主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`kotomo_mozc_service.cc`（供 `core/mixed` 使用的主机行服务）、`tests/kotomo_mozc_test.cc` |
-| `core/mixed/` | 混合输入协调层（S6，目前只在主机上）：输入模型、候选网格及其提议者（拼音、假名与助词、英文、跨语言）、k-best 解码器、按目标语言收尾、引擎 ↔ 应用契约的快照；不链接任何引擎 | `coordinator.h`、`engines.h`、`snapshot.h`、`options.h`、`propose.h`、`decode.h`、`finish.h` |
+| `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换、固定片段与固定边界转换、预测，JNI，主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`kotomo_mozc_api.h`（交给协调层的函数表）、`kotomo_mozc_service.cc`（供 `core/mixed` 使用的主机行服务）、`tests/kotomo_mozc_test.cc` |
+| `core/mixed/` | 混合输入协调层，应用的第四个原生库 `libkotomo_core.so`（[engine-contract.md](../engine-contract.md)）：在请求之间保存组合的会话、请求与快照的编解码、输入模型、候选网格及其提议者（拼音、假名与助词、英文、跨语言）、k-best 解码器、按目标语言收尾；不链接任何引擎 | `session.h`、`request.h`、`snapshot.h`、`coordinator.h`、`engines.h`、`options.h`、`propose.h`、`decode.h`、`finish.h` |
+| `core/mixed/device/`、`core/mixed/jni/` | 设备上的协调层：经各引擎库交出的函数表实现 `Engines` 的三个引擎，以及 `engine/Core.kt` 的 JNI 入口 | `api_engines.h`、`core_jni.cc` |
 | `core/mixed/cross_lexicon.h`、`cross_lexicon_build.h`、`tools/compile_lexicon.cc` | 运行时的跨语言词库（[lexicon-format.md](../lexicon-format.md)）：编译后的文件只读映射、按键二分查找，每个偏移都检查；把生成器的两张表编译成它的主机编译器及其命令行工具 | `CrossLexicon::Map`、`PinyinJa`、`EnJa`、`CompileLexicon` |
-| `core/mixed/host/` | 开发主机上的协调层：`Engines` 背后的三个引擎（直接链接 librime 与 LatinIME 核心，Mozc 经行服务）与语料运行器 | `host_engines.h`、`mozc_client.h`、`corpus_main.cc` |
+| `core/mixed/host/` | 开发主机上单独运行的协调层：实现 `Engines` 的三个引擎（librime 与英文词典经与设备相同的代码，Mozc 经它的行服务）与语料运行器 | `host_engines.h`、`mozc_client.h`、`corpus_main.cc` |
 | `core/mixed/tests/` | 协调层在假引擎上的单元测试，每个部分一个可执行文件，检查项以 `S6-…` 命名 | `fake_engines.h`、`coordinator_test.cc` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Mozc.kt` | `libkotomo_mozc.so` 的 Kotlin 外观：日文模式用 `sessionConvert` 转换、`predict` 预测、`pinnedConvert`（固定片段与固定边界）修改片段 | `sessionConvert`、`pinnedConvert`、`predict` |
+| `app/src/main/java/com/yuanzhe/kotomo/engine/Core.kt`、`Snapshot.kt` | `libkotomo_core.so` 的 Kotlin 外观类（[engine-contract.md](../engine-contract.md)）：在各引擎的函数表之上打开协调层，编码每个请求（每键跨一次 JNI），解码并检查快照；过期的更新永不取代较新的更新这条规则（有单元测试） | `Core.open`、`key`、`select`、`Core.Options`、`Snapshot.decode`、`Snapshot.replaces` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/MixedEngine.kt` | 引擎线程上的混合模式：持有协调层，在某个引擎变化时重新打开它，用最小的请求使引擎的组合与键盘的组合保持一致，决定一次提交提交什么 | `attach`、`type`、`commit` |
 | `scripts/build-mozc.sh` | 为主机或 Android ABI 构建 Mozc 与胶水层（Android 需要 x86_64 Linux 或 macOS）；把 Android 产物放进 `build/mozc-prebuilt`，并与 `build-lock.json` 比较 | `--abi` |
 | `.github/workflows/mozc.yml` | CI（新的 GitHub 仓库建立之前不运行）：主机测试，以及带哈希清单的 Android Mozc 库产物 | `mozc` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | 在独立进程中把 librime 部署到暂存目录、`filesDir/rime` 下的文件布局、模糊音规则文件与记下它的部署标记、构建的换入、回到预编译数据与部署报告 | `RimeDeployService`、`RimeFiles.promote`、`RimeFiles.writeFuzzy`、`RimeFiles.dropBuild` |

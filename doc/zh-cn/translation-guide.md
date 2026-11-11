@@ -115,6 +115,10 @@ Android 字符串资源中（英文、简体中文、繁体中文和日文），
 | engine ↔ app contract | 引擎 ↔ 应用契约 |
 | facade | 外观类 |
 | line service | 行服务 |
+| function table (of an engine library) | 函数表 |
+| request (of the contract) | 请求 |
+| session (of the coordinator) | 会话 |
+| compiled lexicon | 编译后的词库 |
 
 ## 6. 审阅清单
 

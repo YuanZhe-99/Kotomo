@@ -35,19 +35,20 @@ app and the keyboard run in the same process and share one `SettingsStore`
 
 ## Keys
 
-The keyboard does not read `mixed.level`, the `mixed.weight_*` keys, `mixed.space`, or any
-`mixed.cross.*` or `japanese.cross.*` switch other than `mixed.cross.emoji` yet: the settings app
-stores and shows them, and they take effect once the mixed coordinator exists.
+Mixed mode reads its keys on every key typed (the mixed-input coordinator gets them as options,
+`engine-contract.md`). Not read yet: `mixed.cross.pinyin_to_katakana` and `mixed.cross.readings`,
+and every `japanese.cross.*` switch, because Japanese mode does not convert through the
+coordinator yet; the settings app stores and shows them.
 
 | Key | Type | Default | Setting |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | Mode the keyboard starts in: `mixed`, `chinese`, `japanese`, `english`; a hidden mode falls back to the first one shown |
 | `modes.order` | string | `mixed,chinese,japanese,english,pc` | The language choice's order, mode names joined by commas; a missing mode joins at the end, names this version does not know are kept after the known ones |
 | `modes.hidden` | string | empty | Modes the language choice does not offer, joined by commas; with all of them hidden, all are offered |
-| `mixed.level` | string | `balanced` | Mixed-mode level: `conservative`, `balanced`, `aggressive` |
-| `mixed.weight_chinese`, `mixed.weight_english`, `mixed.weight_japanese`, `mixed.weight_emoji` | int 0–100 | 70, 60, 60, 30 | Mixed-mode candidate weight per language |
-| `mixed.space` | string | `separate` | Space while composing in Mixed mode: `separate` (insert a break) or `commit_first` |
-| `mixed.cross.*`, `japanese.cross.*` | boolean | `true` | Cross-language switches of Mixed and Japanese mode: `pinyin_to_kanji`, `pinyin_to_katakana`, `english_to_kanji`, `english_to_katakana`, `whole_sentence`, `readings`, `emoji` |
+| `mixed.level` | string | `balanced` | Mixed-mode level: `conservative` doubles the cost of a cross-language word, `aggressive` halves it and lets a cross-language candidate come first; `balanced` keeps the original language first |
+| `mixed.weight_chinese`, `mixed.weight_english`, `mixed.weight_japanese`, `mixed.weight_emoji` | int 0–100 | 70, 60, 60, 30 | Mixed-mode candidate weight per language. A language's candidates move up or down by how far its weight is from its default (nothing moves at the defaults); the emoji weight places the emoji: after the two best candidates at 100, one place later for every 20 points below |
+| `mixed.space` | string | `separate` | Space while composing in Mixed mode: `separate` marks a boundary inside the composition and commits nothing (Enter or a tap commits), `commit_first` commits the first candidate |
+| `mixed.cross.*`, `japanese.cross.*` | boolean | `true` | Cross-language switches of Mixed and Japanese mode: `pinyin_to_kanji` (a Japanese kanji word typed by its Chinese reading), `pinyin_to_katakana`, `english_to_kanji` (an English word as the Japanese word that means it), `english_to_katakana` (as its loanword), `whole_sentence` (off: a cross-language word is offered only when it is the whole composition), `readings`, `emoji` |
 | `chinese.script` | string | `simplified` | Chinese output: `simplified` (Mainland), `traditional` (OpenCC standard), `taiwan`, `hong_kong` (with regional phrases); the quick panel also remembers a choice per app in the keyboard's memory (below) |
 | `chinese.fuzzy.<rule>` | boolean | `false` | One switch per fuzzy-pinyin rule (PLAN §9.6): `z_zh`, `c_ch`, `s_sh`, `n_l`, `f_h`, `l_r`, `an_ang`, `en_eng`, `in_ing`, `ian_iang`, `uan_uang`; a key is written once its switch has been changed. The keyboard turns the rules that are on into librime's `kotomo_fuzzy.yaml` and deploys it ([upstream.md](upstream.md)) |
 | `english.suggestions` | boolean | `true` | English corrections and predictions in the candidate bar |
