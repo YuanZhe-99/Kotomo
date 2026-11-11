@@ -17,6 +17,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -44,11 +45,21 @@ import com.yuanzhe.kotomo.settings.label
  *
  * Inputs: [store] is read and changed directly (the keyboard follows it at once); [script] is the
  * Chinese script remembered for the current app (null: the settings' one) and [onScript] changes
- * it (for the app and the settings); [onOpenSettings]
- * opens the settings app; [onBack] returns to the keys.
+ * it (for the app and the settings); [mode] is the mode in use, [pinned] the mode fixed for the
+ * current app (null: none) and [onPin] fixes the mode in use there or releases it (PLAN §2.3);
+ * [onOpenSettings] opens the settings app; [onBack] returns to the keys.
  */
 @Composable
-fun QuickPanel(store: SettingsStore, script: ChineseScript?, onScript: (ChineseScript) -> Unit, onOpenSettings: () -> Unit, onBack: () -> Unit) {
+fun QuickPanel(
+    store: SettingsStore,
+    script: ChineseScript?,
+    onScript: (ChineseScript) -> Unit,
+    mode: State<Mode>,
+    pinned: State<Mode?>,
+    onPin: (Boolean) -> Unit,
+    onOpenSettings: () -> Unit,
+    onBack: () -> Unit,
+) {
     val settings by store.flow.collectAsState()
     val back = stringResource(R.string.candidates_collapse)
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
@@ -72,16 +83,15 @@ fun QuickPanel(store: SettingsStore, script: ChineseScript?, onScript: (ChineseS
                 script ?: settings.chineseScript,
                 onPick = onScript,
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.incognito_title), fontSize = 15.sp, color = kbColor(R.color.kb_ink))
-                    Text(stringResource(R.string.incognito_desc), fontSize = 12.sp, color = kbColor(R.color.kb_ink_secondary))
-                }
-                Switch(
-                    checked = settings.incognito,
-                    onCheckedChange = { on -> store.set { it.copy(incognito = on) } },
-                    colors = SwitchDefaults.colors(checkedTrackColor = kbColor(R.color.kb_accent)),
-                )
+            val fixed = pinned.value
+            Toggle(
+                stringResource(R.string.pin_title),
+                stringResource(R.string.pin_desc, stringResource((fixed ?: mode.value).label)),
+                checked = fixed != null,
+                onChange = onPin,
+            )
+            Toggle(stringResource(R.string.incognito_title), stringResource(R.string.incognito_desc), settings.incognito) { on ->
+                store.set { it.copy(incognito = on) }
             }
             Pill(stringResource(R.string.quick_all_settings), selected = false, modifier = Modifier.fillMaxWidth(), onClick = onOpenSettings)
         }
@@ -102,6 +112,22 @@ fun QuickPanel(store: SettingsStore, script: ChineseScript?, onScript: (ChineseS
                 colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(kbColor(R.color.kb_ink)),
             )
         }
+    }
+}
+
+/** One switch with its title and description, in the keyboard's colors. */
+@Composable
+private fun Toggle(title: String, desc: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, color = kbColor(R.color.kb_ink))
+            Text(desc, fontSize = 12.sp, color = kbColor(R.color.kb_ink_secondary))
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = kbColor(R.color.kb_accent)),
+        )
     }
 }
 

@@ -39,12 +39,14 @@ stores and shows them, and they take effect once the mixed coordinator exists.
 
 | Key | Type | Default | Setting |
 |---|---|---|---|
-| `default_mode` | string | `mixed` | Mode the keyboard starts in: `mixed`, `chinese`, `japanese`, `english` |
+| `default_mode` | string | `mixed` | Mode the keyboard starts in: `mixed`, `chinese`, `japanese`, `english`; a hidden mode falls back to the first one shown |
+| `modes.order` | string | `mixed,chinese,japanese,english` | The language choice's order, mode names joined by commas; a missing mode joins at the end, names this version does not know are kept after the known ones |
+| `modes.hidden` | string | empty | Modes the language choice does not offer, joined by commas; with all of them hidden, all are offered |
 | `mixed.level` | string | `balanced` | Mixed-mode level: `conservative`, `balanced`, `aggressive` |
 | `mixed.weight_chinese`, `mixed.weight_english`, `mixed.weight_japanese`, `mixed.weight_emoji` | int 0–100 | 70, 60, 60, 30 | Mixed-mode candidate weight per language |
 | `mixed.space` | string | `separate` | Space while composing in Mixed mode: `separate` (insert a break) or `commit_first` |
 | `mixed.cross.*`, `japanese.cross.*` | boolean | `true` | Cross-language switches of Mixed and Japanese mode: `pinyin_to_kanji`, `pinyin_to_katakana`, `english_to_kanji`, `english_to_katakana`, `whole_sentence`, `readings`, `emoji` |
-| `chinese.script` | string | `simplified` | Chinese output: `simplified` (Mainland), `traditional` (OpenCC standard), `taiwan`, `hong_kong` (with regional phrases); the quick panel also remembers a choice per app in the keyboard's own preferences |
+| `chinese.script` | string | `simplified` | Chinese output: `simplified` (Mainland), `traditional` (OpenCC standard), `taiwan`, `hong_kong` (with regional phrases); the quick panel also remembers a choice per app in the keyboard's memory (below) |
 | `english.suggestions` | boolean | `true` | English corrections and predictions in the candidate bar |
 | `english.auto_capitalize` | boolean | `true` | Capital letter at the start of a sentence |
 | `layout.split` | string | `auto` | Split keyboard: `auto` (by window width), `always`, `never` |
@@ -83,10 +85,40 @@ Unknown members (a newer format, the theme editor's colors in P4) are kept when 
 rewritten; unknown or out-of-range values read as the defaults. A file that is not a JSON object is
 moved aside to `current.json.unreadable` and the defaults apply.
 
+## Keyboard memory file
+
+What the keyboard remembers by itself, rather than what the person sets, lives in
+`files/keyboard/memory.json` (`ime/KeyboardMemory.kt`): the mode last used, per app the mode last
+used there, the mode fixed for it ("Fix this mode here" in the quick panel, PLAN §2.3) and the
+Chinese script chosen there, and the emoji history. It is written whole through a temporary file
+and an atomic replace on a background thread after each change; the keyboard reads it once when
+it starts and keeps it in memory.
+
+| Member | Type | Meaning |
+|---|---|---|
+| `format_version` | int | The format; this build writes 1 and never lowers a newer value |
+| `updated_utc_ms` | int | When it was written, UTC milliseconds |
+| `last_mode` | string | The mode last chosen anywhere (`mixed`, `chinese`, `japanese`, `english`) |
+| `apps` | object | Per package name: `mode` (last used there), `pinned_mode` (fixed for it), `script` (a `chinese.script` value); each may be missing |
+| `emoji.recent` | array of strings | Emoji sent from the panel, newest first, at most 32 |
+
+- Only package names are stored, never anything typed. Nothing is recorded per app, and no emoji
+  history, in sensitive and direct fields or in incognito mode (PLAN §14); the global `last_mode`
+  is the only value written there.
+- Unknown members, and values this version cannot read (a newer mode), are kept when the file is
+  rewritten; they read as absent. A file that is not a JSON object is moved aside to
+  `memory.json.unreadable` and the keyboard starts with nothing remembered.
+- Builds before format 1 kept the same values in SharedPreferences (`shared_prefs/ime.xml`:
+  `mode`, `mode.<app>`, `script.<app>`; `shared_prefs/emoji_recents.xml`: `items`). While
+  `memory.json` does not exist they are read from there; the first change writes the file, and the
+  old files are left as they are, so an older build installed over this one still reads them.
+- The manifest excludes every file from Android backup and device transfer (`data_extraction_rules.xml`).
+
 ## Direct Boot
 
-Before the first unlock the keyboard cannot read these files (credential-protected storage). It
-then uses the defaults, kept in a throwaway file in device-protected storage that is deleted each
+Before the first unlock the keyboard cannot read these files (credential-protected storage) and
+neither reads nor writes the keyboard memory. It then uses the defaults, kept in a throwaway file
+in device-protected storage that is deleted each
 time, and switches to the person's settings once the device is unlocked
 ([platform-notes.md](platform-notes.md)).
 

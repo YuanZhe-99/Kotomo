@@ -49,6 +49,8 @@ class SettingsStoreTest {
 
     private val changed = Settings(
         defaultMode = Mode.JAPANESE,
+        modeOrder = listOf(Mode.CHINESE, Mode.JAPANESE, Mode.MIXED, Mode.ENGLISH),
+        hiddenModes = setOf(Mode.MIXED),
         mixed = Mixed(
             level = MixedLevel.AGGRESSIVE,
             cross = CrossLanguage(englishToKatakana = false, emoji = false),
@@ -148,6 +150,31 @@ class SettingsStoreTest {
         withData { data, scope ->
             SettingsStore(data, scope).update { it }
             assertEquals(emptyPreferences(), data.data.first())
+        }
+    }
+
+    /** PLAN §2.3: the language choice follows the order, skips hidden modes and never empties. */
+    @Test
+    fun modeOrderAndHiddenModes() {
+        val s = Settings(modeOrder = listOf(Mode.ENGLISH, Mode.JAPANESE, Mode.CHINESE, Mode.MIXED), hiddenModes = setOf(Mode.MIXED, Mode.CHINESE))
+        assertEquals(listOf(Mode.ENGLISH, Mode.JAPANESE), s.modes)
+        // The default (Mixed) is hidden: the first mode shown is used instead, and a hidden wish too.
+        assertEquals(Mode.ENGLISH, s.usable(null))
+        assertEquals(Mode.ENGLISH, s.usable(Mode.CHINESE))
+        assertEquals(Mode.JAPANESE, s.usable(Mode.JAPANESE))
+        assertEquals(Mode.entries, Settings(hiddenModes = Mode.entries.toSet()).modes)
+    }
+
+    /** Unknown mode names (a newer version's) are skipped when read and kept when the order changes. */
+    @Test
+    fun modeListsKeepUnknownNames() {
+        val order = stringPreferencesKey("modes.order")
+        withData { data, _ -> data.edit { it[order] = "english,korean,japanese" } }
+        withData { data, scope ->
+            val read = SettingsFormat.read(data.data.first())
+            assertEquals(listOf(Mode.ENGLISH, Mode.JAPANESE, Mode.MIXED, Mode.CHINESE), read.modeOrder)
+            SettingsStore(data, scope).update { it.copy(modeOrder = listOf(Mode.JAPANESE, Mode.ENGLISH, Mode.MIXED, Mode.CHINESE)) }
+            assertEquals("japanese,english,mixed,chinese,korean", data.data.first()[order])
         }
     }
 }

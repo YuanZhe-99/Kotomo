@@ -165,6 +165,9 @@ class KeyboardView(
             invalidate()
         }
 
+    /** The modes the language choice offers, in the person's order (Settings.modes). */
+    var modes: List<Mode> = Mode.entries
+
     private val res = context.resources
     private val keyHeightPhone = res.getDimension(R.dimen.kb_key_height)
     private val keyHeightLarge = res.getDimension(R.dimen.kb_key_height_large)
@@ -307,9 +310,12 @@ class KeyboardView(
         }
     }
 
-    /** Opens the language choice over [key] (the Emoji key's or the space bar's long press). */
+    /**
+     * Opens the language choice over [key] (the Emoji key's or the space bar's long press): the
+     * modes not hidden, in the person's order, the current one preselected.
+     */
     private fun openModes(key: PlacedKey) =
-        openPopup(key, Mode.entries.map { badges.getValue(it) }, Mode.entries.map(KeyAction::SetMode), Mode.entries.indexOf(mode))
+        openPopup(key, modes.map { badges.getValue(it) }, modes.map(KeyAction::SetMode), modes.indexOf(mode).coerceAtLeast(0))
 
     private fun openPopup(key: PlacedKey, labels: List<String>, actions: List<KeyAction>, selected: Int) {
         longPressed = true

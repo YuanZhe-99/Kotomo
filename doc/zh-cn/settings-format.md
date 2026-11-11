@@ -33,12 +33,14 @@
 
 | 键 | 类型 | 默认值 | 设置 |
 |---|---|---|---|
-| `default_mode` | string | `mixed` | 键盘启动时的模式：`mixed`、`chinese`、`japanese`、`english` |
+| `default_mode` | string | `mixed` | 键盘启动时的模式：`mixed`、`chinese`、`japanese`、`english`；隐藏的模式改用第一个显示的模式 |
+| `modes.order` | string | `mixed,chinese,japanese,english` | 语言选择的顺序，模式名以逗号连接；缺少的模式排到最后，本版本不认识的名称保留在已知名称之后 |
+| `modes.hidden` | string | 空 | 语言选择中不提供的模式，以逗号连接；全部隐藏时全部提供 |
 | `mixed.level` | string | `balanced` | 混合模式的智能程度：`conservative`、`balanced`、`aggressive` |
 | `mixed.weight_chinese`、`mixed.weight_english`、`mixed.weight_japanese`、`mixed.weight_emoji` | int 0–100 | 70、60、60、30 | 混合模式中各语言的候选权重 |
 | `mixed.space` | string | `separate` | 混合模式组合中的空格：`separate`（插入分隔）或 `commit_first`（提交首选） |
 | `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`、`pinyin_to_katakana`、`english_to_kanji`、`english_to_katakana`、`whole_sentence`、`readings`、`emoji` |
-| `chinese.script` | string | `simplified` | 中文输出：`simplified`（大陆）、`traditional`（OpenCC 标准）、`taiwan`、`hong_kong`（带地区用词）；快捷面板还会在键盘自己的偏好中按 App 记住选择 |
+| `chinese.script` | string | `simplified` | 中文输出：`simplified`（大陆）、`traditional`（OpenCC 标准）、`taiwan`、`hong_kong`（带地区用词）；快捷面板还会在键盘的记忆（见下文）中按 App 记住选择 |
 | `english.suggestions` | boolean | `true` | 候选栏中的英文纠错与预测 |
 | `english.auto_capitalize` | boolean | `true` | 句首自动大写 |
 | `layout.split` | string | `auto` | 分离键盘：`auto`（按窗口宽度）、`always`、`never` |
@@ -75,9 +77,33 @@
 未知成员（更新的格式、P4 主题编辑器的颜色）在重写文件时保留；未知或超出范围的值按默认值读取。不是
 JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值。
 
+## 键盘记忆文件
+
+键盘自己记住的东西（而不是用户设置的东西）存放在 `files/keyboard/memory.json`（`ime/KeyboardMemory.kt`）：
+上次使用的模式；按 App 记住的上次使用的模式、为它固定的模式（快捷面板的"在此固定这个模式"，PLAN §2.3）
+和在其中选择的中文字形；以及 Emoji 历史。每次变化后在后台线程经临时文件原子替换整份写入；键盘在启动时
+读取一次并保存在内存中。
+
+| 成员 | 类型 | 含义 |
+|---|---|---|
+| `format_version` | int | 格式版本；本版本写 1，且从不降低更新的值 |
+| `updated_utc_ms` | int | 写入时间，UTC 毫秒 |
+| `last_mode` | string | 在任何地方最后选择的模式（`mixed`、`chinese`、`japanese`、`english`） |
+| `apps` | object | 按包名：`mode`（上次在其中使用的）、`pinned_mode`（为它固定的）、`script`（`chinese.script` 的值）；每项都可以缺省 |
+| `emoji.recent` | 字符串数组 | 从面板发送的 Emoji，最新的在前，最多 32 个 |
+
+- 只保存包名，从不保存输入的内容。在敏感输入框、直接输入的输入框和无痕模式下，不按 App 记录任何东西，
+  也不记录 Emoji 历史（PLAN §14）；那里只会写入全局的 `last_mode`。
+- 未知成员和本版本无法读取的值（更新版本的模式）在重写文件时保留，按缺省读取。不是 JSON 对象的文件会被
+  移到 `memory.json.unreadable`，键盘从什么都不记得开始。
+- 格式 1 之前的版本把同样的值存放在 SharedPreferences 中（`shared_prefs/ime.xml`：`mode`、`mode.<app>`、
+  `script.<app>`；`shared_prefs/emoji_recents.xml`：`items`）。`memory.json` 不存在时从那里读取；第一次
+  变化写出该文件，旧文件保持原样，因此覆盖安装的旧版本仍能读到它们。
+- 清单把所有文件排除在 Android 备份与设备迁移之外（`data_extraction_rules.xml`）。
+
 ## Direct Boot
 
-首次解锁之前，键盘无法读取这些文件（凭据保护存储）。此时使用默认值，保存在设备保护存储中的一次性
+首次解锁之前，键盘无法读取这些文件（凭据保护存储），也不读写键盘记忆。此时使用默认值，保存在设备保护存储中的一次性
 文件里，每次都会删除；设备解锁后切换到用户的设置（[platform-notes.md](platform-notes.md)）。
 
 ## 隐私

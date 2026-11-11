@@ -1,7 +1,5 @@
 package com.yuanzhe.kotomo.ime
 
-import android.content.Context
-import android.content.SharedPreferences
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,51 +57,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import com.yuanzhe.kotomo.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Keeps the emoji the person sent from the panel, newest first, in app-private preferences.
- *
- * Notes: format 1 is the key [FORMAT] = 1 and [ITEMS] = the emoji joined by newlines; other keys
- * of the file are left alone. The file is excluded from Android backup (data_extraction_rules).
- * [add] is called only when the field allows learning (the behavior contract's sensitive fields).
- */
-private class Recents(private val prefs: SharedPreferences) {
-    /** The stored emoji, newest first, at most [MAX]. Notes: read on an I/O thread. */
-    val items: MutableList<String> = prefs.getString(ITEMS, null).orEmpty()
-        .split('\n').filter { it.isNotBlank() && it.length <= MAX_LENGTH }.distinct().take(MAX).toMutableList()
+/** What the panel needs before it can draw: the emoji data and the recents as the panel opened. */
+private class PanelData(val index: EmojiIndex, val shownRecents: List<String>)
 
-    /**
-     * Moves an emoji to the front and saves the list.
-     * Side effects: writes the preferences asynchronously (apply()).
-     */
-    fun add(emoji: String) {
-        items.remove(emoji)
-        items.add(0, emoji)
-        while (items.size > MAX) items.removeAt(items.lastIndex)
-        prefs.edit {
-            putInt(FORMAT, 1)
-            putString(ITEMS, items.joinToString("\n"))
-        }
-    }
-
-    companion object {
-        const val FILE = "emoji_recents"
-        const val FORMAT = "format"
-        const val ITEMS = "items"
-        /** Four rows of a phone-width grid. */
-        const val MAX = 32
-        /** Longer than any emoji sequence; anything longer in the file is not an emoji. */
-        const val MAX_LENGTH = 32
-    }
+/** Returns [memory] with [emoji] first in the history, which keeps at most [Memory.MAX_RECENT]. */
+internal fun withRecent(memory: Memory, emoji: String): Memory {
+    val recent = (listOf(emoji) + memory.emoji.recent.filter { it != emoji }).take(Memory.MAX_RECENT)
+    return memory.copy(emoji = memory.emoji.copy(recent = recent))
 }
-
-/** What the panel needs before it can draw: the emoji data and the stored recents. */
-private class PanelData(val index: EmojiIndex, val recents: Recents?, val shownRecents: List<String>)
 
 /** One cell of the emoji grid: a section title, the empty-recents hint or an emoji. */
 private sealed interface Cell {
@@ -137,9 +103,10 @@ private fun groupTitle(id: String): Int = when (id) {
  * Inputs: [onEmoji] commits one emoji (a base emoji or a chosen tone); [onBackspace] deletes
  * before the cursor; [onBack] returns to the keyboard; [recordRecents] adds sent emoji to Recents
  * and must be false in sensitive fields and incognito (passwords, IME_FLAG_NO_PERSONALIZED_LEARNING);
- * [personal] false (before the first unlock) neither reads nor shows Recents.
- * Side effects: reads the emoji asset and the recents file on an I/O thread; writes the recents
- * file when [recordRecents] is true.
+ * [memory] is the keyboard's memory, null before the first unlock (then Recents is neither read
+ * nor shown).
+ * Side effects: reads the emoji asset on an I/O thread; records sent emoji in [memory] when
+ * [recordRecents] is true.
  * Notes: built with Compose inside the input method window (S1's Compose check); the first frame
  * is timed by the service. Recents shows the list as it was when the panel opened, so cells do
  * not move under the finger; what is sent now appears the next time. [recordRecents] defaults to
@@ -151,14 +118,13 @@ fun EmojiPanel(
     onBackspace: () -> Unit,
     onBack: () -> Unit,
     recordRecents: Boolean = false,
-    personal: Boolean = true,
+    memory: KeyboardMemory? = null,
 ) {
     val context = LocalContext.current
     val data by produceState<PanelData?>(null) {
         value = withContext(Dispatchers.IO) {
-            // Before the first unlock (Direct Boot) the recents file cannot be read: no Recents.
-            val recents = if (personal) Recents(context.getSharedPreferences(Recents.FILE, Context.MODE_PRIVATE)) else null
-            PanelData(EmojiIndex.load(context), recents, recents?.items?.toList().orEmpty())
+            // Before the first unlock (Direct Boot) there is no memory: no Recents.
+            PanelData(EmojiIndex.load(context), memory?.current?.emoji?.recent.orEmpty())
         }
     }
     val grid = rememberLazyGridState()
@@ -172,7 +138,7 @@ fun EmojiPanel(
     }
     val send = { emoji: String ->
         onEmoji(emoji)
-        if (recordRecents) loaded?.recents?.add(emoji)
+        if (recordRecents) memory?.update { withRecent(it, emoji) }
     }
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         Box(Modifier.weight(1f).fillMaxWidth()) {

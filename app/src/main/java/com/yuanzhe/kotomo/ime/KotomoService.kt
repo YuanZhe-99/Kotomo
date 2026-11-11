@@ -49,7 +49,6 @@ import kotlinx.coroutines.Job
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
-import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -158,6 +157,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var japaneseUnavailable = false
     /** librime's latest preedit and candidates, as last applied on the main thread. */
     private var chinesePreedit = ""
+    /** Main thread: librime's raw input (the letters typed) as last applied, for switching modes. */
+    private var chineseInput = ""
+    /** Main thread: the mode fixed for the current app, or null (Compose state for the quick panel). */
+    private val pinnedHere = androidx.compose.runtime.mutableStateOf<Mode?>(null)
     private var chineseCandidates = emptyList<String>()
     /** The last word committed in English mode, for predictions and bigram context. */
     private var previousWord: String? = null
@@ -226,7 +229,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
         }
         settingsWatch = watchSettings()
-        mode = prefs()?.getString(KEY_MODE, null)?.let { name -> Mode.entries.firstOrNull { it.name == name } } ?: Mode.MIXED
+        mode = settings.usable(memory()?.current?.lastMode)
         ContextCompat.registerReceiver(
             this, deployDone, IntentFilter(RimeDeployService.ACTION_DONE), ContextCompat.RECEIVER_NOT_EXPORTED,
         )
@@ -237,10 +240,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /**
-     * Returns the keyboard's own preferences (the mode per app, the script per app), or null
-     * before the first unlock, when credential-protected storage cannot be read (Direct Boot).
+     * Returns the keyboard's own memory (the last mode, the mode and script per app, the emoji
+     * history), or null before the first unlock, when credential-protected storage cannot be read
+     * (Direct Boot).
      */
-    private fun prefs() = if (locked) null else getSharedPreferences(PREFS, MODE_PRIVATE)
+    private fun memory() = if (locked) null else KeyboardMemory.get(this)
 
     /** Receives the first unlock and leaves Direct Boot. */
     private val unlocked = object : BroadcastReceiver() {
@@ -261,7 +265,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         settingsWatch = watchSettings()
         history = ClipboardHistory.get(this)
         clipboard.addPrimaryClipChangedListener(clipListener)
-        mode = prefs()?.getString(KEY_MODE, null)?.let { name -> Mode.entries.firstOrNull { it.name == name } } ?: mode
+        mode = settings.usable(memory()?.current?.lastMode ?: mode)
         emojiPanel = null
         quickPanel = null
         clipboardPanel = null
@@ -332,6 +336,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 clipboardPanel = null
                 setInputView(onCreateInputView())
             }
+            // The mode in use was just hidden: move to one the language choice still offers.
+            if (::keyboard.isInitialized && mode !in it.modes) switchMode(it.usable(mode), 0)
             refresh(0)
             applyEngineSettings()
         }
@@ -502,7 +508,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val app = currentInputEditorInfo?.packageName
         if (app != null && remembers) {
             appScript = script
-            prefs()?.edit { putString("$KEY_SCRIPT.$app", script.name) }
+            memory()?.update { m -> m.withApp(app) { it.copy(script = script) } }
         }
         store.set { it.copy(chineseScript = script) }
         applyEngineSettings()
@@ -590,12 +596,16 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         updateQuickStrip()
     }
 
+    /** Main thread: the mode the quick panel shows (set each time it opens). */
+    private val quickMode = androidx.compose.runtime.mutableStateOf(Mode.MIXED)
+
     /** Opens or closes the quick settings (the toolbar's first button) in the keyboard's place. */
     private fun toggleQuickPanel() {
         if (panelHost.getChildAt(0) === quickPanel) {
             showKeyboard()
             return
         }
+        quickMode.value = mode
         val height = keyboard.height
         val panel = quickPanel ?: ComposeView(this).also { view ->
             quickPanel = view
@@ -604,6 +614,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     store = store,
                     script = appScript,
                     onScript = ::setScript,
+                    mode = quickMode,
+                    pinned = pinnedHere,
+                    onPin = ::pinHere,
                     onOpenSettings = { onTool(Tool.SETTINGS) },
                     onBack = ::showKeyboard,
                 )
@@ -799,6 +812,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         field = Fields.of(info.inputType, info.hintText ?: info.label)
         symbolPage = 0
         symbols = false
+        // The emoji panel is built per field, since whether it may record recents depends on it.
+        emojiPanel = null
         lastSpaceAt = 0L
         autoSpaced = false
         details = null
@@ -807,14 +822,17 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         taps.clear()
         clearChinese()
         previousWord = null
-        // Each app comes back in the mode last used in it (only the package name is stored).
-        val prefs = prefs()
+        // An app fixed to a mode always starts in it; otherwise each app comes back in the mode
+        // last used in it, and code-like fields start in English (only the package name is stored).
         val app = info.packageName?.takeIf { !direct && !sensitive }
-        mode = app?.let { prefs?.getString("$KEY_MODE.$it", null) }?.let { name -> Mode.entries.firstOrNull { it.name == name } }
-            ?: if (field == Field.CODE) Mode.ENGLISH else settings.defaultMode
-        // Code-like fields start in English even where the app remembers another mode.
-        if (field == Field.CODE) mode = Mode.ENGLISH
-        appScript = app?.let { prefs?.getString("$KEY_SCRIPT.$it", null) }?.let { name -> ChineseScript.entries.firstOrNull { it.name == name } }
+        val remembered = app?.let { memory()?.current?.app(it) }
+        mode = when {
+            remembered?.pinned != null -> settings.usable(remembered.pinned)
+            field == Field.CODE -> Mode.ENGLISH
+            else -> settings.usable(remembered?.mode)
+        }
+        pinnedHere.value = remembered?.pinned
+        appScript = remembered?.script
         applyEngineSettings()
         showKeyboard()
         updateAutoCaps()
@@ -886,16 +904,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val spaced = autoSpaced
         autoSpaced = false
         if (action is KeyAction.SetMode) {
-            commitComposition()
-            previousWord = null
-            mode = action.mode
+            switchMode(action.mode, downTime)
             val app = currentInputEditorInfo?.packageName
-            prefs()?.edit {
-                putString(KEY_MODE, mode.name)
-                if (app != null && remembers) putString("$KEY_MODE.$app", mode.name)
+            memory()?.update { m ->
+                val last = m.copy(lastMode = mode)
+                if (app != null && remembers) last.withApp(app) { it.copy(mode = mode) } else last
             }
-            updateAutoCaps()
-            refresh(downTime)
             return
         }
         if (usesRime && !direct && onChineseKey(action, longPress, downTime)) {
@@ -1065,6 +1079,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
         }
         chinesePreedit = state.preedit
+        chineseInput = if (state.preedit.isEmpty()) "" else state.input
         rimeCandidates = state.candidates
         val emoji = emojiFor(state.preedit)
         emojiShown = emoji.toSet()
@@ -1082,6 +1097,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun clearChinese() {
         if (chinesePreedit.isEmpty() && chineseCandidates.isEmpty()) return
         chinesePreedit = ""
+        chineseInput = ""
         chineseCandidates = emptyList()
         engine.post { if (rimeReady) Rime.clear() }
     }
@@ -1250,6 +1266,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         keyboard.shift = shift
         keyboard.mode = mode
+        keyboard.modes = s.modes
         val raw = composing.toString()
         val gen = ++generation
         candidates = when {
@@ -1449,6 +1466,73 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /**
+     * Switches to mode [to], keeping an open composition (PLAN §2.3): its letters move to the new
+     * mode's engine uncommitted, so "nihao" typed in Chinese becomes にはお in Japanese and the
+     * letters in English. Mixed and Chinese share librime, so between them nothing moves.
+     * Inputs: [downTime] is the touch that chose the mode (0 for none), for [Probe].
+     * Side effects: replaces the composing text in the field; segment choices and the English tap
+     * positions of the old mode are dropped. When librime is not open, letters moving into Chinese
+     * are committed as typed.
+     */
+    private fun switchMode(to: Mode, downTime: Long) {
+        val fromRime = usesRime
+        previousWord = null
+        mode = to
+        val ic = currentInputConnection
+        when {
+            direct || ic == null -> Unit
+            fromRime && !usesRime && chinesePreedit.isNotEmpty() -> {
+                val letters = chineseInput.filter { it in 'a'..'z' || it in 'A'..'Z' }
+                clearChinese()
+                rimeIndexes = emptyList()
+                composing.clear().append(letters)
+                taps.clear()
+                repeat(letters.length) { taps += null }
+                if (letters.isEmpty()) ic.commitText("", 1) else ic.setComposingText(composing, 1)
+            }
+            !fromRime && usesRime && composing.isNotEmpty() -> {
+                val letters = composing.toString().lowercase()
+                composing.clear()
+                taps.clear()
+                clearJapanese()
+                engine.post {
+                    val state = if (rimeReady) {
+                        Rime.clear()
+                        rimeState(Rime.setInput(letters))
+                    } else {
+                        rimeState(false)
+                    }
+                    main.post {
+                        if (state.preedit.isEmpty()) currentInputConnection?.commitText(letters, 1)
+                        applyChinese(state, 0)
+                        refresh(0)
+                    }
+                }
+            }
+            !usesRime && composing.isNotEmpty() -> {
+                // English and Japanese keep the romaji; the field shows the letters again until
+                // the new mode's engine answers.
+                clearJapanese()
+                ic.setComposingText(composing, 1)
+            }
+        }
+        updateAutoCaps()
+        refresh(downTime)
+    }
+
+    /**
+     * Fixes the current mode for the current app (the quick panel's switch), or releases it when
+     * [on] is false; nothing is kept where the field may not leave a trace.
+     */
+    private fun pinHere(on: Boolean) {
+        val app = currentInputEditorInfo?.packageName ?: return
+        if (!remembers) return showNotice(getString(R.string.pin_not_here))
+        val pin = if (on) mode else null
+        pinnedHere.value = pin
+        memory()?.update { m -> m.withApp(app) { it.copy(pinned = pin) } }
+    }
+
+    /**
      * Whether pinyin goes through librime: Chinese mode, and for now Mixed mode too, until the
      * mixed coordinator (spike S6) handles pinyin, romaji and English in one string.
      */
@@ -1529,7 +1613,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onBack = ::showKeyboard,
                     // Sensitive fields record nothing, recent emoji included.
                     recordRecents = !locked && currentInputEditorInfo != null && remembers,
-                    personal = !locked,
+                    memory = memory(),
                 )
             }
         }
@@ -1538,12 +1622,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     private companion object {
-        const val PREFS = "ime"
-        const val KEY_MODE = "mode"
         const val ENGLISH_DICT = "main_en_us.dict"
         const val MOZC_DATA = "mozc.data"
         const val NOTICE_MS = 1500L
-        const val KEY_SCRIPT = "script"
         /** The API level that added TextAttribute.Builder.setTextSuggestionSelected. */
         const val API_TEXT_SUGGESTION_SELECTED = 37
         /** Conversion candidates passed to the field with the composition. */

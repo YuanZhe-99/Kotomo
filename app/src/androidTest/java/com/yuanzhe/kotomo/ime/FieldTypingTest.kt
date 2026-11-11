@@ -11,6 +11,9 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
+import com.yuanzhe.kotomo.settings.Settings
+import com.yuanzhe.kotomo.settings.SettingsStore
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -61,7 +64,7 @@ class FieldTypingTest {
     /** T03 positive: Japanese mode converts romaji; space commits the first candidate. */
     @Test
     fun japaneseConvertsOnSpace() {
-        inMode("JAPANESE") { assertEquals("日本", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihon", expected = "日本")) }
+        inMode(Mode.JAPANESE) { assertEquals("日本", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihon", expected = "日本")) }
     }
 
     /**
@@ -71,36 +74,85 @@ class FieldTypingTest {
      */
     @Test
     fun japaneseEnterKeepsTheKana() {
-        inMode("JAPANESE") {
+        inMode(Mode.JAPANESE) {
             val text = typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION, "nihon", expected = "にほん", space = false, enter = true)
             assertEquals("にほん", text)
         }
     }
 
     /**
-     * Runs [block] with Kotomo starting in [mode] in this app (the per-app mode Kotomo keeps in its
-     * preferences), and removes it again afterwards.
+     * PLAN §2.3: letters typed in Chinese stay uncommitted when the mode changes, and Japanese
+     * converts them. The switch comes from hiding the mode in use (the keyboard then moves to the
+     * default mode), the same path as choosing a mode from the language choice.
      */
-    private fun inMode(mode: String, block: () -> Unit) {
-        val context = instrumentation.targetContext
-        val prefs = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
-        val key = "mode." + context.packageName
-        prefs.edit().putString(key, mode).commit()
-        try {
-            block()
-        } finally {
-            prefs.edit().remove(key).commit()
+    @Test
+    fun switchingModeKeepsTheLetters() {
+        inMode(Mode.CHINESE) {
+            withSettings({ it.copy(defaultMode = Mode.JAPANESE) }) {
+                val text = typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION, "nihon", expected = "にほん", space = false, enter = true) {
+                    changeSettings { it.copy(hiddenModes = setOf(Mode.CHINESE)) }
+                }
+                assertEquals("にほん", text)
+            }
+        }
+    }
+
+    /** PLAN §2.3, the other way: romaji typed in Japanese becomes a pinyin composition in Chinese. */
+    @Test
+    fun switchingFromJapaneseKeepsTheLetters() {
+        inMode(Mode.JAPANESE) {
+            withSettings({ it.copy(defaultMode = Mode.CHINESE) }) {
+                val text = typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihao", expected = "你好") {
+                    changeSettings { it.copy(hiddenModes = setOf(Mode.JAPANESE)) }
+                }
+                assertEquals("你好", text)
+            }
         }
     }
 
     /**
-     * Opens a field of the given kind, taps [letters] (then space unless [space] is false, then
-     * Enter if [enter]) on
-     * Kotomo's keyboard and returns the field's text.
+     * Runs [block] with the current app fixed to [mode] in Kotomo's memory (the quick panel's
+     * "Fix this mode here"), and releases it afterwards.
+     */
+    private fun inMode(mode: Mode, block: () -> Unit) {
+        val context = instrumentation.targetContext
+        val memory = KeyboardMemory.get(context)
+        val app = context.packageName
+        memory.update { m -> m.withApp(app) { it.copy(pinned = mode) } }
+        try {
+            block()
+        } finally {
+            memory.update { m -> m.withApp(app) { it.copy(pinned = null) } }
+        }
+    }
+
+    /** Runs [block] with [change] applied to the settings, and puts the settings back afterwards. */
+    private fun withSettings(change: (Settings) -> Settings, block: () -> Unit) {
+        val before = SettingsStore.get(instrumentation.targetContext).current
+        changeSettings(change)
+        try {
+            block()
+        } finally {
+            changeSettings { before }
+        }
+    }
+
+    /** Changes the settings and waits until the change is stored (the keyboard follows the store). */
+    private fun changeSettings(change: (Settings) -> Settings) = runBlocking {
+        SettingsStore.get(instrumentation.targetContext).update(change)
+        Thread.sleep(READ_MS)
+    }
+
+    /**
+     * Opens a field of the given kind, taps [letters] (then runs [afterLetters], then space unless
+     * [space] is false, then Enter if [enter]) on Kotomo's keyboard and returns the field's text.
      * Notes: the first field of a run may come up before librime has opened its data; then the
      * letters type directly, so the field is cleared and the typing repeated a few times.
      */
-    private fun typeInto(inputType: Int, imeOptions: Int, letters: String, expected: String, space: Boolean = true, enter: Boolean = false): String {
+    private fun typeInto(
+        inputType: Int, imeOptions: Int, letters: String, expected: String, space: Boolean = true, enter: Boolean = false,
+        afterLetters: () -> Unit = {},
+    ): String {
         val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
             .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, inputType)
             .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, imeOptions)
@@ -109,6 +161,8 @@ class FieldTypingTest {
             repeat(ATTEMPTS) {
                 checkNotNull(device.wait(Until.findObject(By.desc(letters.first().toString())), WAIT_MS)) { "Kotomo's keys did not appear" }
                 letters.forEach { device.findObject(By.desc(it.toString())).click() }
+                Thread.sleep(READ_MS)
+                afterLetters()
                 if (space) device.findObject(By.descStartsWith(SPACE)).click()
                 if (enter) {
                     Thread.sleep(READ_MS)
@@ -141,8 +195,6 @@ class FieldTypingTest {
         const val SPACE = "Space"
         /** The Enter key's description starts with this (R.string.key_enter, English). */
         const val ENTER = "Enter"
-        /** Kotomo's own preferences file (KotomoService.PREFS). */
-        const val PREFS = "ime"
         const val ATTEMPTS = 3
         const val WAIT_MS = 3000L
         const val READS = 3

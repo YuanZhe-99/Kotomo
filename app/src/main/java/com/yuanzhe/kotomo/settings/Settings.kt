@@ -108,6 +108,8 @@ data class AiSettings(
  */
 data class Settings(
     val defaultMode: Mode = Mode.MIXED,
+    val modeOrder: List<Mode> = Mode.entries,
+    val hiddenModes: Set<Mode> = emptySet(),
     val mixed: Mixed = Mixed(),
     val japanese: CrossLanguage = CrossLanguage(),
     val chineseScript: ChineseScript = ChineseScript.SIMPLIFIED,
@@ -129,6 +131,18 @@ data class Settings(
     val keyRadiusDp: Int = 12,
     val ai: AiSettings = AiSettings(),
 ) {
+    /**
+     * The modes the language choice offers, in the person's order (PLAN §2.3).
+     * Notes: never empty; with every mode hidden all of them are offered.
+     */
+    val modes: List<Mode> get() = modeOrder.filter { it !in hiddenModes }.ifEmpty { modeOrder }
+
+    /**
+     * Returns [wanted] when the language choice offers it, otherwise the default mode, otherwise
+     * the first mode offered (a hidden mode is never used).
+     */
+    fun usable(wanted: Mode?): Mode = wanted?.takeIf { it in modes } ?: defaultMode.takeIf { it in modes } ?: modes.first()
+
     companion object {
         /** Allowed keyboard heights, in percent of the designed height. */
         val HEIGHT_RANGE = 80..120
@@ -158,6 +172,8 @@ internal object SettingsFormat {
     val version = intPreferencesKey("format_version")
     val updated = longPreferencesKey("updated_utc_ms")
     private val defaultMode = stringPreferencesKey("default_mode")
+    private val modeOrder = stringPreferencesKey("modes.order")
+    private val hiddenModes = stringPreferencesKey("modes.hidden")
     private val mixedLevel = stringPreferencesKey("mixed.level")
     private val mixedWeightChinese = intPreferencesKey("mixed.weight_chinese")
     private val mixedWeightEnglish = intPreferencesKey("mixed.weight_english")
@@ -198,6 +214,9 @@ internal object SettingsFormat {
         val d = Settings()
         return Settings(
             defaultMode = p.enum(defaultMode, Mode.entries, d.defaultMode),
+            // Every mode appears once: unknown names are skipped, missing modes join at the end.
+            modeOrder = (p.modes(modeOrder) + Mode.entries).distinct(),
+            hiddenModes = p.modes(hiddenModes).toSet(),
             mixed = Mixed(
                 level = p.enum(mixedLevel, MixedLevel.entries, d.mixed.level),
                 cross = readCross(p, "mixed"),
@@ -250,6 +269,8 @@ internal object SettingsFormat {
     fun write(p: MutablePreferences, old: Settings, new: Settings, nowUtcMs: Long) {
         if (old == new) return
         p.put(defaultMode, old.defaultMode.key, new.defaultMode.key)
+        if (old.modeOrder != new.modeOrder) p[modeOrder] = p.joinModes(modeOrder, new.modeOrder)
+        if (old.hiddenModes != new.hiddenModes) p[hiddenModes] = p.joinModes(hiddenModes, new.modeOrder.filter { it in new.hiddenModes })
         p.put(mixedLevel, old.mixed.level.key, new.mixed.level.key)
         writeCross(p, "mixed", old.mixed.cross, new.mixed.cross)
         p.put(mixedWeightChinese, old.mixed.weightChinese, new.mixed.weightChinese)
@@ -321,6 +342,19 @@ internal object SettingsFormat {
     /** Reads an enum stored by [key], or [default] when missing or unknown. */
     private fun <E : Enum<E>> Preferences.enum(key: Preferences.Key<String>, values: List<E>, default: E): E =
         this[key]?.let { raw -> values.firstOrNull { it.key == raw } } ?: default
+
+    /** Reads a comma-separated list of mode names, skipping names this version does not know. */
+    private fun Preferences.modes(key: Preferences.Key<String>): List<Mode> =
+        this[key].orEmpty().split(',').mapNotNull { raw -> Mode.entries.firstOrNull { it.key == raw } }
+
+    /**
+     * Joins [modes] for [key], keeping the names this version does not know (a newer version's
+     * modes) after them, so they survive a change made here.
+     */
+    private fun MutablePreferences.joinModes(key: Preferences.Key<String>, modes: List<Mode>): String {
+        val unknown = this[key].orEmpty().split(',').filter { raw -> raw.isNotEmpty() && Mode.entries.none { it.key == raw } }
+        return (modes.map { it.key } + unknown).joinToString(",")
+    }
 
     /** Reads an int, or [default] when missing or outside [range]. */
     private fun Preferences.int(key: Preferences.Key<Int>, range: IntRange, default: Int): Int =

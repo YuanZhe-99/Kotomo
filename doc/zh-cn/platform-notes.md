@@ -17,7 +17,7 @@
 | 单元测试（布局与命中判定、延迟百分位、输入框、姿态、Emoji 索引；设置格式与主题文件；剪贴板：记录规则、加密文件、过期、被拒绝的剪贴、验证码、快捷输入；AI 交接） | 2026-11-10 运行 `./gradlew check`（debug）：87 个测试，87 个通过，没有跳过 |
 | Lint | 2026-11-10 运行 `./gradlew check`：没有错误 |
 | 转换语料（T01–T07） | 2026-11-10 运行 `tests/conversion/run.sh`（x86_64 Linux，主机版引擎）：68 行中 47 行通过。T01 中文 19/19，T02 英文 10/10，T03 日文 14/15（T03-001 为私羽日本人，即助词は打成 wa）；T04–T07 混合 4/24，因为协调层完成之前混合模式等同中文模式。这次运行是 `tests/conversion/baseline.tsv` 中的基线。 |
-| 插桩测试（T12、T13） | 2026-11-10 运行 `./gradlew connectedDebugAndroidTest`（模拟器，Android 17，x86_64，16 KB 页，debug）：`FieldTypingTest` 5/5。在 Kotomo 的键上输入 `nihao` 加空格，普通输入框与带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框都得到你好；密码框按原样收到 `nihao`；日文模式下 `nihon` 加空格得到日本，回车保留にほん |
+| 插桩测试（T12、T13、PLAN §2.3） | 2026-11-11 运行 `./gradlew connectedDebugAndroidTest`（模拟器，Android 17，x86_64，16 KB 页，debug）：`FieldTypingTest` 7/7。在 Kotomo 的键上输入 `nihao` 加空格，普通输入框与带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框都得到你好；密码框按原样收到 `nihao`；日文模式下（为该 App 固定）`nihon` 加空格得到日本，回车保留にほん；在中文中输入 `nihon` 后切换到日文，回车提交にほん；在日文中输入 `nihao` 后切换到中文，空格得到你好 |
 | Release 构建 | 2026-11-10 在设置 `KOTOMO_REQUIRE_MOZC=1` 与 `KOTOMO_REQUIRE_RIME_PREBUILT=1` 的情况下运行 `./gradlew assembleRelease`：启用 R8，以 release 密钥签名（APK 签名方案 v2，经 `apksigner` 验证）；arm64-v8a 27.4 MB，x86_64 27.5 MB，各自带有 librime、Mozc（库 2.9 MB，数据 19 MB）和英文引擎 |
 
 ## 技术验证

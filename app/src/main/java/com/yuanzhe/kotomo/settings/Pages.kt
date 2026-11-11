@@ -21,6 +21,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -31,6 +33,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,14 +44,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.yuanzhe.kotomo.R
+import com.yuanzhe.kotomo.ime.KeyboardMemory
 import com.yuanzhe.kotomo.ime.Mode
 import com.yuanzhe.kotomo.ime.Probe
 import com.yuanzhe.kotomo.ime.RimeFiles
@@ -81,9 +88,15 @@ internal val MixedLevel.label get() = when (this) {
     MixedLevel.AGGRESSIVE -> R.string.level_aggressive
 }
 
-/** Draws the Input modes page: the mode the keyboard starts in. */
+/**
+ * Draws the Input modes page (PLAN §2.3): the mode the keyboard starts in; the language choice's
+ * order, with a switch per mode to show or hide it; and the apps fixed to a mode, each with Remove.
+ * Notes: the last shown mode cannot be hidden. Apps are named by their label when Android lets
+ * Kotomo see it, otherwise by package name.
+ */
 @Composable
 internal fun ModesPage(settings: Settings, store: SettingsStore) {
+    val context = LocalContext.current
     Section(stringResource(R.string.modes_default)) {
         Mode.entries.forEach { mode ->
             val desc = when (mode) {
@@ -94,7 +107,84 @@ internal fun ModesPage(settings: Settings, store: SettingsStore) {
             }
             RadioRow(mode.label, desc, settings.defaultMode == mode) { store.set { it.copy(defaultMode = mode) } }
         }
-        Inset { Note(stringResource(R.string.modes_default_note)) }
+        Inset {
+            Note(stringResource(R.string.modes_default_note))
+            if (settings.defaultMode !in settings.modes) Note(stringResource(R.string.modes_default_hidden))
+        }
+    }
+    Section(stringResource(R.string.modes_order)) {
+        val order = settings.modeOrder
+        order.forEachIndexed { i, mode ->
+            ModeRow(
+                stringResource(mode.label),
+                shown = mode !in settings.hiddenModes,
+                canHide = mode in settings.hiddenModes || settings.modes.size > 1,
+                onMove = { delta ->
+                    store.set { s ->
+                        val list = s.modeOrder.toMutableList()
+                        val at = list.indexOf(mode)
+                        val to = (at + delta).coerceIn(0, list.lastIndex)
+                        list.add(to, list.removeAt(at))
+                        s.copy(modeOrder = list)
+                    }
+                },
+                first = i == 0,
+                last = i == order.lastIndex,
+            ) { show -> store.set { s -> s.copy(hiddenModes = if (show) s.hiddenModes - mode else s.hiddenModes + mode) } }
+        }
+        Inset { Note(stringResource(R.string.modes_order_note)) }
+    }
+    val memory = remember { KeyboardMemory.get(context) }
+    val apps by memory.flow.collectAsState()
+    val pinned = apps.apps.mapNotNull { (app, m) -> m.pinned?.let { app to it } }.sortedBy { it.first }
+    Section(stringResource(R.string.modes_pinned)) {
+        pinned.forEach { (app, mode) ->
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_row_min_small))
+                    .padding(horizontal = dimensionResource(R.dimen.settings_card_pad), vertical = dimensionResource(R.dimen.settings_row_pad)),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_row_gap)),
+            ) {
+                Text(stringResource(R.string.modes_pinned_row, appLabel(context, app), stringResource(mode.label)), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                OutlinedButton(onClick = { memory.update { m -> m.withApp(app) { it.copy(pinned = null) } } }) { Text(stringResource(R.string.modes_unpin)) }
+            }
+        }
+        Inset {
+            if (pinned.isEmpty()) Note(stringResource(R.string.modes_pinned_none))
+            Note(stringResource(R.string.modes_remembered_note))
+        }
+    }
+}
+
+/** Names an app by its label, or by [app] (the package name) when Android does not show it to Kotomo. */
+private fun appLabel(context: android.content.Context, app: String): String = runCatching {
+    val pm = context.packageManager
+    pm.getApplicationLabel(pm.getApplicationInfo(app, 0)).toString()
+}.getOrDefault(app)
+
+/**
+ * Draws one mode of the language choice: its name, Up and Down, and a switch that shows or hides it.
+ * Inputs: [onMove] receives −1 or +1; [canHide] false keeps the last shown mode on.
+ */
+@Composable
+private fun ModeRow(
+    label: String, shown: Boolean, canHide: Boolean, onMove: (Int) -> Unit, first: Boolean, last: Boolean, onShow: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_row_min_small))
+            .padding(horizontal = dimensionResource(R.dimen.settings_card_pad), vertical = dimensionResource(R.dimen.settings_row_pad)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_row_gap)),
+    ) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        IconButton(onClick = { onMove(-1) }, enabled = !first) {
+            Icon(painterResource(R.drawable.ic_bar_collapse), stringResource(R.string.modes_up, label))
+        }
+        IconButton(onClick = { onMove(1) }, enabled = !last) {
+            Icon(painterResource(R.drawable.ic_bar_expand), stringResource(R.string.modes_down, label))
+        }
+        val desc = stringResource(R.string.modes_shown, label)
+        Switch(shown, onCheckedChange = onShow, enabled = canHide || !shown, modifier = Modifier.semantics { contentDescription = desc })
     }
 }
 

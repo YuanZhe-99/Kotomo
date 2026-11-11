@@ -76,24 +76,44 @@ internal object ThemeFormat {
  */
 class ThemeFile(private val file: File) {
     /** Reads the file; null when there is none yet (the theme still lives in the settings) or it was damaged. */
-    fun load(): Theme? {
-        if (!file.isFile) return null
-        val text = try { file.readText() } catch (_: IOException) { return null }
-        return ThemeFormat.read(text) ?: run {
-            runCatching { Files.move(file.toPath(), File(file.path + ".unreadable").toPath(), StandardCopyOption.REPLACE_EXISTING) }
-            null
-        }
-    }
+    fun load(): Theme? = readVersioned(file, ThemeFormat::read)
 
-    /** Writes [theme] through a temporary file and an atomic replace. */
+    /**
+     * Writes [theme] through a temporary file and an atomic replace.
+     * Notes: on an I/O failure the next change writes again; the theme in memory stays right meanwhile.
+     */
     fun save(theme: Theme, nowUtcMs: Long) {
-        try {
-            file.parentFile?.mkdirs()
-            val tmp = File(file.path + ".tmp")
-            FileOutputStream(tmp).use { it.write(ThemeFormat.write(theme, nowUtcMs).toByteArray()); it.fd.sync() }
-            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        } catch (_: IOException) {
-            // The next change writes again; the theme in memory stays right meanwhile.
-        }
+        writeAtomically(file, ThemeFormat.write(theme, nowUtcMs))
     }
+}
+
+/**
+ * Reads one of Kotomo's versioned JSON files (the theme, the keyboard's memory).
+ * Inputs: [parse] maps the text to its model, or null for text that is not the format.
+ * Returns: the model, or null when the file is missing, unreadable or damaged.
+ * Side effects: a damaged file is moved aside to `<name>.unreadable` so the next write does not
+ * lose it silently.
+ */
+internal fun <T> readVersioned(file: File, parse: (String) -> T?): T? {
+    if (!file.isFile) return null
+    val text = try { file.readText() } catch (_: IOException) { return null }
+    return parse(text) ?: run {
+        runCatching { Files.move(file.toPath(), File(file.path + ".unreadable").toPath(), StandardCopyOption.REPLACE_EXISTING) }
+        null
+    }
+}
+
+/**
+ * Writes [text] to [file] through a temporary file, a sync and an atomic replace, so a crash
+ * leaves either the old file or the new one.
+ * Returns: false when the write failed (the old file is then untouched).
+ */
+internal fun writeAtomically(file: File, text: String): Boolean = try {
+    file.parentFile?.mkdirs()
+    val tmp = File(file.path + ".tmp")
+    FileOutputStream(tmp).use { it.write(text.toByteArray()); it.fd.sync() }
+    Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+    true
+} catch (_: IOException) {
+    false
 }
