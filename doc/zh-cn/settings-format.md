@@ -60,6 +60,7 @@
 | `clipboard.history` | boolean | `true` | 把复制的文字保存在剪贴板历史中（[clipboard.md](clipboard.md)） |
 | `clipboard.retention_days` | int 1–90 | 7 | 未固定的剪贴板条目保留的天数（隐私页提供 1、7、30） |
 | `clipboard.quick_paste` | boolean | `true` | 在键盘上方提供刚复制的内容和其中的验证码 |
+| `clipboard.excluded_apps` | string | 空 | 在其输入框中什么都不记录、不提供的应用的包名，以逗号连接（[clipboard.md](clipboard.md)）；读取时丢弃不是包名的项 |
 | `theme.choice` | string：`system`、`light`、`dark`、`dynamic` | `system` | 键盘配色；`dynamic` 即 Material You（Android 12 及以上）。仅在主题文件（见下）存在之前读取，之后不再写入 |
 | `theme.key_radius_dp` | int，0–24 | `12` | 按键圆角，单位 dp；仅在主题文件存在之前读取 |
 | `ai.enabled` | boolean | `false` | 允许 AI 按钮使用写作助手（[ai.md](ai.md)） |

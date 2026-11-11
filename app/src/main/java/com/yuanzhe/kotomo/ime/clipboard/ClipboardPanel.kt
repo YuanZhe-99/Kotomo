@@ -96,9 +96,10 @@ internal fun Dp.asText(): TextUnit = with(LocalDensity.current) { toSp() }
  * history is kept, with Manage.
  *
  * Inputs: history is [ClipboardHistory.items] (collectAsState); retentionDays and recording come
- * from the clipboard settings (recording false: the history is off); onPaste commits text; onPin
- * pins or unpins; onDelete deletes; onBack returns to the keys; onManage opens the clipboard
- * settings.
+ * from the clipboard settings (recording false: the history is off); appExcluded says whether the
+ * app being typed in is one where nothing is kept (null: no app, no toggle); onPaste commits
+ * text; onPin pins or unpins; onDelete deletes; onExclude adds or removes that app; onBack
+ * returns to the keys; onManage opens the clipboard settings.
  * Notes: tapping a card pastes it (a code card pastes the code); long-pressing it shows Pin or
  * Unpin, Paste the whole text (code cards from a longer message) and Delete in its place. The
  * times are measured from when the panel opened.
@@ -114,6 +115,8 @@ fun ClipboardPanel(
     onDelete: (Clip) -> Unit,
     onBack: () -> Unit,
     onManage: () -> Unit,
+    appExcluded: Boolean? = null,
+    onExclude: (Boolean) -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(Tab.ALL) }
     var actions by remember { mutableStateOf<Long?>(null) }
@@ -166,7 +169,7 @@ fun ClipboardPanel(
                 }
             }
         }
-        Footer(retentionDays, recording, onManage)
+        Footer(retentionDays, recording, appExcluded, onExclude, onManage)
     }
 }
 
@@ -369,9 +372,12 @@ private fun CardFrame(modifier: Modifier, content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** Draws the footer: how the history is kept (or that it is off), and Manage. */
+/**
+ * Draws the footer: how the history is kept (off, or not in this app), the toggle for the app
+ * being typed in, and Manage.
+ */
 @Composable
-private fun Footer(retentionDays: Int, recording: Boolean, onManage: () -> Unit) {
+private fun Footer(retentionDays: Int, recording: Boolean, appExcluded: Boolean?, onExclude: (Boolean) -> Unit, onManage: () -> Unit) {
     val secondary = kbColor(R.color.kb_ink_secondary)
     Row(
         Modifier
@@ -388,10 +394,10 @@ private fun Footer(retentionDays: Int, recording: Boolean, onManage: () -> Unit)
             colorFilter = ColorFilter.tint(secondary),
         )
         Text(
-            if (recording) {
-                stringResource(R.string.clip_footer, pluralStringResource(R.plurals.clip_kept_days, retentionDays, retentionDays))
-            } else {
-                stringResource(R.string.clip_footer_off)
+            when {
+                !recording -> stringResource(R.string.clip_footer_off)
+                appExcluded == true -> stringResource(R.string.clip_footer_app_off)
+                else -> stringResource(R.string.clip_footer, pluralStringResource(R.plurals.clip_kept_days, retentionDays, retentionDays))
             },
             Modifier.weight(1f),
             fontSize = dimensionResource(R.dimen.clip_footer_text).asText(),
@@ -399,6 +405,21 @@ private fun Footer(retentionDays: Int, recording: Boolean, onManage: () -> Unit)
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        if (appExcluded != null && recording) {
+            Box(
+                Modifier
+                    .height(dimensionResource(R.dimen.clip_tab_height))
+                    .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_tab_height) / 2))
+                    .clickable { onExclude(!appExcluded) }
+                    .padding(horizontal = dimensionResource(R.dimen.clip_manage_pad)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    stringResource(if (appExcluded) R.string.clip_app_include else R.string.clip_app_exclude),
+                    fontSize = dimensionResource(R.dimen.clip_manage_text).asText(), color = kbColor(R.color.kb_accent), maxLines = 1,
+                )
+            }
+        }
         Box(
             Modifier
                 .height(dimensionResource(R.dimen.clip_tab_height))

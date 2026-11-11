@@ -477,10 +477,12 @@ internal fun ThemesPage(settings: Settings, store: SettingsStore) {
 /**
  * Draws the Privacy page: the incognito switch, clearing the learning data (after a confirmation,
  * [LearningData]), the clipboard settings (history, how long it
- * keeps unpinned items, quick paste, clearing) and what Kotomo keeps and sends.
+ * keeps unpinned items, quick paste, clearing, the link to the history page [ClipboardPage]) and
+ * what Kotomo keeps and sends.
+ * Inputs: open navigates to a sub-page.
  */
 @Composable
-internal fun PrivacyPage(settings: Settings, store: SettingsStore) {
+internal fun PrivacyPage(settings: Settings, store: SettingsStore, open: (Page) -> Unit) {
     val context = LocalContext.current
     val clip = settings.clipboard
     var confirm by remember { mutableStateOf(false) }
@@ -517,6 +519,7 @@ internal fun PrivacyPage(settings: Settings, store: SettingsStore) {
                 store.set { it.copy(clipboard = it.clipboard.copy(retentionDays = RETENTION_CHOICES[i])) }
             }
             OutlinedButton(onClick = { ClipboardHistory.get(context).clearUnpinned() }) { Text(stringResource(R.string.clip_settings_clear)) }
+            OutlinedButton(onClick = { open(Page.CLIPBOARD) }) { Text(stringResource(R.string.clip_settings_open)) }
         }
         SwitchRow(R.string.clip_settings_quick, R.string.clip_settings_quick_desc, clip.quickPaste) { on ->
             store.set { it.copy(clipboard = it.clipboard.copy(quickPaste = on)) }

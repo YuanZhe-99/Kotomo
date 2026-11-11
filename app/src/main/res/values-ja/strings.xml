@@ -94,6 +94,7 @@
     <string name="page_dictionaries_desc">自分の単語・インポートとエクスポート・内蔵辞書</string>
     <string name="page_privacy">プライバシー</string>
     <string name="page_privacy_desc">Kotomo が保存するもの、決して送信しないもの</string>
+    <string name="page_clipboard">クリップボード履歴</string>
     <string name="page_diagnostics_desc">この端末で測定した時間とメモリ</string>
     <string name="page_about">情報と謝辞</string>
     <string name="page_licenses">オープンソースライセンス</string>

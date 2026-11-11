@@ -311,6 +311,95 @@ class ClipboardHistoryTest {
         }
     }
 
+    @Test
+    fun aRefusalSurvivesARestart() { // CLIP-19 (negative)
+        withHistory { h -> assertNull(h.onCopy(now, false) { "hunter2" }) }
+        // A new process sees the same clip still on the clipboard in an ordinary field.
+        withHistory { h ->
+            assertNull(h.onCopy(now, true) { "hunter2" })
+            h.flush()
+            assertTrue(h.items.value.isEmpty())
+        }
+        assertEquals(now.toString(), File(file.parentFile, "refused").readText())
+        assertFalse("only the timestamp is kept", File(file.parentFile, "refused").readText().contains("hunter2"))
+    }
+
+    @Test
+    fun anExcludedAppRecordsNothing() { // CLIP-20 (negative) and positive
+        val excluded = com.yuanzhe.kotomo.settings.Settings(clipboard = ClipboardSettings(excludedApps = setOf("com.example.bank")))
+        val text = InputType.TYPE_CLASS_TEXT
+        assertFalse(ClipboardHistory.allowedIn(text, 0, "com.example.bank", excluded))
+        assertTrue(ClipboardHistory.allowedIn(text, 0, "com.example.notes", excluded))
+        assertTrue(ClipboardHistory.allowedIn(text, 0, "com.example.bank", com.yuanzhe.kotomo.settings.Settings()))
+    }
+
+    @Test
+    fun expiredItemsGoWithoutTheKeyboardBeingUsed() { // CLIP-21
+        withHistory { h ->
+            h.add("old", now - 7 * DAY + 300)
+            h.add("older", now - 30 * DAY)
+            h.flush()
+            assertEquals(listOf("old"), texts(h)) // the 30-day-old one expired at once
+            // Nothing else happens: the arranged expiry drops "old" once its time has come.
+            now += 1000
+            kotlinx.coroutines.delay(1500)
+            h.flush()
+            assertTrue(h.items.value.isEmpty())
+        }
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun aLeftoverTemporaryFileIsDeleted() { // CLIP-22
+        withHistory { h -> h.add("one", now) }
+        val tmp = File(file.path + ".tmp").apply { writeText("partial") }
+        withHistory { h -> assertEquals(listOf("one"), texts(h)) }
+        assertFalse(tmp.exists())
+    }
+
+    @Test
+    fun editingKeepsPinAndMergesATwin() { // CLIP-23
+        withHistory { h ->
+            h.add("one", now)
+            h.add("two", now + 1)
+            h.flush()
+            val one = h.items.value.first { it.text == "one" }
+            h.pin(one.id, true)
+            h.edit(one.id, "Your code is 482913")
+            h.flush()
+            val edited = h.items.value.first { it.id == one.id }
+            assertTrue(edited.pinned)
+            assertEquals(ClipKind.CODE, edited.kind)
+            // Editing it into another item's text merges the two.
+            h.edit(one.id, "two")
+            h.edit(one.id, " ") // blank text is ignored
+            h.flush()
+            assertEquals(listOf("two"), texts(h))
+            assertTrue(h.items.value.single().pinned)
+        }
+    }
+
+    @Test
+    fun severalItemsAreDeletedAtOnceAndPhrasesToggle() { // CLIP-24
+        withHistory { h ->
+            listOf("a", "b", "c").forEachIndexed { i, t -> h.add(t, now + i) }
+            h.flush()
+            val ids = h.items.value.filter { it.text != "b" }.map { it.id }
+            h.delete(ids)
+            h.flush()
+            assertEquals(listOf("b"), texts(h))
+            val b = h.items.value.single()
+            h.setPhrase(b.id, true)
+            now += 30 * DAY
+            h.expire()
+            h.flush()
+            assertEquals("a phrase never expires", listOf("b"), texts(h))
+            h.setPhrase(b.id, false)
+            h.flush()
+            assertTrue(h.items.value.isEmpty())
+        }
+    }
+
     private companion object {
         const val DAY = 86_400_000L
     }

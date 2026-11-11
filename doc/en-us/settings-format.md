@@ -66,6 +66,7 @@ stores and shows them, and they take effect once the mixed coordinator exists.
 | `clipboard.history` | boolean | `true` | Keep copied text in the clipboard history ([clipboard.md](clipboard.md)) |
 | `clipboard.retention_days` | int 1–90 | 7 | Days unpinned clipboard items are kept (the Privacy page offers 1, 7 and 30) |
 | `clipboard.quick_paste` | boolean | `true` | Offer what was just copied, and codes in it, above the keys |
+| `clipboard.excluded_apps` | string | empty | Package names, joined by commas, of the apps in whose fields nothing is recorded or offered ([clipboard.md](clipboard.md)); entries that are not package names are dropped when read |
 | `theme.choice` | string: `system`, `light`, `dark`, `dynamic` | `system` | The keyboard's colors; `dynamic` is Material You (Android 12 and later). Read only until the theme file exists (below), never written after that |
 | `theme.key_radius_dp` | int, 0–24 | `12` | Key corner radius in dp; read only until the theme file exists |
 | `ai.enabled` | boolean | `false` | Let the AI button use writing help ([ai.md](ai.md)) |

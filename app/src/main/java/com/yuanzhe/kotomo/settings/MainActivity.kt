@@ -98,6 +98,7 @@ internal enum class Page(@StringRes val title: Int) {
     DICTIONARIES(R.string.page_dictionaries),
     AI(R.string.page_ai),
     PRIVACY(R.string.page_privacy),
+    CLIPBOARD(R.string.page_clipboard),
     DIAGNOSTICS(R.string.diag_title),
     ABOUT(R.string.page_about),
     LICENSES(R.string.page_licenses),
@@ -159,6 +160,7 @@ private fun SettingsApp(store: SettingsStore) {
 /** Returns the top-level page a sub-page belongs to, for the navigation list's highlight. */
 private val Page.root get() = when (this) {
     Page.LICENSES, Page.SOURCES, Page.DESIGN -> Page.ABOUT
+    Page.CLIPBOARD -> Page.PRIVACY
     else -> this
 }
 
@@ -177,7 +179,8 @@ private fun PageContent(page: Page, settings: Settings, store: SettingsStore, op
         Page.THEMES -> ThemesPage(settings, store)
         Page.DICTIONARIES -> DictionariesPage()
         Page.AI -> AiPage(settings, store)
-        Page.PRIVACY -> PrivacyPage(settings, store)
+        Page.PRIVACY -> PrivacyPage(settings, store, open)
+        Page.CLIPBOARD -> ClipboardPage(settings, store)
         Page.DIAGNOSTICS -> DiagnosticsPage()
         Page.ABOUT -> AboutPage(open)
         Page.LICENSES -> LicensesPage()

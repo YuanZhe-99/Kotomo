@@ -107,6 +107,7 @@
     <string name="page_dictionaries_desc">Your words · import and export · built-in dictionaries</string>
     <string name="page_privacy">Privacy</string>
     <string name="page_privacy_desc">What Kotomo keeps, and what it never sends</string>
+    <string name="page_clipboard">Clipboard history</string>
     <string name="page_diagnostics_desc">Timings and memory measured on this device</string>
     <string name="page_about">About and acknowledgements</string>
     <string name="page_licenses">Open-source licenses</string>

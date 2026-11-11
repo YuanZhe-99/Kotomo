@@ -4,7 +4,8 @@ Kotomo keeps its own clipboard history, because Android clears the system clipbo
 minutes after the last access (Android 13+) and keeps only one clip. The code lives in
 `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/`: `ClipboardHistory.kt` (recording, storage,
 classification), `VerificationCodes.kt` (code extraction), `ClipboardPanel.kt` (the panel in the
-keyboard's place) and `QuickPaste.kt` (the strip above the keys).
+keyboard's place) and `QuickPaste.kt` (the strip above the keys); the settings app's history page
+is `settings/ClipboardPage.kt`.
 
 ## What is recorded
 
@@ -16,6 +17,7 @@ method and the focused app may read the clipboard, Android 10+) and hands each p
 |---|---|---|
 | Incognito mode | nothing | nothing |
 | Password fields (`TYPE_TEXT_VARIATION_PASSWORD`, `…_VISIBLE_PASSWORD`, `…_WEB_PASSWORD`, `TYPE_NUMBER_VARIATION_PASSWORD`) and fields with `IME_FLAG_NO_PERSONALIZED_LEARNING` | nothing | nothing |
+| Fields of an app the person excluded (`clipboard.excluded_apps`) | nothing | nothing |
 | Clip marked `ClipDescription.EXTRA_IS_SENSITIVE` (`android.content.extra.IS_SENSITIVE`, also set by password managers before Android 13) | never | never |
 | History switched off (`clipboard.history`) | nothing | offered (memory only) |
 | Quick paste switched off (`clipboard.quick_paste`) | recorded | nothing |
@@ -25,13 +27,15 @@ method and the focused app may read the clipboard, Android 10+) and hands each p
   field when the clipboard listener fires, or the field the keyboard is next shown in, where it
   checks the clipboard again. The app the text was copied from never decides. A password copied
   from an app that does not mark it sensitive, and seen by the keyboard in an ordinary field, is
-  therefore recorded like any other text.
+  therefore recorded like any other text. For the same reason an excluded app is the app being
+  typed in, not the app the text came from: the clipboard panel's "Not in this app" adds the
+  current app, and the settings' history page lists the excluded apps with Remove.
 - A clip the keyboard saw while it was not allowed to record (a sensitive field, incognito mode)
   stays refused: it is neither recorded nor offered when the keyboard is next shown in an ordinary
   field with the same clip still on the clipboard. Only the clip's timestamp is remembered, in
-  memory; its text is never read. If the keyboard's process restarts while that clip is still on
-  the clipboard, the refusal is forgotten and the clip is treated as new. A history that is merely
-  switched off is not a refusal.
+  memory and in `files/clipboard/refused` (the number alone); its text is never read, so the
+  refusal also survives a restart of the keyboard's process. A history that is merely switched off
+  is not a refusal.
 - Switching the history off deletes nothing: what is already saved stays until it expires or the
   person deletes it, and the switch's description says so.
 - Only the first item's plain text is taken; URIs, intents and blank text are ignored, and text
@@ -49,10 +53,24 @@ method and the focused app may read the clipboard, Android 10+) and hands each p
   when something is copied while the history is switched off, and through
   `ClipboardHistory.expire()`, which the keyboard calls when the panel opens. A read that finds
   expired items rewrites the file without them at once, so expired text does not stay on disk;
-  when nothing is left, the file is deleted. Nothing runs on a timer: while the keyboard is never
-  shown, expired items wait for its next use.
+  when nothing is left, the file is deleted. While the keyboard's process lives, the history also
+  arranges a check for the moment its oldest unpinned item expires, so expired text goes without
+  the keyboard being used; after the process ends, the next read does it.
 - `ClipboardHistory.clearUnpinned()` deletes every item that is neither pinned nor a phrase (the
   Privacy page's Clear button).
+
+## The history page
+
+Settings → Privacy → See, search and edit the history lists the items newest first:
+
+- Search narrows the list to items whose text holds the query (ignoring case); the categories are
+  All, Pinned, Phrases, Codes, Links, Phone numbers, Addresses and Text (`ClipFilter`).
+- Tapping an item edits it: its text (re-tagged as it changes; editing it into the text of another
+  item merges the two and keeps either one's pin and phrase mark), its pin and whether it is a
+  quick phrase; or deletes it.
+- Select all shown, or tick items, then delete them at once.
+- Add a quick phrase: kept until deleted, shown with the pinned items in the keyboard's panel.
+- The apps where nothing is kept, each with Remove.
 
 ## Classification
 
@@ -126,7 +144,8 @@ per record:
   parsed (a lost key, damage) is moved aside to `history.kcb.unreadable` and the history starts
   empty. At most one such file is kept (a newer one replaces it), and it is deleted once the
   retention has passed since it was last written, checked at every read and every expiry. When
-  the Keystore cannot give the key, the history works in memory only.
+  the Keystore cannot give the key, the history works in memory only. A `history.kcb.tmp` left by
+  a write that a crash interrupted is deleted when the history is next read.
 - Every change rewrites the file through `history.kcb.tmp` and an atomic replace, on one background
   thread in submission order. The keyboard reads only the in-memory snapshot
   (`ClipboardHistory.items`).

@@ -71,7 +71,7 @@ class SettingsStoreTest {
         keySound = true,
         gestures = Gestures(spaceCursor = false, deleteSwipe = false, doubleSpacePeriod = false, spaceLanguage = false, smartSpace = false),
         incognito = true,
-        clipboard = ClipboardSettings(history = false, retentionDays = 30, quickPaste = false),
+        clipboard = ClipboardSettings(history = false, retentionDays = 30, quickPaste = false, excludedApps = setOf("com.example.bank", "org.example.notes")),
         ai = AiSettings(enabled = true),
     )
 
@@ -145,6 +145,15 @@ class SettingsStoreTest {
             assertEquals(Settings().heightPercent, s.heightPercent)
             assertEquals(Settings().mixed.weightEmoji, s.mixed.weightEmoji)
             assertEquals(Settings().clipboard.retentionDays, s.clipboard.retentionDays)
+        }
+    }
+
+    /** CLIP-25: the excluded apps are package names; anything else in the stored list is dropped. */
+    @Test
+    fun excludedAppsKeepOnlyPackageNames() {
+        withData { data, _ ->
+            data.edit { it[stringPreferencesKey("clipboard.excluded_apps")] = "com.example.bank, not a package,,org.x" }
+            assertEquals(setOf("com.example.bank", "org.x"), SettingsFormat.read(data.data.first()).clipboard.excludedApps)
         }
     }
 

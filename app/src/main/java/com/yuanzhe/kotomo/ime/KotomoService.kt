@@ -135,6 +135,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var segmentPanel: ComposeView? = null
     private var quickPanel: ComposeView? = null
     private var clipboardPanel: ComposeView? = null
+    /** Main thread: the app the clipboard panel was opened in (its package), for the per-app toggle. */
+    private val clipboardApp = androidx.compose.runtime.mutableStateOf<String?>(null)
     /** The quick-paste strip above the keys (shown in the candidate bar's place). */
     private lateinit var quickStrip: ComposeView
     private lateinit var clipboard: ClipboardManager
@@ -651,11 +653,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (locked) return showNotice(getString(R.string.locked_notice))
         commitComposition()
         history.expire()
+        // The app being typed in, for "Not in this app"; none in fields that keep nothing anyway.
+        clipboardApp.value = currentInputEditorInfo?.packageName?.takeIf { ClipboardHistory.allowedIn(currentInputEditorInfo, settings.copy(clipboard = settings.clipboard.copy(excludedApps = emptySet()))) }
         val height = keyboard.height
         val panel = clipboardPanel ?: ComposeView(this).also { view ->
             clipboardPanel = view
             view.setContent {
                 val c = store.flow.collectAsState().value.clipboard
+                val app = clipboardApp.value
                 ClipboardPanel(
                     history.items.collectAsState(), c.retentionDays, c.history,
                     onPaste = {
@@ -666,6 +671,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onDelete = { history.delete(it.id) },
                     onBack = ::showKeyboard,
                     onManage = { onTool(Tool.SETTINGS) },
+                    appExcluded = app?.let { it in c.excludedApps },
+                    onExclude = { off ->
+                        if (app != null) store.set { it.copy(clipboard = it.clipboard.copy(excludedApps = if (off) it.clipboard.excludedApps + app else it.clipboard.excludedApps - app)) }
+                    },
                 )
             }
         }

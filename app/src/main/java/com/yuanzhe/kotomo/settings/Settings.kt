@@ -71,6 +71,8 @@ data class ClipboardSettings(
     val history: Boolean = true,
     val retentionDays: Int = 7,
     val quickPaste: Boolean = true,
+    /** Package names of the apps in whose fields nothing is recorded or offered (PLAN §10.7). */
+    val excludedApps: Set<String> = emptySet(),
 )
 
 /**
@@ -204,6 +206,7 @@ internal object SettingsFormat {
     private val clipHistory = booleanPreferencesKey("clipboard.history")
     private val clipRetention = intPreferencesKey("clipboard.retention_days")
     private val clipQuickPaste = booleanPreferencesKey("clipboard.quick_paste")
+    private val clipExcluded = stringPreferencesKey("clipboard.excluded_apps")
     private val theme = stringPreferencesKey("theme.choice")
     private val keyRadius = intPreferencesKey("theme.key_radius_dp")
     private val aiEnabled = booleanPreferencesKey("ai.enabled")
@@ -255,6 +258,7 @@ internal object SettingsFormat {
                 history = p[clipHistory] ?: d.clipboard.history,
                 retentionDays = p.int(clipRetention, Settings.RETENTION_RANGE, d.clipboard.retentionDays),
                 quickPaste = p[clipQuickPaste] ?: d.clipboard.quickPaste,
+                excludedApps = p[clipExcluded]?.split(',')?.map { it.trim() }?.filter { PACKAGE.matches(it) }?.toSet() ?: d.clipboard.excludedApps,
             ),
             theme = p.enum(theme, KeyboardTheme.entries, d.theme),
             keyRadiusDp = p.int(keyRadius, Settings.RADIUS_RANGE, d.keyRadiusDp),
@@ -305,6 +309,7 @@ internal object SettingsFormat {
         p.put(clipHistory, old.clipboard.history, new.clipboard.history)
         p.put(clipRetention, old.clipboard.retentionDays, new.clipboard.retentionDays)
         p.put(clipQuickPaste, old.clipboard.quickPaste, new.clipboard.quickPaste)
+        if (old.clipboard.excludedApps != new.clipboard.excludedApps) p[clipExcluded] = new.clipboard.excludedApps.sorted().joinToString(",")
         p.put(theme, old.theme.key, new.theme.key)
         p.put(keyRadius, old.keyRadiusDp, new.keyRadiusDp)
         p.put(aiEnabled, old.ai.enabled, new.ai.enabled)
@@ -369,6 +374,9 @@ internal object SettingsFormat {
         this[key]?.takeIf { it in range } ?: default
 
     /** Sets [key] to [new] only when it differs from [old]. */
+    /** An Android package name: dot-separated Java identifiers (anything else in the stored list is dropped). */
+    private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
+
     private fun <T> MutablePreferences.put(key: Preferences.Key<T>, old: T, new: T) {
         if (old != new) this[key] = new
     }

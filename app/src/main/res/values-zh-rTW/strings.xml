@@ -94,6 +94,7 @@
     <string name="page_dictionaries_desc">你的詞語 · 匯入與匯出 · 內建詞庫</string>
     <string name="page_privacy">隱私</string>
     <string name="page_privacy_desc">Kotomo 保存什麼，以及從不傳送什麼</string>
+    <string name="page_clipboard">剪貼簿歷史</string>
     <string name="page_diagnostics_desc">在本機測得的耗時與記憶體</string>
     <string name="page_about">關於與致謝</string>
     <string name="page_licenses">開放原始碼授權</string>

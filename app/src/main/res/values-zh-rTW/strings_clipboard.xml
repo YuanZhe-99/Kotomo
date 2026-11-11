@@ -53,4 +53,33 @@
     <string name="clip_settings_quick">快速輸入</string>
     <string name="clip_settings_quick_desc">複製後一分鐘內，在鍵盤上方提供剛複製的內容和其中的驗證碼</string>
     <string name="clip_settings_clear">清除未固定的內容</string>
+    <string name="clip_settings_open">檢視、搜尋與編輯歷史</string>
+    <string name="clip_search">搜尋</string>
+    <string name="clip_filter_all">全部</string>
+    <string name="clip_filter_pinned">已固定</string>
+    <string name="clip_filter_phrases">快速短語</string>
+    <string name="clip_filter_codes">驗證碼</string>
+    <string name="clip_filter_links">連結</string>
+    <string name="clip_filter_phones">電話號碼</string>
+    <string name="clip_filter_addresses">地址</string>
+    <string name="clip_filter_text">文字</string>
+    <string name="clip_add_phrase">新增快速短語</string>
+    <string name="clip_select_all">全選顯示的項目</string>
+    <string name="clip_cancel">取消</string>
+    <string name="clip_save">儲存</string>
+    <string name="clip_none_found">沒有符合的內容。</string>
+    <string name="clip_edit_title">編輯</string>
+    <string name="clip_edit_text">內容</string>
+    <string name="clip_edit_pinned">固定</string>
+    <string name="clip_edit_phrase">快速短語（一直保留，直到你刪除）</string>
+    <string name="clip_apps_section">不保留剪貼的應用程式</string>
+    <string name="clip_apps_desc">在這些應用程式中打字時，Kotomo 不保留、也不提供你複製的內容。Android 不會告訴鍵盤文字是從哪個應用程式複製的，所以這裡按你正在打字的應用程式判斷。在某個應用程式中打字時，可以從鍵盤的剪貼簿面板把它加入。</string>
+    <string name="clip_apps_none">無。</string>
+    <string name="clip_apps_remove">移除</string>
+    <string name="clip_app_exclude">此應用程式不保留</string>
+    <string name="clip_app_include">此應用程式保留</string>
+    <string name="clip_footer_app_off">在這個應用程式中打字時不保留。</string>
+    <plurals name="clip_delete_selected">
+        <item quantity="other">刪除 %d 項</item>
+    </plurals>
 </resources>

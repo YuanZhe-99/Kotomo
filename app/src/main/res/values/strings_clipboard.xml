@@ -59,4 +59,34 @@
     <string name="clip_settings_quick">Quick paste</string>
     <string name="clip_settings_quick_desc">Offer what you just copied, and codes in it, above the keys for a minute</string>
     <string name="clip_settings_clear">Clear unpinned items</string>
+    <string name="clip_settings_open">See, search and edit the history</string>
+    <string name="clip_search">Search</string>
+    <string name="clip_filter_all">All</string>
+    <string name="clip_filter_pinned">Pinned</string>
+    <string name="clip_filter_phrases">Phrases</string>
+    <string name="clip_filter_codes">Codes</string>
+    <string name="clip_filter_links">Links</string>
+    <string name="clip_filter_phones">Phone numbers</string>
+    <string name="clip_filter_addresses">Addresses</string>
+    <string name="clip_filter_text">Text</string>
+    <string name="clip_add_phrase">Add a quick phrase</string>
+    <string name="clip_select_all">Select all shown</string>
+    <string name="clip_cancel">Cancel</string>
+    <string name="clip_save">Save</string>
+    <string name="clip_none_found">Nothing matches.</string>
+    <string name="clip_edit_title">Edit</string>
+    <string name="clip_edit_text">Text</string>
+    <string name="clip_edit_pinned">Pinned</string>
+    <string name="clip_edit_phrase">Quick phrase (kept until you delete it)</string>
+    <string name="clip_apps_section">Apps where nothing is kept</string>
+    <string name="clip_apps_desc">While you type in these apps, Kotomo neither keeps nor offers what you copy. Android does not tell a keyboard which app text was copied from, so this follows the app you are typing in. Add an app from the keyboard\'s clipboard panel while you type in it.</string>
+    <string name="clip_apps_none">None.</string>
+    <string name="clip_apps_remove">Remove</string>
+    <string name="clip_app_exclude">Not in this app</string>
+    <string name="clip_app_include">Keep in this app</string>
+    <string name="clip_footer_app_off">Not kept while you type in this app.</string>
+    <plurals name="clip_delete_selected">
+        <item quantity="one">Delete %d item</item>
+        <item quantity="other">Delete %d items</item>
+    </plurals>
 </resources>

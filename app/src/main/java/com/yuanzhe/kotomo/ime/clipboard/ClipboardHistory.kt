@@ -15,6 +15,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -223,8 +225,15 @@ class ClipboardHistory internal constructor(
     /** Background thread only: false when the file is from a newer container or the key is unavailable. */
     private var writable = true
     private val secret by lazy { key() }
-    /** Main thread only: the clipboard timestamp of the last clip refused by [onCopy], or 0. */
-    private var refusedAt = 0L
+    /**
+     * The clipboard timestamp of the last clip refused by [onCopy], or 0. Written on the main
+     * thread, kept in [refusedFile] (the timestamp only, never the text) so a restart of the
+     * keyboard's process does not forget it.
+     */
+    @Volatile private var refusedAt = 0L
+    private val refusedFile = File(file.parentFile, "refused")
+    /** Background thread only: the pending expiry of the oldest unpinned item. */
+    private var timer: Job? = null
 
     /** The history, newest first; empty until the file is read (a few milliseconds after creation). */
     val items: StateFlow<List<Clip>> = state
@@ -234,6 +243,7 @@ class ClipboardHistory internal constructor(
 
     init {
         scope.launch(serial) {
+            if (refusedAt == 0L) refusedAt = runCatching { refusedFile.readText().trim().toLong() }.getOrDefault(0L)
             load()
             dropStaleLeftover()
         }
@@ -269,7 +279,10 @@ class ClipboardHistory internal constructor(
      */
     internal fun onCopy(timestamp: Long, allowed: Boolean, text: () -> String?): Copied? {
         if (!allowed) {
-            if (timestamp > 0) refusedAt = timestamp
+            if (timestamp > 0 && timestamp != refusedAt) {
+                refusedAt = timestamp
+                scope.launch(serial) { runCatching { refusedFile.parentFile?.mkdirs(); refusedFile.writeText(timestamp.toString()) } }
+            }
             return null
         }
         if (timestamp > 0 && timestamp == refusedAt) return null
@@ -303,6 +316,31 @@ class ClipboardHistory internal constructor(
 
     /** Deletes an item. Side effects: rewrites the file without it. */
     fun delete(id: Long) = change { list -> list.filterNot { it.id == id } }
+
+    /** Deletes the items with [ids] at once (the settings' selection). */
+    fun delete(ids: Collection<Long>) {
+        val set = ids.toSet()
+        change { list -> list.filterNot { it.id in set } }
+    }
+
+    /**
+     * Replaces an item's text, keeping its time, pin and phrase mark (the settings' editor).
+     * Notes: blank or over-long text is ignored; another item with the same text is merged into
+     * it, keeping either one's pin and phrase mark. The tag and codes follow the new text.
+     */
+    fun edit(id: Long, text: String) {
+        if (text.isBlank() || text.length > MAX_TEXT) return
+        change { list ->
+            val item = list.firstOrNull { it.id == id } ?: return@change list
+            val twin = list.firstOrNull { it.text == text && it.id != id }
+            list.filterNot { it === twin }.map {
+                if (it !== item) it else it.copy(text = text, pinned = it.pinned || twin?.pinned == true, phrase = it.phrase || twin?.phrase == true)
+            }
+        }
+    }
+
+    /** Marks an item as a quick phrase (kept until removed), or makes it an ordinary item again. */
+    fun setPhrase(id: Long, phrase: Boolean) = change { list -> list.map { if (it.id == id) it.copy(phrase = phrase) else it } }
 
     /**
      * Adds a quick phrase (kept until removed), or marks the same text already in the history as one.
@@ -343,9 +381,26 @@ class ClipboardHistory internal constructor(
         scope.launch(serial) {
             val old = state.value
             val new = trim(transform(old))
+            schedule(new)
             if (new == old) return@launch
             state.value = new
             save(new)
+        }
+    }
+
+    /**
+     * Arranges for the oldest unpinned item to be dropped when it expires, while the process
+     * lives, so expired text does not wait for the keyboard's next use.
+     * Notes: background thread; replaces the previous arrangement. After a restart the file's
+     * first read expires what is due.
+     */
+    private fun schedule(list: List<Clip>) {
+        timer?.cancel()
+        val oldest = list.filterNot { it.kept }.minOfOrNull { it.timeUtcMs } ?: return
+        val wait = (oldest - cutoff()).coerceAtLeast(0) + EXPIRY_GRACE_MS
+        timer = scope.launch(serial) {
+            delay(wait)
+            change { it }
         }
     }
 
@@ -372,6 +427,8 @@ class ClipboardHistory internal constructor(
      * key, the history works in memory only for this process.
      */
     private fun load() {
+        // A write interrupted by a crash leaves its temporary file; the real file is intact.
+        File(file.path + ".tmp").delete()
         if (!file.isFile) return
         val bytes = try { file.readBytes() } catch (_: IOException) { writable = false; return }
         val container = ClipFile.container(bytes)
@@ -392,6 +449,7 @@ class ClipboardHistory internal constructor(
         val read = records.drop(1).mapNotNull(::clipOf).sortedByDescending { it.timeUtcMs }
         val kept = trim(read)
         state.value = kept
+        schedule(kept)
         if (kept.size != read.size) save(kept)
     }
 
@@ -450,6 +508,8 @@ class ClipboardHistory internal constructor(
         /** Longer clips are not recorded. */
         const val MAX_TEXT = 20_000
         private const val DAY_MS = 86_400_000L
+        /** How long after an item's expiry the arranged check runs. */
+        private const val EXPIRY_GRACE_MS = 500L
         private const val FORMAT = "format_version"
         private const val UPDATED = "updated_utc_ms"
         private const val KEY_ALIAS = "kotomo_clipboard"
@@ -477,11 +537,18 @@ class ClipboardHistory internal constructor(
         /**
          * Decides whether the keyboard may record or offer clips now.
          * Inputs: info is the current field (null when no field is bound).
-         * Returns: false in incognito mode and in sensitive fields ([Fields.sensitive]); true
-         * otherwise (URL and e-mail fields included, unlike direct typing).
+         * Returns: false in incognito mode, in sensitive fields ([Fields.sensitive]) and in the
+         * fields of an app the person excluded (`clipboard.excluded_apps`); true otherwise (URL
+         * and e-mail fields included, unlike direct typing).
+         * Notes: the app is the one the keyboard is typing in when it sees the clip; Android does
+         * not tell an input method which app the text was copied from.
          */
         fun allowedIn(info: EditorInfo?, settings: Settings): Boolean =
-            !settings.incognito && (info == null || !Fields.sensitive(info.inputType, info.imeOptions))
+            if (info == null) !settings.incognito else allowedIn(info.inputType, info.imeOptions, info.packageName, settings)
+
+        /** [allowedIn] over the field's input type, options and app (pure, unit-tested). */
+        internal fun allowedIn(inputType: Int, imeOptions: Int, packageName: String?, settings: Settings): Boolean =
+            !settings.incognito && !Fields.sensitive(inputType, imeOptions) && packageName !in settings.clipboard.excludedApps
 
         @Volatile private var instance: ClipboardHistory? = null
 
