@@ -22,6 +22,7 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
+import android.view.inputmethod.InputConnection
 import android.view.inputmethod.TextAttribute
 import android.content.ClipData
 import com.yuanzhe.kotomo.ai.AiActivity
@@ -195,6 +196,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var sensitive = false
     /** Main thread: what the current field is for (e-mail, web address, phone, code, …). */
     private var field = Field.TEXT
+    /** Main thread: smart quotes and bracket pairing for the current field (PLAN §10.8). */
+    private val punctuation = SmartPunctuation()
     /** Main thread: the Chinese script remembered for the current app, or null to follow the settings (Compose state, so the quick panel follows it). */
     private var appScript by androidx.compose.runtime.mutableStateOf<ChineseScript?>(null)
     /** Main thread: when the last plain space was typed (uptime), for the double-space full stop; 0 after other keys. */
@@ -926,6 +929,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         direct = Fields.direct(info.inputType)
         sensitive = Fields.sensitive(info.inputType, info.imeOptions)
         field = Fields.of(info.inputType, info.hintText ?: info.label)
+        punctuation.reset()
         symbolPage = 0
         symbols = false
         // The emoji panel is built per field, since whether it may record recents depends on it.
@@ -1021,6 +1025,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         details = null
         emojiSearch?.let { if (searchKey(action, it)) return }
         if (action != KeyAction.Space) lastSpaceAt = 0L
+        if (action == KeyAction.Enter || action is KeyAction.MoveCursor || action is KeyAction.SetMode) punctuation.reset()
         val spaced = autoSpaced
         autoSpaced = false
         if (action is KeyAction.SetMode) {
@@ -1053,7 +1058,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     previousWord = null
                 } else {
                     commitComposition()
-                    ic.commitText(action.text, 1)
+                    typePunctuation(ic, action.text)
                     previousWord = null
                 }
                 if (shift == Shift.ONCE) shift = Shift.OFF
@@ -1070,7 +1075,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 if (taps.isNotEmpty()) taps.removeAt(taps.size - 1)
                 if (composing.isEmpty()) ic.commitText("", 1) else ic.setComposingText(composing, 1)
             } else {
-                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                if (!punctuation.backspace(ic)) sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
                 previousWord = null
             }
             KeyAction.Enter -> {
@@ -1123,6 +1128,16 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /**
+     * Commits a key's text outside a composition through smart punctuation (PLAN §10.8).
+     * Notes: both switches are off in code, URL, e-mail and direct-input fields, where an ASCII
+     * quote or a lone bracket is meant literally.
+     */
+    private fun typePunctuation(ic: InputConnection, text: String) {
+        val literal = direct || field == Field.CODE || field == Field.URL || field == Field.EMAIL
+        punctuation.commit(ic, text, quotes = settings.smartQuotes && !literal, pair = settings.autoPair && !literal)
+    }
+
+    /**
      * Sends a Chinese-mode key to librime on the engine thread.
      * Returns: true when the key went to librime (the result arrives later), false for keys the
      * normal path handles (shift, page switches, Emoji).
@@ -1137,12 +1152,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 } else {
                     // Punctuation, digits and capitals commit the top candidate first.
                     rimeKey(SPACE, downTime, onlyIfComposing = true) {}
-                    engine.post { main.post { ic.commitText(action.text, 1) } }
+                    engine.post { main.post { typePunctuation(ic, action.text) } }
                 }
                 if (shift == Shift.ONCE) shift = Shift.OFF
             }
             KeyAction.Space -> rimeKey(SPACE, downTime) { typeSpace(downTime) }
-            KeyAction.Backspace -> rimeKey(BACKSPACE, downTime) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
+            KeyAction.Backspace -> rimeKey(BACKSPACE, downTime) { if (!punctuation.backspace(ic)) sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
             KeyAction.Enter -> rimeKey(RETURN, downTime) { editorEnter() }
             else -> return false
         }

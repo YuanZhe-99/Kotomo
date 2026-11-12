@@ -130,6 +130,10 @@ data class Settings(
     val haptics: Boolean = true,
     val keySound: Boolean = false,
     val gestures: Gestures = Gestures(),
+    /** Curly quotes for the ASCII quote keys (PLAN §10.8); off by default. */
+    val smartQuotes: Boolean = false,
+    /** An opening bracket or quote types its closing one too (PLAN §10.8); off by default. */
+    val autoPair: Boolean = false,
     val incognito: Boolean = false,
     val clipboard: ClipboardSettings = ClipboardSettings(),
     val theme: KeyboardTheme = KeyboardTheme.SYSTEM,
@@ -202,6 +206,8 @@ internal object SettingsFormat {
     private val doubleSpace = booleanPreferencesKey("gestures.double_space_period")
     private val spaceLanguage = booleanPreferencesKey("gestures.space_language")
     private val smartSpace = booleanPreferencesKey("gestures.smart_space")
+    private val smartQuotes = booleanPreferencesKey("punctuation.smart_quotes")
+    private val autoPair = booleanPreferencesKey("punctuation.auto_pair")
     private val incognito = booleanPreferencesKey("privacy.incognito")
     private val clipHistory = booleanPreferencesKey("clipboard.history")
     private val clipRetention = intPreferencesKey("clipboard.retention_days")
@@ -253,6 +259,8 @@ internal object SettingsFormat {
                 spaceLanguage = p[spaceLanguage] ?: d.gestures.spaceLanguage,
                 smartSpace = p[smartSpace] ?: d.gestures.smartSpace,
             ),
+            smartQuotes = p[smartQuotes] ?: d.smartQuotes,
+            autoPair = p[autoPair] ?: d.autoPair,
             incognito = p[incognito] ?: d.incognito,
             clipboard = ClipboardSettings(
                 history = p[clipHistory] ?: d.clipboard.history,
@@ -305,6 +313,8 @@ internal object SettingsFormat {
         p.put(doubleSpace, old.gestures.doubleSpacePeriod, new.gestures.doubleSpacePeriod)
         p.put(spaceLanguage, old.gestures.spaceLanguage, new.gestures.spaceLanguage)
         p.put(smartSpace, old.gestures.smartSpace, new.gestures.smartSpace)
+        p.put(smartQuotes, old.smartQuotes, new.smartQuotes)
+        p.put(autoPair, old.autoPair, new.autoPair)
         p.put(incognito, old.incognito, new.incognito)
         p.put(clipHistory, old.clipboard.history, new.clipboard.history)
         p.put(clipRetention, old.clipboard.retentionDays, new.clipboard.retentionDays)

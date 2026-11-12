@@ -267,4 +267,9 @@
     <string name="theme_dark">深色</string>
     <string name="theme_dynamic">Material You（桌布取色）</string>
     <string name="theme_radius">按鍵圓角</string>
+    <string name="punct_section">標點</string>
+    <string name="punct_smart_quotes">智慧引號</string>
+    <string name="punct_smart_quotes_desc">用 \" 和 \' 鍵輸入彎引號與撇號。程式碼、網址和電子郵件輸入框中不生效。</string>
+    <string name="punct_auto_pair">自動補上括號與引號</string>
+    <string name="punct_auto_pair_desc">輸入 (、「、“ 等開括號時同時加上對應的閉括號；緊接著按退格會一起刪除。程式碼、網址和電子郵件輸入框中不生效。</string>
 </resources>

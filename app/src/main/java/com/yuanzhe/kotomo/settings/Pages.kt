@@ -424,8 +424,8 @@ internal fun LayoutPage(settings: Settings, store: SettingsStore) {
 }
 
 /**
- * Draws the Keys and gestures page: long-press symbols, corner hints, vibration and sound, and a
- * switch for every gesture (PLAN §8.1).
+ * Draws the Keys and gestures page: long-press symbols, corner hints, vibration and sound, a
+ * switch for every gesture (PLAN §8.1) and the smart punctuation switches (PLAN §10.8).
  */
 @Composable
 internal fun KeysPage(settings: Settings, store: SettingsStore) {
@@ -443,6 +443,10 @@ internal fun KeysPage(settings: Settings, store: SettingsStore) {
         SwitchRow(R.string.gesture_double_space, R.string.gesture_double_space_desc, g.doubleSpacePeriod) { on -> gesture { it.copy(doubleSpacePeriod = on) } }
         SwitchRow(R.string.gesture_space_language, R.string.gesture_space_language_desc, g.spaceLanguage) { on -> gesture { it.copy(spaceLanguage = on) } }
         SwitchRow(R.string.gesture_smart_space, R.string.gesture_smart_space_desc, g.smartSpace) { on -> gesture { it.copy(smartSpace = on) } }
+    }
+    Section(stringResource(R.string.punct_section)) {
+        SwitchRow(R.string.punct_smart_quotes, R.string.punct_smart_quotes_desc, settings.smartQuotes) { on -> store.set { it.copy(smartQuotes = on) } }
+        SwitchRow(R.string.punct_auto_pair, R.string.punct_auto_pair_desc, settings.autoPair) { on -> store.set { it.copy(autoPair = on) } }
     }
 }
 

@@ -56,6 +56,7 @@
 | `keys.haptics` | boolean | `true` | 按键震动 |
 | `keys.sound` | boolean | `false` | 按键时播放系统按键音 |
 | `gestures.space_cursor`、`gestures.delete_swipe`、`gestures.double_space_period`、`gestures.space_language`、`gestures.smart_space` | boolean | `true` | 每个手势一个开关：沿空格键滑动移动光标、从删除键向左滑动按词删除、快速按两次空格输入句号、长按空格选择语言、建议的英文单词后输入标点时的智能空格 |
+| `punctuation.smart_quotes`、`punctuation.auto_pair` | boolean | `false` | 智能标点（PLAN §10.8）：`"` 与 `'` 键按光标前的字符输入弯引号与撇号；开括号或开引号同时输入对应的闭合符号，再输入这个闭合符号时跳过它，紧接着退格则删除这对空括号。代码、网址、邮箱与直接输入的输入框中都不生效 |
 | `privacy.incognito` | boolean | `false` | 无痕模式：不学习、不记录历史与剪贴板 |
 | `clipboard.history` | boolean | `true` | 把复制的文字保存在剪贴板历史中（[clipboard.md](clipboard.md)） |
 | `clipboard.retention_days` | int 1–90 | 7 | 未固定的剪贴板条目保留的天数（隐私页提供 1、7、30） |

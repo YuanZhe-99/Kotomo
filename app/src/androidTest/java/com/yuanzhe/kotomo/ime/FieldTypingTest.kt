@@ -151,6 +151,45 @@ class FieldTypingTest {
         }
     }
 
+    /**
+     * PLAN §10.8 (T13-punct): with both switches on, an opening bracket and a quote type their
+     * closing marks, and backspace right away removes each empty pair; with them off the same keys
+     * type as they are.
+     */
+    @Test
+    fun smartPunctuationPairsAndUnpairs() {
+        inMode(Mode.ENGLISH) {
+            withSettings({ it.copy(smartQuotes = true, autoPair = true) }) {
+                assertEquals("(“”)", punctuate("(\"") {})
+                assertEquals("()", punctuate("(\"") { key(BACKSPACE) })
+                assertEquals("", punctuate("(\"") { key(BACKSPACE); key(BACKSPACE) })
+            }
+            withSettings({ it.copy(smartQuotes = false, autoPair = false) }) {
+                assertEquals("(\"", punctuate("(\"") {})
+            }
+        }
+    }
+
+    /** Opens a text field, taps [marks] on the first symbol page, runs [then] and returns the text. */
+    private fun punctuate(marks: String, then: () -> Unit): String {
+        val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, 0)
+        ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+            key(SYMBOLS)
+            marks.forEach { key(it.toString()) }
+            then()
+            device.waitForIdle()
+            return read(scenario)
+        }
+    }
+
+    /** Taps the key described as [desc] once it is there. */
+    private fun key(desc: String) {
+        checkNotNull(device.wait(Until.findObject(By.desc(desc)), WAIT_MS)) { "no key $desc" }.click()
+        Thread.sleep(READ_MS)
+    }
+
     /** Taps the first view whose text is [text] once it is there (Compose panel content). */
     private fun tap(text: String) {
         checkNotNull(device.wait(Until.findObject(By.text(text)), WAIT_MS)) { "no $text" }.click()
@@ -317,6 +356,9 @@ class FieldTypingTest {
         const val BACK = "Back to the keyboard"
         /** The emoji panel's search tab (R.string.emoji_search, English). */
         const val SEARCH = "Search emoji"
+        /** The symbols and backspace keys' descriptions (R.string.key_symbols, key_backspace; English). */
+        const val SYMBOLS = "Symbols"
+        const val BACKSPACE = "Delete"
         const val ATTEMPTS = 3
         const val WAIT_MS = 3000L
         const val READS = 3

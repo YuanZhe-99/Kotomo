@@ -62,6 +62,7 @@ stores and shows them, and they take effect once the mixed coordinator exists.
 | `keys.haptics` | boolean | `true` | Vibrate on key press |
 | `keys.sound` | boolean | `false` | The system's key click on key press |
 | `gestures.space_cursor`, `gestures.delete_swipe`, `gestures.double_space_period`, `gestures.space_language`, `gestures.smart_space` | boolean | `true` | One switch per gesture: slide on the space bar to move the cursor, slide left from delete to delete words, two quick spaces type a full stop, long-press space for the language choice, smart space around punctuation after a suggested English word |
+| `punctuation.smart_quotes`, `punctuation.auto_pair` | boolean | `false` | Smart punctuation (PLAN §10.8): the `"` and `'` keys type curly quotes and apostrophes from the character before the cursor; an opening bracket or quote types its closing one too, typing that closing mark steps over it and backspace right away deletes the empty pair. Neither applies in code, URL, e-mail or direct-input fields |
 | `privacy.incognito` | boolean | `false` | Incognito mode: no learning, history or clipboard recording |
 | `clipboard.history` | boolean | `true` | Keep copied text in the clipboard history ([clipboard.md](clipboard.md)) |
 | `clipboard.retention_days` | int 1–90 | 7 | Days unpinned clipboard items are kept (the Privacy page offers 1, 7 and 30) |

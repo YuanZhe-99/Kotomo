@@ -267,4 +267,9 @@
     <string name="theme_dark">ダーク</string>
     <string name="theme_dynamic">Material You（壁紙の色）</string>
     <string name="theme_radius">キーの角の丸み</string>
+    <string name="punct_section">句読点と記号</string>
+    <string name="punct_smart_quotes">スマート引用符</string>
+    <string name="punct_smart_quotes_desc">\" と \' のキーで曲がった引用符とアポストロフィを入力します。コード、URL、メールアドレスの入力欄では使いません。</string>
+    <string name="punct_auto_pair">かっこと引用符を閉じる</string>
+    <string name="punct_auto_pair_desc">(、「、“ などの開きかっこを入力すると閉じかっこも入ります。すぐにバックスペースを押すと両方消えます。コード、URL、メールアドレスの入力欄では使いません。</string>
 </resources>
