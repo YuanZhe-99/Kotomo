@@ -12,9 +12,11 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
 import com.yuanzhe.kotomo.settings.SettingsStore
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -82,7 +84,24 @@ class FuzzySettingsTest {
             repeat(ATTEMPTS) { if (text == "中国") text = type(scenario, "zongguo") }
             assertNotEquals("中国", text)
             assertEquals("你好", type(scenario, "nihao"))
+            // A deploy that finishes after the switches went off must not bring its build back.
+            assertFalse(files.hasBuild)
         }
+    }
+
+    /**
+     * Negative: a finished deploy for rules that are no longer on is discarded, not swapped in
+     * (once a second deploy of the old rules ended after the switches were turned off, and the
+     * keyboard typed with them again).
+     */
+    @Test
+    fun aBuildStagedForOtherRulesIsDiscarded() {
+        waitFor("the rules to be off") { !files.fuzzy.isFile && !files.hasBuild }
+        File(files.staging, "build").mkdirs()
+        File(files.staging, "fuzzy.hash").writeText(Fuzzy.hash(Fuzzy.yaml(setOf(FuzzyRule.Z_ZH))))
+        assertFalse(files.promote())
+        assertFalse(files.staging.exists())
+        assertFalse(files.hasBuild)
     }
 
     /** Opens an ordinary text field with Kotomo's keys showing and runs [block] on it. */

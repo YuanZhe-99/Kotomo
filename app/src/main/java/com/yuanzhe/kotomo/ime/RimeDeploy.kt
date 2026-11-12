@@ -179,12 +179,19 @@ class RimeFiles(context: Context) {
 
     /**
      * Moves a finished staged deploy into `user/` (engine thread, with librime shut down).
-     * Returns: whether a staged build was there to move.
+     * Returns: whether a staged build was moved in.
+     * Notes: a build compiled for other rules than the rule file in `user/` now holds (the
+     * switches changed while it deployed) is discarded instead: swapping it in would bring back
+     * rules the person turned off.
      */
     fun promote(): Boolean {
         val built = File(staging, "build")
         if (!built.isDirectory) return false
         val compiled = runCatching { stagedFuzzy.readText() }.getOrDefault(Fuzzy.NONE)
+        if (compiled != fuzzyHash()) {
+            staging.deleteRecursively()
+            return false
+        }
         val target = File(user, "build")
         target.deleteRecursively()
         user.mkdirs()

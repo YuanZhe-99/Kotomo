@@ -451,18 +451,22 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 refresh(0)
                 return
             }
-            reopenRime { it.promote() || it.hasBuild }
-            // The rules may have changed while it deployed.
-            lifecycleScope.launch { store.loaded.value?.let { syncRimeBuild(it.chineseFuzzy) } }
+            // The rules may have changed while it deployed: a build staged for other rules is not
+            // swapped in ([RimeFiles.promote]), and the files are compared with the rules again
+            // only after the swap, so a deploy that just finished is never started twice.
+            reopenRime({ it.promote() || it.hasBuild || it.prebuilt }) {
+                lifecycleScope.launch { store.loaded.value?.let { syncRimeBuild(it.chineseFuzzy) } }
+            }
         }
     }
 
     /**
      * Restarts librime on the engine thread after its build changed, then applies the settings
      * and drops the composition on the main thread.
-     * Inputs: prepare runs with librime shut down and returns whether a build is there to open.
+     * Inputs: prepare runs with librime shut down and returns whether a build is there to open;
+     * [then] runs on the main thread once librime is open again and the files are settled.
      */
-    private fun reopenRime(prepare: (RimeFiles) -> Boolean) {
+    private fun reopenRime(prepare: (RimeFiles) -> Boolean, then: () -> Unit = {}) {
         engine.post {
             val files = RimeFiles(this@KotomoService)
             if (rimeReady) Rime.shutdown()
@@ -474,6 +478,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 applyEngineSettings()
                 clearChinese()
                 refresh(0)
+                then()
             }
         }
     }
@@ -492,7 +497,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             files.writeFuzzy(Fuzzy.yaml(rules))
             if (files.prebuilt && rules.isEmpty()) files.hasBuild to false else false to !files.current
         }
-        if (drop) reopenRime { it.dropBuild(); true }
+        if (drop) reopenRime({ it.dropBuild(); true })
         if (deploy) startDeploy()
     }
 
