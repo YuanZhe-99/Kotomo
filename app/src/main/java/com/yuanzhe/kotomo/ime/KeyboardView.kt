@@ -26,6 +26,8 @@ enum class Shift { OFF, ONCE, LOCKED }
 
 /** Keys never shrink below this share of their height to fit a height limit. */
 private const val MIN_FIT = 0.6f
+/** How far, in touch slops, a finger must move for a flick rather than a tap (PLAN §10.9). */
+private const val FLICK_SLOP = 2f
 
 /**
  * Draws one keyboard page as in the design and turns touches into key actions.
@@ -190,7 +192,22 @@ class KeyboardView(
     private val keyHeightPhone = res.getDimension(R.dimen.kb_key_height)
     private val keyHeightLarge = res.getDimension(R.dimen.kb_key_height_large)
     private val rowGap = res.getDimension(R.dimen.kb_row_gap)
-    private val gap = res.getDimension(R.dimen.kb_key_gap)
+    /** The gap between keys in pixels (KeyStyle.gapDp, PLAN §10.9; the design's 6 dp by default). */
+    var gap = res.getDimension(R.dimen.kb_key_gap)
+        set(value) {
+            if (field == value) return
+            field = value
+            placed = emptyList()
+            invalidate()
+        }
+
+    /** The size of key labels relative to the design's (KeyStyle.textPercent / 100, PLAN §10.9). */
+    var textScale = 1f
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+        }
     private val padTop = res.getDimension(R.dimen.kb_pad_top)
     private val padBottom = res.getDimension(R.dimen.kb_pad_bottom)
     private val sidePhone = res.getDimension(R.dimen.kb_side)
@@ -264,6 +281,9 @@ class KeyboardView(
     private var longPressed = false
     /** Where the pressed key's finger went down, for the space and backspace drags. */
     private var downX = 0f
+    /** Where the pressing finger is now, for flicks (PLAN §10.9). */
+    private var moveX = 0f
+    private var moveY = 0f
     private var downY = 0f
 
     /**
@@ -499,7 +519,7 @@ class KeyboardView(
                     space -> spaceText
                     k.key.function -> functionText
                     else -> keyText
-                }
+                } * textScale
                 labelPaint.typeface = Typeface.DEFAULT
                 val baseline = k.centerY - (labelPaint.descent() + labelPaint.ascent()) / 2
                 canvas.drawText(label, k.centerX, baseline, labelPaint)
@@ -602,6 +622,8 @@ class KeyboardView(
                 longPressed = false
                 downX = event.getX(i)
                 downY = event.getY(i)
+                moveX = downX
+                moveY = downY
                 pointerId = event.getPointerId(i)
                 movedSteps = 0
                 deleteWords = 0
@@ -616,6 +638,10 @@ class KeyboardView(
             MotionEvent.ACTION_MOVE -> {
                 val index = event.findPointerIndex(pointerId)
                 val key = pressed
+                if (index >= 0) {
+                    moveX = event.getX(index)
+                    moveY = event.getY(index)
+                }
                 if (index >= 0 && key != null) drag(key, event.getX(index))
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
@@ -746,6 +772,10 @@ class KeyboardView(
         when {
             swiping -> if (commit && key.key.action == KeyAction.Backspace && deleteWords > 0) {
                 onKey(KeyAction.DeleteWords(deleteWords), true, at)
+            }
+            commit && key.key.flick.isNotEmpty() -> {
+                // A flick key types what the finger's direction picks; a flick to an empty side types nothing.
+                Layout.flickText(key.key, moveX - downX, moveY - downY, touchSlop * FLICK_SLOP)?.let { onKey(KeyAction.Text(it), false, at) }
             }
             commit && !longPressed -> {
                 lastTap = ((downX - key.centerX) / (key.right - key.left)) to ((downY - key.centerY) / (key.bottom - key.top))
@@ -919,7 +949,9 @@ class PopupLayer(context: Context) : View(context) {
  * exactly that area on top.
  *
  * Notes: a plain FrameLayout would let the full-size popup layer stretch the input view to the
- * whole window height.
+ * whole window height. While [floating] (PLAN §10.9) the view takes the whole height it is given
+ * and places the content, [floatWidth] wide, at its offset (dragged with [moveBy]); the service
+ * then makes only [contentRect] touchable, so the app stays usable around it.
  */
 @SuppressLint("ViewConstructor")
 class InputRoot(context: Context, private val content: View, private val popups: View) : android.widget.FrameLayout(context) {
@@ -928,11 +960,90 @@ class InputRoot(context: Context, private val content: View, private val popups:
         addView(popups)
     }
 
+    /** Whether the keyboard floats over the app instead of sitting at the bottom. */
+    var floating = false
+        set(value) {
+            if (field == value) return
+            field = value
+            requestLayout()
+        }
+
+    /** The floating keyboard's width in pixels. */
+    var floatWidth = 0
+
+    /** The floating keyboard's offset from the top left, in pixels; null puts it at the bottom centre. */
+    private var offset: Pair<Int, Int>? = null
+
+    /** The content's box in this view's coordinates (what is touchable while floating). */
+    val contentRect = android.graphics.Rect()
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        content.measure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        val wide = if (floating) MeasureSpec.makeMeasureSpec(floatWidth, MeasureSpec.EXACTLY) else widthMeasureSpec
+        content.measure(wide, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
         val w = content.measuredWidth
         val h = content.measuredHeight
         popups.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
-        setMeasuredDimension(w, h)
+        if (floating) {
+            val full = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) resources.displayMetrics.heightPixels else MeasureSpec.getSize(heightMeasureSpec)
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), maxOf(full, h))
+        } else {
+            setMeasuredDimension(w, h)
+        }
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        val w = content.measuredWidth
+        val h = content.measuredHeight
+        val (x, y) = if (floating) clamp(offset ?: (((right - left) - w) / 2 to (bottom - top) - h)) else 0 to 0
+        content.layout(x, y, x + w, y + h)
+        popups.layout(x, y, x + w, y + h)
+        contentRect.set(x, y, x + w, y + h)
+    }
+
+    /** Moves the floating keyboard by ([dx], [dy]) pixels, kept inside this view. */
+    fun moveBy(dx: Int, dy: Int) {
+        offset = clamp((offset ?: (contentRect.left to contentRect.top)).let { (x, y) -> x + dx to y + dy })
+        requestLayout()
+    }
+
+    private fun clamp(at: Pair<Int, Int>) =
+        at.first.coerceIn(0, maxOf(0, width - content.measuredWidth)) to at.second.coerceIn(0, maxOf(0, height - content.measuredHeight))
+}
+
+/**
+ * Draws the floating keyboard's grip, a short bar above the candidate bar; dragging it moves the
+ * keyboard ([onDrag] receives the movement in pixels) (PLAN §10.9).
+ */
+@SuppressLint("ViewConstructor")
+class FloatGrip(context: Context, private val onDrag: (dx: Int, dy: Int) -> Unit) : View(context) {
+    private val res = context.resources
+    private val gripHeight = res.getDimensionPixelSize(R.dimen.kb_float_grip_height)
+    private val barWidth = res.getDimension(R.dimen.kb_float_grip_bar)
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_ink_secondary) }
+    private var lastX = 0f
+    private var lastY = 0f
+
+    init {
+        contentDescription = res.getString(R.string.float_grip)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) = setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), gripHeight)
+
+    override fun onDraw(canvas: android.graphics.Canvas) {
+        val h = gripHeight / 6f
+        canvas.drawRoundRect(width / 2f - barWidth / 2, height / 2f - h / 2, width / 2f + barWidth / 2, height / 2f + h / 2, h / 2, h / 2, paint)
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { lastX = event.rawX; lastY = event.rawY }
+            MotionEvent.ACTION_MOVE -> {
+                onDrag((event.rawX - lastX).toInt(), (event.rawY - lastY).toInt())
+                lastX = event.rawX
+                lastY = event.rawY
+            }
+        }
+        return true
     }
 }

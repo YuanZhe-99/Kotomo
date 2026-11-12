@@ -34,4 +34,6 @@
     <string name="app_setting_separator">、</string>
     <string name="toolbar_autofill">自動填入建議</string>
     <string name="toolbar_autofill_desc">自動填入服務的建議（儲存的密碼、地址）顯示在候選列中；Kotomo 看不到其中的內容</string>
+    <string name="tool_floating">懸浮鍵盤</string>
+    <string name="float_grip">移動鍵盤</string>
 </resources>

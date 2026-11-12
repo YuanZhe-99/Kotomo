@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keystyle_section">按键与行</string>
+    <string name="keystyle_gap">按键间距</string>
+    <string name="keystyle_text">按键文字大小</string>
+    <string name="keystyle_space">空格键宽度</string>
+    <string name="keystyle_number_row">数字行</string>
+    <string name="keystyle_number_row_desc">字母上方加一行数字</string>
+    <string name="keystyle_mirrored">功能键放到另一侧</string>
+    <string name="keystyle_mirrored_desc">回车、⇧ 与 ?123 移到对侧，方便左手拇指</string>
+    <string name="keystyle_long_press">自定义长按符号</string>
+    <string name="keystyle_long_press_example">a=@á</string>
+    <string name="keystyle_long_press_note">每行一个字母、一个等号和若干符号。第一个符号显示在按键角上；字母的变音字符跟在后面。</string>
+    <string name="keystyle_floating_desc">键盘悬浮在 App 之上；拖动上方的横条移动它</string>
+    <string name="japanese_flick">12 键滑动输入</string>
+    <string name="japanese_flick_desc">在 12 键上输入假名：点按输入あ段，向左、上、右、下滑动输入其他各段</string>
+</resources>

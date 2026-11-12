@@ -98,6 +98,14 @@ the table lists every key.
 | `pc.wide` | string: `full`, `split` | `full` | The PC layout on a wide screen: the function strip and the whole PC keyboard, or the phone pages as two halves at the sides |
 | `toolbar.order` | string | `clipboard,ai,translate,settings,edit,emoji,language,dictionaries,themes` | The toolbar's tools after More (PLAN §10.10), tool names joined by commas; More is always first and never listed. A missing tool joins at the end, names this version does not know are kept after the known ones |
 | `toolbar.inline_autofill` | boolean | `true` | Show an autofill service's inline suggestions over the idle toolbar (Android 11 and later, PLAN §10.10); off: Kotomo asks for none |
+| `keys.gap_dp` | int 2–12 | `6` | The gap between keys, in dp (PLAN §10.9) |
+| `keys.text_percent` | int 80–140 | `100` | Key label size, in percent of the design's |
+| `keys.long_press_custom` | string | empty | The person's long-press symbols: lines `letter=symbols` (a–z); lines that are not one are dropped when read |
+| `layout.number_row` | boolean | `false` | A row of digits above the letters |
+| `layout.space_percent` | int 60–140 | `100` | The space bar's width, in percent of the design's |
+| `layout.mirrored` | boolean | `false` | The function keys on the other side: the bottom row and the ⇧ … ⌫ row mirrored |
+| `layout.floating` | boolean | `false` | The keyboard floats over the app and can be dragged; never split |
+| `japanese.flick` | boolean | `false` | Japanese mode uses the 12-key flick layout |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 
 ## Theme file

@@ -13,10 +13,10 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/LearningData.kt` | 清除学习数据（PLAN §8.8）：librime 的用户词典、Mozc 的配置目录、混合模式学到的读法与键盘记忆中学到的部分；在运行中的键盘的引擎线程上或在后台进行（有单元测试） | `clear`、`clearFiles`、`forget` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/MixedLearning.kt` | 混合模式学到的读法（PLAN §9.8、§9.9；[settings-format.md](../settings-format.md)）：一次提交教会什么（整个输入与每个片段）、随时间衰减、用户的排序（降低排序、不再提供、固定首选）、撤回一次提交的学习、带版本的文件 `files/keyboard/learned.json`，以及交给引擎的代价调整（有单元测试） | `Learned.committed`、`uncommitted`、`adjustments`、`LearnedReading.adjust`、`LearnedFormat`、`MixedLearning.get` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardMemory.kt` | 键盘自己记住的东西，存为带版本的文件 `files/keyboard/memory.json`（[settings-format.md](../settings-format.md)）：上次的模式；按 App 的使用模式、固定模式、字形与用户的设置（不学习、按代码输入）；Emoji 历史；按屏幕与方向的单手模式；文件不存在时从旧的 SharedPreferences 读取一次（有单元测试） | `KeyboardMemory`、`MemoryFormat`、`Memory` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面（底行随输入框调整的字母页、符号页、电话与数字键盘、在铰链两侧分开的底行）、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.pad`、`Layout.place`、`Layout.hit` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Layout.kt` | 键盘页面（底行随输入框调整的字母页、符号页、电话与数字键盘、在铰链两侧分开的底行、12 键滑动页及其滑动方向、用户的按键样式：数字行、功能键换边、空格宽度、自定义长按符号）、按键布局与命中判定（纯 Kotlin，有单元测试） | `Layout.letters`、`Layout.pad`、`Layout.place`、`Layout.hit` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Fields.kt` | 输入框适配与空格规则（PLAN §8.7、§8.1）：由输入类型与提示判定输入框种类、敏感输入框与直接输入的唯一定义（PLAN §14）、回车键样式、双击空格句号、智能空格（纯 Kotlin，有单元测试） | `Fields.of`、`Fields.sensitive`、`Fields.direct`、`Fields.enter` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Posture.kt` | 布局所用的窗口尺寸类别与折叠姿态（PLAN §8.10）：何时分离、桌面姿态与矮窗口下的高度上限、标识屏幕与方向的键（有单元测试） | `Posture.split`、`Posture.heightLimit`、`Posture.screenKey` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、Gboard 式长按弹出（滑动选择、松开输入）、按键预览、在空格上拖动移动光标与从退格向左拖动删除词、退格连删、单手模式的侧边按钮与拖动调整宽度的竖条、每个按键的 TalkBack 节点；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、滑动、用户的按键间距与文字大小、放置悬浮键盘的输入根视图及其拖动条（`InputRoot`、`FloatGrip`）、Gboard 式长按弹出（滑动选择、松开输入）、按键预览、在空格上拖动移动光标与从退格向左拖动删除词、退格连删、单手模式的侧边按钮与拖动调整宽度的竖条、每个按键的 TalkBack 节点；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏（“更多”，然后是放得下的用户工具）、状态提示、Emoji 搜索的查询词（结果之前）、长按后显示的候选详情（读音、来源，学到的词可忘记） | `show`、`hint`、`details`、`onTouchEvent` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | 在键盘位置显示的 Compose 面板：Emoji 面板（按分组列出系统字体能显示的全部 Emoji；从键盘记忆读取常用与最近使用（仅在输入框允许学习时记录）、搜索标签；长按选择肤色）、全部候选，以及片段修改（整句与各片段的按钮、所选片段的候选；日文模式为缩短、延长，混合模式为提交到这里、恢复输入） | `EmojiPanel`、`Recents`、`TonePicker`、`CandidatesPanel`、`SegmentPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`load` |
@@ -70,6 +70,7 @@
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
 | `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定；该运行已于 2026-11-04 随 GitHub 仓库删除，CI 重新存在之前它下载不到任何东西；`build-mozc.sh` 在本地构建同样的文件 | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的“更多”面板：不在工具栏上的工具，然后是快捷设置（单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用） | `QuickPanel` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Kana.kt` | 12 键滑动布局的平假名（PLAN §10.9）：哪些字符参与组合，以及゛゜小键的循环（清音、浊音、半浊音、小写） | `Kana` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/InlineAutofill.kt` | 空闲工具栏上的自动填充服务内联建议（PLAN §10.10，Android 11 起）：带 Kotomo 胶囊样式的请求，以及由系统绘制的建议条（Kotomo 看不到其中的文字）。只在 debug 构建中的 `fieldtest/FakeAutofillService.kt` 为 `InlineAutofillTest` 提供一条建议 | `InlineAutofill` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | 通过 ML Kit GenAI 用 Gemini Nano 校对与改写（[ai.md](../ai.md)）：状态、由用户发起的下载、长文字拆分、错误映射 | `GenAi`、`AiAction`、`AiFailure` |

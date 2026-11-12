@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime
 
+import com.yuanzhe.kotomo.settings.KeyStyle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -138,5 +139,41 @@ class LayoutTest {
         val bottom = Layout.letters(Mode.MIXED, false).rows.last().keys.map { it.action }
         assertEquals(KeyAction.Emoji, bottom[2])
         assertTrue(bottom.contains(KeyAction.Space))
+    }
+
+    /** T14-keys-1 (PLAN §10.9): the number row, mirrored function keys and the space width. */
+    @Test
+    fun keyStyleAddsDigitsMirrorsAndWidensSpace() {
+        val plain = Layout.letters(Mode.ENGLISH, false)
+        val style = KeyStyle(numberRow = true, mirrored = true, spacePercent = 140)
+        val styled = Layout.letters(Mode.ENGLISH, false, style = style)
+        assertEquals(plain.rows.size + 1, styled.rows.size)
+        assertEquals("1234567890".map { it.toString() }, styled.rows[0].keys.map { it.label })
+        // Mirrored: Enter first on the bottom row, backspace first on the row above; letters stay.
+        assertEquals(KeyAction.Enter, styled.rows.last().keys.first().action)
+        assertEquals(KeyAction.Backspace, styled.rows[3].keys.first().action)
+        assertEquals(plain.rows[0].keys, styled.rows[1].keys)
+        val space = { l: Layout -> l.rows.last().keys.first { it.action == KeyAction.Space }.width }
+        assertEquals(space(plain) * 1.4f, space(styled), 0.001f)
+        // Negative: the default style changes nothing, and split rows keep their halves when mirrored.
+        assertEquals(plain, Layout.letters(Mode.ENGLISH, false, style = KeyStyle()))
+        val split = Layout.letters(Mode.ENGLISH, false, split = true, style = KeyStyle(mirrored = true))
+        val third = split.rows[2]
+        assertEquals(KeyAction.Backspace, third.keys.first().action)
+        assertEquals(third.keys.size - 5, third.splitAt)
+    }
+
+    /** T14-keys-2 (PLAN §10.9): the person's long-press symbols replace a letter's hint and popup. */
+    @Test
+    fun customLongPressSymbols() {
+        val map = KeyStyle.parse("a=@ á\nB=β\nzz=x\n7=x\nq=\nc=©;")
+        assertEquals(mapOf('a' to "@á", 'b' to "β", 'c' to "©;"), map)
+        assertEquals(map, KeyStyle.parse(KeyStyle.format(map)))
+        val keys = Layout.letters(Mode.ENGLISH, false, style = KeyStyle(longPress = map)).rows.flatMap { it.keys }
+        val a = keys.first { it.label == "a" }
+        assertEquals("@", a.hint)
+        assertEquals(listOf("@", "á", "à"), a.more.take(3))
+        // Negative: a letter without its own symbols keeps the design's hint.
+        assertEquals("#", keys.first { it.label == "s" }.hint)
     }
 }

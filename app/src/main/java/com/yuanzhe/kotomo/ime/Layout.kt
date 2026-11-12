@@ -1,5 +1,7 @@
 package com.yuanzhe.kotomo.ime
 
+import com.yuanzhe.kotomo.settings.KeyStyle
+
 /** Names what a key does; the keyboard view hands it to the service unchanged. */
 sealed interface KeyAction {
     /** Types [text] (a letter, digit or punctuation mark). */
@@ -25,6 +27,8 @@ sealed interface KeyAction {
     data class SetOneHandedWidth(val percent: Int) : KeyAction
     /** A key of the PC layout that has no counterpart above (PLAN §10.11). */
     data class Pc(val key: PcKey) : KeyAction
+    /** Turns the last kana typed into its voiced, half-voiced or small form, in turn (the flick layout's ゛゜小 key). */
+    data object KanaModify : KeyAction
 }
 
 /**
@@ -38,7 +42,8 @@ enum class Mode { MIXED, CHINESE, JAPANESE, ENGLISH, PC }
  *
  * Notes: [hint] is drawn in the key's corner; [more] lists what a long press offers in its popup
  * (the first is preselected); [width] is relative to the other keys of the row; [function] keys
- * use the darker key color.
+ * use the darker key color. [flick] (the 12-key Japanese layout, PLAN §10.9) holds what a tap and
+ * a flick left, up, right and down type, in that order; empty strings mean nothing.
  */
 data class Key(
     val label: String,
@@ -47,6 +52,7 @@ data class Key(
     val hint: String? = null,
     val more: List<String> = emptyList(),
     val function: Boolean = false,
+    val flick: List<String> = emptyList(),
 )
 
 /**
@@ -137,14 +143,39 @@ data class Layout(val rows: List<Row>) {
             'o' to "òóôöõøōœ", 's' to "ßśš", 'u' to "ùúûüū", 'y' to "ýÿ", 'z' to "žźż",
         )
 
-        private fun letter(c: Char, shifted: Boolean): Key {
+        /**
+         * Builds one letter key: its corner hint and long-press symbols are the person's own
+         * ([custom], PLAN §10.9) when set for it, otherwise the design's; accents follow.
+         */
+        private fun letter(c: Char, shifted: Boolean, custom: Map<Char, String>): Key {
             val s = if (shifted) c.uppercase() else c.toString()
-            val hint = hints.getValue(c)
+            val own = custom[c]?.codePoints()?.toArray()?.map { String(Character.toChars(it)) }
+            val hint = own?.first() ?: hints.getValue(c)
             val accented = accents[c].orEmpty().map { if (shifted) it.uppercase() else it.toString() }
-            return Key(s, KeyAction.Text(s), hint = hint, more = listOf(hint) + accented)
+            return Key(s, KeyAction.Text(s), hint = hint, more = ((own ?: listOf(hint)) + accented).distinct())
         }
 
-        private fun letters(chars: String, shifted: Boolean) = chars.map { letter(it, shifted) }
+        private fun letters(chars: String, shifted: Boolean, custom: Map<Char, String> = emptyMap()) = chars.map { letter(it, shifted, custom) }
+
+        /** The row of digits above the letters (PLAN §10.9), split after 5 in a split layout. */
+        private fun numberRow(split: Boolean) = Row(symbolKeys("1234567890"), splitAt = if (split) 5 else -1)
+
+        /**
+         * Mirrors a row for function keys on the other side (PLAN §10.9): the keys in reverse order,
+         * a split row's halves swapped with it.
+         */
+        private fun Row.mirrored(): Row = Row(keys.reversed(), lead = trail, trail = lead, splitAt = if (splitAt >= 0) keys.size - splitAt else -1)
+
+        /**
+         * Applies [style] to a page whose last two rows hold the function keys: the space bar's
+         * width, and with [KeyStyle.mirrored] those two rows reversed.
+         */
+        private fun styled(rows: List<Row>, style: KeyStyle): List<Row> = rows.mapIndexed { i, row ->
+            val spaced = if (style.spacePercent == 100) row else row.copy(keys = row.keys.map { k ->
+                if (k.action == KeyAction.Space && row.splitAt < 0) k.copy(width = k.width * style.spacePercent / 100f) else k
+            })
+            if (style.mirrored && i >= rows.size - 2) spaced.mirrored() else spaced
+        }
 
         private fun shift() = Key("⇧", KeyAction.Shift, 1.5f, function = true)
         private fun backspace() = Key("⌫", KeyAction.Backspace, 1.5f, function = true)
@@ -154,23 +185,28 @@ data class Layout(val rows: List<Row>) {
          * the split layout (g and v appear on both halves, as on the design); [field] adapts the
          * bottom row (PLAN §8.7): e-mail fields put @ in the comma's place, web addresses / and a
          * .com key in place of Emoji; both, and code-like fields, use ASCII punctuation. [hinge]
-         * (split only) gives the bottom row a space bar on each side of a vertical hinge.
+         * (split only) gives the bottom row a space bar on each side of a vertical hinge. [style]
+         * adds the number row, custom long-press symbols, the space width and mirroring (PLAN §10.9).
          */
-        fun letters(mode: Mode, shifted: Boolean, split: Boolean = false, field: Field = Field.TEXT, hinge: Boolean = false): Layout {
+        fun letters(
+            mode: Mode, shifted: Boolean, split: Boolean = false, field: Field = Field.TEXT, hinge: Boolean = false, style: KeyStyle = KeyStyle(),
+        ): Layout {
+            val custom = style.longPress
             val rows = if (split) {
                 listOf(
-                    Row(letters("qwertyuiop", shifted), splitAt = 5),
-                    Row(letters("asdfgghjkl", shifted), lead = 0.35f, trail = 0.35f, splitAt = 5),
-                    Row(listOf(shift()) + letters("zxcvvbnm", shifted) + backspace(), splitAt = 5),
+                    Row(letters("qwertyuiop", shifted, custom), splitAt = 5),
+                    Row(letters("asdfgghjkl", shifted, custom), lead = 0.35f, trail = 0.35f, splitAt = 5),
+                    Row(listOf(shift()) + letters("zxcvvbnm", shifted, custom) + backspace(), splitAt = 5),
                 )
             } else {
                 listOf(
-                    Row(letters("qwertyuiop", shifted)),
-                    Row(letters("asdfghjkl", shifted), lead = 0.5f, trail = 0.5f),
-                    Row(listOf(shift()) + letters("zxcvbnm", shifted) + backspace()),
+                    Row(letters("qwertyuiop", shifted, custom)),
+                    Row(letters("asdfghjkl", shifted, custom), lead = 0.5f, trail = 0.5f),
+                    Row(listOf(shift()) + letters("zxcvbnm", shifted, custom) + backspace()),
                 )
             }
-            return Layout(rows + bottomRow(mode, split, KeyAction.Symbols(0), "?123", field).aroundHinge(split && hinge))
+            val digits = if (style.numberRow) listOf(numberRow(split)) else emptyList()
+            return Layout(styled(digits + rows + bottomRow(mode, split, KeyAction.Symbols(0), "?123", field).aroundHinge(split && hinge), style))
         }
 
         /**
@@ -196,6 +232,48 @@ data class Layout(val rows: List<Row>) {
             )
         }
 
+        /**
+         * Builds the 12-key Japanese flick layout (PLAN §10.9): the kana rows あ–わ, each key typing
+         * its あ-column kana on a tap and the い, う, え, お kana on a flick left, up, right and
+         * down; ゛゜小 changes the last kana; the side columns hold symbols, Emoji, English,
+         * backspace, space and Enter. [style] mirrors the side columns.
+         */
+        fun flick(style: KeyStyle = KeyStyle()): Layout {
+            fun kana(row: String): Key {
+                val k = row.map { it.toString() }.let { if (it.size < 5) it + List(5 - it.size) { "" } else it }
+                val flick = listOf(k[0], k[1], k[2], k[3], k[4])
+                return Key(k[0], KeyAction.Text(k[0]), hint = null, flick = flick)
+            }
+            fun mark(label: String, flick: List<String>) = Key(label, KeyAction.Text(flick[0]), flick = flick)
+            val rows = listOf(
+                Row(listOf(Key("?123", KeyAction.Symbols(0), function = true), kana("あいうえお"), kana("かきくけこ"), kana("さしすせそ"), backspace().copy(width = 1f))),
+                Row(listOf(Key("☺", KeyAction.Emoji, function = true), kana("たちつてと"), kana("なにぬねの"), kana("はひふへほ"), Key("", KeyAction.Space, function = true))),
+                Row(listOf(Key("ABC", KeyAction.SetMode(Mode.ENGLISH), function = true), kana("まみむめも"), kana("や「ゆ」よ"), kana("らりるれろ"), Key("⏎", KeyAction.Enter, function = true))),
+                Row(listOf(
+                    mark("ー", listOf("ー", "～", "…", "", "")),
+                    Key("゛゜小", KeyAction.KanaModify, function = true),
+                    mark("わ", listOf("わ", "を", "ん", "ー", "")),
+                    mark("、", listOf("、", "，", "・", "：", "；")),
+                    mark("。", listOf("。", "？", "！", "…", "")),
+                )),
+            )
+            return Layout(if (style.mirrored) rows.map { r -> r.copy(keys = listOf(r.keys.last()) + r.keys.subList(1, r.keys.size - 1) + r.keys.first()) } else rows)
+        }
+
+        /**
+         * Picks what a flick from ([dx], [dy]) types on a key with [Key.flick]: the tap's kana
+         * within [slop], otherwise the direction the finger moved most (left, up, right, down).
+         * Returns: the text, or null when that direction has none.
+         */
+        fun flickText(key: Key, dx: Float, dy: Float, slop: Float): String? {
+            val i = when {
+                kotlin.math.hypot(dx, dy) < slop -> 0
+                kotlin.math.abs(dx) >= kotlin.math.abs(dy) -> if (dx < 0) 1 else 3
+                else -> if (dy < 0) 2 else 4
+            }
+            return key.flick.getOrNull(i)?.takeIf { it.isNotEmpty() }
+        }
+
         /** Long-press variants of symbols, the symbol itself first. */
         private val symbolMore = mapOf(
             "$" to "$€£¥¢₩", "¥" to "¥￥$€£", "￥" to "￥¥$€£", "-" to "-–—_", "_" to "_-—", "\"" to "\"“”„«»",
@@ -214,9 +292,10 @@ data class Layout(val rows: List<Row>) {
          * Builds symbol page [page] for [mode]: page 0 has the digits and the marks used most,
          * page 1 more symbols; Chinese and Mixed use full-width Chinese punctuation, Japanese its
          * own marks, English ASCII. The third row's first key switches page; the bottom row returns
-         * to letters. Many symbols offer variants on long press.
+         * to letters. Many symbols offer variants on long press. [style] sets the space width and
+         * mirroring (PLAN §10.9).
          */
-        fun symbols(mode: Mode, split: Boolean = false, page: Int = 0, hinge: Boolean = false): Layout {
+        fun symbols(mode: Mode, split: Boolean = false, page: Int = 0, hinge: Boolean = false, style: KeyStyle = KeyStyle()): Layout {
             val (row2, row3) = when (mode) {
                 Mode.ENGLISH, Mode.PC -> if (page == 0) "@#\$_&-+()/" to "*\"':;!?" else "~`|•√π÷×¶∆" to "%©®™✓[]<>"
                 Mode.JAPANESE -> if (page == 0) "@#￥&-+（）「」" to "、；：・？！…" else "『』【】〈〉《》～｜" to "%^=\\{}<>"
@@ -237,7 +316,7 @@ data class Layout(val rows: List<Row>) {
             } else {
                 listOf(Row(symbolKeys(row1)), Row(symbolKeys(row2)), Row(third))
             }
-            return Layout(rows + bottomRow(mode, split, KeyAction.Letters, "ABC").aroundHinge(split && hinge))
+            return Layout(styled(rows + bottomRow(mode, split, KeyAction.Letters, "ABC").aroundHinge(split && hinge), style))
         }
 
         /**

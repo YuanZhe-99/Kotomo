@@ -58,6 +58,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.compose.ui.focus.onFocusChanged
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.FuzzyRule
 import com.yuanzhe.kotomo.ime.KeyboardMemory
@@ -382,6 +383,9 @@ private val FuzzyRule.labels get() = when (this) {
 /** Draws the Japanese page: Japanese mode's own cross-language switches. */
 @Composable
 internal fun JapanesePage(settings: Settings, store: SettingsStore) {
+    Section(null) {
+        SwitchRow(R.string.japanese_flick, R.string.japanese_flick_desc, settings.japaneseFlick) { on -> store.set { it.copy(japaneseFlick = on) } }
+    }
     Section(stringResource(R.string.japanese_cross)) {
         Inset { Note(stringResource(R.string.japanese_cross_note)) }
         CrossSwitches(settings.japanese) { change -> store.set { it.copy(japanese = change(it.japanese)) } }
@@ -509,9 +513,48 @@ internal fun KeysPage(settings: Settings, store: SettingsStore) {
         SwitchRow(R.string.gesture_space_language, R.string.gesture_space_language_desc, g.spaceLanguage) { on -> gesture { it.copy(spaceLanguage = on) } }
         SwitchRow(R.string.gesture_smart_space, R.string.gesture_smart_space_desc, g.smartSpace) { on -> gesture { it.copy(smartSpace = on) } }
     }
+    KeyStyleSection(settings.keyStyle, settings.floating, { on -> store.set { it.copy(floating = on) } }) { change -> store.set { it.copy(keyStyle = change(it.keyStyle)) } }
     Section(stringResource(R.string.punct_section)) {
         SwitchRow(R.string.punct_smart_quotes, R.string.punct_smart_quotes_desc, settings.smartQuotes) { on -> store.set { it.copy(smartQuotes = on) } }
         SwitchRow(R.string.punct_auto_pair, R.string.punct_auto_pair_desc, settings.autoPair) { on -> store.set { it.copy(autoPair = on) } }
+    }
+}
+
+/**
+ * Draws the key and row customizations (PLAN §10.9): the gap, the label size and the space width
+ * as sliders, the floating keyboard, the number row and mirrored function keys as switches, and the person's long-press
+ * symbols as text (one `letter=symbols` per line, applied when the field loses focus or Done).
+ */
+@Composable
+private fun KeyStyleSection(style: KeyStyle, floating: Boolean, setFloating: (Boolean) -> Unit, change: ((KeyStyle) -> KeyStyle) -> Unit) {
+    Section(stringResource(R.string.keystyle_section)) {
+        Inset {
+            SliderRow(stringResource(R.string.keystyle_gap), style.gapDp, KeyStyle.GAP_RANGE, 1, label = { stringResource(R.string.value_dp, it) }) { v ->
+                change { it.copy(gapDp = v) }
+            }
+            SliderRow(stringResource(R.string.keystyle_text), style.textPercent, KeyStyle.TEXT_RANGE, 10, label = { stringResource(R.string.value_percent, it) }) { v ->
+                change { it.copy(textPercent = v) }
+            }
+            SliderRow(stringResource(R.string.keystyle_space), style.spacePercent, KeyStyle.SPACE_RANGE, 10, label = { stringResource(R.string.value_percent, it) }) { v ->
+                change { it.copy(spacePercent = v) }
+            }
+        }
+        SwitchRow(R.string.tool_floating, R.string.keystyle_floating_desc, floating) { on -> setFloating(on) }
+        SwitchRow(R.string.keystyle_number_row, R.string.keystyle_number_row_desc, style.numberRow) { on -> change { it.copy(numberRow = on) } }
+        SwitchRow(R.string.keystyle_mirrored, R.string.keystyle_mirrored_desc, style.mirrored) { on -> change { it.copy(mirrored = on) } }
+        Inset {
+            var text by remember(style.longPress) { mutableStateOf(KeyStyle.format(style.longPress)) }
+            val apply = { change { it.copy(longPress = KeyStyle.parse(text)) } }
+            androidx.compose.material3.OutlinedTextField(
+                text, { text = it },
+                Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) apply() },
+                label = { Text(stringResource(R.string.keystyle_long_press)) },
+                placeholder = { Text(stringResource(R.string.keystyle_long_press_example)) },
+                minLines = 2, maxLines = 6,
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { apply() }),
+            )
+            Note(stringResource(R.string.keystyle_long_press_note))
+        }
     }
 }
 

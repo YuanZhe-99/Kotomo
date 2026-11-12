@@ -156,6 +156,12 @@ data class Settings(
     val hiddenTools: Set<Tool> = Tool.offBar,
     /** Show an autofill service's inline suggestions in the bar (PLAN §10.10, Android 11 and later). */
     val inlineAutofill: Boolean = true,
+    /** Key and layout customizations (PLAN §10.9). */
+    val keyStyle: KeyStyle = KeyStyle(),
+    /** The keyboard floats over the app and can be dragged (PLAN §10.9). */
+    val floating: Boolean = false,
+    /** Japanese mode uses the 12-key flick layout instead of romaji on QWERTY (PLAN §10.9). */
+    val japaneseFlick: Boolean = false,
 ) {
     /** The tools the toolbar shows after More, in order; the rest are under More. */
     val tools: List<Tool> get() = toolOrder.filter { it !in hiddenTools }
@@ -185,6 +191,50 @@ data class Settings(
         val RETENTION_RANGE = 1..90
         /** Allowed key corner radii, in dp. */
         val RADIUS_RANGE = 0..24
+    }
+}
+
+/**
+ * Holds the key and layout customizations of PLAN §10.9: the gap between keys, the size of key
+ * labels, a row of digits above the letters, the space bar's width, the function keys mirrored to
+ * the other side (Enter and ⇧ on the left), and the person's own long-press symbols per letter.
+ * Notes: [longPress] maps a lowercase letter to the symbols its long press offers, the first also
+ * drawn in the key's corner; [KeyStyle.parse] reads the settings' text form.
+ */
+data class KeyStyle(
+    val gapDp: Int = 6,
+    val textPercent: Int = 100,
+    val numberRow: Boolean = false,
+    val spacePercent: Int = 100,
+    val mirrored: Boolean = false,
+    val longPress: Map<Char, String> = emptyMap(),
+) {
+    companion object {
+        /** Allowed gaps between keys, in dp. */
+        val GAP_RANGE = 2..12
+        /** Allowed key label sizes, in percent of the design's. */
+        val TEXT_RANGE = 80..140
+        /** Allowed space bar widths, in percent of the design's. */
+        val SPACE_RANGE = 60..140
+        /** The most symbols one letter's long press may offer. */
+        const val MAX_SYMBOLS = 12
+
+        /**
+         * Reads long-press symbols from their text form: one `letter=symbols` per line. Lines
+         * that are not a letter a–z, an equals sign and at least one symbol
+         * are skipped; letters are lowercased, symbols cut at [MAX_SYMBOLS], the last line for a
+         * letter wins.
+         */
+        fun parse(text: String): Map<Char, String> = text.split('\n').mapNotNull { line ->
+            val at = line.indexOf('=')
+            if (at < 0) return@mapNotNull null
+            val letter = line.substring(0, at).trim().lowercase().singleOrNull()?.takeIf { it in 'a'..'z' } ?: return@mapNotNull null
+            val cps = line.substring(at + 1).filterNot { it.isWhitespace() }.codePoints().toArray().take(MAX_SYMBOLS)
+            if (cps.isEmpty()) null else letter to cps.joinToString("") { String(Character.toChars(it)) }
+        }.toMap()
+
+        /** Writes long-press symbols as [parse] reads them, one letter per line in a–z order. */
+        fun format(map: Map<Char, String>): String = map.toSortedMap().entries.joinToString("\n") { (k, v) -> "$k=$v" }
     }
 }
 
@@ -244,6 +294,14 @@ internal object SettingsFormat {
     private val toolOrder = stringPreferencesKey("toolbar.order")
     private val hiddenTools = stringPreferencesKey("toolbar.hidden")
     private val inlineAutofill = booleanPreferencesKey("toolbar.inline_autofill")
+    private val keyGap = intPreferencesKey("keys.gap_dp")
+    private val keyText = intPreferencesKey("keys.text_percent")
+    private val numberRow = booleanPreferencesKey("layout.number_row")
+    private val spaceWidth = intPreferencesKey("layout.space_percent")
+    private val mirrored = booleanPreferencesKey("layout.mirrored")
+    private val longPressMap = stringPreferencesKey("keys.long_press_custom")
+    private val floating = booleanPreferencesKey("layout.floating")
+    private val japaneseFlick = booleanPreferencesKey("japanese.flick")
 
     /**
      * Reads the settings from a Preferences file.
@@ -307,6 +365,16 @@ internal object SettingsFormat {
             hiddenTools = if (p[hiddenTools] == null) d.hiddenTools else p.names(hiddenTools, Tool.configurable).toSet() +
                 Tool.offBar.filter { it.key !in p.rawNames(toolOrder) },
             inlineAutofill = p[inlineAutofill] ?: d.inlineAutofill,
+            keyStyle = KeyStyle(
+                gapDp = p.int(keyGap, KeyStyle.GAP_RANGE, d.keyStyle.gapDp),
+                textPercent = p.int(keyText, KeyStyle.TEXT_RANGE, d.keyStyle.textPercent),
+                numberRow = p[numberRow] ?: d.keyStyle.numberRow,
+                spacePercent = p.int(spaceWidth, KeyStyle.SPACE_RANGE, d.keyStyle.spacePercent),
+                mirrored = p[mirrored] ?: d.keyStyle.mirrored,
+                longPress = p[longPressMap]?.let(KeyStyle::parse) ?: d.keyStyle.longPress,
+            ),
+            floating = p[floating] ?: d.floating,
+            japaneseFlick = p[japaneseFlick] ?: d.japaneseFlick,
         )
     }
 
@@ -363,6 +431,14 @@ internal object SettingsFormat {
         p.put(pcHost, old.pcHost.key, new.pcHost.key)
         p.put(pcWide, old.pcWide.key, new.pcWide.key)
         p.put(inlineAutofill, old.inlineAutofill, new.inlineAutofill)
+        p.put(keyGap, old.keyStyle.gapDp, new.keyStyle.gapDp)
+        p.put(keyText, old.keyStyle.textPercent, new.keyStyle.textPercent)
+        p.put(numberRow, old.keyStyle.numberRow, new.keyStyle.numberRow)
+        p.put(spaceWidth, old.keyStyle.spacePercent, new.keyStyle.spacePercent)
+        p.put(mirrored, old.keyStyle.mirrored, new.keyStyle.mirrored)
+        p.put(floating, old.floating, new.floating)
+        p.put(japaneseFlick, old.japaneseFlick, new.japaneseFlick)
+        if (old.keyStyle.longPress != new.keyStyle.longPress) p[longPressMap] = KeyStyle.format(new.keyStyle.longPress)
         // Both lists are written together, so a later read knows which tools were in the list.
         if (old.toolOrder != new.toolOrder || old.hiddenTools != new.hiddenTools) {
             p[toolOrder] = p.joinNames(toolOrder, new.toolOrder, Tool.configurable)

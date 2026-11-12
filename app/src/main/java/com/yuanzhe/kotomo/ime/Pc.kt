@@ -390,6 +390,7 @@ class PcInput(private val hide: () -> Unit) {
                 PcKey.Hide -> hide()
             }
             KeyAction.Shift -> modifiers.tap(PcModifier.SHIFT, at)
+            KeyAction.KanaModify -> Unit
             KeyAction.Emoji, is KeyAction.SetMode, is KeyAction.SetOneHanded, is KeyAction.SetOneHandedWidth -> return false
         }
         return true

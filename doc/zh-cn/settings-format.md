@@ -87,6 +87,14 @@
 | `pc.wide` | string：`full`、`split` | `full` | 宽屏上的 PC 布局：功能键带加完整的 PC 键盘，或把手机的几页分成两半放在两侧 |
 | `toolbar.order` | string | `clipboard,ai,translate,settings,edit,emoji,language,dictionaries,themes` | “更多”之后的工具栏工具（PLAN §10.10），工具名以逗号连接；“更多”总在最前面，不列出。缺少的工具排到最后，本版本不认识的名称保留在已知名称之后 |
 | `toolbar.inline_autofill` | boolean | `true` | 在空闲的工具栏上显示自动填充服务的内联建议（Android 11 起，PLAN §10.10）；关闭时 Kotomo 不请求 |
+| `keys.gap_dp` | int 2–12 | `6` | 按键间距，单位 dp（PLAN §10.9） |
+| `keys.text_percent` | int 80–140 | `100` | 按键文字大小，为设计稿的百分比 |
+| `keys.long_press_custom` | string | 空 | 用户自定义的长按符号：每行 `字母=符号`（a–z）；不符合的行在读取时丢弃 |
+| `layout.number_row` | boolean | `false` | 字母上方加一行数字 |
+| `layout.space_percent` | int 60–140 | `100` | 空格键宽度，为设计稿的百分比 |
+| `layout.mirrored` | boolean | `false` | 功能键放到另一侧：底行与 ⇧ … ⌫ 一行左右翻转 |
+| `layout.floating` | boolean | `false` | 键盘悬浮在 App 之上，可拖动；悬浮时不分离 |
+| `japanese.flick` | boolean | `false` | 日文模式使用 12 键滑动布局 |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes` | 不放在工具栏上的工具，以逗号连接；它们和工具栏放不下的工具一起在“更多”里。与 `toolbar.order` 一起写入；已存的 `toolbar.order` 中缺少的工具（以后的版本新增的）按默认位置放置 |
 
 ## 主题文件

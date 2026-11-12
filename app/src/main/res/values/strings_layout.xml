@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keystyle_section">Keys and rows</string>
+    <string name="keystyle_gap">Gap between keys</string>
+    <string name="keystyle_text">Label size</string>
+    <string name="keystyle_space">Space bar width</string>
+    <string name="keystyle_number_row">Number row</string>
+    <string name="keystyle_number_row_desc">A row of digits above the letters</string>
+    <string name="keystyle_mirrored">Function keys on the other side</string>
+    <string name="keystyle_mirrored_desc">Enter, ⇧ and ?123 move to the opposite side, for the left thumb</string>
+    <string name="keystyle_long_press">Your long-press symbols</string>
+    <string name="keystyle_long_press_example">a=@á</string>
+    <string name="keystyle_long_press_note">One letter, an equals sign and the symbols per line. The first symbol is shown in the key\'s corner; the letter\'s accents follow.</string>
+    <string name="keystyle_floating_desc">The keys float over the app; drag the bar above them to move them</string>
+    <string name="japanese_flick">12-key flick</string>
+    <string name="japanese_flick_desc">Type kana on a 12-key pad: tap for the あ column, flick left, up, right or down for the others</string>
+</resources>

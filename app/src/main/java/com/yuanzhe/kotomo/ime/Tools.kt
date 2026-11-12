@@ -57,13 +57,14 @@ enum class Tool(val icon: Int, val label: Int) {
     EMOJI(R.drawable.ic_key_emoji, R.string.tool_emoji),
     LANGUAGE(R.drawable.ic_tool_language, R.string.tool_language),
     DICTIONARIES(R.drawable.ic_tool_dictionaries, R.string.tool_dictionaries),
-    THEMES(R.drawable.ic_tool_themes, R.string.tool_themes);
+    THEMES(R.drawable.ic_tool_themes, R.string.tool_themes),
+    FLOATING(R.drawable.ic_tool_floating, R.string.tool_floating);
 
     companion object {
         /** The tools the person can order and hide: all but More, in their default order. */
         val configurable: List<Tool> = entries - MORE
         /** The tools that start under More rather than on the bar (the bar keeps its designed four). */
-        val offBar: Set<Tool> = setOf(EDIT, EMOJI, LANGUAGE, DICTIONARIES, THEMES)
+        val offBar: Set<Tool> = setOf(EDIT, EMOJI, LANGUAGE, DICTIONARIES, THEMES, FLOATING)
     }
 }
 

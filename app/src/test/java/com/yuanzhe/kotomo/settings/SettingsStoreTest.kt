@@ -229,7 +229,7 @@ class SettingsStoreTest {
         withData { data, _ ->
             val read = SettingsFormat.read(data.data.first())
             assertEquals(wanted.toolOrder, read.toolOrder)
-            assertEquals(listOf(Tool.EDIT, Tool.CLIPBOARD, Tool.SETTINGS, Tool.EMOJI, Tool.LANGUAGE, Tool.DICTIONARIES, Tool.THEMES), read.tools)
+            assertEquals(listOf(Tool.EDIT, Tool.CLIPBOARD, Tool.SETTINGS, Tool.EMOJI, Tool.LANGUAGE, Tool.DICTIONARIES, Tool.THEMES, Tool.FLOATING), read.tools)
             assertFalse(Tool.MORE in read.toolOrder)
         }
     }
@@ -248,8 +248,22 @@ class SettingsStoreTest {
             assertEquals(listOf(Tool.SETTINGS, Tool.CLIPBOARD, Tool.TRANSLATE), read.tools)
             assertEquals(setOf(Tool.AI) + Tool.offBar, read.hiddenTools)
             SettingsStore(data, scope).update { it.copy(hiddenTools = it.hiddenTools - Tool.EDIT) }
-            assertEquals("settings,clipboard,ai,translate,edit,emoji,language,dictionaries,themes,hologram", data.data.first()[order])
-            assertEquals("ai,emoji,language,dictionaries,themes", data.data.first()[hidden])
+            assertEquals("settings,clipboard,ai,translate,edit,emoji,language,dictionaries,themes,floating,hologram", data.data.first()[order])
+            assertEquals("ai,emoji,language,dictionaries,themes,floating", data.data.first()[hidden])
+        }
+    }
+
+    /** T14-keys-3 (PLAN §10.9): the key style and floating survive reopening; out-of-range numbers read as defaults. */
+    @Test
+    fun keyStyleAndFloatingRoundTrip() {
+        val wanted = Settings(keyStyle = KeyStyle(gapDp = 3, textPercent = 120, numberRow = true, spacePercent = 80, mirrored = true, longPress = mapOf('a' to "@á")), floating = true)
+        withData { data, scope -> SettingsStore(data, scope).update { wanted } }
+        withData { data, _ -> assertEquals(wanted, SettingsFormat.read(data.data.first())) }
+        withData { data, _ -> data.edit { it[intPreferencesKey("keys.gap_dp")] = 99; it[stringPreferencesKey("keys.long_press_custom")] = "nonsense" } }
+        withData { data, _ ->
+            val read = SettingsFormat.read(data.data.first()).keyStyle
+            assertEquals(KeyStyle().gapDp, read.gapDp)
+            assertEquals(emptyMap<Char, String>(), read.longPress)
         }
     }
 }

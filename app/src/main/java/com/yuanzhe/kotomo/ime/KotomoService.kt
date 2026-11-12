@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.graphics.Rect
 import android.inputmethodservice.InputMethodService
 import android.os.Bundle
 import android.os.IBinder
@@ -221,6 +222,42 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var chineseInput = ""
     /** Main thread: the mode fixed for the current app, or null (Compose state for the quick panel). */
     private val pinnedHere = androidx.compose.runtime.mutableStateOf<Mode?>(null)
+    /** Main thread: the input view's root and the floating keyboard's grip, once the views exist. */
+    private var inputRoot: InputRoot? = null
+    private var floatGrip: FloatGrip? = null
+
+    /**
+     * Applies the floating keyboard setting (PLAN §10.9): the root takes the window's height with
+     * a transparent background and places the keys, at most `kb_float_width` wide, where they were
+     * dragged; the grip shows above the candidate bar. The PC layout never floats.
+     */
+    private fun applyFloating() {
+        val root = inputRoot ?: return
+        val on = settings.floating && mode != Mode.PC
+        val color = KeyboardColors.color(this, R.color.kb_background)
+        root.floatWidth = minOf((resources.displayMetrics.widthPixels * FLOAT_SHARE).toInt(), resources.getDimensionPixelSize(R.dimen.kb_float_width))
+        root.floating = on
+        root.setBackgroundColor(if (on) android.graphics.Color.TRANSPARENT else color)
+        content.setBackgroundColor(if (on) color else android.graphics.Color.TRANSPARENT)
+        floatGrip?.visibility = if (on) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Reports the keyboard's insets: while floating, the app keeps its whole window (nothing is
+     * pushed up) and only the keyboard's own box takes touches (PLAN §10.9).
+     */
+    override fun onComputeInsets(outInsets: InputMethodService.Insets) {
+        super.onComputeInsets(outInsets)
+        val root = inputRoot ?: return
+        if (!root.floating || !root.isShown) return
+        val at = IntArray(2).also(root::getLocationInWindow)
+        val bottom = at[1] + root.height
+        outInsets.contentTopInsets = bottom
+        outInsets.visibleTopInsets = bottom
+        outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
+        outInsets.touchableRegion.set(Rect(root.contentRect).apply { offset(at[0], at[1]) })
+    }
+
     /** Main thread: the autofill suggestion strip over the toolbar (Android 11 and later). */
     private var inlineAutofill: InlineAutofill? = null
 
@@ -618,7 +655,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             addView(quickStrip, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(panelHost)
         }
-        val root = InputRoot(this, content, popups).apply { setBackgroundColor(KeyboardColors.color(this@KotomoService, R.color.kb_background)) }
+        val root = InputRoot(this, content, popups)
+        inputRoot = root
+        floatGrip = FloatGrip(this) { dx, dy -> root.moveBy(dx, dy) }.also { content.addView(it, 0) }
+        applyFloating()
         // The window reaches under the navigation bar, where the system draws its own keyboard
         // buttons; the keys stay above it on every device and posture. The insets are read on the
         // window's decor view, since the input view's parents do not pass them on.
@@ -952,6 +992,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
             Tool.EDIT -> showEditPanel()
             Tool.EMOJI -> showEmoji()
+            Tool.FLOATING -> store.set { it.copy(floating = !it.floating) }
             Tool.LANGUAGE -> settings.modes.let { modes ->
                 showKeyboard()
                 switchMode(modes[(modes.indexOf(mode) + 1) % modes.size], 0)
@@ -1227,6 +1268,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         when (action) {
             is KeyAction.Text -> {
                 val letter = action.text.length == 1 && action.text[0].let { it in 'a'..'z' || it in 'A'..'Z' }
+                // The flick layout's kana (and ー) compose for Mozc like romaji (PLAN §10.9).
+                val kana = mode == Mode.JAPANESE && action.text.length == 1 && Kana.composes(action.text[0])
                 val mixedOpen = mode == Mode.MIXED && !direct && composing.isNotEmpty()
                 if (mixedOpen && !longPress && (action.text == "'" || letter) && composing.length >= Core.MAX_COMPOSITION) {
                     // The coordinator converts no longer composition; the key is dropped.
@@ -1240,7 +1283,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     if (shift == Shift.ONCE) shift = Shift.OFF
                     commitMixed(null, null, then = action.text)
                     return
-                } else if (letter && !direct && !longPress) {
+                } else if ((letter || kana) && !direct && !longPress) {
                     composing.append(action.text)
                     taps += keyboard.lastTap?.let { (dx, dy) -> English.touchPoint(action.text[0], dx, dy) }
                     ic.setComposingText(composing, 1)
@@ -1321,6 +1364,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 showEmoji()
             }
             is KeyAction.SetMode -> Unit
+            KeyAction.KanaModify -> if (composing.isNotEmpty()) {
+                val last = composing.length - 1
+                composing.setCharAt(last, Kana.modify(composing[last]))
+                ic.setComposingText(composing, 1)
+            }
             is KeyAction.SetOneHanded -> setOneHanded { it.copy(side = action.side) }
             is KeyAction.SetOneHandedWidth -> setOneHanded { it.copy(widthPercent = action.percent) }
             is KeyAction.MoveCursor -> {
@@ -1620,7 +1668,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val s = settings
         val window = WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this).bounds
         val posture = posture(window)
-        val split = posture.split(s.split) && !pad
+        // A floating keyboard is never split (PLAN §10.9).
+        val split = posture.split(s.split) && !pad && !s.floating
+        applyFloating()
         val density = resources.displayMetrics.density
         keyboard.hinge = posture.hingeX?.takeIf { split }?.let { h ->
             val at = IntArray(2).also(keyboard::getLocationInWindow)[0]
@@ -1652,9 +1702,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val symbolMode = if (field == Field.EMAIL || field == Field.URL || field == Field.CODE) Mode.ENGLISH else mode
         keyboard.layout = when {
             pad -> Layout.pad(field)
-            symbols -> Layout.symbols(symbolMode, split, symbolPage, hinge = keyboard.hinge != null)
-            else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null)
+            symbols -> Layout.symbols(symbolMode, split, symbolPage, hinge = keyboard.hinge != null, style = s.keyStyle)
+            mode == Mode.JAPANESE && s.japaneseFlick && !direct && field == Field.TEXT -> Layout.flick(s.keyStyle)
+            else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null, style = s.keyStyle)
         }
+        keyboard.gap = s.keyStyle.gapDp * resources.displayMetrics.density
+        keyboard.textScale = s.keyStyle.textPercent / 100f
         if (mode == Mode.PC) applyPcLayout(posture.wide)
         keyboard.shift = shift
         keyboard.mode = mode
@@ -2563,6 +2616,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         /** The compiled cross-language lexicon (doc/en-us/lexicon-format.md), stored uncompressed. */
         const val LEXICON = "cross.klx"
         const val NOTICE_MS = 1500L
+        /** The most of the screen's width a floating keyboard takes. */
+        const val FLOAT_SHARE = 0.8f
         /** The API level that added TextAttribute.Builder.setTextSuggestionSelected. */
         const val API_TEXT_SUGGESTION_SELECTED = 37
         /** Conversion candidates passed to the field with the composition. */

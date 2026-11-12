@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keystyle_section">キーと列</string>
+    <string name="keystyle_gap">キーの間隔</string>
+    <string name="keystyle_text">キーの文字サイズ</string>
+    <string name="keystyle_space">スペースキーの幅</string>
+    <string name="keystyle_number_row">数字の列</string>
+    <string name="keystyle_number_row_desc">文字の上に数字の列を追加します</string>
+    <string name="keystyle_mirrored">機能キーを反対側に</string>
+    <string name="keystyle_mirrored_desc">Enter、⇧、?123 を反対側に移し、左手の親指で押しやすくします</string>
+    <string name="keystyle_long_press">長押しの記号（自分用）</string>
+    <string name="keystyle_long_press_example">a=@á</string>
+    <string name="keystyle_long_press_note">1 行に 1 文字、等号、記号を書きます。最初の記号はキーの隅に表示され、その文字のアクセント付き文字が後に続きます。</string>
+    <string name="keystyle_floating_desc">キーボードがアプリの上に浮かびます。上のバーをドラッグして移動します</string>
+    <string name="japanese_flick">12 キーフリック入力</string>
+    <string name="japanese_flick_desc">12 キーでかなを入力します。タップであ段、左・上・右・下へのフリックでほかの段</string>
+</resources>
