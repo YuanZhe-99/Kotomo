@@ -14,6 +14,8 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
 import kotlinx.coroutines.runBlocking
+import com.yuanzhe.kotomo.ime.Mode
+import com.yuanzhe.kotomo.settings.SettingsStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -39,16 +41,23 @@ class DictionaryDownloadTest {
     private val context = instrumentation.targetContext
     private val device = UiDevice.getInstance(instrumentation)
     private val store = DictionaryStore.get(context)
+    private val settings = SettingsStore.get(context)
+    private var defaultMode = Mode.MIXED
 
     @Before
     fun selectKotomo() {
         device.executeShellCommand("ime enable $IME")
         device.executeShellCommand("ime set $IME")
         device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
+        // Chinese mode: in Mixed mode space does not commit. The test's field asks for no
+        // learning, so it reads nothing remembered per app and takes the default mode.
+        defaultMode = settings.current.defaultMode
+        runBlocking { settings.update { it.copy(defaultMode = Mode.CHINESE) } }
     }
 
     @After
     fun cleanUp() = runBlocking {
+        settings.update { it.copy(defaultMode = defaultMode) }
         Sources.ALL.forEach { store.uninstall(it.id) }
         Unit
     }
