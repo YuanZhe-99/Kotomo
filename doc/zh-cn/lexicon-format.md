@@ -17,7 +17,7 @@ build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexico
 编译器拒绝含有坏行的表并指出那一行（不足八列，键、表层形式或读音为空，字符串超过 255 字节，代价不在
 0–65535 之内，未知的类别），并在报告成功之前把自己的输出重新映射一遍。应用的构建把
 `build/lexicon/cross.klx` 不压缩地打包为资产 `cross.klx`；没有这个文件时应用照常构建、但没有跨语言转换，
-`KOTOMO_REQUIRE_LEXICON=1` 使它的缺失成为错误。这个文件是构建产物，从不提交；它沿用所派生数据的许可证
+`KOTOMO_REQUIRE_LEXICON=1` 使它的缺失成为错误。不压缩存放使 APK 增加它的全部大小（2026-11-10 的表为 41.6 MB），用户已于 2026-11-11 为就地映射追认这一点。这个文件是构建产物，从不提交；它沿用所派生数据的许可证
 （`third-party.md`）。
 
 ## 布局

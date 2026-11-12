@@ -348,7 +348,7 @@
 | 英文引擎 | AOSP LatinIME 的原生建议代码与二进制词典（取自 HeliBoard v4.2 的维护版本） | `libkotomo_english.so`；词表为 aosp-dictionaries 的 en_US（CC BY 4.0）；手势解码为空 |
 | 混合协调层 | 自研 C++：候选网格、解码、跨语言词库运行时、统一候选与 JNI | `libkotomo_core.so`（`core/mixed/`）：会话、请求与快照（契约第 2 版）、经函数表调用三个引擎；混合模式经它运行（Q7，2026-11-11：主机 PASS，设备 NOT_RUN） |
 | 简繁与地区用词 | OpenCC（与 librime 同一份库与数据） | 已采用（大陆、繁体、台湾、香港） |
-| 跨语言词库 | 自建流水线（`lexicon/`），从 JMdict、Unihan、CC-CEDICT、OpenCC 与 Mozc 词典生成，结果连同来源与哈希可复现（§5.9） | 生成器与样本检查已有；编译成只读的运行时文件 `cross.klx`（`doc/en-us/lexicon-format.md`，2026-11-11），协调层映射它、按键二分查找，随 APK 不压缩打包 |
+| 跨语言词库 | 自建流水线（`lexicon/`），从 JMdict、Unihan、CC-CEDICT、OpenCC 与 Mozc 词典生成，结果连同来源与哈希可复现（§5.9） | 生成器与样本检查已有；编译成只读的运行时文件 `cross.klx`（`doc/en-us/lexicon-format.md`，2026-11-11），协调层映射它、按键二分查找，随 APK 不压缩打包（APK 因此增加 41.6 MB；用户 2026-11-11 追认，不必过分在意体积） |
 | Emoji 关键词 | Unicode CLDR 注释（英、简中、繁中、日），中文关键词另生成拼音键，日文关键词另生成罗马字键 | 已采用（`lexicon/EmojiData.java` → `emoji.tsv`） |
 | Emoji 图像 | 默认系统 Emoji 字体；Noto Emoji、Twemoji 作为可选样式包；样式只影响键盘内显示，提交的始终是 Unicode | 系统字体已采用；样式包未做 |
 | 存储 | 格式带版本，保留未知字段，使用 UTC 时间；迁移与升级可以回滚 | 设置在 Preferences DataStore，主题是 JSON 文件，剪贴板是加密文件，均带版本；**没有 Room**（§2.5 决定 7）。按 App 记忆与 Emoji 最近使用存在不带版本的 SharedPreferences 中（§0.5） |

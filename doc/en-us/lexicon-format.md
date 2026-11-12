@@ -20,7 +20,8 @@ key, surface or reading, a string over 255 bytes, a cost outside 0–65535, an u
 then maps its own output back before it reports success. The app build packs
 `build/lexicon/cross.klx` uncompressed as the asset `cross.klx`; without the file the app builds
 with no cross-language conversion, and `KOTOMO_REQUIRE_LEXICON=1` makes its absence an error.
-The file is build output and is never committed; it keeps the licenses of the data it derives
+Stored uncompressed it adds its whole size (41.6 MB for the tables of 2026-11-10) to the APK,
+which the user accepted on 2026-11-11 for mapping it in place. The file is build output and is never committed; it keeps the licenses of the data it derives
 from (`third-party.md`).
 
 ## Layout
