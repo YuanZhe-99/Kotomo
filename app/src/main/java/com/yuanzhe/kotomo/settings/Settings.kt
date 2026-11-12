@@ -24,6 +24,12 @@ enum class ChineseScript { SIMPLIFIED, TRADITIONAL, TAIWAN, HONG_KONG }
 /** The keyboard's colors: following the system, always light, always dark, or Material You. */
 enum class KeyboardTheme { SYSTEM, LIGHT, DARK, DYNAMIC }
 
+/** The computer the PC layout types to (PLAN §10.11): names the modifiers and the shortcuts. */
+enum class PcHost { WINDOWS, MACOS, LINUX }
+
+/** The PC layout on a wide screen: the whole PC keyboard, or two phone-sized halves at the sides. */
+enum class PcWide { FULL, SPLIT }
+
 /** Chooses how strongly Mixed mode offers cross-language candidates (PLAN §2.3). */
 enum class MixedLevel { CONSERVATIVE, BALANCED, AGGRESSIVE }
 
@@ -139,12 +145,18 @@ data class Settings(
     val theme: KeyboardTheme = KeyboardTheme.SYSTEM,
     val keyRadiusDp: Int = 12,
     val ai: AiSettings = AiSettings(),
+    /** Whether the PC layout is offered (PLAN §10.11); off by default, unlike the other modes. */
+    val pcEnabled: Boolean = false,
+    val pcHost: PcHost = PcHost.WINDOWS,
+    val pcWide: PcWide = PcWide.FULL,
 ) {
     /**
      * The modes the language choice offers, in the person's order (PLAN §2.3).
-     * Notes: never empty; with every mode hidden all of them are offered.
+     * Notes: never empty; with every mode hidden all of them are offered. The PC layout is offered
+     * only while [pcEnabled] is on, so it stays hidden for people who never turned it on.
      */
-    val modes: List<Mode> get() = modeOrder.filter { it !in hiddenModes }.ifEmpty { modeOrder }
+    val modes: List<Mode> get() = modeOrder.filter { it !in hiddenModes && (it != Mode.PC || pcEnabled) }
+        .ifEmpty { modeOrder.filter { it != Mode.PC } }
 
     /**
      * Returns [wanted] when the language choice offers it, otherwise the default mode, otherwise
@@ -216,6 +228,9 @@ internal object SettingsFormat {
     private val theme = stringPreferencesKey("theme.choice")
     private val keyRadius = intPreferencesKey("theme.key_radius_dp")
     private val aiEnabled = booleanPreferencesKey("ai.enabled")
+    private val pcEnabled = booleanPreferencesKey("pc.enabled")
+    private val pcHost = stringPreferencesKey("pc.host")
+    private val pcWide = stringPreferencesKey("pc.wide")
 
     /**
      * Reads the settings from a Preferences file.
@@ -271,6 +286,9 @@ internal object SettingsFormat {
             theme = p.enum(theme, KeyboardTheme.entries, d.theme),
             keyRadiusDp = p.int(keyRadius, Settings.RADIUS_RANGE, d.keyRadiusDp),
             ai = AiSettings(enabled = p[aiEnabled] ?: d.ai.enabled),
+            pcEnabled = p[pcEnabled] ?: d.pcEnabled,
+            pcHost = p.enum(pcHost, PcHost.entries, d.pcHost),
+            pcWide = p.enum(pcWide, PcWide.entries, d.pcWide),
         )
     }
 
@@ -323,6 +341,9 @@ internal object SettingsFormat {
         p.put(theme, old.theme.key, new.theme.key)
         p.put(keyRadius, old.keyRadiusDp, new.keyRadiusDp)
         p.put(aiEnabled, old.ai.enabled, new.ai.enabled)
+        p.put(pcEnabled, old.pcEnabled, new.pcEnabled)
+        p.put(pcHost, old.pcHost.key, new.pcHost.key)
+        p.put(pcWide, old.pcWide.key, new.pcWide.key)
         p[version] = maxOf(p[version] ?: 0, VERSION)
         p[updated] = nowUtcMs
     }

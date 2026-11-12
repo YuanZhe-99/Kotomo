@@ -34,6 +34,11 @@ Latin words only where it helps readability. The input modes are 中文, 英文,
 | input method (IME) | 输入法（IME） |
 | input mode | 输入模式 |
 | Mixed mode | 混合模式 |
+| PC layout / PC keys | PC 布局 / PC 按键 |
+| modifier key (latched, locked, held) | 修饰键（锁住下一键、锁定、按住） |
+| host system (the computer typed to) | 主机系统（要输入的电脑） |
+| smart quotes | 智能引号 |
+| auto-pairing (brackets) | 成对补全（括号） |
 | raw input (the letters typed) | 输入串 |
 | composition (typed, not yet committed) | 组合（未上屏内容） |
 | commit | 提交（上屏） |

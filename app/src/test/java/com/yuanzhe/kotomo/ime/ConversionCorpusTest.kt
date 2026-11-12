@@ -160,6 +160,8 @@ class ConversionCorpusTest {
             val words = english.suggestions(line.input, previous = line.context.ifEmpty { null }).map { it.word }
             Candidates.withEmoji(Candidates.english(line.input, words), Candidates.emoji(emoji, line.input))
         }
+        // The PC layout converts nothing; no corpus line uses it.
+        Mode.PC -> emptyList()
     }
 
     /**

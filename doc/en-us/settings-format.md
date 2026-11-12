@@ -42,7 +42,7 @@ stores and shows them, and they take effect once the mixed coordinator exists.
 | Key | Type | Default | Setting |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | Mode the keyboard starts in: `mixed`, `chinese`, `japanese`, `english`; a hidden mode falls back to the first one shown |
-| `modes.order` | string | `mixed,chinese,japanese,english` | The language choice's order, mode names joined by commas; a missing mode joins at the end, names this version does not know are kept after the known ones |
+| `modes.order` | string | `mixed,chinese,japanese,english,pc` | The language choice's order, mode names joined by commas; a missing mode joins at the end, names this version does not know are kept after the known ones |
 | `modes.hidden` | string | empty | Modes the language choice does not offer, joined by commas; with all of them hidden, all are offered |
 | `mixed.level` | string | `balanced` | Mixed-mode level: `conservative`, `balanced`, `aggressive` |
 | `mixed.weight_chinese`, `mixed.weight_english`, `mixed.weight_japanese`, `mixed.weight_emoji` | int 0–100 | 70, 60, 60, 30 | Mixed-mode candidate weight per language |
@@ -71,6 +71,9 @@ stores and shows them, and they take effect once the mixed coordinator exists.
 | `theme.choice` | string: `system`, `light`, `dark`, `dynamic` | `system` | The keyboard's colors; `dynamic` is Material You (Android 12 and later). Read only until the theme file exists (below), never written after that |
 | `theme.key_radius_dp` | int, 0–24 | `12` | Key corner radius in dp; read only until the theme file exists |
 | `ai.enabled` | boolean | `false` | Let the AI button use writing help ([ai.md](ai.md)) |
+| `pc.enabled` | boolean | `false` | Offer the PC layout (PLAN §10.11) in the language choice; it is the PC row's show/hide switch on the Input modes page, so the layout stays hidden until turned on. `modes.order` and `modes.hidden` list `pc` like the other modes |
+| `pc.host` | string: `windows`, `macos`, `linux` | `windows` | The computer the PC layout types to: the modifiers' names and order, the Fn page's shortcuts and the security combination (Ctrl+Alt+Del, ⌥⌘Esc on macOS); the key codes sent are the same |
+| `pc.wide` | string: `full`, `split` | `full` | The PC layout on a wide screen: the function strip and the whole PC keyboard, or the phone pages as two halves at the sides |
 
 ## Theme file
 

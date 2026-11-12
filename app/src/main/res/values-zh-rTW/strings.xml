@@ -272,4 +272,20 @@
     <string name="punct_smart_quotes_desc">用 \" 和 \' 鍵輸入彎引號與撇號。程式碼、網址和電子郵件輸入框中不生效。</string>
     <string name="punct_auto_pair">自動補上括號與引號</string>
     <string name="punct_auto_pair_desc">輸入 (、「、“ 等開括號時同時加上對應的閉括號；緊接著按退格會一起刪除。程式碼、網址和電子郵件輸入框中不生效。</string>
+    <string name="mode_pc">PC 按鍵</string>
+    <string name="mode_pc_desc">向遠端桌面、終端機類應用程式傳送 PC 按鍵與快速鍵；不轉換、不學習</string>
+    <string name="pc_section">PC 按鍵</string>
+    <string name="pc_host">要輸入的電腦</string>
+    <string name="pc_host_windows">Windows</string>
+    <string name="pc_host_windows_desc">Ctrl · Win · Alt；Ctrl+Alt+Del</string>
+    <string name="pc_host_macos">macOS</string>
+    <string name="pc_host_macos_desc">⌃ Control · ⌥ Option · ⌘ Command；⌥⌘Esc</string>
+    <string name="pc_host_linux">Linux</string>
+    <string name="pc_host_linux_desc">Ctrl · Super · Alt；Ctrl+Alt+Del</string>
+    <string name="pc_wide">在大螢幕上</string>
+    <string name="pc_wide_full">完整鍵盤</string>
+    <string name="pc_wide_full_desc">功能鍵與完整的 PC 鍵盤</string>
+    <string name="pc_wide_split">分離</string>
+    <string name="pc_wide_split_desc">兩側各一半，與手機按鍵一樣大，方便雙手拇指</string>
+    <string name="pc_note">在上方清單中開啟 PC 按鍵，再把它固定到需要的應用程式。Kotomo 傳送的是 Android 按鍵事件，能否傳到遠端電腦由該應用程式決定。沒有觸控板：鍵盤無法移動其他應用程式的指標。</string>
 </resources>

@@ -39,6 +39,9 @@ reads it, so a new artboard needs only its file and an entry there.
 | `SettingsTablet.dc.html` | 设置 · 平板双栏 · 键盘布局与尺寸 | 1280×800 |
 | `Keyboard.dc.html` | 组件 · 键盘按键区 | 412×248 |
 
+`pc-layout.md` describes the PC / remote-control layout (PLAN §10.11) in text and key tables, written
+from the user's remote-control keyboard design draft (2026-11-11); it has no artboard.
+
 Rules (AGENTS.md): no screenshots, icons or assets of other keyboards here; Gboard and MyApps-UI
 inspire the interaction and the settings presentation only. Fonts are loaded from Google Fonts
 (Noto Sans SC and JP, SIL Open Font License). A change to these drafts replaces the files here in

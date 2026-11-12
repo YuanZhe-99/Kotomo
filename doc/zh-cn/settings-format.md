@@ -36,7 +36,7 @@
 | 键 | 类型 | 默认值 | 设置 |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | 键盘启动时的模式：`mixed`、`chinese`、`japanese`、`english`；隐藏的模式改用第一个显示的模式 |
-| `modes.order` | string | `mixed,chinese,japanese,english` | 语言选择的顺序，模式名以逗号连接；缺少的模式排到最后，本版本不认识的名称保留在已知名称之后 |
+| `modes.order` | string | `mixed,chinese,japanese,english,pc` | 语言选择的顺序，模式名以逗号连接；缺少的模式排到最后，本版本不认识的名称保留在已知名称之后 |
 | `modes.hidden` | string | 空 | 语言选择中不提供的模式，以逗号连接；全部隐藏时全部提供 |
 | `mixed.level` | string | `balanced` | 混合模式的智能程度：`conservative`、`balanced`、`aggressive` |
 | `mixed.weight_chinese`、`mixed.weight_english`、`mixed.weight_japanese`、`mixed.weight_emoji` | int 0–100 | 70、60、60、30 | 混合模式中各语言的候选权重 |
@@ -65,6 +65,9 @@
 | `theme.choice` | string：`system`、`light`、`dark`、`dynamic` | `system` | 键盘配色；`dynamic` 即 Material You（Android 12 及以上）。仅在主题文件（见下）存在之前读取，之后不再写入 |
 | `theme.key_radius_dp` | int，0–24 | `12` | 按键圆角，单位 dp；仅在主题文件存在之前读取 |
 | `ai.enabled` | boolean | `false` | 允许 AI 按钮使用写作助手（[ai.md](ai.md)） |
+| `pc.enabled` | boolean | `false` | 在语言选择中提供 PC 布局（PLAN §10.11）；它就是输入模式页上 PC 一行的显示/隐藏开关，打开之前一直隐藏。`modes.order` 与 `modes.hidden` 像其他模式一样列出 `pc` |
+| `pc.host` | string：`windows`、`macos`、`linux` | `windows` | PC 布局要输入的电脑：修饰键的名称与顺序、Fn 页的快捷键与安全组合键（Ctrl+Alt+Del，macOS 为 ⌥⌘Esc）；发出的键码不变 |
+| `pc.wide` | string：`full`、`split` | `full` | 宽屏上的 PC 布局：功能键带加完整的 PC 键盘，或把手机的几页分成两半放在两侧 |
 
 ## 主题文件
 

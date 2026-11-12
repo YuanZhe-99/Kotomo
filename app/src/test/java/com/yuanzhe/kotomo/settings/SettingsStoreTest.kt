@@ -51,7 +51,7 @@ class SettingsStoreTest {
 
     private val changed = Settings(
         defaultMode = Mode.JAPANESE,
-        modeOrder = listOf(Mode.CHINESE, Mode.JAPANESE, Mode.MIXED, Mode.ENGLISH),
+        modeOrder = listOf(Mode.CHINESE, Mode.JAPANESE, Mode.MIXED, Mode.ENGLISH, Mode.PC),
         hiddenModes = setOf(Mode.MIXED),
         mixed = Mixed(
             level = MixedLevel.AGGRESSIVE,
@@ -201,7 +201,8 @@ class SettingsStoreTest {
         assertEquals(Mode.ENGLISH, s.usable(null))
         assertEquals(Mode.ENGLISH, s.usable(Mode.CHINESE))
         assertEquals(Mode.JAPANESE, s.usable(Mode.JAPANESE))
-        assertEquals(Mode.entries, Settings(hiddenModes = Mode.entries.toSet()).modes)
+        // PC is never offered as the fallback for "everything hidden" (PLAN §10.11).
+        assertEquals(Mode.entries - Mode.PC, Settings(hiddenModes = Mode.entries.toSet()).modes)
     }
 
     /** Unknown mode names (a newer version's) are skipped when read and kept when the order changes. */
@@ -211,7 +212,8 @@ class SettingsStoreTest {
         withData { data, _ -> data.edit { it[order] = "english,korean,japanese" } }
         withData { data, scope ->
             val read = SettingsFormat.read(data.data.first())
-            assertEquals(listOf(Mode.ENGLISH, Mode.JAPANESE, Mode.MIXED, Mode.CHINESE), read.modeOrder)
+            // Modes missing from the stored order (PC, from an older file) join at the end.
+            assertEquals(listOf(Mode.ENGLISH, Mode.JAPANESE, Mode.MIXED, Mode.CHINESE, Mode.PC), read.modeOrder)
             SettingsStore(data, scope).update { it.copy(modeOrder = listOf(Mode.JAPANESE, Mode.ENGLISH, Mode.MIXED, Mode.CHINESE)) }
             assertEquals("japanese,english,mixed,chinese,korean", data.data.first()[order])
         }

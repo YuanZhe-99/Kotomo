@@ -272,4 +272,20 @@
     <string name="punct_smart_quotes_desc">用 \" 和 \' 键输入弯引号与撇号。代码、网址和邮箱输入框中不生效。</string>
     <string name="punct_auto_pair">自动补全括号与引号</string>
     <string name="punct_auto_pair_desc">输入 (、「、“ 等开括号时同时加上对应的闭括号；紧接着按退格会一起删除。代码、网址和邮箱输入框中不生效。</string>
+    <string name="mode_pc">PC 按键</string>
+    <string name="mode_pc_desc">向远程桌面、终端类应用发送 PC 按键与快捷键；不转换、不学习</string>
+    <string name="pc_section">PC 按键</string>
+    <string name="pc_host">要输入的电脑</string>
+    <string name="pc_host_windows">Windows</string>
+    <string name="pc_host_windows_desc">Ctrl · Win · Alt；Ctrl+Alt+Del</string>
+    <string name="pc_host_macos">macOS</string>
+    <string name="pc_host_macos_desc">⌃ Control · ⌥ Option · ⌘ Command；⌥⌘Esc</string>
+    <string name="pc_host_linux">Linux</string>
+    <string name="pc_host_linux_desc">Ctrl · Super · Alt；Ctrl+Alt+Del</string>
+    <string name="pc_wide">大屏幕上</string>
+    <string name="pc_wide_full">完整键盘</string>
+    <string name="pc_wide_full_desc">功能键与完整的 PC 键盘</string>
+    <string name="pc_wide_split">分体</string>
+    <string name="pc_wide_split_desc">两侧各一半，与手机键一样大，方便双手拇指</string>
+    <string name="pc_note">在上面的列表中打开 PC 按键，再把它固定到需要的应用。Kotomo 发送的是 Android 按键事件，能否传到远端电脑由该应用决定。没有触摸板：键盘不能移动其他应用的指针。</string>
 </resources>

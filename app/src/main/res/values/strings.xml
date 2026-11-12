@@ -295,4 +295,22 @@
     <string name="punct_smart_quotes_desc">Type “curly” quotes and apostrophes with the \" and \' keys. Not in code, web address or email fields.</string>
     <string name="punct_auto_pair">Close brackets and quotes</string>
     <string name="punct_auto_pair_desc">Typing ( 「 “ and other opening marks adds the closing one; backspace right away removes both. Not in code, web address or email fields.</string>
+    <string name="mode_badge_pc" translatable="false">PC</string>
+    <string name="space_pc" translatable="false">PC</string>
+    <string name="mode_pc">PC keys</string>
+    <string name="mode_pc_desc">Sends PC keys and shortcuts to remote desktop and terminal apps; converts and learns nothing</string>
+    <string name="pc_section">PC keys</string>
+    <string name="pc_host">Computer you type to</string>
+    <string name="pc_host_windows">Windows</string>
+    <string name="pc_host_windows_desc">Ctrl · Win · Alt; Ctrl+Alt+Del</string>
+    <string name="pc_host_macos">macOS</string>
+    <string name="pc_host_macos_desc">⌃ Control · ⌥ Option · ⌘ Command; ⌥⌘Esc</string>
+    <string name="pc_host_linux">Linux</string>
+    <string name="pc_host_linux_desc">Ctrl · Super · Alt; Ctrl+Alt+Del</string>
+    <string name="pc_wide">On a large screen</string>
+    <string name="pc_wide_full">Full keyboard</string>
+    <string name="pc_wide_full_desc">Function keys and the whole PC keyboard</string>
+    <string name="pc_wide_split">Split</string>
+    <string name="pc_wide_split_desc">Two phone-sized halves at the sides, for both thumbs</string>
+    <string name="pc_note">Turn on PC keys in the list above, then fix it to the apps that need it. Kotomo sends Android key events; whether they reach the remote computer is up to the app. There is no touchpad: a keyboard cannot move another app\'s pointer.</string>
 </resources>

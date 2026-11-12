@@ -41,6 +41,7 @@ import com.yuanzhe.kotomo.ime.clipboard.ClipboardPanel
 import com.yuanzhe.kotomo.ime.clipboard.QuickPaste
 import com.yuanzhe.kotomo.ime.clipboard.QuickPasteStrip
 import com.yuanzhe.kotomo.settings.ChineseScript
+import com.yuanzhe.kotomo.settings.PcWide
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
 import com.yuanzhe.kotomo.settings.SplitLayout
@@ -198,6 +199,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var field = Field.TEXT
     /** Main thread: smart quotes and bracket pairing for the current field (PLAN §10.8). */
     private val punctuation = SmartPunctuation()
+    /** Main thread: the PC layout's page and modifiers (PLAN §10.11). */
+    private val pc = PcInput { requestHideSelf(0) }
     /** Main thread: the Chinese script remembered for the current app, or null to follow the settings (Compose state, so the quick panel follows it). */
     private var appScript by androidx.compose.runtime.mutableStateOf<ChineseScript?>(null)
     /** Main thread: when the last plain space was typed (uptime), for the double-space full stop; 0 after other keys. */
@@ -930,6 +933,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         sensitive = Fields.sensitive(info.inputType, info.imeOptions)
         field = Fields.of(info.inputType, info.hintText ?: info.label)
         punctuation.reset()
+        pc.reset()
         symbolPage = 0
         symbols = false
         // The emoji panel is built per field, since whether it may record recents depends on it.
@@ -1024,11 +1028,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         aiUndo = null
         details = null
         emojiSearch?.let { if (searchKey(action, it)) return }
+        if (mode == Mode.PC && pc.onKey(action, ic, downTime)) {
+            refresh(downTime)
+            return
+        }
         if (action != KeyAction.Space) lastSpaceAt = 0L
         if (action == KeyAction.Enter || action is KeyAction.MoveCursor || action is KeyAction.SetMode) punctuation.reset()
         val spaced = autoSpaced
         autoSpaced = false
         if (action is KeyAction.SetMode) {
+            // The PC layout sends keys, not a composition: what was typed is committed first.
+            if (action.mode == Mode.PC) commitComposition()
+            pc.reset()
             switchMode(action.mode, downTime)
             val app = currentInputEditorInfo?.packageName
             memory()?.update { m ->
@@ -1121,10 +1132,24 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 deleteWordsBefore(action.count)
                 previousWord = null
             }
+            // Only the PC layout has these keys, and it handles them before this point.
+            is KeyAction.Pc -> Unit
         }
         // Not after Shift itself: that would undo the Shift the person just set.
         if (composing.isEmpty() && action != KeyAction.Shift) updateAutoCaps()
         refresh(downTime)
+    }
+
+    /**
+     * Shows the PC layout (PLAN §10.11): the phone pages, or on a [wide] screen the whole PC
+     * keyboard or its two halves at the sides, as the settings choose.
+     */
+    private fun applyPcLayout(wide: Boolean) {
+        val s = settings
+        keyboard.split = wide && s.pcWide == PcWide.SPLIT
+        if (wide) keyboard.maxWidth = 0f
+        keyboard.layout = if (wide && s.pcWide == PcWide.FULL) PcLayout.full(s.pcHost) else PcLayout.phone(pc.page, s.pcHost, keyboard.split)
+        keyboard.modifierState = pc.modifiers::state
     }
 
     /**
@@ -1408,6 +1433,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             symbols -> Layout.symbols(symbolMode, split, symbolPage, hinge = keyboard.hinge != null)
             else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null)
         }
+        if (mode == Mode.PC) applyPcLayout(posture.wide)
         keyboard.shift = shift
         keyboard.mode = mode
         keyboard.modes = s.modes

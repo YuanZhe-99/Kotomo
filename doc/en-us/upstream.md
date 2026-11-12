@@ -78,6 +78,7 @@ building or running anything; P0 re-checks each one and replaces "read" with the
 | Android 17 limits app memory by device RAM and no longer restores keyboard visibility after an unhandled rotation | memory is measured on Android 17 | read |
 | Only the default IME and the focused app read the clipboard (Android 10+); the default IME gets no access toast (Android 12+); sensitive clips carry `ClipDescription.EXTRA_IS_SENSITIVE`; the system clears the clipboard at most 60 minutes after the last access (Android 13+) | Kotomo keeps its own clipboard history and never records sensitive clips | read |
 | `ComposeView` needs a `LifecycleOwner` and a `SavedStateRegistryOwner` in the view tree; there is no official guide for input methods | spike S1 decides whether panels use Compose | read |
+| An input method reaches the field only through its `InputConnection`: `sendKeyEvent` delivers a `KeyEvent` (key code, meta state, `FLAG_SOFT_KEYBOARD`) to the focused view as if from a keyboard; there is no way to send scan codes or X11 keysyms, to name a remote protocol, or to inject pointer events into another app. `KEYCODE_ESCAPE` reaching an activity that does not take it acts as Back | the PC layout (PLAN §10.11) sends every key, letters included, as key events with meta states (Ctrl+C works where the app reads them); whether a remote-desktop or terminal app forwards them is the app's choice; no touchpad. Its instrumentation test avoids Esc | emulator test `PcKeysTest` (T20) |
 
 ## ML Kit
 

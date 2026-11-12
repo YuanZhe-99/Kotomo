@@ -62,6 +62,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/RimeDeploy.kt` | 在独立进程中把 librime 部署到暂存目录、`filesDir/rime` 下的文件布局、模糊音规则文件与记下它的部署标记、构建的换入、回到预编译数据与部署报告 | `RimeDeployService`、`RimeFiles.promote`、`RimeFiles.writeFuzzy`、`RimeFiles.dropBuild` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Fuzzy.kt` | 模糊音（PLAN §9.6）：十一条规则（每条是一对 librime `fuzz` 规则），以及按开启的开关生成的规则文件 `kotomo_fuzzy.yaml`，规则互不连带（决定 16）（纯 Kotlin，有单元测试；同一份文本在 `FuzzyRimeTest` 与语料 T08 中喂给主机上的 librime）；由 `KotomoService.syncRimeBuild` 写出并部署 | `FuzzyRule`、`Fuzzy.yaml` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Punctuation.kt` | 智能标点（PLAN §10.8）：弯引号与括号配对的纯函数，以及按输入框记下的状态——跳过已补上的闭合符号、删除空的一对；服务对组合之外输入的文字调用它 | `Punctuation`、`SmartPunctuation` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Pc.kt` | PC 布局（PLAN §10.11）：修饰键状态机（锁住下一键、锁定、按住）、美式 PC 键盘的键码与各主机系统的快捷键、手机/完整/分体布局，以及把按键变成 `InputConnection.sendKeyEvent` 调用的 `PcInput` | `PcModifiers`、`PcKeys`、`PcLayout`、`PcInput` |
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
 | `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定；该运行已于 2026-11-04 随 GitHub 仓库删除，CI 重新存在之前它下载不到任何东西；`build-mozc.sh` 在本地构建同样的文件 | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的工具栏快捷设置：单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用 | `QuickPanel` |

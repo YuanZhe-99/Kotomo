@@ -23,10 +23,15 @@ sealed interface KeyAction {
     data class SetOneHanded(val side: com.yuanzhe.kotomo.settings.OneHanded) : KeyAction
     /** Sets the one-handed keyboard's width to [percent] of the full width (dragging its inner edge). */
     data class SetOneHandedWidth(val percent: Int) : KeyAction
+    /** A key of the PC layout that has no counterpart above (PLAN §10.11). */
+    data class Pc(val key: PcKey) : KeyAction
 }
 
-/** Input modes the keyboard offers; Mixed accepts pinyin, romaji and English in one string. */
-enum class Mode { MIXED, CHINESE, JAPANESE, ENGLISH }
+/**
+ * Input modes the keyboard offers; Mixed accepts pinyin, romaji and English in one string. PC
+ * (PLAN §10.11) converts nothing: it sends PC key events to apps such as remote desktops.
+ */
+enum class Mode { MIXED, CHINESE, JAPANESE, ENGLISH, PC }
 
 /**
  * Describes one key: what it shows, what it does and how much of its row it takes.
@@ -213,7 +218,7 @@ data class Layout(val rows: List<Row>) {
          */
         fun symbols(mode: Mode, split: Boolean = false, page: Int = 0, hinge: Boolean = false): Layout {
             val (row2, row3) = when (mode) {
-                Mode.ENGLISH -> if (page == 0) "@#\$_&-+()/" to "*\"':;!?" else "~`|•√π÷×¶∆" to "%©®™✓[]<>"
+                Mode.ENGLISH, Mode.PC -> if (page == 0) "@#\$_&-+()/" to "*\"':;!?" else "~`|•√π÷×¶∆" to "%©®™✓[]<>"
                 Mode.JAPANESE -> if (page == 0) "@#￥&-+（）「」" to "、；：・？！…" else "『』【】〈〉《》～｜" to "%^=\\{}<>"
                 Mode.MIXED, Mode.CHINESE -> if (page == 0) "@#￥&-+（）“”" to "、；：‘’？！" else "【】《》「」…—·～" to "%^=\\{}<>"
             }
@@ -319,7 +324,7 @@ data class Layout(val rows: List<Row>) {
         fun punctuation(mode: Mode) = when (mode) {
             Mode.MIXED, Mode.CHINESE -> "，" to "。"
             Mode.JAPANESE -> "、" to "。"
-            Mode.ENGLISH -> "," to "."
+            Mode.ENGLISH, Mode.PC -> "," to "."
         }
     }
 }

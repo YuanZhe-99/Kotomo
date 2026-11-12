@@ -148,6 +148,19 @@ class KeyboardView(
     /** A long press on the space bar opens the language choice. */
     var spaceLanguage = true
 
+    /**
+     * How each PC modifier is on (PLAN §10.11): latched and held keys are drawn in the accent
+     * color, a locked one also underlined. Set on every refresh of the PC layout.
+     */
+    var modifierState: (PcModifier) -> PcModifiers.State? = { null }
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** The PC modifiers held by a finger while others type, by pointer id. */
+    private val heldModifiers = mutableMapOf<Int, PcModifier>()
+
     /** What the Enter key shows: a new line or the field's action (search, send, …). */
     var enterStyle = EnterStyle.NEWLINE
         set(value) {
@@ -235,12 +248,14 @@ class KeyboardView(
         Mode.CHINESE to context.getString(R.string.mode_badge_chinese),
         Mode.JAPANESE to context.getString(R.string.mode_badge_japanese),
         Mode.ENGLISH to context.getString(R.string.mode_badge_english),
+        Mode.PC to context.getString(R.string.mode_badge_pc),
     )
     private val spaceLabels = mapOf(
         Mode.MIXED to context.getString(R.string.space_mixed),
         Mode.CHINESE to context.getString(R.string.space_chinese),
         Mode.JAPANESE to context.getString(R.string.space_japanese),
         Mode.ENGLISH to context.getString(R.string.space_english),
+        Mode.PC to context.getString(R.string.space_pc),
     )
 
     private var placed = emptyList<PlacedKey>()
@@ -444,7 +459,8 @@ class KeyboardView(
     override fun onDraw(canvas: Canvas) {
         for (k in keys()) {
             val isPressed = k === pressed
-            val enter = k.key.action == KeyAction.Enter
+            val modifier = ((k.key.action as? KeyAction.Pc)?.key as? PcKey.Modifier)?.modifier?.let(modifierState)
+            val enter = k.key.action == KeyAction.Enter || modifier != null
             box.set(k.left, k.top + shadow, k.right, k.bottom + shadow)
             canvas.drawRoundRect(box, radius, radius, shadowPaint)
             keyPaint.color = when {
@@ -462,6 +478,12 @@ class KeyboardView(
                 KeyAction.Enter -> enterIcons.getValue(enterStyle)
                 KeyAction.Emoji -> emojiIcon
                 else -> null
+            }
+            if (modifier == PcModifiers.State.LOCKED) {
+                // A locked modifier: underlined, as on the design's PC keys.
+                keyPaint.color = onAccentColor
+                val w = (k.right - k.left) * 0.3f
+                canvas.drawRect(k.centerX - w / 2, k.bottom - shadow * 4, k.centerX + w / 2, k.bottom - shadow * 2, keyPaint)
             }
             if (icon != null) {
                 val l = (k.centerX - iconSize / 2).toInt()
@@ -540,7 +562,16 @@ class KeyboardView(
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                if (pressed != null) release(commit = true, at = event.eventTime)
+                val held = ((pressed?.key?.action as? KeyAction.Pc)?.key as? PcKey.Modifier)?.modifier
+                if (held != null && event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
+                    // A PC modifier still pressed while another finger goes down is held, not tapped.
+                    removeCallbacks(longPress)
+                    pressed = null
+                    heldModifiers[pointerId] = held
+                    onKey(KeyAction.Pc(PcKey.Hold(held)), false, event.eventTime)
+                } else if (pressed != null) {
+                    release(commit = true, at = event.eventTime)
+                }
                 val i = event.actionIndex
                 sideButtons()?.let { (swap, full) ->
                     val x = event.getX(i)
@@ -587,8 +618,18 @@ class KeyboardView(
                 val key = pressed
                 if (index >= 0 && key != null) drag(key, event.getX(index))
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (pressed != null) release(commit = true, at = event.eventTime)
-            MotionEvent.ACTION_CANCEL -> release(commit = false)
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                val held = heldModifiers.remove(event.getPointerId(event.actionIndex))
+                when {
+                    held != null -> onKey(KeyAction.Pc(PcKey.Release(held)), false, event.eventTime)
+                    pressed != null -> release(commit = true, at = event.eventTime)
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                release(commit = false)
+                heldModifiers.values.forEach { onKey(KeyAction.Pc(PcKey.Release(it)), false, event.eventTime) }
+                heldModifiers.clear()
+            }
         }
         return true
     }

@@ -77,6 +77,7 @@ internal val Mode.label get() = when (this) {
     Mode.CHINESE -> R.string.mode_chinese
     Mode.JAPANESE -> R.string.mode_japanese
     Mode.ENGLISH -> R.string.mode_english
+    Mode.PC -> R.string.mode_pc
 }
 
 /** Names each Chinese script in the settings and the quick panel. */
@@ -98,7 +99,9 @@ internal val MixedLevel.label get() = when (this) {
 
 /**
  * Draws the Input modes page (PLAN §2.3): the mode the keyboard starts in; the language choice's
- * order, with a switch per mode to show or hide it; and the apps fixed to a mode, each with Remove.
+ * order, with a switch per mode to show or hide it (the PC layout's switch is [Settings.pcEnabled]);
+ * the PC layout's host system and wide-screen layout (PLAN §10.11); and the apps fixed to a mode,
+ * each with Remove.
  * Notes: the last shown mode cannot be hidden. Apps are named by their label when Android lets
  * Kotomo see it, otherwise by package name.
  */
@@ -106,12 +109,14 @@ internal val MixedLevel.label get() = when (this) {
 internal fun ModesPage(settings: Settings, store: SettingsStore) {
     val context = LocalContext.current
     Section(stringResource(R.string.modes_default)) {
-        Mode.entries.forEach { mode ->
+        // The PC layout types to other computers; it is never where the keyboard starts.
+        Mode.entries.filter { it != Mode.PC }.forEach { mode ->
             val desc = when (mode) {
                 Mode.MIXED -> R.string.mode_mixed_desc
                 Mode.CHINESE -> R.string.mode_chinese_desc
                 Mode.JAPANESE -> R.string.mode_japanese_desc
                 Mode.ENGLISH -> R.string.mode_english_desc
+                Mode.PC -> R.string.mode_pc_desc
             }
             RadioRow(mode.label, desc, settings.defaultMode == mode) { store.set { it.copy(defaultMode = mode) } }
         }
@@ -125,7 +130,7 @@ internal fun ModesPage(settings: Settings, store: SettingsStore) {
         order.forEachIndexed { i, mode ->
             ModeRow(
                 stringResource(mode.label),
-                shown = mode !in settings.hiddenModes,
+                shown = mode !in settings.hiddenModes && (mode != Mode.PC || settings.pcEnabled),
                 canHide = mode in settings.hiddenModes || settings.modes.size > 1,
                 onMove = { delta ->
                     store.set { s ->
@@ -138,9 +143,25 @@ internal fun ModesPage(settings: Settings, store: SettingsStore) {
                 },
                 first = i == 0,
                 last = i == order.lastIndex,
-            ) { show -> store.set { s -> s.copy(hiddenModes = if (show) s.hiddenModes - mode else s.hiddenModes + mode) } }
+            ) { show ->
+                store.set { s ->
+                    val hidden = if (show) s.hiddenModes - mode else s.hiddenModes + mode
+                    // The PC layout has its own switch, off until the person turns it on (PLAN §10.11).
+                    if (mode == Mode.PC) s.copy(hiddenModes = hidden, pcEnabled = show) else s.copy(hiddenModes = hidden)
+                }
+            }
         }
         Inset { Note(stringResource(R.string.modes_order_note)) }
+    }
+    Section(stringResource(R.string.pc_section)) {
+        Inset { Label(stringResource(R.string.pc_host)) }
+        RadioRow(R.string.pc_host_windows, R.string.pc_host_windows_desc, settings.pcHost == PcHost.WINDOWS) { store.set { it.copy(pcHost = PcHost.WINDOWS) } }
+        RadioRow(R.string.pc_host_macos, R.string.pc_host_macos_desc, settings.pcHost == PcHost.MACOS) { store.set { it.copy(pcHost = PcHost.MACOS) } }
+        RadioRow(R.string.pc_host_linux, R.string.pc_host_linux_desc, settings.pcHost == PcHost.LINUX) { store.set { it.copy(pcHost = PcHost.LINUX) } }
+        Inset { Label(stringResource(R.string.pc_wide)) }
+        RadioRow(R.string.pc_wide_full, R.string.pc_wide_full_desc, settings.pcWide == PcWide.FULL) { store.set { it.copy(pcWide = PcWide.FULL) } }
+        RadioRow(R.string.pc_wide_split, R.string.pc_wide_split_desc, settings.pcWide == PcWide.SPLIT) { store.set { it.copy(pcWide = PcWide.SPLIT) } }
+        Inset { Note(stringResource(R.string.pc_note)) }
     }
     val memory = remember { KeyboardMemory.get(context) }
     val apps by memory.flow.collectAsState()

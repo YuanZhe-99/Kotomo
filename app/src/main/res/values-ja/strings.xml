@@ -272,4 +272,20 @@
     <string name="punct_smart_quotes_desc">\" と \' のキーで曲がった引用符とアポストロフィを入力します。コード、URL、メールアドレスの入力欄では使いません。</string>
     <string name="punct_auto_pair">かっこと引用符を閉じる</string>
     <string name="punct_auto_pair_desc">(、「、“ などの開きかっこを入力すると閉じかっこも入ります。すぐにバックスペースを押すと両方消えます。コード、URL、メールアドレスの入力欄では使いません。</string>
+    <string name="mode_pc">PC キー</string>
+    <string name="mode_pc_desc">リモートデスクトップや端末アプリに PC のキーとショートカットを送ります。変換も学習もしません</string>
+    <string name="pc_section">PC キー</string>
+    <string name="pc_host">入力先のコンピュータ</string>
+    <string name="pc_host_windows">Windows</string>
+    <string name="pc_host_windows_desc">Ctrl · Win · Alt、Ctrl+Alt+Del</string>
+    <string name="pc_host_macos">macOS</string>
+    <string name="pc_host_macos_desc">⌃ Control · ⌥ Option · ⌘ Command、⌥⌘Esc</string>
+    <string name="pc_host_linux">Linux</string>
+    <string name="pc_host_linux_desc">Ctrl · Super · Alt、Ctrl+Alt+Del</string>
+    <string name="pc_wide">大きな画面では</string>
+    <string name="pc_wide_full">フルキーボード</string>
+    <string name="pc_wide_full_desc">ファンクションキーと PC キーボード全体</string>
+    <string name="pc_wide_split">分割</string>
+    <string name="pc_wide_split_desc">スマートフォンと同じ大きさの半分ずつを両端に。両手の親指で</string>
+    <string name="pc_note">上の一覧で PC キーをオンにしてから、必要なアプリに固定します。Kotomo が送るのは Android のキーイベントで、リモートのコンピュータに届くかどうかはアプリしだいです。タッチパッドはありません。キーボードからは他のアプリのポインタを動かせません。</string>
 </resources>
