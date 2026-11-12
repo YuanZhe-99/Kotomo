@@ -6,6 +6,9 @@
 # A chinese or mixed mode may carry fuzzy-pinyin rules (PLAN §9.6): `chinese+fuzzy:z_zh,n_l` or
 # `chinese+fuzzy:all`; the line then runs on a librime build deployed with the rule file the app
 # generates for those switches (chinese.fuzzy.*).
+# T04-002 (mixed, diannao → コンピューター within 5) was removed for now by the user on 2026-11-11:
+# no reliable data maps a Chinese word to the Japanese word that means the same (PLAN.md §5). The
+# id is not reused; the line returns when such data exists.
 # The corpus measures conversion, not key handling: the runner hands the whole input to the engine
 # the mode uses today (Chinese and Mixed: librime's set_input, where a space or an apostrophe is a
 # syllable delimiter; Japanese: one Mozc session fed letter by letter; English: the English engine
@@ -59,7 +62,6 @@ T03-N02	japanese		sakura	!さくらんぼ	1	prediction never pushes the exact wo
 T03-N03	japanese		nihon	!日本人|!日本語	1	a completion never comes before the reading's own word
 T03-N01	japanese		nihao	!你好	0	pinyin is not converted as Chinese in Japanese mode
 T04-001	mixed		diannao	电脑	3	§2.3: original language first
-T04-002	mixed		diannao	コンピューター	5	§2.3
 T04-003	mixed		coffee	coffee	1	§2.3
 T04-004	mixed		coffee	コーヒー	3	§2.3, §13.2 T06-002
 T04-005	mixed		sakura	桜|さくら	3	§2.3
