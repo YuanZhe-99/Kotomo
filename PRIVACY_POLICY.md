@@ -50,7 +50,10 @@ kept, and writing help is not offered. Password fields also get direct typing (e
 letter, with no composition or candidates); a field that only asks for no learning still converts
 Chinese and Japanese. E-mail and URL fields get direct typing too. Incognito mode (in the settings
 and the keyboard's quick settings) turns off learning and history everywhere; "Don't learn in this app"
-in the keyboard's More panel does the same for one app.
+in the keyboard's More panel does the same for one app. Suggestions from your autofill service
+(a password manager, for example) are drawn by Android in Kotomo's bar; Kotomo never sees their text,
+and a tap fills the field without passing through the keyboard (Settings → Layout and size → Toolbar
+turns them off).
 
 ## Deleting your data
 

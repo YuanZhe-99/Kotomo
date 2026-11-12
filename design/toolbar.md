@@ -33,3 +33,10 @@ In the keyboard's place, at the keyboard's height:
   and end then extend the selection. Cut, Copy and Paste turn it off.
 - The composition is committed when the panel opens, so the keys work on finished text.
 - The Back bar returns to the keys.
+
+## Autofill suggestions (Android 11 and later)
+
+When an autofill service (a password manager) has suggestions for the field, they replace the idle
+toolbar as a row of pill chips at the candidate pill's height, in the key color; Android draws
+their content. Typing brings the candidates back; the chips return when the bar is idle again.
+Settings → Layout and size → Toolbar → Autofill suggestions turns them off.

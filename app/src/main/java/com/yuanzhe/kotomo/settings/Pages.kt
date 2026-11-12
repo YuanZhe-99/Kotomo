@@ -482,6 +482,9 @@ private fun ToolbarSection(settings: Settings, store: SettingsStore) {
             ) { show -> store.set { s -> s.copy(hiddenTools = if (show) s.hiddenTools - tool else s.hiddenTools + tool) } }
         }
         Inset { Note(stringResource(R.string.toolbar_note)) }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            SwitchRow(R.string.toolbar_autofill, R.string.toolbar_autofill_desc, settings.inlineAutofill) { on -> store.set { it.copy(inlineAutofill = on) } }
+        }
     }
 }
 

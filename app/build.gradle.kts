@@ -315,6 +315,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.customview)
+    implementation(libs.androidx.autofill)
     implementation(libs.mlkit.genai.proofreading)
     implementation(libs.mlkit.genai.rewriting)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -154,6 +154,8 @@ data class Settings(
     val toolOrder: List<Tool> = Tool.configurable,
     /** The tools kept off the toolbar; they wait under More. */
     val hiddenTools: Set<Tool> = Tool.offBar,
+    /** Show an autofill service's inline suggestions in the bar (PLAN §10.10, Android 11 and later). */
+    val inlineAutofill: Boolean = true,
 ) {
     /** The tools the toolbar shows after More, in order; the rest are under More. */
     val tools: List<Tool> get() = toolOrder.filter { it !in hiddenTools }
@@ -241,6 +243,7 @@ internal object SettingsFormat {
     private val pcWide = stringPreferencesKey("pc.wide")
     private val toolOrder = stringPreferencesKey("toolbar.order")
     private val hiddenTools = stringPreferencesKey("toolbar.hidden")
+    private val inlineAutofill = booleanPreferencesKey("toolbar.inline_autofill")
 
     /**
      * Reads the settings from a Preferences file.
@@ -303,6 +306,7 @@ internal object SettingsFormat {
             // A tool this version adds after the list was saved keeps its default place.
             hiddenTools = if (p[hiddenTools] == null) d.hiddenTools else p.names(hiddenTools, Tool.configurable).toSet() +
                 Tool.offBar.filter { it.key !in p.rawNames(toolOrder) },
+            inlineAutofill = p[inlineAutofill] ?: d.inlineAutofill,
         )
     }
 
@@ -358,6 +362,7 @@ internal object SettingsFormat {
         p.put(pcEnabled, old.pcEnabled, new.pcEnabled)
         p.put(pcHost, old.pcHost.key, new.pcHost.key)
         p.put(pcWide, old.pcWide.key, new.pcWide.key)
+        p.put(inlineAutofill, old.inlineAutofill, new.inlineAutofill)
         // Both lists are written together, so a later read knows which tools were in the list.
         if (old.toolOrder != new.toolOrder || old.hiddenTools != new.hiddenTools) {
             p[toolOrder] = p.joinNames(toolOrder, new.toolOrder, Tool.configurable)

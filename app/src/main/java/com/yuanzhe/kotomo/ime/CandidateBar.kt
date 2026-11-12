@@ -162,7 +162,16 @@ class CandidateBar(
 
     private val listEnd get() = width - expandWidth
 
+    /** Receives whether the bar shows its toolbar (nothing typed, no hint), each time that changes. */
+    var onIdle: ((Boolean) -> Unit)? = null
+    private var idle = true
+
     override fun onDraw(canvas: Canvas) {
+        val nowIdle = details == null && search == null && candidates.isEmpty() && hint == null
+        if (nowIdle != idle) {
+            idle = nowIdle
+            onIdle?.let { listener -> post { listener(nowIdle) } }
+        }
         val shownDetails = details
         when {
             shownDetails != null -> drawDetails(canvas, shownDetails)

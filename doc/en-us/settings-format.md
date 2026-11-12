@@ -97,6 +97,7 @@ the table lists every key.
 | `pc.host` | string: `windows`, `macos`, `linux` | `windows` | The computer the PC layout types to: the modifiers' names and order, the Fn page's shortcuts and the security combination (Ctrl+Alt+Del, ⌥⌘Esc on macOS); the key codes sent are the same |
 | `pc.wide` | string: `full`, `split` | `full` | The PC layout on a wide screen: the function strip and the whole PC keyboard, or the phone pages as two halves at the sides |
 | `toolbar.order` | string | `clipboard,ai,translate,settings,edit,emoji,language,dictionaries,themes` | The toolbar's tools after More (PLAN §10.10), tool names joined by commas; More is always first and never listed. A missing tool joins at the end, names this version does not know are kept after the known ones |
+| `toolbar.inline_autofill` | boolean | `true` | Show an autofill service's inline suggestions over the idle toolbar (Android 11 and later, PLAN §10.10); off: Kotomo asks for none |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 
 ## Theme file

@@ -32,4 +32,6 @@
     <string name="app_setting_incognito">No learning</string>
     <string name="app_setting_code">Code</string>
     <string name="app_setting_separator">", "</string>
+    <string name="toolbar_autofill">Autofill suggestions</string>
+    <string name="toolbar_autofill_desc">Your autofill service’s suggestions (saved passwords, addresses) appear in the bar; Kotomo never sees them</string>
 </resources>

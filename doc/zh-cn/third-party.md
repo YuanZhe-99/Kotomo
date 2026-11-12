@@ -28,7 +28,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | rime-luna-pinyin、rime-prelude、rime-essay、rime-stroke | `rime/*`，分别在 `56b934b0`、`082425ea`、`054920de`、`1e8fff9b` | 拼音方案、词典、默认设置与语言模型；笔画数据参与编译但不随应用分发 | LGPL-3.0 | 无；Kotomo 增加 `default.custom.yaml` 与方案 `luna_pinyin_simp_private` | 随附 LGPL-3.0 与 GPL-3.0 文本，并提供数据来源 |
 | Mozc | `google/mozc` 3.35.6354（`0136c357`），子模块 `third_party/mozc` | 日文转换（`libkotomo_mozc.so` 与 `mozc.data`，S3；单独构建的库打包进 APK 时由日文模式使用） | BSD-3-Clause；词典数据适用 NAIST IPAdic 声明与 ICOT 条款，另有公有领域的冲绳词典与 Google 增补 | 无；Kotomo 的胶水层独立存放（`core/mozc`） | 完整随附 Mozc 的 LICENSE，包括 NAIST 声明与 ICOT 的 "NO WARRANTY" 一节 |
 | japanese-usage-dictionary、Abseil、Protocol Buffers | 由 Mozc 的 Bazel 构建获取（用法词典 2025-01-25、abseil-cpp 20260107.1、protobuf 34.1） | 编入 `mozc.data` 与 `libkotomo_mozc.so` | BSD-2-Clause；Apache-2.0；BSD-3-Clause | 无 | 声明与许可文本 |
-| AndroidX（Compose、Material 3、Activity、Lifecycle、Core、SavedState、DataStore）、Kotlin 标准库、kotlinx.coroutines、okio | Google Maven 与 Maven Central，版本见 `gradle/libs.versions.toml`（Compose BOM 2026.09.00、DataStore 1.3.0、Kotlin 2.4.21） | 设置应用、键盘的 Compose 面板、设置文件 | Apache-2.0 | 无 | 随附 Apache-2.0 许可文本 |
+| AndroidX（Compose、Material 3、Activity、Lifecycle、Core、SavedState、DataStore、Autofill）、Kotlin 标准库、kotlinx.coroutines、okio | Google Maven 与 Maven Central，版本见 `gradle/libs.versions.toml`（Compose BOM 2026.09.00、DataStore 1.3.0、Autofill 1.3.0、Kotlin 2.4.21） | 设置应用、键盘的 Compose 面板、设置文件、内联自动填充建议的样式 | Apache-2.0 | 无 | 随附 Apache-2.0 许可文本 |
 
 编译后的跨语言词库 `cross.klx`（`lexicon-format.md`）由 `lexicon/CrossLexicon.java` 与
 `kotomo_lexicon_compile` 生成（从不提交），自混合模式接入协调层的那次构建起随 APK 分发。它沿用所派生数据的

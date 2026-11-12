@@ -40,6 +40,7 @@
     <dimen name="bar_height">52dp</dimen>
     <dimen name="bar_pad_start">8dp</dimen>
     <dimen name="bar_pill_height">40dp</dimen>
+    <dimen name="bar_pill_radius">20dp</dimen>
     <dimen name="bar_pill_pad_first">14dp</dimen>
     <dimen name="bar_pill_pad">12dp</dimen>
     <dimen name="bar_text">18sp</dimen>

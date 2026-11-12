@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.inputmethodservice.InputMethodService
+import android.os.Bundle
 import android.os.IBinder
 import android.os.Build
 import android.os.Debug
@@ -22,6 +23,8 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
+import android.view.inputmethod.InlineSuggestionsRequest
+import android.view.inputmethod.InlineSuggestionsResponse
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.TextAttribute
 import android.content.ClipData
@@ -58,6 +61,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
@@ -217,6 +221,29 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var chineseInput = ""
     /** Main thread: the mode fixed for the current app, or null (Compose state for the quick panel). */
     private val pinnedHere = androidx.compose.runtime.mutableStateOf<Mode?>(null)
+    /** Main thread: the autofill suggestion strip over the toolbar (Android 11 and later). */
+    private var inlineAutofill: InlineAutofill? = null
+
+    /**
+     * Asks the autofill service for inline suggestions to show in the bar (PLAN §10.10).
+     * Returns: null (no request) when the switch is off, before the first unlock, or when the
+     * system's inline UI does not take Kotomo's style.
+     */
+    @RequiresApi(Build.VERSION_CODES.R)
+    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest? {
+        if (!settings.inlineAutofill || locked) return null
+        val strip = inlineAutofill ?: InlineAutofill(this).also { inlineAutofill = it }
+        return strip.request(uiExtras)
+    }
+
+    /** Shows the autofill service's inline suggestions over the idle toolbar. */
+    @RequiresApi(Build.VERSION_CODES.R)
+    override fun onInlineSuggestionsResponse(response: InlineSuggestionsResponse): Boolean {
+        val strip = inlineAutofill ?: return false
+        strip.show(if (settings.inlineAutofill) response.inlineSuggestions else emptyList())
+        return true
+    }
+
     /** Main thread: what is kept for the current app (empty in sensitive and direct fields); Compose state for the More panel. */
     private val appSettings = androidx.compose.runtime.mutableStateOf(AppMemory())
     private var chineseCandidates = emptyList<String>()
@@ -575,9 +602,19 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 }
             }
         }
+        // Autofill suggestions lie over the idle toolbar (PLAN §10.10, Android 11 and later).
+        val bar = FrameLayout(this).apply { addView(candidateBar) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Built once: the system asks for the request before the first input view exists.
+            val strip = inlineAutofill ?: InlineAutofill(this).also { inlineAutofill = it }
+            (strip.view.parent as? ViewGroup)?.removeView(strip.view)
+            strip.view.setBackgroundColor(KeyboardColors.color(this, R.color.kb_background))
+            bar.addView(strip.view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            candidateBar.onIdle = { strip.barIdle = it }
+        }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(candidateBar)
+            addView(bar)
             addView(quickStrip, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(panelHost)
         }

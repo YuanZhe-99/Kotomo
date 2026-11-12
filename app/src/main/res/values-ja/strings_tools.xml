@@ -32,4 +32,6 @@
     <string name="app_setting_incognito">学習しない</string>
     <string name="app_setting_code">コード</string>
     <string name="app_setting_separator">、</string>
+    <string name="toolbar_autofill">自動入力の候補</string>
+    <string name="toolbar_autofill_desc">自動入力サービスの候補（保存したパスワードや住所）を候補バーに表示します。Kotomo はその内容を見ません</string>
 </resources>

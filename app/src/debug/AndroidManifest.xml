@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Debug builds only: a bare text field for the instrumentation tests in src/androidTest. -->
+<!-- Debug builds only: a bare text field and a fake autofill service for the instrumentation tests in src/androidTest. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
@@ -7,6 +7,16 @@
             android:name=".fieldtest.FieldTestActivity"
             android:exported="false"
             android:windowSoftInputMode="stateAlwaysVisible" />
+        <!-- Debug builds only: answers fill requests with one inline suggestion (InlineAutofillTest). -->
+        <service
+            android:name=".fieldtest.FakeAutofillService"
+            android:exported="true"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+            <meta-data android:name="android.autofill" android:resource="@xml/fake_autofill" />
+        </service>
     </application>
 
 </manifest>

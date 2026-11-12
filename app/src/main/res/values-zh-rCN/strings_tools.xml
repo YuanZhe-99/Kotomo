@@ -32,4 +32,6 @@
     <string name="app_setting_incognito">不学习</string>
     <string name="app_setting_code">代码</string>
     <string name="app_setting_separator">、</string>
+    <string name="toolbar_autofill">自动填充建议</string>
+    <string name="toolbar_autofill_desc">自动填充服务的建议（保存的密码、地址）显示在候选栏中；Kotomo 看不到其中的内容</string>
 </resources>
