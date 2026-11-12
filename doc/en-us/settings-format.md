@@ -122,7 +122,8 @@ moved aside to `current.json.unreadable` and the defaults apply.
 What the keyboard remembers by itself, rather than what the person sets, lives in
 `files/keyboard/memory.json` (`ime/KeyboardMemory.kt`): the mode last used, per app the mode last
 used there, the mode fixed for it ("Fix this mode here" in the quick panel, PLAN §2.3) and the
-Chinese script chosen there, the emoji history (recent and how often each was sent), and
+Chinese script chosen there, the person's own settings for it (no learning, code; the More panel,
+PLAN §10.10), the emoji history (recent and how often each was sent), and
 one-handed mode per screen and orientation. It is written whole through a temporary file
 and an atomic replace on a background thread after each change; the keyboard reads it once when
 it starts and keeps it in memory.
@@ -132,7 +133,7 @@ it starts and keeps it in memory.
 | `format_version` | int | The format; this build writes 1 and never lowers a newer value |
 | `updated_utc_ms` | int | When it was written, UTC milliseconds |
 | `last_mode` | string | The mode last chosen anywhere (`mixed`, `chinese`, `japanese`, `english`) |
-| `apps` | object | Per package name: `mode` (last used there), `pinned_mode` (fixed for it), `script` (a `chinese.script` value); each may be missing |
+| `apps` | object | Per package name: `mode` (last used there), `pinned_mode` (fixed for it), `script` (a `chinese.script` value), `incognito` (`true`: nothing is learned or recorded there, "Don't learn in this app") and `code` (`true`: its ordinary text fields behave as code fields, "Code in this app"; PLAN §10.10); each may be missing, the last two are written only when `true` |
 | `emoji.recent` | array of strings | Emoji sent from the panel or its search, newest first, at most 32 |
 | `one_handed` | object | Per screen and orientation (`sw<smallest width in dp>-portrait` or `-landscape`, PLAN §8.10): `side` (`off`, `left`, `right`) and `width_percent` (66–92, default 82) |
 | `emoji.uses` | object | How often each emoji was sent (emoji → count ≥ 1), at most 200, the least used dropped first; those sent twice or more are "Frequently used" |

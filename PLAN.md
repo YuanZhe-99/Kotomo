@@ -940,7 +940,7 @@ G2 因此还不能判定通过：两项真机条目 NOT_RUN。
 
 2026-11-11（Q8 核对）补充：代码输入框里智能引号与成对括号不生效（§10.8）；PC 布局可经"为此 App 固定模式"固定到需要它的 App（§10.11）。工具栏的排序与隐藏、光标与文本编辑工具、撤销重做、按 App 的其他个性化设置与内联自动填充仍未做。
 
-2026-11-11（Q8）：**工具栏的排序、隐藏与更多工具已做**（`ime/Tools.kt`，`toolbar.order`、`toolbar.hidden`）："更多"总在最前，其后是用户的工具，放不下的与关掉的都在"更多"面板顶部的网格里；新增编辑文本（方向键、行首行尾、选择开关、全选、剪切、复制、粘贴、删除）、Emoji、下一种语言、词库、主题（后两者打开设置应用的对应页）；设置在"布局与尺寸 → 工具栏"。说明页 `design/toolbar.md`。测试：`SettingsStoreTest` T14-toolbar-1、-2；模拟器 `FieldTypingTest.toolbarEditPanelSelectsCutsAndPastes` 1/1。
+2026-11-11（Q8）：**工具栏的排序、隐藏与更多工具已做**（`ime/Tools.kt`，`toolbar.order`、`toolbar.hidden`）："更多"总在最前，其后是用户的工具，放不下的与关掉的都在"更多"面板顶部的网格里；新增编辑文本（方向键、行首行尾、选择开关、全选、剪切、复制、粘贴、删除）、Emoji、下一种语言、词库、主题（后两者打开设置应用的对应页）；设置在"布局与尺寸 → 工具栏"。说明页 `design/toolbar.md`。测试：`SettingsStoreTest` T14-toolbar-1、-2；模拟器 `FieldTypingTest.toolbarEditPanelSelectsCutsAndPastes` 1/1。**按 App 的其他设置已做**："更多"面板里的"在此 App 中不学习"（同无痕模式：不学习、不记录剪贴板与 Emoji、不提供写作助手）与"在此 App 中按代码输入"（普通文本框按代码输入框处理），存在 `memory.json` 的 `apps` 中；输入模式页的"有单独设置的 App"列出并可重置。测试 `MemoryFormatTest.appSettingsRoundTrip`、模拟器 `FieldTypingTest.codeInThisAppKeepsPunctuationPlain` 1/1。
 
 ### 10.11 PC / 远控布局（用户 2026-11-11 加入）
 

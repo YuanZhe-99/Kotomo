@@ -25,4 +25,11 @@
     <string name="edit_copy">复制</string>
     <string name="edit_paste">粘贴</string>
     <string name="edit_delete">删除</string>
+    <string name="app_incognito_title">在此 App 中不学习</string>
+    <string name="app_incognito_desc">像无痕模式一样，这里输入的内容不学习、不记录</string>
+    <string name="app_code_title">在此 App 中按代码输入</string>
+    <string name="app_code_desc">这里的文本框以英文开始，使用直引号，不自动补全括号</string>
+    <string name="app_setting_incognito">不学习</string>
+    <string name="app_setting_code">代码</string>
+    <string name="app_setting_separator">、</string>
 </resources>

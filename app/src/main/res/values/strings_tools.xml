@@ -25,4 +25,11 @@
     <string name="edit_copy">Copy</string>
     <string name="edit_paste">Paste</string>
     <string name="edit_delete">Delete</string>
+    <string name="app_incognito_title">Don’t learn in this app</string>
+    <string name="app_incognito_desc">Nothing typed here is learned or recorded, as in incognito mode</string>
+    <string name="app_code_title">Code in this app</string>
+    <string name="app_code_desc">Text fields here start in English, with plain quotes and no automatic pairs</string>
+    <string name="app_setting_incognito">No learning</string>
+    <string name="app_setting_code">Code</string>
+    <string name="app_setting_separator">", "</string>
 </resources>

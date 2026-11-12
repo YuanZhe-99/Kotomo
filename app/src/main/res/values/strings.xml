@@ -137,8 +137,8 @@
     <string name="modes_up">Move %1$s up</string>
     <string name="modes_down">Move %1$s down</string>
     <string name="modes_shown">Show %1$s</string>
-    <string name="modes_pinned">Fixed in apps</string>
-    <string name="modes_pinned_none">None yet. To always start an app in one mode, turn on “Fix this mode here” in the keyboard’s quick settings.</string>
+    <string name="modes_pinned">Apps with their own settings</string>
+    <string name="modes_pinned_none">None yet. In the keyboard’s More panel you can fix a mode for the app you are typing in, turn off learning there, or make its text fields type code.</string>
     <string name="modes_pinned_row">%1$s · %2$s</string>
     <string name="modes_unpin">Remove</string>
     <string name="modes_remembered_note">Other apps come back in the mode you last used in them.</string>

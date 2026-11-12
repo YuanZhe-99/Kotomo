@@ -166,17 +166,25 @@ internal fun ModesPage(settings: Settings, store: SettingsStore) {
     }
     val memory = remember { KeyboardMemory.get(context) }
     val apps by memory.flow.collectAsState()
-    val pinned = apps.apps.mapNotNull { (app, m) -> m.pinned?.let { app to it } }.sortedBy { it.first }
+    // Every app with its own settings (PLAN §2.3, §10.10): a fixed mode, no learning, code.
+    val pinned = apps.apps.filterValues { it.custom }.toSortedMap().toList()
     Section(stringResource(R.string.modes_pinned)) {
-        pinned.forEach { (app, mode) ->
+        pinned.forEach { (app, m) ->
+            val what = listOfNotNull(
+                m.pinned?.let { stringResource(it.label) },
+                stringResource(R.string.app_setting_incognito).takeIf { m.incognito },
+                stringResource(R.string.app_setting_code).takeIf { m.code },
+            ).joinToString(stringResource(R.string.app_setting_separator))
             Row(
                 Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_row_min_small))
                     .padding(horizontal = dimensionResource(R.dimen.settings_card_pad), vertical = dimensionResource(R.dimen.settings_row_pad)),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_row_gap)),
             ) {
-                Text(stringResource(R.string.modes_pinned_row, appLabel(context, app), stringResource(mode.label)), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                OutlinedButton(onClick = { memory.update { m -> m.withApp(app) { it.copy(pinned = null) } } }) { Text(stringResource(R.string.modes_unpin)) }
+                Text(stringResource(R.string.modes_pinned_row, appLabel(context, app), what), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                OutlinedButton(onClick = { memory.update { mem -> mem.withApp(app) { it.copy(pinned = null, incognito = false, code = false) } } }) {
+                    Text(stringResource(R.string.modes_unpin))
+                }
             }
         }
         Inset {

@@ -29,7 +29,7 @@ and device-to-device transfer are turned off for it.
 | The time of the last clip refused in a sensitive field or incognito mode (a number only, never the text), so it is not recorded later in another field | Keeping a refusal across a restart of the keyboard | — |
 | Your dictionary: the words you add, import or make with an AI model (word, reading, priority, where it came from), the previous version of that list so a change can be undone, the switches of the dictionary page, and librime's tables made from them. Imported files are read only when you pick them and are not kept; exported files go where you save them. With password protection on (off by default), the list, its previous version and exports are encrypted with a key derived from your password, which Kotomo never stores and cannot recover; the tables the keyboard types from stay readable in the app's private storage until you tap Lock now | Your own words among the candidates | — (the words are yours; sensitive fields still learn nothing new) |
 | Recently used emoji (up to 32) and how often each was sent (up to 200 counts) | The Frequently used and Recents groups of the emoji panel | Sensitive fields, incognito mode |
-| Per app: the last input mode used there, the mode you fixed for it and the Chinese script you chose there (the app's package name and those choices only) | The keyboard comes back in that mode and script | Sensitive fields, incognito mode |
+| Per app: the last input mode used there, the mode you fixed for it, the Chinese script you chose there, and whether you turned off learning there or made its fields type code (the app's package name and those choices only) | The keyboard comes back in that mode and script | Sensitive fields, incognito mode |
 | Writing help (off by default): the text you hand to it, held in memory only while its screen is open and dropped when the screen closes; runs on the device with Gemini Nano, and Android's AICore downloads the model from Google when you tap Download | Proofreading and rewriting you ask for | Never stored or logged; never in sensitive fields or incognito mode |
 | Downloaded dictionaries: the words of each dictionary you downloaded, its previous version, where it came from and its license, and whether you accepted the download notice. The downloaded files are converted and then deleted | The downloaded words among the candidates | — (the files hold none of your data) |
 | Diagnostics: timings of key presses and drawing, memory use, the state of the dictionaries | The Diagnostics page, to find problems | Never what you type |
@@ -49,7 +49,8 @@ typed in them is learned, no clipboard history is recorded, no emoji recents or 
 kept, and writing help is not offered. Password fields also get direct typing (every key types its
 letter, with no composition or candidates); a field that only asks for no learning still converts
 Chinese and Japanese. E-mail and URL fields get direct typing too. Incognito mode (in the settings
-and the keyboard's quick settings) turns off learning and history everywhere.
+and the keyboard's quick settings) turns off learning and history everywhere; "Don't learn in this app"
+in the keyboard's More panel does the same for one app.
 
 ## Deleting your data
 

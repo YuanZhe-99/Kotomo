@@ -123,8 +123,8 @@
     <string name="modes_up">上移%1$s</string>
     <string name="modes_down">下移%1$s</string>
     <string name="modes_shown">顯示%1$s</string>
-    <string name="modes_pinned">為 App 固定的模式</string>
-    <string name="modes_pinned_none">還沒有。要讓某個 App 總是以同一個模式開始，在鍵盤的快速設定中開啟「在此固定這個模式」。</string>
+    <string name="modes_pinned">有個別設定的 App</string>
+    <string name="modes_pinned_none">還沒有。在鍵盤的「更多」面板中，可以為正在輸入的 App 固定模式、關閉學習，或讓它的文字框按程式碼輸入。</string>
     <string name="modes_pinned_row">%1$s · %2$s</string>
     <string name="modes_unpin">移除</string>
     <string name="modes_remembered_note">其他 App 會回到你上次在其中使用的模式。</string>

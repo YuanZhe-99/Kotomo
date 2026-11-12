@@ -17,8 +17,11 @@ import java.io.File
 import java.util.concurrent.Executors
 
 /**
- * Holds what the keyboard remembers for one app (PLAN §2.3, §8.4): the mode last used there, the
- * mode fixed for it, and the Chinese script chosen there.
+ * Holds what the keyboard remembers for one app (PLAN §2.3, §8.4, §10.10): the mode last used
+ * there, the mode fixed for it, the Chinese script chosen there, and the person's settings for it:
+ * [incognito] (nothing is learned or recorded there, as in incognito mode) and [code] (its
+ * ordinary text fields behave as code fields: English first, no smart punctuation, literal
+ * symbols).
  *
  * Notes: only the package name is stored, never anything typed. [extra] keeps members this version
  * does not know.
@@ -27,10 +30,15 @@ data class AppMemory(
     val mode: Mode? = null,
     val pinned: Mode? = null,
     val script: ChineseScript? = null,
+    val incognito: Boolean = false,
+    val code: Boolean = false,
     val extra: Map<String, Any?> = emptyMap(),
 ) {
     /** Whether nothing is remembered (the app's entry can go). */
-    val empty get() = mode == null && pinned == null && script == null && extra.isEmpty()
+    val empty get() = mode == null && pinned == null && script == null && !incognito && !code && extra.isEmpty()
+
+    /** Whether the person set anything for this app (a fixed mode, [incognito] or [code]). */
+    val custom get() = pinned != null || incognito || code
 }
 
 /**
@@ -157,6 +165,8 @@ internal object MemoryFormat {
     private const val MODE = "mode"
     private const val PINNED = "pinned_mode"
     private const val SCRIPT = "script"
+    private const val INCOGNITO = "incognito"
+    private const val CODE = "code"
     private const val RECENT = "recent"
     private const val USES = "uses"
     private val KNOWN = setOf(FORMAT, UPDATED, LAST_MODE, APPS, EMOJI, ONE_HANDED)
@@ -178,8 +188,13 @@ internal object MemoryFormat {
             val pinned = mode(a.str(PINNED))
             val script = a.str(SCRIPT)?.let { raw -> ChineseScript.entries.firstOrNull { it.name.lowercase() == raw } }
             // A value this version cannot read (a newer mode) stays as it was.
-            val read = setOfNotNull(MODE.takeIf { mode != null }, PINNED.takeIf { pinned != null }, SCRIPT.takeIf { script != null })
-            app to AppMemory(mode, pinned, script, a - read)
+            val incognito = a[INCOGNITO] as? Boolean
+            val code = a[CODE] as? Boolean
+            val read = setOfNotNull(
+                MODE.takeIf { mode != null }, PINNED.takeIf { pinned != null }, SCRIPT.takeIf { script != null },
+                INCOGNITO.takeIf { incognito != null }, CODE.takeIf { code != null },
+            )
+            app to AppMemory(mode, pinned, script, incognito == true, code == true, a - read)
         }.toMap()
         val e = o.obj(EMOJI).orEmpty()
         val recent = e.list(RECENT).orEmpty().filterIsInstance<String>()
@@ -220,6 +235,8 @@ internal object MemoryFormat {
                 a.mode?.let { put(MODE, it.key) }
                 a.pinned?.let { put(PINNED, it.key) }
                 a.script?.let { put(SCRIPT, it.name.lowercase()) }
+                if (a.incognito) put(INCOGNITO, true)
+                if (a.code) put(CODE, true)
             }
         }
         out[EMOJI] = LinkedHashMap<String, Any?>().apply {

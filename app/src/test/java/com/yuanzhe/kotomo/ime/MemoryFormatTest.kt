@@ -4,6 +4,7 @@ import com.yuanzhe.kotomo.dictionary.Json
 import com.yuanzhe.kotomo.settings.ChineseScript
 import com.yuanzhe.kotomo.settings.OneHanded
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -152,5 +153,27 @@ class MemoryFormatTest {
         // An out-of-range width reads as the default.
         val bad = MemoryFormat.read("""{"one_handed": {"sw411-portrait": {"side": "left", "width_percent": 10}}}""")!!
         assertEquals(OneHandedMemory(OneHanded.LEFT, OneHandedMemory.DEFAULT_WIDTH, mapOf("width_percent" to 10L)), bad.oneHandedOn(portrait, OneHanded.OFF))
+    }
+
+    /**
+     * T12-app (PLAN §10.10): an app's own settings (no learning, code) survive a rewrite, are
+     * written only when on, and a value of the wrong type reads as off and is kept.
+     */
+    @Test
+    fun appSettingsRoundTrip() {
+        val memory = Memory(apps = mapOf("com.term" to AppMemory(incognito = true, code = true), "com.chat" to AppMemory(mode = Mode.CHINESE)))
+        val written = parse(MemoryFormat.write(memory, 1L))
+        @Suppress("UNCHECKED_CAST")
+        val apps = written["apps"] as Map<String, Map<String, Any?>>
+        assertEquals(mapOf("incognito" to true, "code" to true), apps["com.term"])
+        assertEquals(mapOf("mode" to "chinese"), apps["com.chat"])
+        assertEquals(memory.apps, MemoryFormat.read(MemoryFormat.write(memory, 1L))!!.apps)
+        assertTrue(memory.app("com.term").custom)
+        assertFalse(memory.app("com.chat").custom)
+        val odd = MemoryFormat.read("""{"apps": {"a.b": {"incognito": "yes"}}}""")!!.app("a.b")
+        assertFalse(odd.incognito)
+        assertEquals(mapOf("incognito" to "yes"), odd.extra)
+        // Turning both off empties the entry, so it goes.
+        assertTrue(memory.withApp("com.term") { it.copy(incognito = false, code = false) }.apps.keys == setOf("com.chat"))
     }
 }

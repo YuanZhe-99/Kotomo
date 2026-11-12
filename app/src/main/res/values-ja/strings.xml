@@ -123,8 +123,8 @@
     <string name="modes_up">%1$sを上へ</string>
     <string name="modes_down">%1$sを下へ</string>
     <string name="modes_shown">%1$sを表示</string>
-    <string name="modes_pinned">アプリごとに固定したモード</string>
-    <string name="modes_pinned_none">まだありません。アプリを常に同じモードで始めるには、キーボードのクイック設定で「このアプリで固定」をオンにします。</string>
+    <string name="modes_pinned">個別設定のあるアプリ</string>
+    <string name="modes_pinned_none">まだありません。キーボードの「その他」パネルで、入力中のアプリのモードを固定したり、学習をオフにしたり、テキスト欄をコード入力にしたりできます。</string>
     <string name="modes_pinned_row">%1$s · %2$s</string>
     <string name="modes_unpin">解除</string>
     <string name="modes_remembered_note">ほかのアプリでは、前回使ったモードに戻ります。</string>

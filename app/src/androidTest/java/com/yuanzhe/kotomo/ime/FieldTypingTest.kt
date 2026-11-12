@@ -210,6 +210,27 @@ class FieldTypingTest {
         }
     }
 
+    /**
+     * T13-app (PLAN §10.10): with "Code in this app" on, the app's ordinary text fields type plain
+     * quotes and no pairs even with smart punctuation on; with it off they pair again.
+     */
+    @Test
+    fun codeInThisAppKeepsPunctuationPlain() {
+        val context = instrumentation.targetContext
+        val memory = KeyboardMemory.get(context)
+        inMode(Mode.ENGLISH) {
+            withSettings({ it.copy(smartQuotes = true, autoPair = true) }) {
+                memory.update { m -> m.withApp(context.packageName) { it.copy(code = true) } }
+                try {
+                    assertEquals("(\"", punctuate("(\"") {})
+                } finally {
+                    memory.update { m -> m.withApp(context.packageName) { it.copy(code = false) } }
+                }
+                assertEquals("(“”)", punctuate("(\"") {})
+            }
+        }
+    }
+
     /** Opens a text field, taps [marks] on the first symbol page, runs [then] and returns the text. */
     private fun punctuate(marks: String, then: () -> Unit): String {
         val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)

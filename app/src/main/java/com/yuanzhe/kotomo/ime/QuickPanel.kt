@@ -40,7 +40,8 @@ import com.yuanzhe.kotomo.settings.SplitLayout
 import com.yuanzhe.kotomo.settings.label
 
 /**
- * Shows the More panel in the keyboard's place: the tools not on the bar, then the quick settings: one-handed side, split layout,
+ * Shows the More panel in the keyboard's place: the tools not on the bar, then the quick settings
+ * (including this app's own: no learning, code): one-handed side, split layout,
  * the Chinese script (Mainland, Traditional, Taiwan, Hong Kong), incognito, and a way into the settings app.
  *
  * Inputs: [store] is read and changed directly (the keyboard follows it at once); [script] is the
@@ -49,7 +50,8 @@ import com.yuanzhe.kotomo.settings.label
  * [onOneHanded] changes it there (PLAN §8.10); [mode] is the mode in use, [pinned] the mode fixed for the
  * current app (null: none) and [onPin] fixes the mode in use there or releases it (PLAN §2.3);
  * [onOpenSettings] opens the settings app; [onBack] returns to the keys; [moreTools] are the
- * toolbar's tools that are not on the bar, shown first as a grid, and [onTool] runs one (PLAN §10.10).
+ * toolbar's tools that are not on the bar, shown first as a grid, and [onTool] runs one; [app] is
+ * what is kept for the current app and [onApp] changes its own settings (no learning, code; PLAN §10.10).
  */
 @Composable
 fun QuickPanel(
@@ -65,6 +67,8 @@ fun QuickPanel(
     onBack: () -> Unit,
     moreTools: State<List<Tool>>,
     onTool: (Tool) -> Unit,
+    app: State<AppMemory>,
+    onApp: ((AppMemory) -> AppMemory) -> Unit,
 ) {
     val settings by store.flow.collectAsState()
     val back = stringResource(R.string.candidates_collapse)
@@ -98,6 +102,12 @@ fun QuickPanel(
                 checked = fixed != null,
                 onChange = onPin,
             )
+            Toggle(stringResource(R.string.app_incognito_title), stringResource(R.string.app_incognito_desc), app.value.incognito) { on ->
+                onApp { it.copy(incognito = on) }
+            }
+            Toggle(stringResource(R.string.app_code_title), stringResource(R.string.app_code_desc), app.value.code) { on ->
+                onApp { it.copy(code = on) }
+            }
             Toggle(stringResource(R.string.incognito_title), stringResource(R.string.incognito_desc), settings.incognito) { on ->
                 store.set { it.copy(incognito = on) }
             }

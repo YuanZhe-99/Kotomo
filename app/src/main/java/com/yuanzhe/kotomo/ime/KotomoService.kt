@@ -217,6 +217,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var chineseInput = ""
     /** Main thread: the mode fixed for the current app, or null (Compose state for the quick panel). */
     private val pinnedHere = androidx.compose.runtime.mutableStateOf<Mode?>(null)
+    /** Main thread: what is kept for the current app (empty in sensitive and direct fields); Compose state for the More panel. */
+    private val appSettings = androidx.compose.runtime.mutableStateOf(AppMemory())
     private var chineseCandidates = emptyList<String>()
     /** The last word committed in English mode, for predictions and bigram context. */
     private var previousWord: String? = null
@@ -629,7 +631,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun applyEngineSettings() {
         val script = appScript ?: settings.chineseScript
-        val learning = !settings.incognito && !locked && !sensitive
+        val learning = !incognito && !locked && !sensitive
         engine.post {
             if (rimeReady) {
                 Rime.setLearning(learning)
@@ -646,7 +648,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun setScript(script: ChineseScript) {
         val app = currentInputEditorInfo?.packageName
-        if (app != null && remembers) {
+        if (app != null && appConfigurable) {
             appScript = script
             memory()?.update { m -> m.withApp(app) { it.copy(script = script) } }
         }
@@ -687,7 +689,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun onClip() {
         if (!::history.isInitialized) return
-        val copied = history.onPrimaryClip(clipboard.primaryClip, ClipboardHistory.allowedIn(currentInputEditorInfo, settings)) ?: return
+        val copied = history.onPrimaryClip(clipboard.primaryClip, ClipboardHistory.allowedIn(currentInputEditorInfo, settings.copy(incognito = incognito))) ?: return
         if (settings.clipboard.quickPaste) {
             quickPaste.offer(copied)
             updateQuickStrip()
@@ -715,7 +717,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         commitComposition()
         history.expire()
         // The app being typed in, for "Not in this app"; none in fields that keep nothing anyway.
-        clipboardApp.value = currentInputEditorInfo?.packageName?.takeIf { ClipboardHistory.allowedIn(currentInputEditorInfo, settings.copy(clipboard = settings.clipboard.copy(excludedApps = emptySet()))) }
+        clipboardApp.value = currentInputEditorInfo?.packageName?.takeIf { ClipboardHistory.allowedIn(currentInputEditorInfo, settings.copy(incognito = incognito, clipboard = settings.clipboard.copy(excludedApps = emptySet()))) }
         val height = keyboard.height
         val panel = clipboardPanel ?: ComposeView(this).also { view ->
             clipboardPanel = view
@@ -801,6 +803,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onBack = ::showKeyboard,
                     moreTools = moreTools,
                     onTool = ::onTool,
+                    app = appSettings,
+                    onApp = ::setForApp,
                 )
             }
         }
@@ -959,7 +963,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         when {
             locked -> return showNotice(getString(R.string.locked_notice))
             !settings.ai.enabled -> return showNotice(getString(R.string.ai_off_notice))
-            info == null || direct || sensitive || settings.incognito -> return showNotice(getString(R.string.ai_not_here))
+            info == null || direct || sensitive || incognito -> return showNotice(getString(R.string.ai_not_here))
         }
         commitComposition()
         val ic = currentInputConnection ?: return
@@ -1065,6 +1069,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         // last used in it, and code-like fields start in English (only the package name is stored).
         val app = info.packageName?.takeIf { !direct && !sensitive }
         val remembered = app?.let { memory()?.current?.app(it) }
+        appSettings.value = remembered ?: AppMemory()
+        field = appField(field)
         mode = when {
             remembered?.pinned != null -> settings.usable(remembered.pinned)
             field == Field.CODE -> Mode.ENGLISH
@@ -1947,7 +1953,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * typed; a deletion converts afresh. Nothing is learned (Mozc never commits).
      */
     private fun suggestJapanese(typed: String, gen: Int) {
-        val incognito = settings.incognito || sensitive
+        val incognito = incognito || sensitive
         val chosen = japaneseSegments
         val cross = japaneseOptions()
         val touches = taps.toList()
@@ -2240,7 +2246,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * (clamped to the result) chosen in the segment panel.
      */
     private fun reconvert(spans: List<Mozc.Span>, focus: Int) {
-        val incognito = settings.incognito || sensitive
+        val incognito = incognito || sensitive
         val typed = composing.toString()
         val gen = ++generation
         engine.post {
@@ -2322,7 +2328,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun pinHere(on: Boolean) {
         val app = currentInputEditorInfo?.packageName ?: return
-        if (!remembers) return showNotice(getString(R.string.pin_not_here))
+        if (!appConfigurable) return showNotice(getString(R.string.pin_not_here))
         val pin = if (on) mode else null
         pinnedHere.value = pin
         memory()?.update { m -> m.withApp(app) { it.copy(pinned = pin) } }
@@ -2339,7 +2345,40 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Whether this field may leave a trace: the per-app mode and script, emoji recents. False in
      * incognito mode and in sensitive and direct fields.
      */
-    private val remembers get() = !direct && !sensitive && !settings.incognito
+    private val remembers get() = !direct && !sensitive && !incognito
+
+    /**
+     * Whether nothing may be learned or recorded here: incognito mode, or the person turned off
+     * learning for the current app (PLAN §10.10).
+     */
+    private val incognito get() = settings.incognito || appSettings.value.incognito
+
+    /**
+     * Whether the current app's own settings (a fixed mode, its script, no learning, code) may be
+     * kept: not in sensitive or direct fields and not in incognito mode. An app with learning
+     * turned off keeps them, so that switch can be turned back on.
+     */
+    private val appConfigurable get() = !direct && !sensitive && !settings.incognito && !locked
+
+    /**
+     * Changes the person's settings for the current app from the More panel (PLAN §10.10) and
+     * applies them at once: no learning re-applies the engines' learning; code makes the current
+     * ordinary text field a code field.
+     * Side effects: writes `files/keyboard/memory.json`; nothing where [appConfigurable] is false.
+     */
+    private fun setForApp(change: (AppMemory) -> AppMemory) {
+        val app = currentInputEditorInfo?.packageName ?: return
+        if (!appConfigurable) return showNotice(getString(R.string.pin_not_here))
+        val next = change(appSettings.value)
+        appSettings.value = next
+        memory()?.update { m -> m.withApp(app) { change(it) } }
+        currentInputEditorInfo?.let { field = appField(Fields.of(it.inputType, it.hintText ?: it.label)) }
+        applyEngineSettings()
+        refresh(0)
+    }
+
+    /** Returns [field] as the current app's settings make it: an ordinary text field is code there when its code switch is on. */
+    private fun appField(field: Field) = if (appSettings.value.code && field == Field.TEXT) Field.CODE else field
 
     /**
      * Finds emoji for what is being typed (English words, pinyin, romaji; CLDR keywords), when

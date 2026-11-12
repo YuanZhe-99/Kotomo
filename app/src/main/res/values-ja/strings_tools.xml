@@ -25,4 +25,11 @@
     <string name="edit_copy">コピー</string>
     <string name="edit_paste">貼り付け</string>
     <string name="edit_delete">削除</string>
+    <string name="app_incognito_title">このアプリでは学習しない</string>
+    <string name="app_incognito_desc">シークレットモードと同じく、ここで入力した内容は学習も記録もしません</string>
+    <string name="app_code_title">このアプリではコード入力</string>
+    <string name="app_code_desc">ここのテキスト欄は英語で始まり、ストレートの引用符を使い、括弧を自動で閉じません</string>
+    <string name="app_setting_incognito">学習しない</string>
+    <string name="app_setting_code">コード</string>
+    <string name="app_setting_separator">、</string>
 </resources>
