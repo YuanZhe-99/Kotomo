@@ -55,14 +55,21 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation)
   ProposeCross(*input, lexicon_, options_, &lattice);
 
   std::vector<Candidate> found;
-  for (const Path& path : Decode(lattice, Lang::kChinese, options_)) {
-    FinishChinese(*input, path, engines_, options_, &found);
+  const auto wanted = [this](Lang lang) { return options_.targets[static_cast<int>(lang)]; };
+  if (wanted(Lang::kChinese)) {
+    for (const Path& path : Decode(lattice, Lang::kChinese, options_)) {
+      FinishChinese(*input, path, engines_, options_, &found);
+    }
   }
-  for (const Path& path : Decode(lattice, Lang::kJapanese, options_)) {
-    FinishJapanese(*input, path, engines_, options_, &found);
+  if (wanted(Lang::kJapanese)) {
+    for (const Path& path : Decode(lattice, Lang::kJapanese, options_)) {
+      FinishJapanese(*input, path, engines_, options_, &found);
+    }
   }
-  for (const Path& path : Decode(lattice, Lang::kEnglish, options_)) {
-    FinishEnglish(*input, path, &found);
+  if (wanted(Lang::kEnglish)) {
+    for (const Path& path : Decode(lattice, Lang::kEnglish, options_)) {
+      FinishEnglish(*input, path, &found);
+    }
   }
 
   for (Candidate& candidate : found) candidate.cost += options_.bias[static_cast<int>(candidate.target)];

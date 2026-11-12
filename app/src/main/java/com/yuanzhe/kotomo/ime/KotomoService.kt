@@ -798,7 +798,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val reading = when {
             emoji -> ""
             // A Japanese candidate shows how it is read (池袋 / いけぶくろ, PLAN §9.3).
-            mixedCandidate != null -> if (mixedCandidate.target == Lang.JAPANESE) mixedCandidate.pieces.joinToString("") { it.reading } else ""
+            mixedCandidate != null -> if (mixedCandidate.target == Lang.JAPANESE && settings.mixed.cross.readings) mixedCandidate.pieces.joinToString("") { it.reading } else ""
             rime != null -> rime.comment.trim()
             mode == Mode.JAPANESE -> japaneseCandidates.firstOrNull { it.text == text }?.reading ?: japaneseReading
             else -> ""
@@ -820,7 +820,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     "punct" -> R.string.source_symbol
                     else -> R.string.source_chinese
                 }
-                mode == Mode.JAPANESE -> R.string.source_japanese
+                mode == Mode.JAPANESE -> if (japaneseCandidates.any { it.cross && it.text == text }) R.string.source_cross_language else R.string.source_japanese
                 mode == Mode.ENGLISH && index == 0 && text == composing.toString() -> R.string.source_typed
                 mode == Mode.ENGLISH -> R.string.source_english
                 else -> R.string.source_typed
@@ -1584,7 +1584,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (!direct && mode == Mode.ENGLISH && s.englishSuggestions && (raw.isNotEmpty() || previousWord != null)) suggestEnglish(raw, previousWord, gen)
         if (!direct && mode == Mode.JAPANESE && raw.isNotEmpty()) suggestJapanese(raw, gen)
         if (!direct && mode == Mode.MIXED && raw.isNotEmpty()) suggestMixed(raw, gen, downTime)
-        if (mixedHeld && (direct || mode != Mode.MIXED || raw.isEmpty())) {
+        if (mixedHeld && (direct || (mode != Mode.MIXED && mode != Mode.JAPANESE) || raw.isEmpty())) {
             // The keyboard dropped its Mixed composition (deleted, committed, another mode): the
             // engine drops its copy, in order with the keys before and after.
             mixedHeld = false
@@ -1610,7 +1610,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Mixed mode's options from the settings in force (PLAN §9.10): the level, each
      * cross-language switch, each language's weight as its distance from the default, and
      * incognito wherever the field may leave no trace.
-     * Notes: `pinyin_to_katakana` and `readings` have no reader yet.
+     * Notes: `pinyin_to_katakana` has no reader (no data maps pinyin to katakana words).
      */
     private fun mixedOptions(): Core.Options {
         val m = settings.mixed
@@ -1675,7 +1675,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 )
                 mixedIndexes = entries.map { it.second }
                 candidates = entries.map { it.first }
-                candidateBar.show(candidates, downTime)
+                // `mixed.cross.readings`: how a cross-language Japanese candidate is read.
+                val readings = if (settings.mixed.cross.readings) {
+                    mixedIndexes.map { i -> snapshot?.candidates?.getOrNull(i)?.let(Candidates::mixedReading).orEmpty() }
+                } else {
+                    emptyList()
+                }
+                candidateBar.show(candidates, downTime, readings)
                 shownCandidates.value = candidates
             }
         }
@@ -1747,6 +1753,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun suggestJapanese(typed: String, gen: Int) {
         val incognito = settings.incognito || sensitive
         val chosen = japaneseSegments
+        val cross = japaneseOptions()
+        val touches = taps.toList()
+        if (cross != null) mixedHeld = true
         engine.post {
             if (!mozcTried && !locked) {
                 mozcTried = true
@@ -1758,6 +1767,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val reading = session.joinToString("") { it.reading }
             val segments = Candidates.extend(chosen, reading)?.let { m?.pinnedConvert(it, incognito) } ?: session
             val predicted = if (reading.isEmpty()) emptyList() else m?.predict(reading, incognito).orEmpty()
+            // Pinyin and English read as Japanese, from the coordinator (`japanese.cross.*`).
+            val crossed = if (cross != null && m != null) {
+                attachMixed()
+                Candidates.japaneseCross(mixed.type(typed, touches, cross))
+            } else {
+                emptyList()
+            }
             val unavailable = m == null
             val work = SystemClock.uptimeMillis() - started
             main.post {
@@ -1768,29 +1784,60 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     if (unavailable) candidateBar.hint = japaneseHint(typed)
                     return@post
                 }
-                showJapanese(segments, predicted, typed)
+                showJapanese(segments, predicted, typed, crossed)
             }
         }
+    }
+
+    /**
+     * Japanese mode's options for the coordinator (PLAN §9.10): Japanese candidates only, with
+     * each `japanese.cross.*` conversion switch; null when all three conversions are off, so the
+     * coordinator is not asked at all.
+     */
+    private fun japaneseOptions(): Core.Options? {
+        val c = settings.japanese
+        if (!c.pinyinToKanji && !c.englishToKanji && !c.englishToKatakana) return null
+        return Core.Options(
+            pinyinToJapanese = c.pinyinToKanji,
+            englishToKanji = c.englishToKanji,
+            englishToKatakana = c.englishToKatakana,
+            wholeSentence = c.wholeSentence,
+            incognito = settings.incognito || sensitive || locked,
+            chinese = false,
+            english = false,
+        )
     }
 
     /**
      * Shows a Japanese conversion: the composition as its reading (as the chosen conversion once
      * a segment was chosen), marked with the conversion
      * candidates (API 37), and the candidate list with emoji.
+     * Inputs: [crossed] the coordinator's cross-language candidates for the same letters; they
+     * are left out once a segment was chosen (the person is editing Mozc's conversion).
      * Notes: main thread.
      */
-    private fun showJapanese(segments: List<Mozc.Segment>, predicted: List<Mozc.Candidate>, typed: String) {
+    private fun showJapanese(
+        segments: List<Mozc.Segment>, predicted: List<Mozc.Candidate>, typed: String,
+        crossed: List<Candidates.Japanese> = emptyList(),
+    ) {
         japaneseSegments = segments
         val reading = segments.joinToString("") { it.reading }
         japaneseReading = reading
-        japaneseCandidates = Candidates.japanese(segments, predicted)
+        val own = Candidates.japanese(segments, predicted)
+        japaneseCandidates = if (segments.any { it.pinned }) own else Candidates.japaneseWithCross(own, crossed, reading)
         // Once a segment is chosen the field shows the conversion (design: PhoneSegment), so what
         // Enter commits is what the person sees; until then it shows the reading.
         val chosen = segments.any { it.pinned }
         val shown = if (chosen) japaneseCandidates.firstOrNull()?.text ?: reading else reading
         setComposition(shown, japaneseCandidates.map { it.text }, chosen)
         candidates = withEmoji(japaneseCandidates.map { it.text }, emojiFor(typed))
-        candidateBar.show(candidates, 0)
+        // `japanese.cross.readings`: how a cross-language candidate is read.
+        val readings = if (settings.japanese.readings && japaneseCandidates.any { it.cross }) {
+            candidates.map { text -> japaneseCandidates.firstOrNull { it.cross && it.text == text && it.reading != text }?.reading.orEmpty() }
+        } else {
+            emptyList()
+        }
+        candidateBar.show(candidates, 0, readings)
         shownCandidates.value = candidates
         updateSegmentPanel()
     }

@@ -24,6 +24,7 @@ std::string Encode(const Request& request) {
     case Command::kOptions:
       w.Int(request.level);
       w.Int(request.switches);
+      w.Int(request.targets);
       for (const int8_t weight : request.weight) w.Int(weight);
       break;
     case Command::kSelect:
@@ -59,7 +60,8 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
       break;
     case Command::kOptions:
       ok = r.Int(&request.level) && request.level <= 2 && r.Int(&request.switches) &&
-           (request.switches & ~kSwitchAll) == 0;
+           (request.switches & ~kSwitchAll) == 0 && r.Int(&request.targets) &&
+           (request.targets & ~kTargetAll) == 0;
       for (int8_t& weight : request.weight) {
         ok = ok && r.Int(&weight) && weight >= -100 && weight <= 100;
       }

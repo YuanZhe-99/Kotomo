@@ -1,5 +1,8 @@
 package com.yuanzhe.kotomo.ime
 
+import com.yuanzhe.kotomo.engine.SnapshotCandidate
+import com.yuanzhe.kotomo.engine.Origin
+import com.yuanzhe.kotomo.engine.Lang
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Mozc
 import org.junit.Assert.assertEquals
@@ -103,5 +106,44 @@ class CandidatesTest {
         // Taps far outside stay inside the layout; characters without a key map to nothing.
         assertEquals(0 to 0, English.touchPoint('q', -5f, -5f))
         assertNull(English.touchPoint('1', 0f, 0f))
+    }
+
+    @Test
+    fun mixedReadingShowsHowACrossLanguageJapaneseCandidateIsRead() { // PLAN §9.3
+        fun piece(text: String, reading: String, typed: Lang, origin: Origin) =
+            com.yuanzhe.kotomo.engine.Piece(0, 1, text, reading, typed, origin, origin != Origin.MOZC)
+        val cross = SnapshotCandidate("池袋", Lang.JAPANESE, 0, SnapshotCandidate.FLAG_CROSS,
+            listOf(piece("池袋", "いけぶくろ", Lang.CHINESE, Origin.PINYIN_JA)))
+        assertEquals("いけぶくろ", Candidates.mixedReading(cross))
+        // Negative: typed as romaji, written in Chinese, or a reading that equals the text.
+        val romaji = SnapshotCandidate("猫", Lang.JAPANESE, 0, 0, listOf(piece("猫", "ねこ", Lang.JAPANESE, Origin.MOZC)))
+        assertEquals("", Candidates.mixedReading(romaji))
+        val chinese = SnapshotCandidate("电脑", Lang.CHINESE, 0, 0, listOf(piece("电脑", "diannao", Lang.CHINESE, Origin.RIME)))
+        assertEquals("", Candidates.mixedReading(chinese))
+        val kana = SnapshotCandidate("コーヒー", Lang.JAPANESE, 0, SnapshotCandidate.FLAG_CROSS,
+            listOf(piece("コーヒー", "コーヒー", Lang.ENGLISH, Origin.EN_JA)))
+        assertEquals("", Candidates.mixedReading(kana))
+    }
+
+    @Test
+    fun japaneseModePlacesCrossLanguageCandidatesAfterRomaji() { // PLAN §2.3, §9.10
+        val own = listOf(Candidates.Japanese("会", "かい"), Candidates.Japanese("回", "かい"), Candidates.Japanese("かい", "かい"))
+        val cross = listOf(
+            Candidates.Japanese("開", "かい", cross = true, leads = true),
+            Candidates.Japanese("回", "かい", cross = true, leads = true),
+            Candidates.Japanese("キット", "きっと", cross = true),
+        )
+        // Romaji throughout: Mozc's best stays first, a leading cross-language candidate is next,
+        // one the coordinator ranks below the romaji reading goes last; no text twice.
+        assertEquals(listOf("会", "開", "回", "かい", "キット"), Candidates.japaneseWithCross(own, cross, "かい").map { it.text })
+        // Not romaji (the reading keeps letters): the cross-language reading leads.
+        val guess = listOf(Candidates.Japanese("どんじんg", "どんじんg"))
+        val tokyo = listOf(Candidates.Japanese("東京", "とうきょう", cross = true, leads = true))
+        assertEquals(listOf("東京", "どんじんg"), Candidates.japaneseWithCross(guess, tokyo, "どんじんg").map { it.text })
+        // Negative: nothing to add leaves the list as it is, and at most three are added.
+        assertEquals(own, Candidates.japaneseWithCross(own, emptyList(), "かい"))
+        val many = (1..5).map { Candidates.Japanese("語$it", "ご", cross = true) }
+        assertEquals(own.size + Candidates.JAPANESE_CROSS, Candidates.japaneseWithCross(own, many, "かい").size)
+        assertEquals(emptyList<Candidates.Japanese>(), Candidates.japaneseCross(null))
     }
 }

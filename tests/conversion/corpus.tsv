@@ -61,6 +61,11 @@ T03-012	japanese		kyou	今日	3	the reading's words
 T03-N02	japanese		sakura	!さくらんぼ	1	prediction never pushes the exact word from first place
 T03-N03	japanese		nihon	!日本人|!日本語	1	a completion never comes before the reading's own word
 T03-N01	japanese		nihao	!你好	0	pinyin is not converted as Chinese in Japanese mode
+T03-020	japanese		dongjing	東京	3	§2.3: Japanese mode reads pinyin as a Japanese word (japanese.cross.pinyin_to_kanji)
+T03-021	japanese		coffee	コーヒー	3	§2.3: Japanese mode reads English as its loanword (japanese.cross.english_to_katakana)
+T03-022	japanese		chidai	池袋	3	§2.3
+T03-023	japanese		nihon	日本	1	romaji first: cross-language candidates never displace Mozc's own
+T03-N05	japanese		dongjing	!东京	0	Japanese mode offers no Chinese candidate
 T04-001	mixed		diannao	电脑	3	§2.3: original language first
 T04-003	mixed		coffee	coffee	1	§2.3
 T04-004	mixed		coffee	コーヒー	3	§2.3, §13.2 T06-002
@@ -76,6 +81,22 @@ T04-013	mixed		wo xihuan ai	我喜欢AI	5	the allow list: AI stands inside a sen
 T04-014	mixed		aishishenme	AI是什么	3	the allow list, at the start of an unspaced sentence
 T04-N02	mixed		wo xihuan ai	!我喜欢AI	1	original language first: the Chinese reading of ai stays ahead of AI inside a pinyin sentence
 T04-N01	mixed		nihao	!こんにちは|!にはお	1	§13.2: nihao does not put Japanese first
+T04-020	mixed		change	change	3	§9.1: English and pinyin spell alike (chang'e); the common English word stays near the top
+T04-021	mixed		change	嫦娥	5	§9.1: the pinyin reading is kept
+T04-022	mixed		hang	行|航	3	§9.1
+T04-023	mixed		hang	hang	5	§9.1
+T04-024	mixed		long	龙	3	§9.1
+T04-025	mixed		long	long	3	§9.1
+T04-026	mixed		men	们|门	3	§9.1
+T04-027	mixed		men	men	5	§9.1
+T04-028	mixed		fan	饭|反	3	§9.1
+T04-029	mixed		fan	fan	5	§9.1
+T04-030	mixed		kai	开	1	§9.1: romaji and pinyin spell alike
+T04-031	mixed		kai	回|海|会|貝	5	§9.1: a Japanese reading of kai is kept
+T04-032	mixed		ni	你	1	§9.1
+T04-033	mixed		ni	に|二	5	§9.1: a Japanese reading of ni is kept
+T04-N03	mixed		kai	!回|!海|!会	1	§9.1: a Japanese reading of kai is not first
+T04-N04	mixed		long	!長|!Long	1	§9.1: neither Japanese nor a recased English word is first
 T05-001	mixed		mianjie	面接	3	§13.2
 T05-002	mixed		chidai	池袋	3	§13.2: reading いけぶくろ
 T05-003	mixed		dongjing	東京	3	§13.2: after Chinese 东京

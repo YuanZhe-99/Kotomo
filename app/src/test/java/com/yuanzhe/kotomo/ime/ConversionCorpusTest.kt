@@ -145,8 +145,8 @@ class ConversionCorpusTest {
      * (Simplified Chinese, emoji suggestions on).
      * Notes: Chinese hands the whole input to librime; Mixed types it key by key into the
      * coordinator through [Core], as the keyboard does, and assembles the snapshot with the
-     * default emoji weight; Japanese converts the letters in one Mozc session and predicts from
-     * their reading; English asks the English engine, with the context as the previous word.
+     * default emoji weight; Japanese converts the letters in one Mozc session, predicts from
+     * their reading and adds the coordinator's cross-language candidates; English asks the English engine, with the context as the previous word.
      */
     private fun candidates(line: Line): List<String> = when (line.mode) {
         Mode.CHINESE -> {
@@ -176,7 +176,15 @@ class ConversionCorpusTest {
             val segments = mozc.sessionConvert(line.input, incognito = false).orEmpty()
             val reading = segments.joinToString("") { it.reading }
             val predicted = if (reading.isEmpty()) emptyList() else mozc.predict(reading, incognito = false)
-            Candidates.withEmoji(Candidates.japanese(segments, predicted).map { it.text }, Candidates.emoji(emoji, line.input))
+            // As the keyboard does: the coordinator's cross-language candidates, Japanese only.
+            Rime.clear()
+            val c = core ?: checkNotNull(Core.open(rime = true, mozc, english, lexicon.path)) { "the coordinator did not open" }.also { core = it }
+            c.options(++generation, Core.Options(chinese = false, english = false))
+            val crossed = Candidates.japaneseCross(c.set(++generation, line.input))
+            c.clear(++generation)
+            c.options(++generation, Core.Options())
+            val own = Candidates.japanese(segments, predicted)
+            Candidates.withEmoji(Candidates.japaneseWithCross(own, crossed, reading).map { it.text }, Candidates.emoji(emoji, line.input))
         }
         Mode.ENGLISH -> if (line.input.isEmpty() && line.context.isEmpty()) {
             emptyList()

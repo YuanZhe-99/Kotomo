@@ -30,6 +30,9 @@ inline constexpr uint8_t kSwitchWholeSentence = 8;
 inline constexpr uint8_t kSwitchIncognito = 16;
 inline constexpr uint8_t kSwitchAll = 31;
 
+/// Request::targets bits: the languages candidates may be written in, bit i for Lang i.
+inline constexpr uint8_t kTargetAll = 7;
+
 /// Marks a key without a touch position.
 inline constexpr int16_t kNoCoordinate = -1;
 
@@ -43,6 +46,7 @@ struct Request {
                                                  // 1000 × 600 layout space, or kNoCoordinate
   uint8_t level = 1;        // kOptions: 0 conservative, 1 balanced, 2 aggressive
   uint8_t switches = kSwitchAll & ~kSwitchIncognito;  // kOptions
+  uint8_t targets = kTargetAll;  // kOptions: the target languages to convert into
   int8_t weight[3] = {0, 0, 0};  // kOptions: how far each language's weight was moved from its
                                  // default, −100…100, indexed by Lang
   uint64_t shown = 0;       // kSelect: the generation of the snapshot the index counts in

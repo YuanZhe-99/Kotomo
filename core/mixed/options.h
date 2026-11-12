@@ -51,6 +51,9 @@ struct Options {
   bool transliteration = true;      // with english_to_katakana: made-up katakana spellings too
   bool whole_sentence = true;       // false: a cross-language word only for the whole input
   bool incognito = false;           // the field must leave no trace: Mozc converts incognito
+  // The languages candidates are written in, indexed by Lang. Mixed mode asks for all three;
+  // Japanese mode asks for Japanese only and takes the cross-language candidates (PLAN.md §2.3).
+  bool targets[3] = {true, true, true};
   // What each target language's candidates cost on top (the per-language weights of PLAN.md
   // §2.3): 0 at the default weight, negative for a language the person wants more of.
   int32_t bias[3] = {0, 0, 0};      // indexed by Lang

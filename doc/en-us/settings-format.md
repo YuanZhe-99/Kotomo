@@ -36,6 +36,29 @@ app and the keyboard run in the same process and share one `SettingsStore`
 ## Keys
 
 Mixed mode reads its keys on every key typed (the mixed-input coordinator gets them as options,
+`engine-contract.md`). Japanese mode reads `japanese.cross.*` the same way: it asks the
+coordinator for Japanese candidates only and adds the cross-language ones to Mozc's own, and with
+`pinyin_to_kanji`, `english_to_kanji` and `english_to_katakana` all off it does not ask at all.
+`readings` shows a cross-language Japanese candidate's reading next to it in the candidate bar.
+Not read yet: `pinyin_to_katakana` in either mode (no data maps pinyin to katakana words).
+
+| Key | Type | Meaning |
+|---|---|---|
+| `format_version` | int | Format version that last wrote the file; this build writes `1` and never lowers a newer value |
+| `updated_utc_ms` | long | Time of the last change, UTC milliseconds since the epoch |
+
+- A missing file, or a missing key, reads as the default; the file is created on the first change.
+  Moving from "no file" to version 1 therefore needs no migration step.
+- Keys this version does not know are never removed.
+- A value this version does not understand (an unknown enum name, a number out of range) reads as
+  the default and stays in the file until the person changes that setting, so a newer version's
+  value survives a run of an older version.
+- Enum values are stored as the lowercase constant name (`balanced`, `left`); renaming a constant
+  is a format change.
+
+## Keys
+
+Mixed mode reads its keys on every key typed (the mixed-input coordinator gets them as options,
 `engine-contract.md`). Not read yet: `mixed.cross.pinyin_to_katakana` and `mixed.cross.readings`,
 and every `japanese.cross.*` switch, because Japanese mode does not convert through the
 coordinator yet; the settings app stores and shows them.

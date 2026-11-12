@@ -1,7 +1,7 @@
 # Engine ↔ app contract
 
 How the app and the native engine talk: what goes in, what comes out, and how the mixed-input
-coordinator (`core/mixed/`) reaches the three engines. This is **contract version 2**
+coordinator (`core/mixed/`) reaches the three engines. This is **contract version 3**
 (`kContractVersion` in `core/mixed/snapshot.h`, `Snapshot.VERSION` in `engine/Snapshot.kt`). Both
 sides exist: the engine side is `libkotomo_core.so` (`core/mixed/session.h`, `jni/core_jni.cc`),
 the app side is the facade `engine/Core.kt` with the decoder `engine/Snapshot.kt`. Mixed mode
@@ -39,7 +39,7 @@ All integers are little-endian. A string is a `u16` byte length followed by UTF-
 | 1 | key | u32 code point; i16 x, i16 y: the touch in the English engine's 1000 × 600 layout space, −1 for none | appends a letter, or a space or apostrophe as a boundary hint; any other character and a key past 256 bytes change nothing |
 | 2 | backspace | — | deletes the last character |
 | 3 | clear | — | drops the composition without committing |
-| 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; i8 × 3 weights for Chinese, Japanese, English | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates |
+| 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; u8 targets; i8 × 3 weights for Chinese, Japanese, English | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito). The targets' bits name the languages candidates may be written in: 0 Chinese, 1 Japanese, 2 English; Mixed mode sets all three, Japanese mode only Japanese and takes the cross-language candidates (version 3). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates |
 | 5 | context | string: the text before the cursor | kept for ranking by context; nothing reads it yet. The app never sends it for a sensitive field |
 | 6 | select | u64: the generation of the snapshot on screen; u16: a candidate's index in it | commits that candidate: the snapshot's commit field holds its text and the composition is empty. When the engine's last snapshot is another one, or has no such candidate, nothing is committed |
 
@@ -49,10 +49,9 @@ truncated or overlong buffer) gets no snapshot and changes nothing. A compositio
 cannot convert (no letters, or characters other than letters and delimiters) gets a snapshot with
 the composition and no candidates.
 
-Not in version 2: choosing or locking one piece, committing part of a composition, undoing a
+Not in version 3: choosing or locking one piece, committing part of a composition, undoing a
 conversion and restoring the raw input (the snapshot already carries the pieces those commands
-address), moving the cursor inside the composition, and a mode field (only Mixed mode uses the
-coordinator). Each arrives with a new contract version.
+address), and moving the cursor inside the composition. Each arrives with a new contract version.
 
 ## Output: the snapshot
 

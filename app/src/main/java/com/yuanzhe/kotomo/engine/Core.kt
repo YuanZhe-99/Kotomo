@@ -33,6 +33,10 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         val chineseWeight: Int = 0,
         val japaneseWeight: Int = 0,
         val englishWeight: Int = 0,
+        /** Whether candidates written in each language are wanted; Japanese mode asks for Japanese only. */
+        val chinese: Boolean = true,
+        val japanese: Boolean = true,
+        val english: Boolean = true,
     )
 
     /** The number of entries of the cross-language lexicon in use; 0 without one. */
@@ -57,14 +61,15 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
     /** Drops the composition without committing. */
     fun clear(generation: Long): Snapshot? = call(generation, CLEAR) {}
 
-    /** Sets the level, the cross-language switches, the weights and the field's privacy. */
+    /** Sets the level, the cross-language switches, the target languages, the weights and the field's privacy. */
     fun options(generation: Long, options: Options): Snapshot? = call(generation, OPTIONS) {
         val switches = (if (options.pinyinToJapanese) 1 else 0) or
             (if (options.englishToKanji) 2 else 0) or
             (if (options.englishToKatakana) 4 else 0) or
             (if (options.wholeSentence) 8 else 0) or
             (if (options.incognito) 16 else 0)
-        it.put(options.level.coerceIn(0, 2).toByte()).put(switches.toByte())
+        val targets = (if (options.chinese) 1 else 0) or (if (options.japanese) 2 else 0) or (if (options.english) 4 else 0)
+        it.put(options.level.coerceIn(0, 2).toByte()).put(switches.toByte()).put(targets.toByte())
         for (weight in intArrayOf(options.chineseWeight, options.japaneseWeight, options.englishWeight)) {
             it.put(weight.coerceIn(-100, 100).toByte())
         }

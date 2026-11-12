@@ -1,4 +1,4 @@
-// Host test of the request encoding (the engine ↔ app contract's input, version 2,
+// Host test of the request encoding (the engine ↔ app contract's input, version 3,
 // doc/en-us/engine-contract.md): round trip of every command and refusal of damaged buffers.
 
 #include <vector>
@@ -17,7 +17,7 @@ int main() {
   samples[2] = {.generation = 3, .command = Command::kBackspace};
   samples[3] = {.generation = 4, .command = Command::kClear};
   samples[4] = {.generation = 5, .command = Command::kOptions, .level = 2,
-                .switches = kSwitchEnglishToKanji | kSwitchIncognito, .weight = {-100, 0, 100}};
+                .switches = kSwitchEnglishToKanji | kSwitchIncognito, .targets = 2, .weight = {-100, 0, 100}};
   samples[5] = {.generation = 6, .command = Command::kContext, .text = "前文"};
   samples[6] = {.generation = 1ull << 40, .command = Command::kSelect, .shown = 9, .index = 3};
   bool round_trip = true, truncated_refused = true, trailing_refused = true;
@@ -49,8 +49,9 @@ int main() {
   Check(!DecodeRequest(damaged(body - 1, 7)), "Q7-request-unknown-command-refused");
   Check(!DecodeRequest(damaged(body, 3)), "Q7-request-level-refused");
   Check(!DecodeRequest(damaged(body + 1, 32)), "Q7-request-switch-bit-refused");
-  Check(!DecodeRequest(damaged(body + 2, 101)) && !DecodeRequest(damaged(body + 4, -101)),
+  Check(!DecodeRequest(damaged(body + 2, 8)), "Q7B-request-target-bit-refused");
+  Check(!DecodeRequest(damaged(body + 3, 101)) && !DecodeRequest(damaged(body + 5, -101)),
         "Q7-request-weight-refused");
-  Check(DecodeRequest(damaged(body + 2, 100)).has_value(), "Q7-request-weight-limit-accepted");
+  Check(DecodeRequest(damaged(body + 3, 100)).has_value(), "Q7-request-weight-limit-accepted");
   return kotomo::mixed::test::Result();
 }

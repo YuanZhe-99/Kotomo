@@ -1,5 +1,8 @@
 package com.yuanzhe.kotomo.ime
 
+import com.yuanzhe.kotomo.engine.Snapshot
+import com.yuanzhe.kotomo.engine.SnapshotCandidate
+import com.yuanzhe.kotomo.engine.Lang
 import com.yuanzhe.kotomo.engine.Mozc
 
 /**
@@ -16,8 +19,47 @@ internal object Candidates {
     /** The most Chinese candidates read from librime per update. */
     const val CHINESE_LIMIT = 30
 
-    /** One Japanese candidate: what it commits and the hiragana reading it stands for. */
-    data class Japanese(val text: String, val reading: String)
+    /**
+     * One Japanese candidate: what it commits, the hiragana reading it stands for, whether it is
+     * [cross]-language (typed as pinyin or English, from the coordinator) and, for those, whether
+     * the coordinator ranked it before its own reading of the letters as romaji ([leads]).
+     */
+    data class Japanese(val text: String, val reading: String, val cross: Boolean = false, val leads: Boolean = false)
+
+    /** The most cross-language candidates Japanese mode adds to Mozc's own. */
+    const val JAPANESE_CROSS = 3
+
+    /**
+     * Picks Japanese mode's cross-language candidates out of the coordinator's [snapshot] of the
+     * same letters (PLAN §2.3: Japanese mode also reads pinyin and English as Japanese).
+     * Returns: its candidates written in Japanese that hold a cross-language piece, best first,
+     * each with its reading; those the coordinator put before its first candidate typed as
+     * romaji throughout are marked [Japanese.leads]. Empty for null.
+     */
+    fun japaneseCross(snapshot: Snapshot?): List<Japanese> {
+        val all = snapshot?.candidates.orEmpty().filter { it.target == Lang.JAPANESE }
+        val plain = all.indexOfFirst { !it.crossLanguage }.let { if (it < 0) all.size else it }
+        return all.withIndex().filter { it.value.crossLanguage }
+            .map { (i, c) -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, cross = true, leads = i < plain) }
+    }
+
+    /**
+     * Adds up to [JAPANESE_CROSS] cross-language candidates to Mozc's list for Japanese mode.
+     * Inputs: [own] Mozc's candidates ([japanese]); [cross] from [japaneseCross]; [reading] the
+     * kana Mozc's romaji table made of the letters.
+     * Returns: [own] with the new texts of [cross]: those that lead go right after Mozc's best
+     * (romaji first, cross-language next, PLAN §2.3), or in front when the reading still holds
+     * letters (`dongjing` is not Japanese as typed, so Mozc's reading of it is a guess); the
+     * others, which the coordinator itself ranks below the romaji reading, go last.
+     */
+    fun japaneseWithCross(own: List<Japanese>, cross: List<Japanese>, reading: String): List<Japanese> {
+        val texts = own.mapTo(HashSet()) { it.text }
+        val added = cross.filter { texts.add(it.text) }.take(JAPANESE_CROSS)
+        if (added.isEmpty()) return own
+        val (leading, trailing) = added.partition { it.leads }
+        val at = if (reading.any { it in 'a'..'z' || it in 'A'..'Z' }) 0 else minOf(1, own.size)
+        return own.take(at) + leading + own.drop(at) + trailing
+    }
 
     /** The most predicted words placed right after the best sentence. */
     const val JAPANESE_PREDICTIONS = 3
@@ -142,6 +184,18 @@ internal object Candidates {
         val letters = typed.trim().let { if (it.isEmpty() || it in texts) emptyList() else listOf(it to MIXED_TYPED) }
         val seen = HashSet<String>()
         return (indexed.take(at) + emoji.map { it to MIXED_EMOJI } + indexed.drop(at) + letters).filter { seen.add(it.first) }
+    }
+
+    /**
+     * Returns the reading the candidate bar shows next to a Mixed-mode candidate (PLAN §9.3):
+     * the hiragana of a Japanese candidate that was not typed as romaji throughout (池袋 typed
+     * `chidai` shows いけぶくろ), and "" for every other candidate: one typed in its own language
+     * needs no reading, and a reading equal to the text says nothing.
+     */
+    fun mixedReading(candidate: SnapshotCandidate): String {
+        if (candidate.target != Lang.JAPANESE || !candidate.crossLanguage) return ""
+        val reading = candidate.pieces.joinToString("") { it.reading }
+        return if (reading == candidate.text) "" else reading
     }
 
     /**

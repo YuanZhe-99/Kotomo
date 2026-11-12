@@ -99,6 +99,26 @@ class MixedTypingTest {
         assertNotEquals(SENTENCE, text)
     }
 
+    /**
+     * T03-020 positive (PLAN §2.3): Japanese mode reads pinyin as a Japanese word through the
+     * coordinator; `dongjing` is not romaji, so 東京 leads and space commits it.
+     */
+    @Test
+    fun japaneseModeReadsPinyinAsJapanese() {
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.JAPANESE) } }
+        assertEquals("東京", type("dongjing ", expected = "東京", enter = false))
+    }
+
+    /** PLAN §9.10 negative: with `japanese.cross.pinyin_to_kanji` off Japanese mode does not. */
+    @Test
+    fun japaneseModeCrossSwitchOffStopsTheConversion() {
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.JAPANESE) } }
+        change { it.copy(japanese = it.japanese.copy(pinyinToKanji = false)) }
+        val text = type("dongjing ", expected = "", enter = false, attempts = 1)
+        assertTrue("something is committed", text.isNotEmpty())
+        assertNotEquals("東京", text)
+    }
+
     /** T04 positive: an English word typed in Mixed mode stays English (original language first). */
     @Test
     fun englishWordStaysEnglish() {

@@ -1,4 +1,4 @@
-// Host test of the session (the engine side of the engine ↔ app contract, version 2) against
+// Host test of the session (the engine side of the engine ↔ app contract, version 3) against
 // the fake engines: keys, deletion, replacing and clearing the composition, options, selection.
 
 #include "check.h"
@@ -96,6 +96,16 @@ int main() {
                       .switches = kSwitchAll});
   Check(session.options().incognito, "Q7-session-incognito");
   session.Handle({.generation = ++generation, .command = Command::kOptions});
+
+  // Targets: Japanese mode asks for Japanese candidates only (contract version 3).
+  session.Handle({.generation = ++generation, .command = Command::kSet, .text = "book"});
+  s = session.Handle({.generation = ++generation, .command = Command::kOptions, .targets = 2});
+  bool japanese_only = !s.candidates.empty();
+  for (const Candidate& c : s.candidates) japanese_only = japanese_only && c.target == Lang::kJapanese;
+  Check(Place(s, "本") >= 0 && japanese_only, "Q7B-session-targets-japanese-only");
+  s = session.Handle({.generation = ++generation, .command = Command::kOptions});
+  Check(Place(s, "book") == 0 && s.candidates[0].target == Lang::kEnglish, "Q7B-session-targets-default-all");
+  session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
 
   // Context is kept and changes nothing yet.
   s = session.Handle({.generation = ++generation, .command = Command::kContext, .text = "前"});

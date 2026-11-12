@@ -46,7 +46,10 @@ Snapshot Session::Handle(const Request& request) {
       options_.english_to_katakana = request.switches & kSwitchEnglishToKatakana;
       options_.whole_sentence = request.switches & kSwitchWholeSentence;
       options_.incognito = request.switches & kSwitchIncognito;
-      for (int i = 0; i < 3; ++i) options_.bias[i] = -kWeightStep * request.weight[i];
+      for (int i = 0; i < 3; ++i) {
+        options_.targets[i] = request.targets & (1 << i);
+        options_.bias[i] = -kWeightStep * request.weight[i];
+      }
       break;
     case Command::kContext:
       context_ = request.text;

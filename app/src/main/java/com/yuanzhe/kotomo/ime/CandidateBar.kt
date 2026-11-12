@@ -79,6 +79,8 @@ class CandidateBar(
     )
 
     private var candidates = emptyList<String>()
+    /** A short note drawn after a candidate (a Japanese reading), by index; "" or missing for none. */
+    private var notes = emptyList<String>()
     /** Left edges of the candidates in content coordinates, plus the end of the last one. */
     private var bounds = FloatArray(1)
     private var scroll = 0f
@@ -120,10 +122,14 @@ class CandidateBar(
         return iconSize + pad + (if (q.isEmpty()) hintPaint else textPaint).measureText(q.ifEmpty { searchPrompt }) + pad * 2
     }
 
-    /** Replaces the candidates; [downTime] is the touch that caused it, or 0. */
-    fun show(list: List<String>, downTime: Long) {
+    /**
+     * Replaces the candidates; [downTime] is the touch that caused it, or 0. [readings] holds, by
+     * index, a reading to draw small after a candidate ("" for none; PLAN §9.3).
+     */
+    fun show(list: List<String>, downTime: Long, readings: List<String> = emptyList()) {
         if (list != candidates) scroll = 0f
         candidates = list
+        notes = readings
         measure()
         if (downTime != 0L) pendingProbe = downTime
         invalidate()
@@ -134,9 +140,13 @@ class CandidateBar(
         bounds = FloatArray(candidates.size + 1)
         bounds[0] = padStart + searchWidth()
         candidates.forEachIndexed { i, text ->
-            bounds[i + 1] = bounds[i] + textPaint.measureText(text) + (if (i == 0) padFirst else pad) * 2
+            bounds[i + 1] = bounds[i] + textPaint.measureText(text) + noteWidth(i) + (if (i == 0) padFirst else pad) * 2
         }
     }
+
+    /** The width candidate [i]'s reading takes after its text, with the gap before it; 0 without one. */
+    private fun noteWidth(i: Int): Float =
+        notes.getOrNull(i).orEmpty().let { if (it.isEmpty()) 0f else pad / 2 + hintPaint.measureText(it) }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), barHeight)
@@ -206,6 +216,10 @@ class CandidateBar(
                     drawText(text, x + padFirst, baseline, firstPaint)
                 } else {
                     drawText(text, x + pad, baseline, textPaint)
+                }
+                val note = notes.getOrNull(i).orEmpty()
+                if (note.isNotEmpty()) {
+                    drawText(note, x + (if (i == 0) padFirst else pad) + textPaint.measureText(text) + pad / 2, baseline, hintPaint)
                 }
             }
         }
