@@ -17,7 +17,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Fields.kt` | 输入框适配与空格规则（PLAN §8.7、§8.1）：由输入类型与提示判定输入框种类、敏感输入框与直接输入的唯一定义（PLAN §14）、回车键样式、双击空格句号、智能空格（纯 Kotlin，有单元测试） | `Fields.of`、`Fields.sensitive`、`Fields.direct`、`Fields.enter` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Posture.kt` | 布局所用的窗口尺寸类别与折叠姿态（PLAN §8.10）：何时分离、桌面姿态与矮窗口下的高度上限、标识屏幕与方向的键（有单元测试） | `Posture.split`、`Posture.heightLimit`、`Posture.screenKey` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardView.kt` | 按设计稿绘制的 Canvas 键盘（手机，以及宽屏上固定宽度的分离两半）、点按、Gboard 式长按弹出（滑动选择、松开输入）、按键预览、在空格上拖动移动光标与从退格向左拖动删除词、退格连删、单手模式的侧边按钮与拖动调整宽度的竖条、每个按键的 TalkBack 节点；`PopupLayer` 绘制弹出框 | `onTouchEvent`、`onDraw`、`PopupLayer` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏、状态提示、Emoji 搜索的查询词（结果之前）、长按后显示的候选详情（读音、来源，学到的词可忘记） | `show`、`hint`、`details`、`onTouchEvent` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏（“更多”，然后是放得下的用户工具）、状态提示、Emoji 搜索的查询词（结果之前）、长按后显示的候选详情（读音、来源，学到的词可忘记） | `show`、`hint`、`details`、`onTouchEvent` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | 在键盘位置显示的 Compose 面板：Emoji 面板（按分组列出系统字体能显示的全部 Emoji；从键盘记忆读取常用与最近使用（仅在输入框允许学习时记录）、搜索标签；长按选择肤色）、全部候选，以及片段修改（整句与各片段的按钮、所选片段的候选；日文模式为缩短、延长，混合模式为提交到这里、恢复输入） | `EmojiPanel`、`Recents`、`TonePicker`、`CandidatesPanel`、`SegmentPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`load` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardHistory.kt` | 剪贴板历史（[clipboard.md](../clipboard.md)）：只在允许时记录（敏感输入框、敏感剪贴与无痕模式不记录）、去重、固定与快捷短语、保留期与数量上限、以 Keystore 密钥加密的 AES-GCM 文件、内存快照；剪贴分类 | `onPrimaryClip`、`allowedIn`、`items`、`ClipFile`、`ClipKind.of` |
@@ -69,7 +69,8 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Pc.kt` | PC 布局（PLAN §10.11）：修饰键状态机（锁住下一键、锁定、按住）、美式 PC 键盘的键码与各主机系统的快捷键、手机/完整/分体布局，以及把按键变成 `InputConnection.sendKeyEvent` 调用的 `PcInput` | `PcModifiers`、`PcKeys`、`PcLayout`、`PcInput` |
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
 | `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定；该运行已于 2026-11-04 随 GitHub 仓库删除，CI 重新存在之前它下载不到任何东西；`build-mozc.sh` 在本地构建同样的文件 | — |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的工具栏快捷设置：单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用 | `QuickPanel` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的“更多”面板：不在工具栏上的工具，然后是快捷设置（单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用） | `QuickPanel` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | 通过 ML Kit GenAI 用 Gemini Nano 校对与改写（[ai.md](../ai.md)）：状态、由用户发起的下载、长文字拆分、错误映射 | `GenAi`、`AiAction`、`AiFailure` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`、`AiHandoff.kt` | 写作助手页面（语言、操作、建议、替换、复制）及其与键盘之间的内存交接 | `AiActivity`、`AiHandoff`、`AiRequest` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardColors.kt` | 按所选主题（跟随系统、浅色、深色、Material You）为视图与 Compose 面板提供键盘调色板 | `apply`、`color`、`kbColor` |

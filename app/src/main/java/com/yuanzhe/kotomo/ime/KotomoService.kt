@@ -443,6 +443,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
             // The mode in use was just hidden: move to one the language choice still offers.
             if (::keyboard.isInitialized && mode !in it.modes) switchMode(it.usable(mode), 0)
+            if (::candidateBar.isInitialized) candidateBar.tools = it.tools
             refresh(0)
             applyEngineSettings()
         }
@@ -543,6 +544,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val popups = PopupLayer(this)
         keyboard = KeyboardView(this, popups, ::onKey)
         candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::showDetails, ::onDetails) { leaveSearch(toPanel = true) }
+        candidateBar.tools = settings.tools
         panelHost = FrameLayout(this).apply { addView(keyboard) }
         keyboard.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
             override fun onDraw() {
@@ -771,6 +773,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** Main thread: the mode the quick panel shows (set each time it opens). */
     private val quickMode = androidx.compose.runtime.mutableStateOf(Mode.MIXED)
+    /** The tools the bar does not show (hidden or without room), for the More panel's grid. */
+    private val moreTools = androidx.compose.runtime.mutableStateOf(emptyList<Tool>())
 
     /** Opens or closes the quick settings (the toolbar's first button) in the keyboard's place. */
     private fun toggleQuickPanel() {
@@ -779,6 +783,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             return
         }
         quickMode.value = mode
+        moreTools.value = Tool.configurable.sortedBy { settings.toolOrder.indexOf(it) } - candidateBar.shownTools.toSet()
         val height = keyboard.height
         val panel = quickPanel ?: ComposeView(this).also { view ->
             quickPanel = view
@@ -794,6 +799,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onPin = ::pinHere,
                     onOpenSettings = { onTool(Tool.SETTINGS) },
                     onBack = ::showKeyboard,
+                    moreTools = moreTools,
+                    onTool = ::onTool,
                 )
             }
         }
@@ -888,15 +895,56 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }, NOTICE_MS)
     }
 
-    /** Runs a toolbar button: settings opens the app; the rest arrive with later phases. */
+    /**
+     * Runs a toolbar tool, from the bar or from the More panel's grid (PLAN §10.10).
+     * Notes: Settings, Dictionaries and Themes open the settings app (at that page); Translate is
+     * not available yet.
+     */
     private fun onTool(tool: Tool) {
         when (tool) {
-            Tool.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Tool.SETTINGS -> openSettings(null)
+            Tool.DICTIONARIES -> openSettings(com.yuanzhe.kotomo.settings.MainActivity.PAGE_DICTIONARIES)
+            Tool.THEMES -> openSettings(com.yuanzhe.kotomo.settings.MainActivity.PAGE_THEMES)
             Tool.MORE -> toggleQuickPanel()
             Tool.CLIPBOARD -> showClipboard()
             Tool.AI -> startAi()
             Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
+            Tool.EDIT -> showEditPanel()
+            Tool.EMOJI -> showEmoji()
+            Tool.LANGUAGE -> settings.modes.let { modes ->
+                showKeyboard()
+                switchMode(modes[(modes.indexOf(mode) + 1) % modes.size], 0)
+            }
         }
+    }
+
+    /** Opens the settings app, at [page] (a [MainActivity] page name) or at its home. */
+    private fun openSettings(page: String?) {
+        startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).apply {
+            // A settings app already open elsewhere starts over at the page.
+            if (page != null) putExtra(com.yuanzhe.kotomo.settings.MainActivity.EXTRA_PAGE, page).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        })
+    }
+
+    /**
+     * Shows the edit panel (cursor and text-editing keys) in the keyboard's place.
+     * Side effects: commits the composition first, so the keys move a cursor in finished text.
+     */
+    private fun showEditPanel() {
+        commitComposition()
+        refresh(0)
+        val height = keyboard.height
+        val panel = ComposeView(this).apply {
+            setContent {
+                EditPanel(
+                    onKey = { code, select -> currentInputConnection?.let { TextEditing.key(it, code, select) } },
+                    onAction = { id -> currentInputConnection?.let { TextEditing.action(it, id) } },
+                    onBack = ::showKeyboard,
+                )
+            }
+        }
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
     }
 
     /**

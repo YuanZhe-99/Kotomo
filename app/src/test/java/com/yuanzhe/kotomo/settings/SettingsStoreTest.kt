@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.yuanzhe.kotomo.ime.FuzzyRule
 import com.yuanzhe.kotomo.ime.Mode
+import com.yuanzhe.kotomo.ime.Tool
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -216,6 +217,39 @@ class SettingsStoreTest {
             assertEquals(listOf(Mode.ENGLISH, Mode.JAPANESE, Mode.MIXED, Mode.CHINESE, Mode.PC), read.modeOrder)
             SettingsStore(data, scope).update { it.copy(modeOrder = listOf(Mode.JAPANESE, Mode.ENGLISH, Mode.MIXED, Mode.CHINESE)) }
             assertEquals("japanese,english,mixed,chinese,korean", data.data.first()[order])
+        }
+    }
+
+    /** T14-toolbar-1: the toolbar's order and hidden tools survive reopening; More is never in the list. */
+    @Test
+    fun toolbarOrderAndHiddenTools() {
+        assertEquals(listOf(Tool.CLIPBOARD, Tool.AI, Tool.TRANSLATE, Tool.SETTINGS), Settings().tools)
+        val wanted = Settings(toolOrder = listOf(Tool.EDIT) + (Tool.configurable - Tool.EDIT), hiddenTools = setOf(Tool.AI, Tool.TRANSLATE))
+        withData { data, scope -> SettingsStore(data, scope).update { wanted } }
+        withData { data, _ ->
+            val read = SettingsFormat.read(data.data.first())
+            assertEquals(wanted.toolOrder, read.toolOrder)
+            assertEquals(listOf(Tool.EDIT, Tool.CLIPBOARD, Tool.SETTINGS, Tool.EMOJI, Tool.LANGUAGE, Tool.DICTIONARIES, Tool.THEMES), read.tools)
+            assertFalse(Tool.MORE in read.toolOrder)
+        }
+    }
+
+    /**
+     * T14-toolbar-2: a tool missing from a stored list (added by a later version) takes its default place:
+     * under More when it starts there; an unknown tool name is kept.
+     */
+    @Test
+    fun toolListsKeepUnknownNamesAndDefaultNewTools() {
+        val order = stringPreferencesKey("toolbar.order")
+        val hidden = stringPreferencesKey("toolbar.hidden")
+        withData { data, _ -> data.edit { it[order] = "settings,hologram,clipboard,ai,translate"; it[hidden] = "ai" } }
+        withData { data, scope ->
+            val read = SettingsFormat.read(data.data.first())
+            assertEquals(listOf(Tool.SETTINGS, Tool.CLIPBOARD, Tool.TRANSLATE), read.tools)
+            assertEquals(setOf(Tool.AI) + Tool.offBar, read.hiddenTools)
+            SettingsStore(data, scope).update { it.copy(hiddenTools = it.hiddenTools - Tool.EDIT) }
+            assertEquals("settings,clipboard,ai,translate,edit,emoji,language,dictionaries,themes,hologram", data.data.first()[order])
+            assertEquals("ai,emoji,language,dictionaries,themes", data.data.first()[hidden])
         }
     }
 }

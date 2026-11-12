@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.yuanzhe.kotomo.ime.FuzzyRule
 import com.yuanzhe.kotomo.ime.Mode
+import com.yuanzhe.kotomo.ime.Tool
 
 /** Chooses when the keyboard splits into two thumb-zone halves. */
 enum class SplitLayout { AUTO, ALWAYS, NEVER }
@@ -149,7 +150,14 @@ data class Settings(
     val pcEnabled: Boolean = false,
     val pcHost: PcHost = PcHost.WINDOWS,
     val pcWide: PcWide = PcWide.FULL,
+    /** The toolbar's tools after More, in the person's order (PLAN §10.10). */
+    val toolOrder: List<Tool> = Tool.configurable,
+    /** The tools kept off the toolbar; they wait under More. */
+    val hiddenTools: Set<Tool> = Tool.offBar,
 ) {
+    /** The tools the toolbar shows after More, in order; the rest are under More. */
+    val tools: List<Tool> get() = toolOrder.filter { it !in hiddenTools }
+
     /**
      * The modes the language choice offers, in the person's order (PLAN §2.3).
      * Notes: never empty; with every mode hidden all of them are offered. The PC layout is offered
@@ -231,6 +239,8 @@ internal object SettingsFormat {
     private val pcEnabled = booleanPreferencesKey("pc.enabled")
     private val pcHost = stringPreferencesKey("pc.host")
     private val pcWide = stringPreferencesKey("pc.wide")
+    private val toolOrder = stringPreferencesKey("toolbar.order")
+    private val hiddenTools = stringPreferencesKey("toolbar.hidden")
 
     /**
      * Reads the settings from a Preferences file.
@@ -242,8 +252,8 @@ internal object SettingsFormat {
         return Settings(
             defaultMode = p.enum(defaultMode, Mode.entries, d.defaultMode),
             // Every mode appears once: unknown names are skipped, missing modes join at the end.
-            modeOrder = (p.modes(modeOrder) + Mode.entries).distinct(),
-            hiddenModes = p.modes(hiddenModes).toSet(),
+            modeOrder = (p.names(modeOrder, Mode.entries) + Mode.entries).distinct(),
+            hiddenModes = p.names(hiddenModes, Mode.entries).toSet(),
             mixed = Mixed(
                 level = p.enum(mixedLevel, MixedLevel.entries, d.mixed.level),
                 cross = readCross(p, "mixed"),
@@ -289,6 +299,10 @@ internal object SettingsFormat {
             pcEnabled = p[pcEnabled] ?: d.pcEnabled,
             pcHost = p.enum(pcHost, PcHost.entries, d.pcHost),
             pcWide = p.enum(pcWide, PcWide.entries, d.pcWide),
+            toolOrder = (p.names(toolOrder, Tool.configurable) + Tool.configurable).distinct(),
+            // A tool this version adds after the list was saved keeps its default place.
+            hiddenTools = if (p[hiddenTools] == null) d.hiddenTools else p.names(hiddenTools, Tool.configurable).toSet() +
+                Tool.offBar.filter { it.key !in p.rawNames(toolOrder) },
         )
     }
 
@@ -303,8 +317,8 @@ internal object SettingsFormat {
     fun write(p: MutablePreferences, old: Settings, new: Settings, nowUtcMs: Long) {
         if (old == new) return
         p.put(defaultMode, old.defaultMode.key, new.defaultMode.key)
-        if (old.modeOrder != new.modeOrder) p[modeOrder] = p.joinModes(modeOrder, new.modeOrder)
-        if (old.hiddenModes != new.hiddenModes) p[hiddenModes] = p.joinModes(hiddenModes, new.modeOrder.filter { it in new.hiddenModes })
+        if (old.modeOrder != new.modeOrder) p[modeOrder] = p.joinNames(modeOrder, new.modeOrder, Mode.entries)
+        if (old.hiddenModes != new.hiddenModes) p[hiddenModes] = p.joinNames(hiddenModes, new.modeOrder.filter { it in new.hiddenModes }, Mode.entries)
         p.put(mixedLevel, old.mixed.level.key, new.mixed.level.key)
         writeCross(p, "mixed", old.mixed.cross, new.mixed.cross)
         p.put(mixedWeightChinese, old.mixed.weightChinese, new.mixed.weightChinese)
@@ -344,6 +358,11 @@ internal object SettingsFormat {
         p.put(pcEnabled, old.pcEnabled, new.pcEnabled)
         p.put(pcHost, old.pcHost.key, new.pcHost.key)
         p.put(pcWide, old.pcWide.key, new.pcWide.key)
+        // Both lists are written together, so a later read knows which tools were in the list.
+        if (old.toolOrder != new.toolOrder || old.hiddenTools != new.hiddenTools) {
+            p[toolOrder] = p.joinNames(toolOrder, new.toolOrder, Tool.configurable)
+            p[hiddenTools] = p.joinNames(hiddenTools, new.toolOrder.filter { it in new.hiddenTools }, Tool.configurable)
+        }
         p[version] = maxOf(p[version] ?: 0, VERSION)
         p[updated] = nowUtcMs
     }
@@ -387,17 +406,20 @@ internal object SettingsFormat {
     private fun <E : Enum<E>> Preferences.enum(key: Preferences.Key<String>, values: List<E>, default: E): E =
         this[key]?.let { raw -> values.firstOrNull { it.key == raw } } ?: default
 
-    /** Reads a comma-separated list of mode names, skipping names this version does not know. */
-    private fun Preferences.modes(key: Preferences.Key<String>): List<Mode> =
-        this[key].orEmpty().split(',').mapNotNull { raw -> Mode.entries.firstOrNull { it.key == raw } }
+    /** Reads a comma-separated list of [values]' names, skipping names this version does not know. */
+    private fun <E : Enum<E>> Preferences.names(key: Preferences.Key<String>, values: List<E>): List<E> =
+        rawNames(key).mapNotNull { raw -> values.firstOrNull { it.key == raw } }
+
+    /** Reads a comma-separated list of names as stored. */
+    private fun Preferences.rawNames(key: Preferences.Key<String>): List<String> = this[key].orEmpty().split(',').filter { it.isNotEmpty() }
 
     /**
-     * Joins [modes] for [key], keeping the names this version does not know (a newer version's
-     * modes) after them, so they survive a change made here.
+     * Joins [items] for [key], keeping the names this version does not know (a newer version's
+     * modes or tools) after them, so they survive a change made here.
      */
-    private fun MutablePreferences.joinModes(key: Preferences.Key<String>, modes: List<Mode>): String {
-        val unknown = this[key].orEmpty().split(',').filter { raw -> raw.isNotEmpty() && Mode.entries.none { it.key == raw } }
-        return (modes.map { it.key } + unknown).joinToString(",")
+    private fun <E : Enum<E>> MutablePreferences.joinNames(key: Preferences.Key<String>, items: List<E>, values: List<E>): String {
+        val unknown = rawNames(key).filter { raw -> values.none { it.key == raw } }
+        return (items.map { it.key } + unknown).joinToString(",")
     }
 
     /** Reads an int, or [default] when missing or outside [range]. */

@@ -1,0 +1,35 @@
+# Toolbar, More and the edit panel (PLAN §10.10)
+
+Written by the app agent from PLAN §10.10 on 2026-11-11; it has no artboard. The bar keeps the
+look of the candidate bar in `Main.dc.html` when nothing is being typed.
+
+## Toolbar
+
+- More always comes first. After it come the person's tools, in their order, spread from one end of
+  the bar to the other; a tool the bar has no room for waits under More.
+- Tools: Clipboard, Writing help, Translate, Settings (on the bar by default, as in the design),
+  then Edit text, Emoji, Next language, Dictionaries and Themes (under More by default).
+- Settings → Layout and size → Toolbar: every tool with Up, Down and a switch that puts it on the bar
+  or under More.
+
+## More
+
+The panel opens in the keyboard's place. At the top, "More tools": the tools not on the bar, four
+to a row, each an icon over its label. Below them the quick settings as before (one-handed side,
+split layout, Chinese script, fix the mode for this app, incognito, All settings), and the Back
+bar at the bottom.
+
+## Edit panel (Edit text)
+
+In the keyboard's place, at the keyboard's height:
+
+| Left (three fifths) | | | Right (two fifths) | |
+|---|---|---|---|---|
+| ⇤ Line start | ↑ | ⇥ Line end | Select all | |
+| ← | Select | → | Cut | Copy |
+| | ↓ | | Paste | ⌫ Delete |
+
+- Select is a switch (highlighted with the accent container while on): the arrows and line start
+  and end then extend the selection. Cut, Copy and Paste turn it off.
+- The composition is committed when the panel opens, so the keys work on finished text.
+- The Back bar returns to the keys.

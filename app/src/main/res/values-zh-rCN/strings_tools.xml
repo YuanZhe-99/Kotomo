@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_more">更多</string>
+    <string name="tool_clipboard">剪贴板</string>
+    <string name="tool_ai">写作助手</string>
+    <string name="tool_translate">翻译</string>
+    <string name="tool_settings">设置</string>
+    <string name="tool_edit">编辑文本</string>
+    <string name="tool_emoji">Emoji</string>
+    <string name="tool_language">下一种语言</string>
+    <string name="tool_dictionaries">词库</string>
+    <string name="tool_themes">主题</string>
+    <string name="tools_more_title">更多工具</string>
+    <string name="toolbar_section">工具栏</string>
+    <string name="toolbar_note">“更多”总在最前面。关掉的工具和工具栏放不下的工具都在“更多”里。</string>
+    <string name="edit_home">行首</string>
+    <string name="edit_end">行尾</string>
+    <string name="edit_up">上</string>
+    <string name="edit_down">下</string>
+    <string name="edit_left">左</string>
+    <string name="edit_right">右</string>
+    <string name="edit_select">选择</string>
+    <string name="edit_select_all">全选</string>
+    <string name="edit_cut">剪切</string>
+    <string name="edit_copy">复制</string>
+    <string name="edit_paste">粘贴</string>
+    <string name="edit_delete">删除</string>
+</resources>

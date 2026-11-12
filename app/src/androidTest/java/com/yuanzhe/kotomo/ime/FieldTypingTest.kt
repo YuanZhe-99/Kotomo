@@ -16,6 +16,7 @@ import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -170,6 +171,41 @@ class FieldTypingTest {
             }
             withSettings({ it.copy(smartQuotes = false, autoPair = false) }) {
                 assertEquals("(\"", punctuate("(\"") {})
+            }
+        }
+    }
+
+    /**
+     * T14-toolbar-3 (PLAN §10.10): with Edit put on the bar, its panel moves the cursor, selects with
+     * the arrows and cuts and pastes; hidden tools wait under More and tools on the bar do not.
+     */
+    @Test
+    fun toolbarEditPanelSelectsCutsAndPastes() {
+        inMode(Mode.ENGLISH) {
+            withSettings({ it.copy(toolOrder = listOf(Tool.EDIT) + (Tool.configurable - Tool.EDIT), hiddenTools = Tool.configurable.toSet() - Tool.EDIT) }) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, 0)
+                ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                    val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                    scenario.onActivity { a -> a.findViewById<EditText>(FieldTestActivity.FIELD_ID).apply { setText("hello"); setSelection(5) } }
+                    val res = instrumentation.targetContext.resources
+                    val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+                        res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+                    val pad = res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.toolbar_pad) + res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.toolbar_button) / 2
+                    // More sits at the start; with one tool on the bar, Edit sits at the end.
+                    device.click(pad, barY)
+                    checkNotNull(device.wait(Until.findObject(By.text(CLIPBOARD_TOOL)), WAIT_MS)) { "the hidden Clipboard tool is not under More" }
+                    assertFalse("Edit is on the bar, not under More", device.hasObject(By.text(EDIT_TOOL)))
+                    device.findObject(By.desc(BACK)).click()
+                    checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS))
+                    device.click(device.displayWidth - pad, barY)
+                    checkNotNull(device.wait(Until.findObject(By.desc(EDIT_LEFT)), WAIT_MS)) { "the edit panel did not open" }
+                    listOf(EDIT_SELECT, EDIT_LEFT, EDIT_LEFT, EDIT_CUT).forEach { key(it) }
+                    assertEquals("hel", read(scenario))
+                    listOf(EDIT_HOME, EDIT_PASTE).forEach { key(it) }
+                    assertEquals("lohel", read(scenario))
+                }
             }
         }
     }
@@ -363,6 +399,14 @@ class FieldTypingTest {
         /** The symbols and backspace keys' descriptions (R.string.key_symbols, key_backspace; English). */
         const val SYMBOLS = "Symbols"
         const val BACKSPACE = "Delete"
+        /** Tool labels and edit keys (R.string.tool_*, edit_*; English). */
+        const val CLIPBOARD_TOOL = "Clipboard"
+        const val EDIT_TOOL = "Edit text"
+        const val EDIT_LEFT = "Left"
+        const val EDIT_SELECT = "Select"
+        const val EDIT_CUT = "Cut"
+        const val EDIT_HOME = "Line start"
+        const val EDIT_PASTE = "Paste"
         const val ATTEMPTS = 3
         const val WAIT_MS = 3000L
         const val READS = 3

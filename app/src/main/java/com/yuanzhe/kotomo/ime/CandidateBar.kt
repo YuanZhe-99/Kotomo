@@ -13,9 +13,6 @@ import android.view.ViewConfiguration
 import androidx.core.graphics.withClip
 import com.yuanzhe.kotomo.R
 
-/** The toolbar's buttons, in the design's order. */
-enum class Tool { MORE, CLIPBOARD, AI, TRANSLATE, SETTINGS }
-
 /**
  * Draws the row above the keys: candidates while composing, otherwise the toolbar, or a short
  * status [hint].
@@ -70,13 +67,24 @@ class CandidateBar(
     private val expandIcon = icon(R.drawable.ic_bar_expand)
     private val searchIcon = icon(R.drawable.ic_key_search)
     private val searchPrompt = res.getString(R.string.emoji_search_prompt)
-    private val tools = listOf(
-        Tool.MORE to icon(R.drawable.ic_tool_more),
-        Tool.CLIPBOARD to icon(R.drawable.ic_tool_clipboard),
-        Tool.AI to icon(R.drawable.ic_tool_ai),
-        Tool.TRANSLATE to icon(R.drawable.ic_tool_translate),
-        Tool.SETTINGS to icon(R.drawable.ic_tool_settings),
-    )
+    private val toolIcons = HashMap<Tool, android.graphics.drawable.Drawable>()
+
+    /**
+     * The tools the person put on the toolbar, in order, after More (PLAN §10.10); the bar shows
+     * as many as fit ([shownTools]) and the rest wait under More.
+     */
+    var tools: List<Tool> = Tool.configurable.filter { it !in Tool.offBar }
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** The tools the bar has room for: More, then the person's tools while they fit. */
+    val shownTools: List<Tool>
+        get() {
+            val room = if (width == 0) Int.MAX_VALUE else ((width - toolbarPad * 2) / toolButton).toInt().coerceAtLeast(1)
+            return (listOf(Tool.MORE) + tools).take(room)
+        }
 
     private var candidates = emptyList<String>()
     /** A short note drawn after a candidate (a Japanese reading), by index; "" or missing for none. */
@@ -226,14 +234,16 @@ class CandidateBar(
         drawIcon(canvas, expandIcon, listEnd + expandWidth / 2)
     }
 
-    private fun toolCenters(): List<Float> {
+    /** Spreads the shown tools from one end of the bar to the other (one tool sits at the start). */
+    private fun toolCenters(count: Int): List<Float> {
         val start = toolbarPad + toolButton / 2
         val end = width - toolbarPad - toolButton / 2
-        return tools.indices.map { start + (end - start) * it / (tools.size - 1) }
+        return (0 until count).map { if (count == 1) start else start + (end - start) * it / (count - 1) }
     }
 
     private fun drawToolbar(canvas: Canvas) {
-        toolCenters().forEachIndexed { i, x -> drawIcon(canvas, tools[i].second, x) }
+        val shown = shownTools
+        toolCenters(shown.size).forEachIndexed { i, x -> drawIcon(canvas, toolIcons.getOrPut(shown[i]) { icon(shown[i].icon) }, x) }
     }
 
     private fun drawIcon(canvas: Canvas, icon: android.graphics.drawable.Drawable, centerX: Float) {
@@ -303,9 +313,10 @@ class CandidateBar(
                 if (index != null) onPick(index)
             }
             hint == null -> {
-                val centers = toolCenters()
+                val shown = shownTools
+                val centers = toolCenters(shown.size)
                 val i = centers.indices.minByOrNull { kotlin.math.abs(centers[it] - x) } ?: return
-                if (kotlin.math.abs(centers[i] - x) <= toolButton / 2) onTool(tools[i].first)
+                if (kotlin.math.abs(centers[i] - x) <= toolButton / 2) onTool(shown[i])
             }
         }
     }

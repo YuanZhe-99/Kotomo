@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_more">その他</string>
+    <string name="tool_clipboard">クリップボード</string>
+    <string name="tool_ai">文章アシスト</string>
+    <string name="tool_translate">翻訳</string>
+    <string name="tool_settings">設定</string>
+    <string name="tool_edit">テキスト編集</string>
+    <string name="tool_emoji">絵文字</string>
+    <string name="tool_language">次の言語</string>
+    <string name="tool_dictionaries">辞書</string>
+    <string name="tool_themes">テーマ</string>
+    <string name="tools_more_title">その他のツール</string>
+    <string name="toolbar_section">ツールバー</string>
+    <string name="toolbar_note">「その他」は常に先頭です。オフにしたツールとツールバーに入りきらないツールは「その他」にあります。</string>
+    <string name="edit_home">行頭</string>
+    <string name="edit_end">行末</string>
+    <string name="edit_up">上</string>
+    <string name="edit_down">下</string>
+    <string name="edit_left">左</string>
+    <string name="edit_right">右</string>
+    <string name="edit_select">選択</string>
+    <string name="edit_select_all">すべて選択</string>
+    <string name="edit_cut">切り取り</string>
+    <string name="edit_copy">コピー</string>
+    <string name="edit_paste">貼り付け</string>
+    <string name="edit_delete">削除</string>
+</resources>

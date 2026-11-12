@@ -76,7 +76,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val store = SettingsStore.get(this)
-        setContent { KotomoTheme { SettingsApp(store) } }
+        // The keyboard's Dictionaries and Themes tools open their page (PLAN §10.10).
+        val start = intent.getStringExtra(EXTRA_PAGE)?.let { name -> Page.entries.firstOrNull { it.name == name && it.root == it } }
+        setContent { KotomoTheme { SettingsApp(store, start) } }
+    }
+
+    companion object {
+        /** The intent extra naming the page to open on (a [Page] name). */
+        const val EXTRA_PAGE = "page"
+        /** [EXTRA_PAGE] for the Dictionaries page. */
+        const val PAGE_DICTIONARIES = "DICTIONARIES"
+        /** [EXTRA_PAGE] for the Themes page. */
+        const val PAGE_THEMES = "THEMES"
     }
 }
 
@@ -110,13 +121,14 @@ internal enum class Page(@StringRes val title: Int) {
 /**
  * Lays out the settings app: one pane with a back stack on phones, the navigation list and the
  * page side by side from `settings_two_pane_min` on.
+ * Inputs: [start] is the page to open on (the keyboard's tools), or null for the home.
  * Side effects: system back pops the page stack before leaving the app.
  */
 @Composable
-private fun SettingsApp(store: SettingsStore) {
+private fun SettingsApp(store: SettingsStore, start: Page?) {
     val settings by store.flow.collectAsStateWithLifecycle()
     val stack = rememberSaveable(saver = listSaver(save = { it.map(Page::name) }, restore = { it.map(Page::valueOf).toMutableStateList() })) {
-        mutableStateListOf<Page>()
+        mutableStateListOf<Page>().apply { if (start != null) add(start) }
     }
     BackHandler(enabled = stack.isNotEmpty()) { stack.removeAt(stack.lastIndex) }
     val open: (Page) -> Unit = { stack.add(it) }

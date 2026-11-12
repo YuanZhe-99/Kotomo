@@ -41,6 +41,8 @@ reads it, so a new artboard needs only its file and an entry there.
 
 `pc-layout.md` describes the PC / remote-control layout (PLAN §10.11) in text and key tables, written
 from the user's remote-control keyboard design draft (2026-11-11); it has no artboard.
+`toolbar.md` describes the toolbar's order and hidden tools, the More panel's tool grid and the edit
+panel (PLAN §10.10); it has no artboard.
 
 Rules (AGENTS.md): no screenshots, icons or assets of other keyboards here; Gboard and MyApps-UI
 inspire the interaction and the settings presentation only. Fonts are loaded from Google Fonts

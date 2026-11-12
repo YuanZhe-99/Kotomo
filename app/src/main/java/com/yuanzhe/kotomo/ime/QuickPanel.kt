@@ -40,7 +40,7 @@ import com.yuanzhe.kotomo.settings.SplitLayout
 import com.yuanzhe.kotomo.settings.label
 
 /**
- * Shows the toolbar's quick settings in the keyboard's place: one-handed side, split layout,
+ * Shows the More panel in the keyboard's place: the tools not on the bar, then the quick settings: one-handed side, split layout,
  * the Chinese script (Mainland, Traditional, Taiwan, Hong Kong), incognito, and a way into the settings app.
  *
  * Inputs: [store] is read and changed directly (the keyboard follows it at once); [script] is the
@@ -48,7 +48,8 @@ import com.yuanzhe.kotomo.settings.label
  * it (for the app and the settings); [oneHanded] is the one-handed side on this screen and
  * [onOneHanded] changes it there (PLAN §8.10); [mode] is the mode in use, [pinned] the mode fixed for the
  * current app (null: none) and [onPin] fixes the mode in use there or releases it (PLAN §2.3);
- * [onOpenSettings] opens the settings app; [onBack] returns to the keys.
+ * [onOpenSettings] opens the settings app; [onBack] returns to the keys; [moreTools] are the
+ * toolbar's tools that are not on the bar, shown first as a grid, and [onTool] runs one (PLAN §10.10).
  */
 @Composable
 fun QuickPanel(
@@ -62,6 +63,8 @@ fun QuickPanel(
     onPin: (Boolean) -> Unit,
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
+    moreTools: State<List<Tool>>,
+    onTool: (Tool) -> Unit,
 ) {
     val settings by store.flow.collectAsState()
     val back = stringResource(R.string.candidates_collapse)
@@ -70,6 +73,7 @@ fun QuickPanel(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            ToolGrid(moreTools.value, onTool)
             Choice(
                 stringResource(R.string.one_handed_title),
                 listOf(OneHanded.OFF to R.string.one_handed_off, OneHanded.LEFT to R.string.one_handed_left, OneHanded.RIGHT to R.string.one_handed_right),

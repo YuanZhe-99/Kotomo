@@ -65,6 +65,7 @@ import com.yuanzhe.kotomo.ime.OneHandedMemory
 import com.yuanzhe.kotomo.ime.Posture
 import com.yuanzhe.kotomo.ime.LearningData
 import com.yuanzhe.kotomo.ime.Mode
+import com.yuanzhe.kotomo.ime.Tool
 import com.yuanzhe.kotomo.ime.Probe
 import com.yuanzhe.kotomo.ime.RimeFiles
 import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
@@ -128,7 +129,7 @@ internal fun ModesPage(settings: Settings, store: SettingsStore) {
     Section(stringResource(R.string.modes_order)) {
         val order = settings.modeOrder
         order.forEachIndexed { i, mode ->
-            ModeRow(
+            OrderRow(
                 stringResource(mode.label),
                 shown = mode !in settings.hiddenModes && (mode != Mode.PC || settings.pcEnabled),
                 canHide = mode in settings.hiddenModes || settings.modes.size > 1,
@@ -192,11 +193,12 @@ private fun appLabel(context: android.content.Context, app: String): String = ru
 }.getOrDefault(app)
 
 /**
- * Draws one mode of the language choice: its name, Up and Down, and a switch that shows or hides it.
- * Inputs: [onMove] receives −1 or +1; [canHide] false keeps the last shown mode on.
+ * Draws one item of an ordered list (a mode of the language choice, a toolbar tool): its name, Up
+ * and Down, and a switch that shows or hides it.
+ * Inputs: [onMove] receives −1 or +1; [canHide] false keeps the last shown item on.
  */
 @Composable
-private fun ModeRow(
+private fun OrderRow(
     label: String, shown: Boolean, canHide: Boolean, onMove: (Int) -> Unit, first: Boolean, last: Boolean, onShow: (Boolean) -> Unit,
 ) {
     Row(
@@ -390,7 +392,8 @@ internal fun EnglishPage(settings: Settings, store: SettingsStore) {
 /**
  * Draws the Layout and size page as in SettingsTablet: large-screen and foldable settings beside
  * the phone settings, stacked when the page is narrower than `settings_columns_min`. One-handed
- * mode (side and width) is the one of the screen and orientation the page is shown on (PLAN §8.10).
+ * mode (side and width) is the one of the screen and orientation the page is shown on (PLAN §8.10);
+ * then the toolbar's tools (PLAN §10.10).
  */
 @Composable
 internal fun LayoutPage(settings: Settings, store: SettingsStore) {
@@ -441,6 +444,36 @@ internal fun LayoutPage(settings: Settings, store: SettingsStore) {
                 Section(stringResource(R.string.layout_large), content = large)
             }
         }
+    }
+    ToolbarSection(settings, store)
+}
+
+/**
+ * Draws the toolbar's tools in the person's order, each with Up, Down and a switch that puts it on
+ * the bar or under More (PLAN §10.10).
+ */
+@Composable
+private fun ToolbarSection(settings: Settings, store: SettingsStore) {
+    Section(stringResource(R.string.toolbar_section)) {
+        val order = settings.toolOrder
+        order.forEachIndexed { i, tool ->
+            OrderRow(
+                stringResource(tool.label),
+                shown = tool !in settings.hiddenTools,
+                canHide = true,
+                onMove = { delta ->
+                    store.set { s ->
+                        val list = s.toolOrder.toMutableList()
+                        val at = list.indexOf(tool)
+                        list.add((at + delta).coerceIn(0, list.lastIndex), list.removeAt(at))
+                        s.copy(toolOrder = list)
+                    }
+                },
+                first = i == 0,
+                last = i == order.lastIndex,
+            ) { show -> store.set { s -> s.copy(hiddenTools = if (show) s.hiddenTools - tool else s.hiddenTools + tool) } }
+        }
+        Inset { Note(stringResource(R.string.toolbar_note)) }
     }
 }
 
