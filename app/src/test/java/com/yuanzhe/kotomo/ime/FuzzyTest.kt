@@ -69,10 +69,11 @@ class FuzzyTest {
             # Rules: z_zh an_ang
             patch:
               speller/algebra/+:
-                - "fuzz/^z(?!h)/zh/"
-                - "fuzz/^zh/z/"
-                - "fuzz/(?<![iu])an${'$'}/ang/"
-                - "fuzz/(?<![iu])ang${'$'}/an/"
+                - "fuzz/^z(?!h)/ZH/"
+                - "fuzz/^zh/Z/"
+                - "fuzz/(?<![iu])an${'$'}/ANG/"
+                - "fuzz/(?<![iu])ang${'$'}/AN/"
+                - "xlit/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
                 - "abbrev/^([a-z]).+${'$'}/${'$'}1/"
                 - "abbrev/^([zcs]h).+${'$'}/${'$'}1/"
         """.trimIndent() + "\n"

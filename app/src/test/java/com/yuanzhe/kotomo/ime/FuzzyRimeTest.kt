@@ -88,6 +88,26 @@ class FuzzyRimeTest {
         assertTrue(Rime.setLearning(true))
     }
 
+    /**
+     * Decision 16 (PLAN §2.5) in both schemas: with n/l and l/r on, l stands for n and r, n and r
+     * never for each other. The private schema once applied the rules twice, and both schemas
+     * share one prism, so the chain reached the keyboard's normal schema too.
+     */
+    @Test
+    fun rulesDoNotChainInEitherSchema() {
+        val user = tmp.resolve("user").apply { mkdirs() }
+        deployLikeTheApp(setOf(FuzzyRule.N_L, FuzzyRule.L_R), user)
+        for (learning in listOf(true, false)) {
+            assertTrue(Rime.setLearning(learning))
+            Rime.setOption("zh_hans", true)
+            assertTrue("learning=$learning: rihao offers 你好", "你好" !in candidates("rihao", 8))
+            assertTrue("learning=$learning: niben offers 日本", "日本" !in candidates("niben", 8))
+            assertEquals("learning=$learning: lihao", "你好", candidates("lihao").first())
+            assertEquals("learning=$learning: liben", "日本", candidates("liben").first())
+        }
+        assertTrue(Rime.setLearning(true))
+    }
+
     @Test
     fun allRulesOffReturnsToThePrebuiltData() {
         val user = tmp.resolve("user").apply { mkdirs() }

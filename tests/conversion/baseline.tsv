@@ -95,7 +95,7 @@ T08-022	PASS	1	时间 / 事件 / shijian / ⌛ / ⌚
 T08-023	PASS	2	这个 / 中国 / zg / 整个 / 足够
 T08-024	PASS	1	你好 / 利好 / lihao / 妳好 / 立好
 T08-N20	PASS	-	此番 / 次 / cifan / 此 / 词
-T08-N21	FAIL	1	你好 / 利好 / rihao / 妳好 / 立好
+T08-N21	PASS	-	利好 / 立好 / rihao / 理好 / 立号
 T08-025	PASS	1	你好 / 利好 / lihao / 妳好 / 立好
 T08-026	PASS	1	日本 / 立本 / liben / 历本 / 你
-T08-N22	FAIL	1	日本 / 立本 / niben / 历本 / 你
+T08-N22	PASS	-	立本 / 历本 / niben / 你 / 里

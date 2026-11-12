@@ -31,9 +31,13 @@ enum class FuzzyRule(val key: String, val forward: Pair<String, String>, val bac
  * as pure functions so the same text is unit-tested and fed to the host librime.
  *
  * Notes: every rule works both ways and marks what it derives as fuzzy, so librime halves a fuzzy
- * spelling's weight and an exact spelling wins between words of similar frequency. Two rules that
- * share a letter chain in librime whatever their order (with n/l and l/r on, `ri` also offers
- * n-words: 你 for `ri`); corpus line T08-N21 records it as a known gap (doc/en-us/upstream.md).
+ * spelling's weight and an exact spelling wins between words of similar frequency. Rules never
+ * chain (PLAN §2.5 decision 16: with n/l and l/r on, l stands for n and r, but n never for r):
+ * librime applies each algebra rule to every spelling the earlier rules produced, together with
+ * all the syllables that spelling already stands for, so each rule writes what it derives in
+ * capitals, which no later rule's lowercase pattern matches, and one transliteration after all of
+ * them lowers the capitals again (corpus T08-N21, T08-N22). An initial rule and a final rule still
+ * combine on one syllable (`lang` for `nan` with n/l and an/ang on): they change different letters.
  * The two abbreviation rules are luna_pinyin's own, applied again after the fuzzy ones so that
  * initials work for fuzzy spellings too, as upstream's fuzzy-pinyin template does.
  */
@@ -56,8 +60,9 @@ object Fuzzy {
             append("patch:\n")
             append("  speller/algebra/+:\n")
             ordered.flatMap { listOf(it.forward, it.backward) }.forEach { (from, to) ->
-                append("    - ").append(quote("fuzz/$from/$to/")).append('\n')
+                append("    - ").append(quote("fuzz/$from/${to.uppercase()}/")).append('\n')
             }
+            append("    - ").append(quote(LOWER)).append('\n')
             ABBREVIATIONS.forEach { append("    - ").append(quote(it)).append('\n') }
         }
     }
@@ -77,6 +82,9 @@ object Fuzzy {
         require('"' !in rule && '\\' !in rule) { "unquotable rule $rule" }
         return "\"$rule\""
     }
+
+    /** Lowers the capitals the fuzzy rules derive (librime `xlit`, one letter for one letter). */
+    private const val LOWER = "xlit/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
     /** luna_pinyin's abbreviation rules (rime-luna-pinyin `pinyin.yaml`, `abbreviation`). */
     private val ABBREVIATIONS = listOf("abbrev/^([a-z]).+$/$1/", "abbrev/^([zcs]h).+$/$1/")

@@ -71,7 +71,11 @@ class FuzzySettingsTest {
             runBlocking { store.update { it.copy(chineseFuzzy = emptySet()) } }
             waitFor("the prebuilt data") { !files.fuzzy.isFile && !files.hasBuild }
             assertTrue(files.prebuilt)
-            assertNotEquals("中国", type(scenario, "zongguo"))
+            // Like the positive case: librime reopens on the engine thread after the build is
+            // dropped, so the first try may still land on the old build; a real failure fails all.
+            var text = "中国"
+            repeat(ATTEMPTS) { if (text == "中国") text = type(scenario, "zongguo") }
+            assertNotEquals("中国", text)
             assertEquals("你好", type(scenario, "nihao"))
         }
     }

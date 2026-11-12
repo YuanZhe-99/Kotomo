@@ -5,6 +5,12 @@
 #
 # The `schema` block is written out rather than patched because librime's deployer reads
 # schema/schema_id from the source file before it resolves __include and __patch.
+#
+# Kotomo's patch (luna_pinyin_simp.custom.yaml: the dictionary tables and the fuzzy-pinyin rules)
+# reaches this schema through the include: librime auto-patches every compiled resource, the
+# included luna_pinyin_simp.schema too, with its .custom file. Naming it again here applied it
+# twice, which appended the fuzzy rules twice and, because both schemas share one prism
+# (luna_pinyin_simp), let the rules chain on the keyboard too (doc/en-us/upstream.md).
 __include: luna_pinyin_simp.schema:/
 schema:
   schema_id: luna_pinyin_simp_private
@@ -13,5 +19,4 @@ schema:
   dependencies:
     - stroke
 __patch:
-  - translator/enable_user_dict: false
-  - luna_pinyin_simp.custom:/patch
+  translator/enable_user_dict: false
