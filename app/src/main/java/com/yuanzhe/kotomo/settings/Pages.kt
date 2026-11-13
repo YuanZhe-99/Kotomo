@@ -607,34 +607,6 @@ private fun KeyStyleSection(style: KeyStyle, floating: Boolean, setFloating: (Bo
 }
 
 /**
- * Draws the Themes page: the keyboard's colors (system, light, dark, Material You on Android 12
- * and later) and the key corner radius. The keyboard repaints as soon as one changes.
- */
-@Composable
-internal fun ThemesPage(settings: Settings, store: SettingsStore) {
-    Section(null) {
-        Inset {
-            Label(stringResource(R.string.theme_title))
-            val options = buildList {
-                add(KeyboardTheme.SYSTEM to stringResource(R.string.theme_system))
-                add(KeyboardTheme.LIGHT to stringResource(R.string.theme_light))
-                add(KeyboardTheme.DARK to stringResource(R.string.theme_dark))
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    add(KeyboardTheme.DYNAMIC to stringResource(R.string.theme_dynamic))
-                }
-            }
-            Choice(options.map { it.second }, options.indexOfFirst { it.first == settings.theme }.coerceAtLeast(0)) { i ->
-                store.set { it.copy(theme = options[i].first) }
-            }
-            SliderRow(
-                stringResource(R.string.theme_radius), settings.keyRadiusDp, Settings.RADIUS_RANGE, RADIUS_STEP,
-                label = { stringResource(R.string.value_dp, it) },
-            ) { v -> store.set { it.copy(keyRadiusDp = v) } }
-        }
-    }
-}
-
-/**
  * Draws the Privacy page: the incognito switch, clearing the learning data (after a confirmation,
  * [LearningData]), the link to the learned readings ([LearnedPage]), the clipboard settings (history, how long it
  * keeps unpinned items, quick paste, clearing, the link to the history page [ClipboardPage]) and
@@ -916,7 +888,7 @@ internal fun Choice(labels: List<String>, selected: Int, select: (Int) -> Unit) 
  * ends, so a drag writes the settings file once.
  */
 @Composable
-private fun SliderRow(
+internal fun SliderRow(
     title: String, value: Int, range: IntRange, step: Int,
     label: @Composable (Int) -> String = { it.toString() }, note: String? = null, commit: (Int) -> Unit,
 ) {
@@ -954,7 +926,6 @@ private const val WEIGHT_STEP = 10
 private const val THUMB_STEP = 4
 private const val HEIGHT_STEP = 5
 private const val ONE_HANDED_STEP = 2
-private const val RADIUS_STEP = 2
 
 /**
  * Draws the Learned readings page (PLAN §9.8, §9.9): what Mixed mode learned from the person's

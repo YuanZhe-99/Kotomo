@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The theme editor (Settings → Themes, PLAN §11.4). -->
+    <string name="theme_preview_chinese">中文</string>
+    <string name="theme_preview_japanese">日本語</string>
+    <string name="theme_preview_english">English</string>
+    <string name="theme_preview_emoji">Emoji</string>
+    <string name="theme_preview_landscape">Landscape</string>
+    <string name="theme_preview_note">A drawing of the keyboard; the keyboard itself changes as soon as you pick or edit.</string>
+    <string name="theme_preview_desc">Preview of the keyboard in this theme</string>
+    <string name="theme_builtin">Built-in themes</string>
+    <string name="theme_group_basic">Basic</string>
+    <string name="theme_group_city">Cities</string>
+    <string name="theme_colors_note">Tap a color to set your own; the others follow the base colors.</string>
+    <string name="theme_color_own">Yours</string>
+    <string name="theme_colors_reset">Reset all colors</string>
+    <string name="theme_image">Background and keys</string>
+    <string name="theme_image_pick">Choose a picture</string>
+    <string name="theme_image_remove">Remove picture</string>
+    <string name="theme_image_opacity">Picture opacity</string>
+    <string name="theme_image_bad">That file is not a picture Kotomo can read</string>
+    <string name="theme_press">Pressed-key highlight</string>
+    <string name="theme_press_desc">Keys change color while you press them</string>
+    <string name="theme_saved">Saved themes</string>
+    <string name="theme_save">Save this theme</string>
+    <string name="theme_export">Export</string>
+    <string name="theme_import">Import</string>
+    <string name="theme_saved_none">No saved themes yet</string>
+    <string name="theme_unnamed">Untitled</string>
+    <string name="theme_apply">Use</string>
+    <string name="theme_delete">Delete</string>
+    <string name="theme_saved_done">Saved</string>
+    <string name="theme_exported">Exported</string>
+    <string name="theme_export_failed">Could not export the theme</string>
+    <string name="theme_import_bad">That file is not a Kotomo theme</string>
+    <string name="theme_import_preview">This is how the keyboard will look. Use this theme?</string>
+    <string name="theme_per_mode">Theme per input mode</string>
+    <string name="theme_per_mode_note">A mode can have its own theme; the others use the current one.</string>
+    <string name="theme_per_mode_same">Current theme</string>
+    <string name="theme_color_hex">Color (#RRGGBB)</string>
+    <string name="theme_color_use">Use</string>
+    <string name="theme_color_default">Base color</string>
+    <string name="theme_name">Name</string>
+    <string name="theme_dynamic_short">Material You</string>
+    <string name="theme_city_tokyo">Tokyo Night</string>
+    <string name="theme_city_kyoto">Kyoto</string>
+    <string name="theme_city_shanghai">Shanghai</string>
+    <string name="theme_city_taipei">Taipei</string>
+    <string name="theme_city_sapporo">Sapporo Snow</string>
+    <string name="theme_role_background">Background</string>
+    <string name="theme_role_key">Keys</string>
+    <string name="theme_role_function">Function keys</string>
+    <string name="theme_role_pressed">Pressed keys</string>
+    <string name="theme_role_text">Text</string>
+    <string name="theme_role_secondary">Secondary text</string>
+    <string name="theme_role_accent">Accent</string>
+    <string name="theme_role_on_accent">Text on accent</string>
+    <string name="theme_role_candidate">Highlighted candidate</string>
+    <string name="theme_role_candidate_text">Highlighted candidate text</string>
+    <!-- Sample candidates of the theme preview, by language; not translated. -->
+    <string name="theme_sample_chinese" translatable="false">你好 拟好 你 泥</string>
+    <string name="theme_sample_japanese" translatable="false">こんにちは 今日は 混んで</string>
+    <string name="theme_sample_english" translatable="false">hello help held</string>
+    <string name="theme_sample_emoji" translatable="false">😀 😂 🥰</string>
+</resources>

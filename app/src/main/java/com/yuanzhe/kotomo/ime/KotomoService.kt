@@ -246,7 +246,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         root.floatWidth = minOf((resources.displayMetrics.widthPixels * FLOAT_SHARE).toInt(), resources.getDimensionPixelSize(R.dimen.kb_float_width))
         root.floating = on
         root.setBackgroundColor(if (on) android.graphics.Color.TRANSPARENT else color)
-        content.setBackgroundColor(if (on) color else android.graphics.Color.TRANSPARENT)
+        // The theme's picture lies behind the bar and the keys (PLAN §11.4).
+        val picture = KeyboardColors.background
+        if (picture != null) content.background = ThemeBackground(color, picture.first, picture.second) else content.setBackgroundColor(if (on) color else android.graphics.Color.TRANSPARENT)
         floatGrip?.visibility = if (on) View.VISIBLE else View.GONE
     }
 
@@ -334,8 +336,35 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * data read or written. Set on the main thread, read on the engine thread too.
      */
     @Volatile private var locked = false
-    /** The theme and key radius the current views were built with. */
-    private var appliedLook: Pair<com.yuanzhe.kotomo.settings.KeyboardTheme, Int>? = null
+    /** The theme the current views were built with (PLAN §11.4). */
+    private var appliedLook: com.yuanzhe.kotomo.settings.Theme? = null
+    /** The saved themes and the theme each mode uses (PLAN §11.4). */
+    private val themeLibrary by lazy { com.yuanzhe.kotomo.settings.ThemeLibrary.get(this) }
+
+    /**
+     * Returns the theme the keyboard shows in [m]: the mode's own theme when one is set, otherwise
+     * the current theme (the settings' base and key radius until the theme file exists).
+     */
+    private fun lookFor(m: Mode): com.yuanzhe.kotomo.settings.Theme {
+        val current = store.themeFlow.value ?: com.yuanzhe.kotomo.settings.Theme(settings.theme, settings.keyRadiusDp)
+        return if (locked) current else themeLibrary.state.value.forMode(m, current)
+    }
+
+    /**
+     * Rebuilds the views when the theme for the mode in use is not the one they were built with
+     * (a theme edit, or a mode with its own theme).
+     * Side effects: drops the cached panels and sets a new input view.
+     */
+    private fun checkLook() {
+        if (appliedLook == null || appliedLook == lookFor(mode)) return
+        emojiPanel = null
+        candidatesPanel = null
+        segmentPanel = null
+        quickPanel = null
+        clipboardPanel = null
+        setInputView(onCreateInputView())
+        refresh(0)
+    }
     /** Main thread: the settings in force (the store's latest value; no I/O to read). */
     private val settings: Settings get() = store.current
 
@@ -518,16 +547,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     .collect { idioms = withContext(Dispatchers.IO) { Idioms.from(dictionaries.packTable(Idioms.PACK)) } }
             }
         }
+        if (!locked) launch {
+            // A theme edit or a new theme for a mode repaints everything (PLAN §11.4); not before
+            // the first unlock, when the library's files cannot be read.
+            kotlinx.coroutines.flow.combine(store.themeFlow, themeLibrary.state) { _, _ -> Unit }.collect { checkLook() }
+        }
         store.flow.collect {
             // A new theme repaints everything: rebuild the views and drop the cached panels.
-            if (appliedLook != null && appliedLook != (it.theme to it.keyRadiusDp)) {
-                emojiPanel = null
-                candidatesPanel = null
-                segmentPanel = null
-                quickPanel = null
-                clipboardPanel = null
-                setInputView(onCreateInputView())
-            }
+            checkLook()
             // The mode in use was just hidden: move to one the language choice still offers.
             if (::keyboard.isInitialized && mode !in it.modes) switchMode(it.usable(mode), 0)
             if (::candidateBar.isInitialized) candidateBar.tools = it.tools
@@ -622,8 +649,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     override fun onCreateInputView(): View {
-        KeyboardColors.apply(this, settings.theme)
-        appliedLook = settings.theme to settings.keyRadiusDp
+        val look = lookFor(mode)
+        KeyboardColors.apply(this, look, if (locked) null else themeLibrary.image(look.image))
+        appliedLook = look
         createdAt = SystemClock.uptimeMillis()
         window.window?.decorView?.let {
             it.setViewTreeLifecycleOwner(this)
@@ -1236,6 +1264,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         pinnedHere.value = remembered?.pinned
         appScript = remembered?.script
         applyEngineSettings()
+        // The mode this field starts in may have its own theme (PLAN §11.4).
+        checkLook()
         showKeyboard()
         updateAutoCaps()
         aiUndo = null
@@ -1939,7 +1969,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.hints = s.keyHints
         keyboard.haptics = s.haptics
         keyboard.longPressSymbols = s.longPressSymbols
-        keyboard.radius = s.keyRadiusDp * resources.displayMetrics.density
+        keyboard.radius = (appliedLook?.keyRadiusDp ?: s.keyRadiusDp) * resources.displayMetrics.density
         keyboard.sound = s.keySound
         keyboard.spaceCursor = s.gestures.spaceCursor
         keyboard.deleteSwipe = s.gestures.deleteSwipe
@@ -2619,6 +2649,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         previousWord = null
         mode = to
+        main.post(::checkLook)
         val ic = currentInputConnection
         when {
             direct || ic == null -> Unit

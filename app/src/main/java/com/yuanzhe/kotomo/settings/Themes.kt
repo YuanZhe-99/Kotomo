@@ -2,6 +2,7 @@ package com.yuanzhe.kotomo.settings
 
 import com.yuanzhe.kotomo.dictionary.Json
 import com.yuanzhe.kotomo.dictionary.long
+import com.yuanzhe.kotomo.dictionary.obj
 import com.yuanzhe.kotomo.dictionary.str
 import java.io.File
 import java.io.FileOutputStream
@@ -10,44 +11,99 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 /**
- * Holds the keyboard theme as its JSON file stores it (PLAN §8.6): the colors it follows and the
- * key corner radius.
+ * Names the colors a theme can set (PLAN §11.4), each with the member name its JSON uses.
+ * Notes: the names are stored, so renaming one is a format change; a role the theme leaves out
+ * takes its base's color.
+ */
+enum class ColorRole(val key: String) {
+    BACKGROUND("background"),
+    KEY("key"),
+    FUNCTION_KEY("key_function"),
+    PRESSED_KEY("key_pressed"),
+    TEXT("text"),
+    SECONDARY_TEXT("text_secondary"),
+    ACCENT("accent"),
+    ON_ACCENT("on_accent"),
+    CANDIDATE("candidate"),
+    CANDIDATE_TEXT("candidate_text"),
+}
+
+/**
+ * Holds one keyboard theme as its JSON file stores it (PLAN §8.6, §11.4): the colors it starts
+ * from, the person's own colors over them, the key corner radius, a background image and its
+ * opacity, the pressed-key highlight and a name.
  *
- * Notes: [extra] keeps every member this version does not know (a newer format, the theme
- * editor's colors), so rewriting the file never drops them.
+ * Notes: [extra] keeps every member this version does not know (a newer format), so rewriting the
+ * file never drops them. [image] is a file name under `files/themes/images/`, never a path.
  */
 data class Theme(
     val base: KeyboardTheme = KeyboardTheme.SYSTEM,
     val keyRadiusDp: Int = Settings().keyRadiusDp,
+    val name: String = "",
+    val colors: Map<ColorRole, Int> = emptyMap(),
+    val image: String? = null,
+    val imageOpacity: Int = DEFAULT_OPACITY,
+    val pressHighlight: Boolean = true,
     val extra: Map<String, Any?> = emptyMap(),
-)
+) {
+    /** Whether two themes look the same (everything but the name and unknown members). */
+    fun looksLike(other: Theme) = copy(name = "", extra = emptyMap()) == other.copy(name = "", extra = emptyMap())
+
+    companion object {
+        /** The background image's opacity when none was chosen, in percent. */
+        const val DEFAULT_OPACITY = 60
+        /** The opacities the editor offers, in percent. */
+        val OPACITY_RANGE = 0..100
+    }
+}
 
 /**
- * Maps a [Theme] to and from its JSON file.
+ * Maps a [Theme] to and from its JSON form, used by the current theme file, the saved themes and
+ * exported theme files.
  *
  * Notes: the layout is documented in `doc/en-us/settings-format.md`. Pure Kotlin; unit-tested.
+ * Version 2 added the name, colors, image and press highlight; version 1 files read unchanged.
  */
 internal object ThemeFormat {
     /** The format version this build writes. */
-    const val VERSION = 1
+    const val VERSION = 2
     private const val FORMAT = "format_version"
     private const val UPDATED = "updated_utc_ms"
     private const val BASE = "base"
     private const val RADIUS = "key_radius_dp"
-    private val KNOWN = setOf(FORMAT, UPDATED, BASE, RADIUS)
+    private const val NAME = "name"
+    private const val COLORS = "colors"
+    private const val IMAGE = "background_image"
+    private const val OPACITY = "background_opacity"
+    private const val PRESS = "press_highlight"
+    private val KNOWN = setOf(FORMAT, UPDATED, BASE, RADIUS, NAME, COLORS, IMAGE, OPACITY, PRESS)
+    /** The longest name kept. */
+    const val NAME_MAX = 40
+    private val IMAGE_NAME = Regex("[A-Za-z0-9_-]{1,64}\\.png")
 
     /**
-     * Reads a theme file.
-     * Returns: the theme, with defaults for missing, unknown or out-of-range values; null when the
-     * text is not a JSON object (a damaged file).
+     * Reads a theme.
+     * Returns: the theme, with defaults for missing, unknown or out-of-range values (a color that
+     * is not `#RRGGBB` or `#AARRGGBB` is left out, an image name that is not a plain `.png` file
+     * name is dropped); null when the text is not a JSON object (a damaged file).
+     * Notes: also reads files from other people (imports): nothing in them is trusted.
      */
     fun read(text: String): Theme? {
         @Suppress("UNCHECKED_CAST")
         val o = runCatching { Json.parse(text) }.getOrNull() as? Map<String, Any?> ?: return null
         val d = Theme()
+        val colors = o.obj(COLORS).orEmpty().mapNotNull { (k, v) ->
+            val role = ColorRole.entries.firstOrNull { it.key == k } ?: return@mapNotNull null
+            parseColor(v as? String)?.let { role to it }
+        }.toMap()
         return Theme(
             base = o.str(BASE)?.let { raw -> KeyboardTheme.entries.firstOrNull { it.name.lowercase() == raw } } ?: d.base,
             keyRadiusDp = o.long(RADIUS)?.takeIf { it in Settings.RADIUS_RANGE.first..Settings.RADIUS_RANGE.last }?.toInt() ?: d.keyRadiusDp,
+            name = o.str(NAME)?.trim()?.take(NAME_MAX).orEmpty(),
+            colors = colors,
+            image = o.str(IMAGE)?.takeIf { IMAGE_NAME.matches(it) },
+            imageOpacity = o.long(OPACITY)?.takeIf { it in Theme.OPACITY_RANGE.first..Theme.OPACITY_RANGE.last }?.toInt() ?: d.imageOpacity,
+            pressHighlight = o[PRESS] as? Boolean ?: d.pressHighlight,
             extra = o.filterKeys { it !in KNOWN || it == FORMAT },
         )
     }
@@ -56,16 +112,36 @@ internal object ThemeFormat {
      * Writes [theme] as JSON.
      * Notes: the format version never goes below one a newer build wrote; [nowUtcMs] stamps it.
      */
-    fun write(theme: Theme, nowUtcMs: Long): String {
+    fun write(theme: Theme, nowUtcMs: Long): String = Json.write(toMap(theme, nowUtcMs), indent = true)
+
+    /** The JSON object of [theme], for files that hold several themes. */
+    fun toMap(theme: Theme, nowUtcMs: Long): Map<String, Any?> {
         val format = maxOf((theme.extra[FORMAT] as? Long)?.toInt() ?: 0, VERSION)
         val out = LinkedHashMap<String, Any?>()
         out[FORMAT] = format
         out[UPDATED] = nowUtcMs
         out[BASE] = theme.base.name.lowercase()
         out[RADIUS] = theme.keyRadiusDp
+        if (theme.name.isNotEmpty()) out[NAME] = theme.name
+        if (theme.colors.isNotEmpty()) out[COLORS] = ColorRole.entries.filter { it in theme.colors }.associate { it.key to formatColor(theme.colors.getValue(it)) }
+        theme.image?.let { out[IMAGE] = it }
+        out[OPACITY] = theme.imageOpacity
+        out[PRESS] = theme.pressHighlight
         theme.extra.forEach { (k, v) -> if (k !in KNOWN) out[k] = v }
-        return Json.write(out, indent = true)
+        return out
     }
+
+    /** Reads `#RRGGBB` (opaque) or `#AARRGGBB`. Returns: the ARGB color, or null. */
+    fun parseColor(text: String?): Int? {
+        val hex = text?.removePrefix("#") ?: return null
+        if (hex.length != 6 && hex.length != 8 || hex.any { it !in '0'..'9' && it.lowercaseChar() !in 'a'..'f' }) return null
+        val v = hex.toLong(16).toInt()
+        return if (hex.length == 6) v or (0xFF shl 24) else v
+    }
+
+    /** Writes an ARGB color as `#RRGGBB` when opaque, `#AARRGGBB` otherwise. */
+    fun formatColor(argb: Int): String =
+        if (argb ushr 24 == 0xFF) "#%06X".format(argb and 0xFFFFFF) else "#%08X".format(argb)
 }
 
 /**

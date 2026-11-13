@@ -131,14 +131,38 @@ and leaves those keys untouched, so an older build still reads its last value.
 
 | Member | Type | Meaning |
 |---|---|---|
-| `format_version` | int | The format; this build writes 1 and never lowers a newer value |
+| `format_version` | int | The format; this build writes 2 (version 2 added the members from `name` on; version 1 files read unchanged) and never lowers a newer value |
 | `updated_utc_ms` | int | When it was written, UTC milliseconds |
 | `base` | string: `system`, `light`, `dark`, `dynamic` | The colors the theme follows |
 | `key_radius_dp` | int, 0–24 | Key corner radius in dp |
+| `name` | string, at most 40 characters | The theme's name (a built-in theme's, or the one it was saved under); left out when empty |
+| `colors` | object | The person's own colors over the base (PLAN §11.4), each `#RRGGBB` or `#AARRGGBB`: `background`, `key`, `key_function`, `key_pressed`, `text`, `text_secondary`, `accent`, `on_accent`, `candidate` (the highlighted candidate), `candidate_text`; a color left out follows the base |
+| `background_image` | string | The background picture's file name in `files/themes/images/` (a plain `.png` name, never a path) |
+| `background_opacity` | int, 0–100 | The picture's opacity in percent; default 60 |
+| `press_highlight` | boolean | Whether pressed keys change color; default `true` |
 
-Unknown members (a newer format, the theme editor's colors in P4) are kept when the file is
-rewritten; unknown or out-of-range values read as the defaults. A file that is not a JSON object is
-moved aside to `current.json.unreadable` and the defaults apply.
+Unknown members (a newer format) are kept when the file is rewritten; unknown or out-of-range
+values read as the defaults, and a color that is not a valid hex color or a picture name that is not
+a plain file name is left out. A file that is not a JSON object is moved aside to
+`current.json.unreadable` and the defaults apply.
+
+### Theme library
+
+The saved themes and the theme each input mode uses live in `files/themes/library.json`
+(`settings/ThemeLibrary.kt`), written the same way; the pictures in `files/themes/images/`, which
+lose their file once no theme uses them.
+
+| Member | Type | Meaning |
+|---|---|---|
+| `format_version` | int | The format; this build writes 1 and never lowers a newer value |
+| `updated_utc_ms` | int | When it was written, UTC milliseconds |
+| `themes` | array | The saved themes (at most 100), each a theme object as above with an `id` (`saved.<uuid>`); an entry without a valid id is left out |
+| `modes` | object | By mode (`mixed`, `chinese`, `japanese`, `english`): the id of the saved or built-in (`builtin.<name>`) theme that mode uses; a mode left out, or whose theme is gone, uses the current theme |
+
+A shared theme file (Export) is one theme object with the picture inside as `background_image_png`
+(base64 PNG) and no file name. Import reads at most 12 MB, checks every value as above, decodes and
+re-encodes the picture as PNG (at most 2048 pixels on its long side), and shows a preview before the
+theme is used.
 
 ## Keyboard memory file
 

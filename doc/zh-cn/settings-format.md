@@ -119,13 +119,34 @@
 
 | 成员 | 类型 | 含义 |
 |---|---|---|
-| `format_version` | int | 格式版本；本版本写 1，且从不降低更新的值 |
+| `format_version` | int | 格式版本；本版本写 2（第 2 版加入了从 `name` 起的成员；第 1 版的文件照常读取），且从不降低更新的值 |
 | `updated_utc_ms` | int | 写入时间，UTC 毫秒 |
 | `base` | string：`system`、`light`、`dark`、`dynamic` | 主题跟随的配色 |
 | `key_radius_dp` | int，0–24 | 按键圆角，单位 dp |
+| `name` | string，至多 40 个字符 | 主题的名称（内置主题的名称，或保存时取的名称）；为空时省略 |
+| `colors` | object | 用户在基础配色之上设定的颜色（PLAN §11.4），每个为 `#RRGGBB` 或 `#AARRGGBB`：`background`、`key`、`key_function`、`key_pressed`、`text`、`text_secondary`、`accent`、`on_accent`、`candidate`（选中的候选）、`candidate_text`；省略的颜色跟随基础配色 |
+| `background_image` | string | 背景图片在 `files/themes/images/` 中的文件名（单纯的 `.png` 文件名，从不是路径） |
+| `background_opacity` | int，0–100 | 图片的不透明度，百分比；默认 60 |
+| `press_highlight` | boolean | 按下的按键是否变色；默认 `true` |
 
-未知成员（更新的格式、P4 主题编辑器的颜色）在重写文件时保留；未知或超出范围的值按默认值读取。不是
-JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值。
+未知成员（更新的格式）在重写文件时保留；未知或超出范围的值按默认值读取，不是有效十六进制颜色的颜色、
+不是单纯文件名的图片名会被省略。不是 JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值。
+
+### 主题库
+
+保存的主题与每种输入模式使用的主题存放在 `files/themes/library.json`（`settings/ThemeLibrary.kt`），
+写法相同；图片存放在 `files/themes/images/`，没有主题再使用时删除其文件。
+
+| 成员 | 类型 | 含义 |
+|---|---|---|
+| `format_version` | int | 格式版本；本版本写 1，且从不降低更新的值 |
+| `updated_utc_ms` | int | 写入时间，UTC 毫秒 |
+| `themes` | array | 保存的主题（至多 100 个），每个是上述主题对象再加一个 `id`（`saved.<uuid>`）；没有有效 id 的项被省略 |
+| `modes` | object | 按模式（`mixed`、`chinese`、`japanese`、`english`）：该模式使用的已保存或内置（`builtin.<名称>`）主题的 id；省略的模式或其主题已不存在时使用当前主题 |
+
+分享用的主题文件（导出）是一个主题对象，图片以 `background_image_png`（base64 编码的 PNG）放在其中，
+不带文件名。导入至多读取 12 MB，按上述规则检查每个值，把图片解码后重新编码为 PNG（长边至多 2048 像素），
+并在使用前显示预览。
 
 ## 键盘记忆文件
 

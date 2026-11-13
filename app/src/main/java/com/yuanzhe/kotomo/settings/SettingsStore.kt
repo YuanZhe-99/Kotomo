@@ -38,6 +38,12 @@ class SettingsStore(private val data: DataStore<Preferences>, private val scope:
     private val themeLoaded = scope.launch { theme.value = themes?.load() }
 
     /**
+     * Emits the current theme with everything the editor sets (PLAN §11.4); null until the theme
+     * file exists, when the theme is the settings' base and key radius.
+     */
+    val themeFlow: StateFlow<Theme?> get() = theme
+
+    /**
      * Emits the settings each time a file changes; null until the file's first read, so a reader
      * that must not act on the defaults (the fuzzy-pinyin deploy) can wait for the stored values.
      */
@@ -75,6 +81,29 @@ class SettingsStore(private val data: DataStore<Preferences>, private val scope:
                 new.copy(theme = stored.theme, keyRadiusDp = stored.keyRadiusDp)
             }
             if (kept == stored) prefs else prefs.toMutablePreferences().also { SettingsFormat.write(it, stored, kept, now) }
+        }
+    }
+
+    /**
+     * Applies [transform] to the current theme and writes the theme file (PLAN §11.4).
+     * Side effects: [themeFlow] and [flow] emit; the keyboard repaints.
+     * Notes: without a theme file (tests), only the base and key radius are kept, in the settings.
+     */
+    suspend fun updateTheme(transform: (Theme) -> Theme) {
+        themeLoaded.join()
+        if (themes == null) {
+            update { s -> transform(Theme(s.theme, s.keyRadiusDp)).let { s.copy(theme = it.base, keyRadiusDp = it.keyRadiusDp) } }
+            return
+        }
+        data.updateData { prefs ->
+            val stored = SettingsFormat.read(prefs)
+            val old = theme.value ?: Theme(stored.theme, stored.keyRadiusDp)
+            val next = transform(old)
+            if (next != old || theme.value == null) {
+                themes.save(next, System.currentTimeMillis())
+                theme.value = next
+            }
+            prefs
         }
     }
 
