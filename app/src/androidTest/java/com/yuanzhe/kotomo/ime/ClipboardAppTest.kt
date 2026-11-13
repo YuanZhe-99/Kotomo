@@ -15,6 +15,7 @@ import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
 import com.yuanzhe.kotomo.settings.SettingsStore
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -74,6 +75,38 @@ class ClipboardAppTest {
             assertFalse("copied while typing in an excluded app: not kept", copyAndWait(scenario, "$PREFIX excluded ${System.nanoTime()}"))
             runBlocking { settings.update { it.copy(clipboard = it.clipboard.copy(excludedApps = emptySet())) } }
             assertTrue("copied in an app that is not excluded: kept", copyAndWait(scenario, "$PREFIX kept ${System.nanoTime()}"))
+        }
+    }
+
+    /**
+     * CLIP-27 (PLAN §10.7, user decision 2026-11-13): a copied message with a verification code
+     * offers the code on the quick-paste strip, and tapping it types the code; negative: the same
+     * message marked sensitive offers nothing.
+     */
+    @Test
+    fun aCopiedCodeIsOfferedAndTyped() {
+        val intent = Intent(context, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, 0)
+        ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+            checkNotNull(device.wait(Until.findObject(By.desc("k")), WAIT_MS)) { "Kotomo's keys did not appear" }
+            runBlocking { settings.update { it.copy(clipboard = it.clipboard.copy(history = true, quickPaste = true)) } }
+            val hidden = (100000..999999).random().toString()
+            scenario.onActivity {
+                val clip = ClipData.newPlainText(null, "$PREFIX: your verification code is $hidden")
+                clip.description.extras = android.os.PersistableBundle().apply { putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true) }
+                it.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+            }
+            assertTrue("a sensitive clip offered its code", device.wait(Until.findObject(By.text(hidden)), WAIT_MS / 2) == null)
+            val code = (100000..999999).random().toString()
+            scenario.onActivity {
+                it.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null, "$PREFIX: your verification code is $code"))
+            }
+            checkNotNull(device.wait(Until.findObject(By.text(code)), WAIT_MS)) { "the copied code is not offered" }.click()
+            Thread.sleep(POLL_MS * 3)
+            var typed = ""
+            scenario.onActivity { typed = it.findViewById<android.widget.EditText>(FieldTestActivity.FIELD_ID).text.toString() }
+            assertEquals(code, typed)
         }
     }
 

@@ -109,7 +109,11 @@ plausible they are all shown, the first marked as likelier (PLAN §10.7).
 closing the strip or copying something newer removes the offer, and the same clip (same text and
 time) is not offered again. The strip shows a chip per code, the likeliest highlighted, then the
 copied text; in number fields, or when the whole clip is the code, only the codes. Nothing of the
-strip is written to disk.
+strip is written to disk. Codes come only from what was copied: the keyboard never reads
+notifications (the user decided on 2026-11-13 not to, since Android 15 hides one-time codes from
+notification listeners it does not trust, `upstream.md`). `ClipboardAppTest.aCopiedCodeIsOfferedAndTyped`
+(CLIP-27) checks it on the emulator: a copied message's code is offered and typed, the same
+message marked sensitive offers nothing.
 
 ## Storage format
 
