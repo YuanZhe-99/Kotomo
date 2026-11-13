@@ -218,6 +218,17 @@
     <string name="learning_clear_cancel">取消</string>
     <string name="page_learned">已学习的读法</string>
     <string name="learned_open">查看学到的内容</string>
+    <string name="learned_encrypt_title">加密学到的内容</string>
+    <string name="learned_encrypt_desc">把学到的读法保存在加密文件里，密钥在本机的密钥库中。输入体验不变</string>
+    <string name="learned_export">导出</string>
+    <string name="learned_import">导入</string>
+    <string name="learned_export_note">导出的文件没有加密，请妥善保管。导入会补充到本机已学到的内容，不会替换更新的学习</string>
+    <string name="learned_exported">已导出</string>
+    <string name="learned_file_failed">无法读取或写入该文件</string>
+    <string name="learned_import_unknown">这不是已学习读法的文件</string>
+    <plurals name="learned_imported">
+        <item quantity="other">已导入 %d 条读法</item>
+    </plurals>
     <string name="learned_desc">混合模式从你选过的候选中学到的内容：输入的字母和它变成的文字。学到的读法下次排在最前。密码输入框、要求不学习的输入框和无痕模式下不学习。</string>
     <string name="learned_empty">还没有学到任何内容。</string>
     <string name="learned_demote">降低排序</string>

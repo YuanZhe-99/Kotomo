@@ -35,6 +35,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -627,6 +629,11 @@ internal fun PrivacyPage(settings: Settings, store: SettingsStore, open: (Page) 
             OutlinedButton(onClick = { confirm = true }) { Text(stringResource(R.string.learning_clear)) }
             OutlinedButton(onClick = { open(Page.LEARNED) }) { Text(stringResource(R.string.learned_open)) }
         }
+        // The store follows the switch at once; the keyboard also tells it the stored value.
+        SwitchRow(R.string.learned_encrypt_title, R.string.learned_encrypt_desc, settings.learnedEncrypted) { on ->
+            store.set { it.copy(learnedEncrypted = on) }
+            com.yuanzhe.kotomo.ime.MixedLearning.get(context).setEncrypted(on)
+        }
     }
     if (confirm) {
         AlertDialog(
@@ -934,9 +941,45 @@ internal fun LearnedPage() {
     val store = com.yuanzhe.kotomo.ime.MixedLearning.get(LocalContext.current)
     val learned by store.flow.collectAsState()
     val readings = learned.readings.values.sortedByDescending { it.usedUtcMs }
+    val context = LocalContext.current
+    var result by remember { mutableStateOf<String?>(null) }
+    val exported = stringResource(R.string.learned_exported)
+    val failed = stringResource(R.string.learned_file_failed)
+    val notLearned = stringResource(R.string.learned_import_unknown)
+    // The person picks where the export goes and which file is imported (Storage Access Framework).
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        result = runCatching { context.contentResolver.openOutputStream(uri)!!.use { it.write(store.export().toByteArray()) } }
+            .fold({ exported }, { failed })
+    }
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val text = runCatching {
+            // One byte more than the limit is enough to tell a file that is too large.
+            context.contentResolver.openInputStream(uri)!!.use { input ->
+                val bytes = ByteArray(LEARNED_IMPORT_MAX + 1)
+                var size = 0
+                while (size < bytes.size) size += input.read(bytes, size, bytes.size - size).takeIf { it > 0 } ?: break
+                bytes.copyOf(size)
+            }
+        }.getOrNull()
+        val count = text?.takeIf { it.size <= LEARNED_IMPORT_MAX }?.let { store.import(String(it)) }
+        result = when {
+            text == null -> failed
+            count == null -> notLearned
+            else -> context.resources.getQuantityString(R.plurals.learned_imported, count, count)
+        }
+    }
     Section(null) {
         Inset {
             Note(stringResource(if (readings.isEmpty()) R.string.learned_empty else R.string.learned_desc))
+            androidx.compose.foundation.layout.FlowRow {
+                TextButton(onClick = { save.launch(LEARNED_EXPORT_NAME) }) { Text(stringResource(R.string.learned_export)) }
+                TextButton(onClick = { pick.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }) {
+                    Text(stringResource(R.string.learned_import))
+                }
+            }
+            Note(result ?: stringResource(R.string.learned_export_note))
         }
         readings.take(LEARNED_SHOWN).forEach { reading ->
             Inset {
@@ -969,6 +1012,10 @@ internal fun LearnedPage() {
         }
     }
 }
+
+/** The name offered for an export, and the largest file an import reads (bytes). */
+private const val LEARNED_EXPORT_NAME = "kotomo-learned.json"
+private const val LEARNED_IMPORT_MAX = 4 * 1024 * 1024
 
 /** How many learned readings the page lists. */
 private const val LEARNED_SHOWN = 200

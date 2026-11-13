@@ -175,6 +175,8 @@ data class Settings(
     /** An opening bracket or quote types its closing one too (PLAN §10.8); off by default. */
     val autoPair: Boolean = false,
     val incognito: Boolean = false,
+    /** Keeps Mixed mode's learned readings encrypted at rest (PLAN §14); off by default. */
+    val learnedEncrypted: Boolean = false,
     val clipboard: ClipboardSettings = ClipboardSettings(),
     val theme: KeyboardTheme = KeyboardTheme.SYSTEM,
     val keyRadiusDp: Int = 12,
@@ -327,6 +329,7 @@ internal object SettingsFormat {
     private val smartQuotes = booleanPreferencesKey("punctuation.smart_quotes")
     private val autoPair = booleanPreferencesKey("punctuation.auto_pair")
     private val incognito = booleanPreferencesKey("privacy.incognito")
+    private val learnedEncrypted = booleanPreferencesKey("privacy.learned_encrypted")
     private val clipHistory = booleanPreferencesKey("clipboard.history")
     private val clipRetention = intPreferencesKey("clipboard.retention_days")
     private val clipQuickPaste = booleanPreferencesKey("clipboard.quick_paste")
@@ -396,6 +399,7 @@ internal object SettingsFormat {
             smartQuotes = p[smartQuotes] ?: d.smartQuotes,
             autoPair = p[autoPair] ?: d.autoPair,
             incognito = p[incognito] ?: d.incognito,
+            learnedEncrypted = p[learnedEncrypted] ?: d.learnedEncrypted,
             clipboard = ClipboardSettings(
                 history = p[clipHistory] ?: d.clipboard.history,
                 retentionDays = p.int(clipRetention, Settings.RETENTION_RANGE, d.clipboard.retentionDays),
@@ -470,6 +474,7 @@ internal object SettingsFormat {
         p.put(smartQuotes, old.smartQuotes, new.smartQuotes)
         p.put(autoPair, old.autoPair, new.autoPair)
         p.put(incognito, old.incognito, new.incognito)
+        p.put(learnedEncrypted, old.learnedEncrypted, new.learnedEncrypted)
         p.put(clipHistory, old.clipboard.history, new.clipboard.history)
         p.put(clipRetention, old.clipboard.retentionDays, new.clipboard.retentionDays)
         p.put(clipQuickPaste, old.clipboard.quickPaste, new.clipboard.quickPaste)

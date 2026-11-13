@@ -90,6 +90,28 @@ class MixedTypingTest {
         assertEquals(plain, type("ai", expected = plain))
     }
 
+    /**
+     * PLAN §14, ADR-013 (`privacy.learned_encrypted`): with the switch on, what a commit teaches
+     * is written sealed with the Keystore key and the plain file is gone; with it off again the
+     * plain file is back and the sealed one gone, and the reading is still known.
+     */
+    @Test
+    fun learnedReadingsAreSealedWhileThePersonChoseSo() {
+        val learning = MixedLearning.get(context)
+        val plain = java.io.File(context.filesDir, "keyboard/learned.json")
+        val sealed = java.io.File(context.filesDir, "keyboard/learned.kenc")
+        change { it.copy(learnedEncrypted = true) }
+        assertEquals("你好", type("nihao", expected = "你好"))
+        learning.flush()
+        assertTrue("the readings are not sealed", sealed.isFile && !plain.exists())
+        assertFalse("the sealed file shows the reading", "nihao" in String(sealed.readBytes()))
+        change { it.copy(learnedEncrypted = false) }
+        Thread.sleep(WAIT_MS)
+        learning.flush()
+        assertTrue("the plain file did not come back", plain.isFile && !sealed.exists())
+        assertEquals(setOf("nihao" to "你好"), learning.current.readings.keys)
+    }
+
     /** T04 positive: pinyin typed in Mixed mode converts to Chinese; Enter commits the best candidate. */
     @Test
     fun enterCommitsTheBestCandidate() {

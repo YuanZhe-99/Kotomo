@@ -778,6 +778,8 @@ P1 的代码在 `21cd65c` 提交，`./gradlew check` 当时通过（79 个单元
 | 局部修改不改写已确认的片段 | PASS（主机与模拟器） | `session_test` T09-confirmed-piece-not-rewritten 等；模拟器 `onePieceChangesAndTheRestStays` |
 | 所有跨语言开关生效 | PASS，一项除外 | 每个有数据的开关都有主机或模拟器上的正反例；`pinyin_to_katakana` 没有数据来源，没有读取方 |
 
+2026-11-13 补充（用户对待定事项的决定，不改变上表的判定）：空格与回车按模式设置（ADR-010；主机 `SettingsStoreTest`，模拟器 `FieldTypingTest`、`MixedTypingTest` 的正反例）；学习文件可选加密与导入导出（ADR-013；主机 `MixedLearningTest`，模拟器 `learnedReadingsAreSealedWhileThePersonChoseSo`）；B 是单个提交，用户接受。
+
 G2 因此还不能判定通过：两项真机条目 NOT_RUN。
 
 ## 10. P3 — 高级输入体验（草案 Phase 3）
@@ -1125,6 +1127,7 @@ Next blocking issue:
 - 默认不上传输入内容，不上传用户词库；没有分析与广告 SDK；崩溃信息中不含输入内容。
 - 敏感输入：密码类输入（`TYPE_TEXT_VARIATION_PASSWORD`、`TYPE_TEXT_VARIATION_VISIBLE_PASSWORD`、`TYPE_TEXT_VARIATION_WEB_PASSWORD`、`TYPE_NUMBER_VARIATION_PASSWORD`）、带 `IME_FLAG_NO_PERSONALIZED_LEARNING` 的输入框（平台只把它当作请求，Kotomo 当作硬约束）、标记为敏感的剪贴内容与无痕模式下，不学习、不记录历史、不记录剪贴板、不调用 AI、不显示个性化预测；librime 与 Mozc 自身的学习同样关闭（做法见 `doc/en-us/upstream.md`）。
 - 本地数据（用户词库、学习记录、剪贴板）加密存储，密钥在 Android Keystore 中；用户可以清除全部学习数据。
+  现状（2026-11-13）：混合模式的学习文件按用户决定做成可选加密（默认关闭，`privacy.learned_encrypted`，Keystore 密钥，ADR-013），并可导出为明文 JSON、从导出文件导入（合并，不替换更新的学习）；用户词库是默认关闭的密码保护（ADR-012）；剪贴板历史始终加密。
 - 日志不记录输入内容、候选、剪贴板与提示词，只记录长度与耗时；release 构建去掉调试日志。
 - 网络：Kotomo 自己的代码在 P1–P2 不联网（本计划补充）；应用清单里的联网权限来自 ML Kit（§2.5 决定 10）。第一个由 Kotomo 发起联网的功能（在线词库或模型下载）加入时由用户确认，并写入隐私政策。在线 AI 与同步必须显式开启；在线词库验证完整性与来源。
 - 除 ML Kit 外不引入会联网或收集数据的 SDK；ML Kit 的数据处理条款在 S8 核实并写入隐私政策。

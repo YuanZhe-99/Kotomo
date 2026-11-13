@@ -91,6 +91,7 @@ the table lists every key.
 | `gestures.space_cursor`, `gestures.delete_swipe`, `gestures.double_space_period`, `gestures.space_language`, `gestures.smart_space` | boolean | `true` | One switch per gesture: slide on the space bar to move the cursor, slide left from delete to delete words, two quick spaces type a full stop, long-press space for the language choice, smart space around punctuation after a suggested English word |
 | `punctuation.smart_quotes`, `punctuation.auto_pair` | boolean | `false` | Smart punctuation (PLAN §10.8): the `"` and `'` keys type curly quotes and apostrophes from the character before the cursor; an opening bracket or quote types its closing one too, typing that closing mark steps over it and backspace right away deletes the empty pair. Neither applies in code, URL, e-mail or direct-input fields |
 | `privacy.incognito` | boolean | `false` | Incognito mode: no learning, history or clipboard recording |
+| `privacy.learned_encrypted` | boolean | `false` | Keeps Mixed mode's learned readings in an encrypted file (below, ADR-013) |
 | `clipboard.history` | boolean | `true` | Keep copied text in the clipboard history ([clipboard.md](clipboard.md)) |
 | `clipboard.retention_days` | int 1–90 | 7 | Days unpinned clipboard items are kept (the Privacy page offers 1, 7 and 30) |
 | `clipboard.quick_paste` | boolean | `true` | Offer what was just copied, and codes in it, above the keys |
@@ -194,6 +195,35 @@ first unlock, and there the engine ignores what was learned. Backspace right aft
 its learning back with it. Privacy → Learned readings lists them with Rank lower, Never offer,
 Keep first, Reset and Delete; Privacy → Clear learning data empties the file. The file is plain
 JSON in the app's private storage and never leaves the device.
+
+With `privacy.learned_encrypted` on (off by default, ADR-013) the same JSON text is kept sealed in
+`files/keyboard/learned.kenc` instead, and `learned.json` is deleted:
+
+```text
+offset  size  content
+0       4     magic "KLRN"
+4       1     container version (1)
+5       12    AES-GCM IV, fresh for every write
+17      n     AES-256-GCM ciphertext of the JSON text, 128-bit tag; AAD = bytes 0..4
+```
+
+- The key is the Android Keystore key `kotomo_learned` (AES-256, GCM, no padding); it never
+  leaves the Keystore, so the keyboard reads the file without asking for anything.
+- The form on disk is the one found when the process first reads the readings; the switch (and
+  the stored setting, whenever the keyboard reads it) changes it. Either way the new file is
+  written first, through a temporary file and an atomic replace, and the other one is deleted
+  only after that write succeeded; if both are found, the newer one is read. Turning the switch
+  off writes `learned.json` back and deletes `learned.kenc`.
+- A sealed file with a newer container version is left untouched: nothing is read from it and
+  nothing is written for that run. A sealed file that cannot be decrypted or parsed (a lost key,
+  damage) is moved aside to `learned.kenc.unreadable` and the readings start empty. If the
+  Keystore gives no key when a write is due, that write is skipped and the file on disk stays.
+
+Privacy → Learned readings also exports and imports. An export is the JSON text above, never
+sealed (the key cannot leave the device), in a file the person chooses. An import reads such a
+file (at most 4 MB) and merges it: a reading this device does not have is added, one both have
+keeps the copy used later, and at most 2000 stay; a file that is not this format changes
+nothing.
 
 ## Direct Boot
 

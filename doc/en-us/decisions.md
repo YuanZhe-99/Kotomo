@@ -18,6 +18,7 @@ old one stays with its status changed. Dates are when the decision took effect.
 | ADR-010 | Basic Mixed mode arrives with the coordinator; space and Enter during composition are chosen per mode | confirmed by the user 2026-11-11; space and Enter per mode decided 2026-11-12 |
 | ADR-011 | Dictionaries are downloaded from their sources and converted on the device, replacing a hosted catalog | accepted 2026-11-11 (user decision) |
 | ADR-012 | Optional password protection seals the person's dictionary files; librime's tables stay plain while usable | switch decided by the user 2026-11-11; the locking behavior awaits the user's confirmation |
+| ADR-013 | Optional encryption of Mixed mode's learned readings with a Keystore key | switch decided by the user 2026-11-12; Keystore key, export and import confirmed 2026-11-13 |
 
 ## ADR-001 Engines
 
@@ -251,3 +252,30 @@ they unlock in the settings.
 at every start), that the keyboard should ask for the password, or that the Keystore should hold
 a key instead of a password.
 
+## ADR-013 Optional encryption of the learned readings
+
+**Decision.** A switch, off by default (user decisions, 2026-11-12: "optional encryption";
+2026-11-13: a Keystore key, with export and import), keeps
+Mixed mode's learned readings sealed in `learned.kenc` instead of the plain `learned.json`
+(`settings-format.md`): AES-256-GCM with the Android Keystore key `kotomo_learned`, the same
+container layout as the clipboard history. Turning it on or off rewrites the file in the other
+form and deletes the old one only after the new one is on disk. What is learned, and where
+nothing is learned (sensitive fields, fields that ask for no learning, incognito mode), does not
+change. The learned readings page exports them as the plain versioned JSON, also while the file
+on the device is encrypted, and imports such a file by merging it: a reading both have keeps the
+copy used later.
+
+**Why.** `PLAN.md` §14 names a Keystore key for learning data, and the keyboard must read the
+readings on its own: Android restarts an input method's process often, and with a password
+(ADR-012's scheme for the dictionary) the readings would be locked after every restart until
+the person opened the settings and typed it, so nothing learned would be used or recorded most
+of the time. A Keystore key protects the file at rest (a copy of the app's storage without the
+device's Keystore cannot be read) and needs nothing from the person.
+
+**Cost.** It does not protect against someone who can run code as the app on the unlocked device
+(root, a debugger on a debug build): the Keystore decrypts for the app. If the Keystore loses the
+key, the sealed readings are lost (the file is moved aside, learning starts empty). The key
+cannot leave the device, so an export is not encrypted; the page says so.
+
+**Reopens when.** The user wants a password for the learned readings as for the dictionary, or
+the dictionary moves to a Keystore key too.

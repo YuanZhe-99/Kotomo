@@ -80,6 +80,7 @@
 | `gestures.space_cursor`、`gestures.delete_swipe`、`gestures.double_space_period`、`gestures.space_language`、`gestures.smart_space` | boolean | `true` | 每个手势一个开关：沿空格键滑动移动光标、从删除键向左滑动按词删除、快速按两次空格输入句号、长按空格选择语言、建议的英文单词后输入标点时的智能空格 |
 | `punctuation.smart_quotes`、`punctuation.auto_pair` | boolean | `false` | 智能标点（PLAN §10.8）：`"` 与 `'` 键按光标前的字符输入弯引号与撇号；开括号或开引号同时输入对应的闭合符号，再输入这个闭合符号时跳过它，紧接着退格则删除这对空括号。代码、网址、邮箱与直接输入的输入框中都不生效 |
 | `privacy.incognito` | boolean | `false` | 无痕模式：不学习、不记录历史与剪贴板 |
+| `privacy.learned_encrypted` | boolean | `false` | 把混合模式学到的读法保存在加密文件里（见下文，ADR-013） |
 | `clipboard.history` | boolean | `true` | 把复制的文字保存在剪贴板历史中（[clipboard.md](clipboard.md)） |
 | `clipboard.retention_days` | int 1–90 | 7 | 未固定的剪贴板条目保留的天数（隐私页提供 1、7、30） |
 | `clipboard.quick_paste` | boolean | `true` | 在键盘上方提供刚复制的内容和其中的验证码 |
@@ -168,6 +169,30 @@ JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值�
 先被去掉。敏感输入框、要求不做个性化学习的输入框、无痕模式与首次解锁前不记录，此时引擎也不使用已学到的
 内容。提交后紧接着的退格连同它的学习一起撤回。隐私 → 已学习的读法列出它们，可降低排序、不再提供、固定首选、
 恢复默认与删除；隐私 → 清除学习数据清空该文件。文件是应用私有存储中的普通 JSON，不离开设备。
+
+开启 `privacy.learned_encrypted`（默认关闭，ADR-013）后，同样的 JSON 文本改为加密保存在
+`files/keyboard/learned.kenc`，`learned.json` 被删除：
+
+```text
+offset  size  content
+0       4     magic "KLRN"
+4       1     container version (1)
+5       12    AES-GCM IV, fresh for every write
+17      n     AES-256-GCM ciphertext of the JSON text, 128-bit tag; AAD = bytes 0..4
+```
+
+- 密钥是 Android Keystore 中的 `kotomo_learned`（AES-256、GCM、无填充）；它从不离开 Keystore，所以键盘读取
+  该文件时不需要用户做任何事。
+- 磁盘上的形式以进程第一次读取读法时找到的文件为准；开关（以及键盘每次读到的已保存设置）会改变它。无论哪个
+  方向，都先经临时文件与原子替换写出新文件，写入成功后才删除另一个；两个文件都在时读取较新的那个。关闭开关
+  会写回 `learned.json` 并删除 `learned.kenc`。
+- 容器版本更新的加密文件保持原样：不读取其中内容，本次运行也不写入任何内容。无法解密或解析的加密文件（密钥
+  丢失、损坏）移到 `learned.kenc.unreadable`，读法从空开始。需要写入时 Keystore 给不出密钥，则跳过这次写入，
+  磁盘上的文件保持不变。
+
+隐私 → 已学习的读法还提供导出与导入。导出的是上面的 JSON 文本，从不加密（密钥不能离开设备），写到用户选择的
+文件里。导入读取这样的文件（最大 4 MB）并合并：本机没有的读法被加入，双方都有的保留较晚使用的那份，最多保留
+2000 条；不是这种格式的文件不改变任何内容。
 
 ## Direct Boot
 

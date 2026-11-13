@@ -11,8 +11,17 @@ import com.yuanzhe.kotomo.settings.writeAtomically
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.KeyStore
 import java.util.concurrent.Executors
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import kotlin.math.pow
 
 /** Names what the person decided about a learned reading (PLAN §9.8). */
@@ -88,11 +97,31 @@ data class Learned(val readings: Map<Pair<String, String>, LearnedReading> = emp
             val kept = old.strength(nowUtcMs).coerceAtMost(old.count.toDouble())
             next[key] = old.copy(count = (kept + 1).toInt().coerceIn(1, MAX_COUNT), usedUtcMs = nowUtcMs)
         }
+        return copy(readings = capped(next, nowUtcMs))
+    }
+
+    /**
+     * Adds the readings of an imported file ([other]) at [nowUtcMs]: a reading this device does
+     * not have is added, and one both have keeps the copy used later, so an import never
+     * replaces newer learning with older; this file's unknown members stay.
+     * Notes: at most [MAX_READINGS] are kept, as in [committed].
+     */
+    fun merged(other: Learned, nowUtcMs: Long): Learned {
+        val next = readings.toMutableMap()
+        for ((key, theirs) in other.readings) {
+            val ours = next[key]
+            if (ours == null || theirs.usedUtcMs > ours.usedUtcMs) next[key] = theirs
+        }
+        return copy(readings = capped(next, nowUtcMs))
+    }
+
+    /** Drops the weakest readings the person did not rank until at most [MAX_READINGS] are left. */
+    private fun capped(next: MutableMap<Pair<String, String>, LearnedReading>, nowUtcMs: Long): Map<Pair<String, String>, LearnedReading> {
         if (next.size > MAX_READINGS) {
             next.values.filter { it.rank == LearnedRank.NORMAL }.sortedBy { it.strength(nowUtcMs) }
                 .take(next.size - MAX_READINGS).forEach { next -= it.input to it.text }
         }
-        return copy(readings = next)
+        return next
     }
 
     /**
@@ -202,17 +231,67 @@ internal object LearnedFormat {
 }
 
 /**
- * Keeps Mixed mode's learned readings in memory and in `files/keyboard/learned.json`, shared by
- * the keyboard and the settings app (one instance per process, [get]).
+ * Frames the learned readings' JSON text for the optional encryption at rest (PLAN §14;
+ * `doc/en-us/settings-format.md`, "Learned readings"): magic, container version, a fresh IV,
+ * then AES-256-GCM over the text with the first five bytes as associated data.
  *
+ * Notes: the same layout as the clipboard history's container, with its own magic and key.
+ */
+internal object LearnedSeal {
+    /** The container layout this build reads and writes. */
+    const val CONTAINER = 1
+    private val MAGIC = "KLRN".toByteArray(Charsets.US_ASCII)
+    private const val IV = 12
+    private const val TAG_BITS = 128
+    private const val CIPHER = "AES/GCM/NoPadding"
+
+    /** Returns the container version of [bytes], or null when they are not a sealed file. */
+    fun container(bytes: ByteArray): Int? =
+        if (bytes.size > MAGIC.size + 1 + IV && bytes.copyOfRange(0, MAGIC.size).contentEquals(MAGIC)) bytes[MAGIC.size].toInt() else null
+
+    /** Encrypts and frames [text]; the cipher picks a fresh random IV (required by a Keystore key). */
+    fun seal(text: String, key: SecretKey): ByteArray {
+        val head = MAGIC + byteArrayOf(CONTAINER.toByte())
+        val cipher = Cipher.getInstance(CIPHER).apply { init(Cipher.ENCRYPT_MODE, key) }
+        cipher.updateAAD(head)
+        val body = cipher.doFinal(text.toByteArray())
+        return head + cipher.iv + body
+    }
+
+    /**
+     * Decrypts a container of [CONTAINER] layout.
+     * Notes: throws GeneralSecurityException when the key does not fit or the bytes were changed.
+     */
+    fun open(bytes: ByteArray, key: SecretKey): String {
+        val head = MAGIC.size + 1
+        val cipher = Cipher.getInstance(CIPHER)
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, bytes, head, IV))
+        cipher.updateAAD(bytes, 0, head)
+        return String(cipher.doFinal(bytes, head + IV, bytes.size - head - IV))
+    }
+}
+
+/**
+ * Keeps Mixed mode's learned readings in memory and in `files/keyboard/learned.json`, or sealed
+ * in `learned.kenc` while the person turned encryption on (`privacy.learned_encrypted`), shared
+ * by the keyboard and the settings app (one instance per process, [get]).
+ *
+ * Inputs: [file] the plain file, [sealed] the encrypted one, [key] gives the AES key (the
+ * Keystore key in the app, a plain key in tests).
  * Notes: the keyboard records a commit only where the field allows learning (never in a
  * sensitive field, one that asks for no personalized learning, incognito mode or before the
  * first unlock, PLAN §14); the file never leaves the device; Privacy → Clear learning data
  * empties it ([LearningData]). [current] never touches the disk. Each change writes the whole
- * file on one background thread through an atomic replace.
+ * file on one background thread through an atomic replace. The form on disk is the one found
+ * when the store opened until [setEncrypted] changes it; the other form is deleted only after
+ * the new one was written, so a crash in between loses nothing (the newer file is read).
  */
-class MixedLearning internal constructor(private val file: File) {
-    private val state = MutableStateFlow(readVersioned(file, LearnedFormat::read) ?: Learned())
+class MixedLearning internal constructor(private val file: File, private val sealed: File, private val key: () -> SecretKey) {
+    /** Whether changes are written sealed; follows the file found at start, then [setEncrypted]. */
+    @Volatile private var encrypted = false
+    /** A sealed file of a newer container version was found: it is never read or replaced. */
+    @Volatile private var newer = false
+    private val state = MutableStateFlow(load())
     private val writer = Executors.newSingleThreadExecutor { Thread(it, "kotomo-learned").apply { isDaemon = true } }
 
     /** Emits the readings after every change (the settings page and the keyboard follow it). */
@@ -227,7 +306,77 @@ class MixedLearning internal constructor(private val file: File) {
         state.update { old -> transform(old).also { if (it != old) changed = it } }
         changed?.let { snapshot ->
             val now = System.currentTimeMillis()
-            writer.execute { writeAtomically(file, LearnedFormat.write(snapshot, now)) }
+            writer.execute { save(snapshot, now) }
+        }
+    }
+
+    /**
+     * Turns the encryption of the file on or off (`privacy.learned_encrypted`): the readings are
+     * written in the new form and the other file is deleted after that write succeeded.
+     * Notes: called with the setting whenever it is read or changed; nothing happens when the
+     * file already has that form. If the Keystore gives no key the plain file stays as it is.
+     */
+    fun setEncrypted(on: Boolean) {
+        if (on == encrypted) return
+        encrypted = on
+        val now = System.currentTimeMillis()
+        writer.execute { save(state.value, now) }
+    }
+
+    /**
+     * Returns the readings as the text of an export file: the plain versioned JSON of
+     * `learned.json`, also while the file on this device is encrypted (its key cannot leave the
+     * device, so only a plain file can be read elsewhere).
+     */
+    fun export(): String = LearnedFormat.write(state.value, System.currentTimeMillis())
+
+    /**
+     * Merges an exported file's [text] into the readings ([Learned.merged]).
+     * Returns: how many readings the file held, or null when it is not a learned readings file
+     * (nothing changes then).
+     * Notes: [text] comes from a file the person picked; [LearnedFormat.read] checks every entry.
+     */
+    fun import(text: String): Int? {
+        val read = LearnedFormat.read(text) ?: return null
+        update { it.merged(read, System.currentTimeMillis()) }
+        return read.readings.size
+    }
+
+    /** Waits until every write asked for so far is on disk (tests). */
+    internal fun flush() = writer.submit {}.get()
+
+    /**
+     * Reads the readings at start: the sealed file when it is the only one or the newer one,
+     * otherwise the plain file.
+     * Side effects: a file that cannot be decrypted or parsed is moved aside to
+     * `<name>.unreadable`; a sealed file of a newer container version is left untouched and
+     * nothing is written for this run, so newer data is never overwritten.
+     */
+    private fun load(): Learned {
+        if (!sealed.isFile || (file.isFile && file.lastModified() > sealed.lastModified())) {
+            return readVersioned(file, LearnedFormat::read) ?: Learned()
+        }
+        encrypted = true
+        val bytes = runCatching { sealed.readBytes() }.getOrNull() ?: return Learned()
+        val container = LearnedSeal.container(bytes)
+        if (container != null && container > LearnedSeal.CONTAINER) {
+            newer = true
+            return Learned()
+        }
+        val read = if (container == null) null else runCatching { LearnedFormat.read(LearnedSeal.open(bytes, key())) }.getOrNull()
+        if (read == null) runCatching { Files.move(sealed.toPath(), File(sealed.path + ".unreadable").toPath(), StandardCopyOption.REPLACE_EXISTING) }
+        return read ?: Learned()
+    }
+
+    /** Writes [snapshot] in the form in force and then deletes the other form (writer thread). */
+    private fun save(snapshot: Learned, nowUtcMs: Long) {
+        if (newer) return
+        val text = LearnedFormat.write(snapshot, nowUtcMs)
+        if (encrypted) {
+            val bytes = runCatching { LearnedSeal.seal(text, key()) }.getOrNull() ?: return
+            if (writeAtomically(sealed, bytes)) file.delete()
+        } else if (writeAtomically(file, text)) {
+            sealed.delete()
         }
     }
 
@@ -236,12 +385,33 @@ class MixedLearning internal constructor(private val file: File) {
 
     companion object {
         private const val FILE = "keyboard/learned.json"
+        private const val SEALED = "keyboard/learned.kenc"
+        private const val KEY_ALIAS = "kotomo_learned"
 
         @Volatile private var instance: MixedLearning? = null
 
         /** Returns the process's store, reading the file on first use (never on a key). */
         fun get(context: Context): MixedLearning = instance ?: synchronized(this) {
-            instance ?: MixedLearning(File(context.applicationContext.filesDir, FILE)).also { instance = it }
+            val dir = context.applicationContext.filesDir
+            instance ?: MixedLearning(File(dir, FILE), File(dir, SEALED), ::keystoreKey).also { instance = it }
+        }
+
+        /**
+         * Returns the learned readings' AES-256-GCM key from the Android Keystore, creating it
+         * when missing; the key never leaves the Keystore.
+         */
+        private fun keystoreKey(): SecretKey {
+            val keystore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            (keystore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+            val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+            generator.init(
+                KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .setKeySize(256)
+                    .build(),
+            )
+            return generator.generateKey()
         }
     }
 }

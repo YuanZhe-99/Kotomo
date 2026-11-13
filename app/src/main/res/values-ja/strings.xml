@@ -218,6 +218,17 @@
     <string name="learning_clear_cancel">キャンセル</string>
     <string name="page_learned">学習した読み</string>
     <string name="learned_open">学習した内容を見る</string>
+    <string name="learned_encrypt_title">学習した内容を暗号化</string>
+    <string name="learned_encrypt_desc">学習した読みを、この端末のキーストアの鍵で暗号化したファイルに保存します。入力はそのままです</string>
+    <string name="learned_export">エクスポート</string>
+    <string name="learned_import">インポート</string>
+    <string name="learned_export_note">エクスポートしたファイルは暗号化されません。安全な場所に保管してください。インポートはこの端末の学習内容に追加され、新しい学習を置き換えません</string>
+    <string name="learned_exported">エクスポートしました</string>
+    <string name="learned_file_failed">ファイルを読み書きできませんでした</string>
+    <string name="learned_import_unknown">学習した読みのファイルではありません</string>
+    <plurals name="learned_imported">
+        <item quantity="other">%d 件の読みをインポートしました</item>
+    </plurals>
     <string name="learned_desc">混在モードが、選んだ候補から学習した内容です。入力した文字と、その変換結果を表示します。学習した読みは次回から先頭に表示されます。パスワード欄、学習を求めない入力欄、シークレットモードでは学習しません。</string>
     <string name="learned_empty">まだ何も学習していません。</string>
     <string name="learned_demote">順位を下げる</string>

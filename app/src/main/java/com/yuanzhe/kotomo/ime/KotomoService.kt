@@ -497,6 +497,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     engine.post { mixed.learned(adjustments) }
                 }
             }
+            // `privacy.learned_encrypted`: the stored value (not the default before the first
+            // read) decides the form of the learned readings' file.
+            launch {
+                store.loaded.filterNotNull().map { it.learnedEncrypted }.distinctUntilChanged()
+                    .collect { MixedLearning.get(this@KotomoService).setEncrypted(it) }
+            }
             launch {
                 DictionaryStore.get(this@KotomoService).state.map { it.generation }.distinctUntilChanged()
                     .collect { if (it > 0) applyEngineSettings() }

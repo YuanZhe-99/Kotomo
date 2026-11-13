@@ -5,16 +5,24 @@ import com.yuanzhe.kotomo.engine.Origin
 import com.yuanzhe.kotomo.engine.Piece
 import com.yuanzhe.kotomo.engine.SnapshotCandidate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
+import javax.crypto.SecretKey
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * T10 (PLAN §9.8, §9.9): what Mixed mode learns from a commit, how it fades, what the person can
  * decide about it, and the versioned file it is kept in.
  */
 class MixedLearningTest {
+    @get:Rule val folder = TemporaryFolder()
+
     private val day = 86_400_000L
     private val now = 1_000 * day
 
@@ -90,5 +98,87 @@ class MixedLearningTest {
         assertTrue("\"note\": \"x\"" in written && "\"rank\": \"sideways\"" in written)
         // Negative: a damaged file is not read.
         assertNull(LearnedFormat.read("[1, 2"))
+    }
+
+    /**
+     * Import and export (user decision 2026-11-13): an export is the plain file also while the
+     * store is encrypted; an import adds what is missing and keeps the copy used later; text
+     * that is not a learned readings file changes nothing.
+     */
+    @Test
+    fun exportIsPlainAndImportNeverReplacesNewerLearning() {
+        val key = aesKey(3)
+        val source = MixedLearning(File(folder.root, "a.json"), File(folder.root, "a.kenc")) { key }
+        source.setEncrypted(true)
+        source.update { it.committed("shu", candidate("書"), now).committed("ben", candidate("本"), now) }
+        val exported = source.export()
+        assertTrue("書" in exported && "\"format_version\"" in exported)
+        val target = MixedLearning(File(folder.root, "b.json"), File(folder.root, "b.kenc")) { key }
+        target.update { l -> l.committed("shu", candidate("書"), now + day).let { it.ranked(it.readings.values.single(), LearnedRank.PINNED) } }
+        assertEquals(2, target.import(exported))
+        assertEquals(setOf("shu" to "書", "ben" to "本"), target.current.readings.keys)
+        // The copy used later (this device's, pinned) stays.
+        assertEquals(LearnedRank.PINNED, target.current.readings.getValue("shu" to "書").rank)
+        val before = target.current
+        assertNull(target.import("[1, 2"))
+        assertEquals(before, target.current)
+    }
+
+    private fun aesKey(seed: Int): SecretKey = SecretKeySpec(ByteArray(32) { (it * seed).toByte() }, "AES")
+
+    /**
+     * PLAN §14 (`privacy.learned_encrypted`): turning encryption on seals the readings and
+     * removes the plain file, a new process reads them back, and turning it off writes the plain
+     * file again and removes the sealed one.
+     */
+    @Test
+    fun encryptionSealsTheFileAndTurnsOffAgain() {
+        val file = File(folder.root, "learned.json")
+        val sealed = File(folder.root, "learned.kenc")
+        val key = aesKey(3)
+        val store = MixedLearning(file, sealed) { key }
+        store.update { it.committed("shu", candidate("書"), now) }
+        store.flush()
+        assertTrue(file.isFile && !sealed.exists() && "書" in file.readText())
+        store.setEncrypted(true)
+        store.flush()
+        assertTrue("the plain file stayed", sealed.isFile && !file.exists())
+        assertFalse("the sealed file shows the text", "書" in String(sealed.readBytes()) || "shu" in String(sealed.readBytes()))
+        // A later change stays sealed, and a new process reads it without being told the setting.
+        store.update { it.committed("ben", candidate("本"), now) }
+        store.flush()
+        assertFalse(file.exists())
+        val reopened = MixedLearning(file, sealed) { key }
+        assertEquals(setOf("shu" to "書", "ben" to "本"), reopened.current.readings.keys)
+        reopened.setEncrypted(false)
+        reopened.flush()
+        assertTrue(file.isFile && !sealed.exists())
+        assertEquals(reopened.current.readings, MixedLearning(file, sealed) { key }.current.readings)
+    }
+
+    /**
+     * Negative: a sealed file the key does not open is moved aside and nothing of it is read; a
+     * sealed file of a newer container version is left untouched and never replaced.
+     */
+    @Test
+    fun aSealedFileThatCannotBeReadIsNeverOverwritten() {
+        val file = File(folder.root, "learned.json")
+        val sealed = File(folder.root, "learned.kenc")
+        MixedLearning(file, sealed) { aesKey(3) }.run {
+            setEncrypted(true)
+            update { it.committed("shu", candidate("書"), now) }
+            flush()
+        }
+        val bytes = sealed.readBytes()
+        val other = MixedLearning(file, sealed) { aesKey(5) }
+        assertTrue(other.current.readings.isEmpty())
+        assertTrue(!sealed.exists() && File(sealed.path + ".unreadable").readBytes().contentEquals(bytes))
+        val newer = bytes.copyOf().also { it[4] = (LearnedSeal.CONTAINER + 1).toByte() }
+        sealed.writeBytes(newer)
+        val later = MixedLearning(file, sealed) { aesKey(3) }
+        later.update { it.committed("ben", candidate("本"), now) }
+        later.setEncrypted(false)
+        later.flush()
+        assertTrue("a newer file was replaced", sealed.readBytes().contentEquals(newer) && !file.exists())
     }
 }

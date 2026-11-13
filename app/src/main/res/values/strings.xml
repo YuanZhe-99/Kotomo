@@ -232,6 +232,18 @@
     <string name="learning_clear_cancel">Cancel</string>
     <string name="page_learned">Learned readings</string>
     <string name="learned_open">See what was learned</string>
+    <string name="learned_encrypt_title">Encrypt what was learned</string>
+    <string name="learned_encrypt_desc">Keeps the learned readings in a file encrypted with a key in this device\'s keystore. Typing stays the same</string>
+    <string name="learned_export">Export</string>
+    <string name="learned_import">Import</string>
+    <string name="learned_export_note">The exported file is not encrypted: keep it somewhere safe. An import adds to what was learned here and never replaces newer learning</string>
+    <string name="learned_exported">Exported</string>
+    <string name="learned_file_failed">That file could not be read or written</string>
+    <string name="learned_import_unknown">That is not a file of learned readings</string>
+    <plurals name="learned_imported">
+        <item quantity="one">Imported %d reading</item>
+        <item quantity="other">Imported %d readings</item>
+    </plurals>
     <string name="learned_desc">What Mixed mode learned from the candidates you chose: the letters you typed and what they became. A learned reading comes first next time. Nothing is learned in password fields, fields that ask for no learning, or incognito mode.</string>
     <string name="learned_empty">Nothing learned yet.</string>
     <string name="learned_demote">Rank lower</string>

@@ -108,10 +108,13 @@ internal fun <T> readVersioned(file: File, parse: (String) -> T?): T? {
  * leaves either the old file or the new one.
  * Returns: false when the write failed (the old file is then untouched).
  */
-internal fun writeAtomically(file: File, text: String): Boolean = try {
+internal fun writeAtomically(file: File, text: String): Boolean = writeAtomically(file, text.toByteArray())
+
+/** Writes [bytes] to [file] as [writeAtomically] does for text. */
+internal fun writeAtomically(file: File, bytes: ByteArray): Boolean = try {
     file.parentFile?.mkdirs()
     val tmp = File(file.path + ".tmp")
-    FileOutputStream(tmp).use { it.write(text.toByteArray()); it.fd.sync() }
+    FileOutputStream(tmp).use { it.write(bytes); it.fd.sync() }
     Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     true
 } catch (_: IOException) {
