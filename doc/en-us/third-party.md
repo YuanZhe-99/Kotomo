@@ -96,8 +96,9 @@ Data gaps (`PLAN.md` §3.3):
 - Domain dictionaries: Chinese has THUOCL's eleven lists (offered); no Japanese source with a clear
   license was found, so Japanese domains wait.
 
-Open for the user: whether shipping JMdict with releases only meets the EDRDG's update rule, and
-whether the Noto Emoji and Wikidata items go ahead as conditional.
+Decided by the user on 2026-11-13: the conditional items go ahead on their stated conditions, the
+Noto Emoji and Wikidata ones included. Still open: whether shipping JMdict with releases only meets
+the EDRDG's update rule.
 
 ## Planned components
 
