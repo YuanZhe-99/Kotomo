@@ -164,6 +164,14 @@
     <string name="space_separate_desc">chidai ni kai ni ikou をスペース入りで続けて入力。Enter か候補のタップで確定</string>
     <string name="space_commit">最初の候補で確定</string>
     <string name="space_commit_desc">一般的な中国語入力と同じ</string>
+    <string name="space_next">変換し、もう一度押すと次の候補へ</string>
+    <string name="space_next_desc">一般的な日本語入力と同じ。押すたびに候補が進み、Enter で表示中の候補を確定</string>
+    <string name="composition_enter">入力中の Enter キー</string>
+    <string name="enter_shown">表示されている内容で確定</string>
+    <string name="enter_shown_desc">入力した文字のまま確定</string>
+    <string name="enter_shown_kana_desc">入力したかなのまま確定</string>
+    <string name="enter_first">最初の候補で確定</string>
+    <string name="enter_first_desc">最初の候補をタップするのと同じ</string>
     <string name="japanese_cross">日本語モードでの言語をまたぐ変換</string>
     <string name="japanese_cross_note">日本語モードで使う設定です。ミックスモードには別の設定があります。</string>
     <string name="chinese_script">字体</string>

@@ -131,11 +131,28 @@ class CandidateBar(
     }
 
     /**
+     * The candidate the space key chose (`<mode>.space` = next), drawn as the pill in place of
+     * the first one and scrolled into view; null for none. A new list clears it.
+     */
+    var chosen: Int? = null
+        set(value) {
+            field = value
+            if (value != null && value < candidates.size && width > 0) {
+                if (bounds[value] - scroll < 0) scroll = bounds[value] - padStart
+                if (bounds[value + 1] - scroll > listEnd) scroll = bounds[value + 1] - listEnd
+            }
+            invalidate()
+        }
+
+    /**
      * Replaces the candidates; [downTime] is the touch that caused it, or 0. [readings] holds, by
      * index, a reading to draw small after a candidate ("" for none; PLAN §9.3).
      */
     fun show(list: List<String>, downTime: Long, readings: List<String> = emptyList()) {
-        if (list != candidates) scroll = 0f
+        if (list != candidates) {
+            scroll = 0f
+            chosen = null
+        }
         candidates = list
         notes = readings
         measure()
@@ -226,13 +243,14 @@ class CandidateBar(
             candidates.forEachIndexed { i, text ->
                 val x = bounds[i] - scroll
                 if (x > listEnd || bounds[i + 1] - scroll < 0) return@forEachIndexed
-                if (i == 0) {
+                val inset = if (i == 0) padFirst else pad
+                if (i == (chosen ?: 0)) {
                     val top = (height - pillHeight) / 2
-                    box.set(x, top, bounds[1] - scroll, top + pillHeight)
+                    box.set(x, top, bounds[i + 1] - scroll, top + pillHeight)
                     drawRoundRect(box, pillHeight / 2, pillHeight / 2, pillPaint)
-                    drawText(text, x + padFirst, baseline, firstPaint)
+                    drawText(text, x + inset, baseline, firstPaint)
                 } else {
-                    drawText(text, x + pad, baseline, textPaint)
+                    drawText(text, x + inset, baseline, textPaint)
                 }
                 val note = notes.getOrNull(i).orEmpty()
                 if (note.isNotEmpty()) {

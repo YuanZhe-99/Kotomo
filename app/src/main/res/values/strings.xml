@@ -178,6 +178,14 @@
     <string name="space_separate_desc">Type chidai ni kai ni ikou with spaces; Enter or a tap on a candidate commits it</string>
     <string name="space_commit">Commit the first candidate</string>
     <string name="space_commit_desc">As in most Chinese keyboards</string>
+    <string name="space_next">Convert, then show the next candidate</string>
+    <string name="space_next_desc">As in most Japanese keyboards: each press moves on, Enter commits the one shown</string>
+    <string name="composition_enter">Enter while typing</string>
+    <string name="enter_shown">Commit what the field shows</string>
+    <string name="enter_shown_desc">The letters as typed</string>
+    <string name="enter_shown_kana_desc">The kana as typed</string>
+    <string name="enter_first">Commit the first candidate</string>
+    <string name="enter_first_desc">The same as tapping the first candidate</string>
     <string name="japanese_cross">Cross-language conversion in Japanese mode</string>
     <string name="japanese_cross_note">These apply in Japanese mode. Mixed mode has its own switches.</string>
     <string name="chinese_script">Characters</string>

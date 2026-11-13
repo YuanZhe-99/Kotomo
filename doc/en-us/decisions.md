@@ -15,7 +15,7 @@ old one stays with its status changed. Dates are when the decision took effect.
 | ADR-007 | The network permissions ML Kit brings are accepted | accepted 2026-11-10; Kotomo's first own network feature confirmed 2026-11-11 (ADR-011) |
 | ADR-008 | The coordinator is a fourth library that calls the engines through narrow C functions | default taken 2026-11-11, awaiting the user's confirmation |
 | ADR-009 | Snapshots are a versioned compact binary format | default taken 2026-11-11, awaiting the user's confirmation |
-| ADR-010 | Basic Mixed mode arrives with the coordinator; space separates in Mixed and Japanese compositions | default taken 2026-11-11, awaiting the user's confirmation |
+| ADR-010 | Basic Mixed mode arrives with the coordinator; space and Enter during composition are chosen per mode | confirmed by the user 2026-11-11; space and Enter per mode decided 2026-11-12 |
 | ADR-011 | Dictionaries are downloaded from their sources and converted on the device, replacing a hosted catalog | accepted 2026-11-11 (user decision) |
 | ADR-012 | Optional password protection seals the person's dictionary files; librime's tables stay plain while usable | switch decided by the user 2026-11-11; the locking behavior awaits the user's confirmation |
 
@@ -162,25 +162,41 @@ runtime next to the one hidden inside Mozc's library (ADR-004).
 **Reopens when.** The snapshot grows optional or repeated structures that make the hand-written
 codec error-prone; protobuf-lite is then the replacement, behind the same version number.
 
-## ADR-010 Basic Mixed mode and the space key
+## ADR-010 Basic Mixed mode, the space key and Enter
 
-**Decision.** The two plan defaults of `PLAN.md` §2.5 decisions 5 and 6, confirmed by the user on
-2026-11-11. Basic Mixed mode is not built as a separate word-level merge in Kotlin: Mixed mode arrives
-with the coordinator's device integration, and gate G1 judges the three single-language modes
-only. In Mixed and Japanese compositions the space key inserts a delimiter and does not commit;
-Enter or a tap on a candidate commits; in Chinese mode space still chooses the first candidate.
+**Decision.** Basic Mixed mode is not built as a separate word-level merge in Kotlin: Mixed mode
+arrives with the coordinator's device integration, and gate G1 judges the three single-language
+modes only (`PLAN.md` §2.5 decision 5, confirmed by the user on 2026-11-11). What the space key
+and Enter do while a composition is open is a setting of each mode (user decision, 2026-11-12,
+replacing the fixed rule of decision 6), with two small sets of choices and these defaults:
 
-**Why.** A Kotlin merge would be replaced as soon as the coordinator is wired in. The coordinator
-reads a space as a boundary hint, not as a character (`chidai ni kai ni ikou` and
-`chidainikainiikou` convert alike), so a space that committed would make the plan's own sentence
-examples untypable.
+| Mode | Space (`<mode>.space`) | Enter (`<mode>.enter`) |
+|---|---|---|
+| Chinese | `commit_first`; also `next` | `shown` (the letters); also `first` |
+| Japanese | `next`, as Japanese keyboards do; also `commit_first` | `shown` (the kana); also `first` |
+| Mixed | `separate`; also `commit_first`, `next` | `first`; also `shown` (the letters) |
 
-**Status.** Mixed mode follows it since the coordinator was wired in (2026-11-11); the setting
-`mixed.space` lets a person choose that space commits the first candidate instead. Japanese mode
-still commits its first candidate on space: it converts through Mozc's session, not through the
-coordinator, and takes the delimiter when it moves there.
+`separate` marks a boundary inside the composition and commits nothing. `commit_first` commits
+the first candidate. `next` converts: the first press shows the first candidate in the field
+without committing it, each further press the next one (after the last, the first again); Enter
+then commits the candidate shown under either Enter choice, backspace returns to the composition
+as typed, and a character commits the candidate and is typed after it. Enter otherwise commits
+the composition as the field shows it (`shown`) or the first candidate (`first`).
 
-**Reopens when.** The user decides either point differently.
+**Why.** The coordinator reads a space as a boundary hint, not as a character
+(`chidai ni kai ni ikou` and `chidainikainiikou` convert alike), so Mixed mode keeps `separate`
+as its default: a space that committed would make the plan's own sentence examples untypable.
+Japanese mode follows what people who type Japanese expect from the space bar. Chinese mode
+keeps what it shipped with. The choices are a fixed short list, not a key mapping: each one is a
+behavior that is tested.
+
+**Cost.** A boundary inside the composition exists only in Mixed mode: Chinese mode marks one
+with the apostrophe key and Japanese mode converts through Mozc's session, which has none; a
+`separate` stored for them reads as the mode's default. Under `next` a later, fuller list of a
+long Mixed composition is not drawn while a candidate is chosen, since it would move the choice.
+
+**Reopens when.** The user decides a point differently, or Japanese mode moves its conversion to
+the coordinator (a boundary could then be offered there too).
 
 ## ADR-011 Dictionaries straight from their sources
 

@@ -2,6 +2,7 @@ package com.yuanzhe.kotomo.ime
 
 import android.content.Intent
 import android.text.InputType
+import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.test.core.app.ActivityScenario
@@ -11,7 +12,9 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
+import com.yuanzhe.kotomo.settings.EnterKey
 import com.yuanzhe.kotomo.settings.OneHanded
+import com.yuanzhe.kotomo.settings.SpaceKey
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
 import kotlinx.coroutines.runBlocking
@@ -68,10 +71,76 @@ class FieldTypingTest {
         assertEquals("nihao", typeInto(password, 0, "nihao", expected = "nihao", space = false))
     }
 
-    /** T03 positive: Japanese mode converts romaji; space commits the first candidate. */
+    /**
+     * T03 positive (ADR-010, `japanese.space` = next): space converts without committing, a
+     * second space shows another candidate, backspace returns to the kana, and Enter commits the
+     * candidate shown.
+     */
     @Test
-    fun japaneseConvertsOnSpace() {
-        inMode(Mode.JAPANESE) { assertEquals("日本", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihon", expected = "日本")) }
+    fun japaneseSpaceConvertsAndEnterCommits() {
+        inMode(Mode.JAPANESE) {
+            val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                checkNotNull(device.wait(Until.findObject(By.desc("n")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                "nihon".forEach { device.findObject(By.desc(it.toString())).click() }
+                Thread.sleep(READ_MS * 3)
+                device.findObject(By.descStartsWith(SPACE)).click()
+                assertEquals("日本", read(scenario))
+                assertTrue("space committed the candidate", composing(scenario))
+                device.findObject(By.descStartsWith(SPACE)).click()
+                val second = read(scenario)
+                assertTrue("a second space showed $second", second.isNotEmpty() && second != "日本" && composing(scenario))
+                device.findObject(By.desc(BACKSPACE)).click()
+                assertEquals("にほん", read(scenario))
+                device.findObject(By.descStartsWith(SPACE)).click()
+                device.findObject(By.descStartsWith(ENTER)).click()
+                assertEquals("日本", read(scenario))
+                assertFalse("Enter left the candidate uncommitted", composing(scenario))
+            }
+        }
+    }
+
+    /** `japanese.space` = commit_first: space commits the first candidate at once. */
+    @Test
+    fun japaneseSpaceCommitsWhenThePersonChoseSo() {
+        inMode(Mode.JAPANESE) {
+            withSettings({ it.copy(japaneseKeys = it.japaneseKeys.copy(space = SpaceKey.COMMIT_FIRST)) }) {
+                assertEquals("日本", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihon", expected = "日本", committed = true))
+            }
+        }
+    }
+
+    /** `japanese.enter` = first: Enter commits the first candidate, not the kana. */
+    @Test
+    fun japaneseEnterCommitsTheFirstCandidateWhenThePersonChoseSo() {
+        inMode(Mode.JAPANESE) {
+            withSettings({ it.copy(japaneseKeys = it.japaneseKeys.copy(enter = EnterKey.FIRST)) }) {
+                val text = typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION, "nihon", expected = "日本", space = false, enter = true)
+                assertEquals("日本", text)
+            }
+        }
+    }
+
+    /**
+     * `chinese.space` = next and `chinese.enter` (ADR-010): space shows the first candidate
+     * without committing it and Enter commits it; without a space Enter commits the letters, or
+     * the first candidate when the person chose so.
+     */
+    @Test
+    fun chineseSpaceAndEnterFollowTheSettings() {
+        inMode(Mode.CHINESE) {
+            val enter = EditorInfo.IME_FLAG_NO_ENTER_ACTION
+            assertEquals("nihao", typeInto(InputType.TYPE_CLASS_TEXT, enter, "nihao", expected = "nihao", space = false, enter = true))
+            withSettings({ it.copy(chineseKeys = it.chineseKeys.copy(enter = EnterKey.FIRST)) }) {
+                assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, enter, "nihao", expected = "你好", space = false, enter = true, committed = true))
+            }
+            withSettings({ it.copy(chineseKeys = it.chineseKeys.copy(space = SpaceKey.NEXT)) }) {
+                assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, enter, "nihao", expected = "你好", committed = false))
+                assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, enter, "nihao", expected = "你好", enter = true, committed = true))
+            }
+        }
     }
 
     /**
@@ -359,12 +428,14 @@ class FieldTypingTest {
     /**
      * Opens a field of the given kind, taps [letters] (then runs [afterLetters], then space unless
      * [space] is false, then Enter if [enter]) on Kotomo's keyboard and returns the field's text.
+     * With [committed] set, the text only counts when the field's composition is over (true) or
+     * still open (false); otherwise "" is returned.
      * Notes: the first field of a run may come up before librime has opened its data; then the
      * letters type directly, so the field is cleared and the typing repeated a few times.
      */
     private fun typeInto(
         inputType: Int, imeOptions: Int, letters: String, expected: String, space: Boolean = true, enter: Boolean = false,
-        afterLetters: () -> Unit = {},
+        committed: Boolean? = null, afterLetters: () -> Unit = {},
     ): String {
         val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
             .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, inputType)
@@ -383,6 +454,7 @@ class FieldTypingTest {
                 }
                 device.waitForIdle()
                 text = read(scenario)
+                if (committed != null && composing(scenario) == committed) text = ""
                 if (text == expected) return text
                 device.wait(Until.hasObject(By.desc(letters.first().toString())), WAIT_MS)
                 scenario.onActivity { it.findViewById<EditText>(FieldTestActivity.FIELD_ID).setText("") }
@@ -390,6 +462,13 @@ class FieldTypingTest {
             }
             return text
         }
+    }
+
+    /** Whether the field still holds an uncommitted composition. */
+    private fun composing(scenario: ActivityScenario<FieldTestActivity>): Boolean {
+        var start = -1
+        scenario.onActivity { start = BaseInputConnection.getComposingSpanStart(it.findViewById<EditText>(FieldTestActivity.FIELD_ID).text) }
+        return start >= 0
     }
 
     /** Reads the field's text, waiting briefly for the keyboard's last commit to land. */

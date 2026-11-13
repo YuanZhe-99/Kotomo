@@ -164,6 +164,14 @@
     <string name="space_separate_desc">chidai ni kai ni ikou 可以帶空格連續輸入；Enter 或點選候選送出</string>
     <string name="space_commit">選擇首選並送出</string>
     <string name="space_commit_desc">與常見中文輸入法一致</string>
+    <string name="space_next">轉換，再按切換到下一個候選</string>
+    <string name="space_next_desc">與常見日文輸入法一致：每按一次換一個候選，Enter 送出目前顯示的那個</string>
+    <string name="composition_enter">輸入中的 Enter 鍵</string>
+    <string name="enter_shown">送出輸入框裡顯示的內容</string>
+    <string name="enter_shown_desc">輸入的字母原樣送出</string>
+    <string name="enter_shown_kana_desc">輸入的假名原樣送出</string>
+    <string name="enter_first">送出首選候選</string>
+    <string name="enter_first_desc">與點選第一個候選相同</string>
     <string name="japanese_cross">日文模式中的跨語言轉換</string>
     <string name="japanese_cross_note">這些開關用於日文模式。混合模式有自己的開關。</string>
     <string name="chinese_script">字形</string>

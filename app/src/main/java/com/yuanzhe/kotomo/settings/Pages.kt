@@ -274,13 +274,30 @@ internal fun MixedPage(settings: Settings, store: SettingsStore) {
     Section(stringResource(R.string.mixed_cross)) {
         CrossSwitches(mixed.cross) { cross -> update { it.copy(cross = cross(it.cross)) } }
     }
+    KeysSections(Mode.MIXED, mixed.keys) { keys -> update { it.copy(keys = keys) } }
+}
+
+/**
+ * Draws one mode's two choices for composition: what the space key does and what Enter commits
+ * (ADR-010; `<mode>.space`, `<mode>.enter`).
+ */
+@Composable
+private fun KeysSections(mode: Mode, keys: CompositionKeys, change: (CompositionKeys) -> Unit) {
     Section(stringResource(R.string.mixed_space)) {
-        RadioRow(R.string.space_separate, R.string.space_separate_desc, mixed.space == CompositionSpace.SEPARATE) {
-            update { it.copy(space = CompositionSpace.SEPARATE) }
+        CompositionKeys.spaceChoices(mode).forEach { choice ->
+            val (title, desc) = when (choice) {
+                SpaceKey.SEPARATE -> R.string.space_separate to R.string.space_separate_desc
+                SpaceKey.COMMIT_FIRST -> R.string.space_commit to R.string.space_commit_desc
+                SpaceKey.NEXT -> R.string.space_next to R.string.space_next_desc
+            }
+            RadioRow(title, desc, keys.space == choice) { change(keys.copy(space = choice)) }
         }
-        RadioRow(R.string.space_commit, R.string.space_commit_desc, mixed.space == CompositionSpace.COMMIT_FIRST) {
-            update { it.copy(space = CompositionSpace.COMMIT_FIRST) }
+    }
+    Section(stringResource(R.string.composition_enter)) {
+        RadioRow(R.string.enter_shown, if (mode == Mode.JAPANESE) R.string.enter_shown_kana_desc else R.string.enter_shown_desc, keys.enter == EnterKey.SHOWN) {
+            change(keys.copy(enter = EnterKey.SHOWN))
         }
+        RadioRow(R.string.enter_first, R.string.enter_first_desc, keys.enter == EnterKey.FIRST) { change(keys.copy(enter = EnterKey.FIRST)) }
     }
 }
 
@@ -333,7 +350,8 @@ private fun CrossSwitches(cross: CrossLanguage, change: ((CrossLanguage) -> Cros
 
 /**
  * Draws the Chinese page: Mainland Simplified, Traditional, Taiwan or Hong Kong output, and one
- * switch per fuzzy-pinyin rule (PLAN §9.6), initials and finals in their own sections.
+ * switch per fuzzy-pinyin rule (PLAN §9.6), initials and finals in their own sections, then the
+ * space and Enter keys during composition.
  */
 @Composable
 internal fun ChinesePage(settings: Settings, store: SettingsStore) {
@@ -352,6 +370,7 @@ internal fun ChinesePage(settings: Settings, store: SettingsStore) {
     Section(stringResource(R.string.fuzzy_finals)) {
         FuzzySwitches(finals, settings, store)
     }
+    KeysSections(Mode.CHINESE, settings.chineseKeys) { keys -> store.set { it.copy(chineseKeys = keys) } }
 }
 
 /** Draws the switches of [rules]; each turns one fuzzy-pinyin rule on or off on its own. */
@@ -380,7 +399,7 @@ private val FuzzyRule.labels get() = when (this) {
     FuzzyRule.UAN_UANG -> R.string.fuzzy_uan_uang to R.string.fuzzy_uan_uang_desc
 }
 
-/** Draws the Japanese page: Japanese mode's own cross-language switches. */
+/** Draws the Japanese page: Japanese mode's own cross-language switches and its space and Enter keys. */
 @Composable
 internal fun JapanesePage(settings: Settings, store: SettingsStore) {
     Section(null) {
@@ -390,6 +409,7 @@ internal fun JapanesePage(settings: Settings, store: SettingsStore) {
         Inset { Note(stringResource(R.string.japanese_cross_note)) }
         CrossSwitches(settings.japanese) { change -> store.set { it.copy(japanese = change(it.japanese)) } }
     }
+    KeysSections(Mode.JAPANESE, settings.japaneseKeys) { keys -> store.set { it.copy(japaneseKeys = keys) } }
 }
 
 /** Draws the English page: suggestions and auto-capitalization. */

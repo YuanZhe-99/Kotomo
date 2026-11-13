@@ -58,9 +58,11 @@ class SettingsStoreTest {
             level = MixedLevel.AGGRESSIVE,
             cross = CrossLanguage(englishToKatakana = false, emoji = false),
             weightEmoji = 0,
-            space = CompositionSpace.COMMIT_FIRST,
+            keys = CompositionKeys(SpaceKey.NEXT, EnterKey.SHOWN),
         ),
         japanese = CrossLanguage(readings = false),
+        japaneseKeys = CompositionKeys(SpaceKey.COMMIT_FIRST, EnterKey.FIRST),
+        chineseKeys = CompositionKeys(SpaceKey.NEXT, EnterKey.FIRST),
         chineseScript = ChineseScript.TAIWAN,
         chineseFuzzy = setOf(FuzzyRule.Z_ZH, FuzzyRule.AN_ANG),
         englishAutoCapitalize = false,
@@ -87,6 +89,28 @@ class SettingsStoreTest {
         assertEquals(ClipboardSettings(history = true, retentionDays = 7, quickPaste = true), s.clipboard)
         // The behavior contract: AI is off until the person turns it on (PLAN §11).
         assertFalse(s.ai.enabled)
+    }
+
+    /**
+     * ADR-010: each mode's space and Enter defaults, and a space choice a mode does not offer
+     * (a boundary outside Mixed mode) reads as that mode's default.
+     */
+    @Test
+    fun compositionKeysDefaultPerModeAndRejectWhatAModeDoesNotOffer() {
+        val d = Settings()
+        assertEquals(CompositionKeys(SpaceKey.SEPARATE, EnterKey.FIRST), d.mixed.keys)
+        assertEquals(CompositionKeys(SpaceKey.NEXT, EnterKey.SHOWN), d.japaneseKeys)
+        assertEquals(CompositionKeys(SpaceKey.COMMIT_FIRST, EnterKey.SHOWN), d.chineseKeys)
+        val prefs = androidx.datastore.preferences.core.mutablePreferencesOf(
+            stringPreferencesKey("chinese.space") to "separate",
+            stringPreferencesKey("japanese.space") to "separate",
+            stringPreferencesKey("mixed.space") to "commit_first",
+            stringPreferencesKey("mixed.enter") to "sometimes",
+        )
+        val s = SettingsFormat.read(prefs)
+        assertEquals(SpaceKey.COMMIT_FIRST, s.chineseKeys.space)
+        assertEquals(SpaceKey.NEXT, s.japaneseKeys.space)
+        assertEquals(CompositionKeys(SpaceKey.COMMIT_FIRST, EnterKey.FIRST), s.mixed.keys)
     }
 
     @Test

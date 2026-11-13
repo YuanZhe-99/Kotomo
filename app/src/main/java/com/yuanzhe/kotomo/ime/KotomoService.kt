@@ -45,7 +45,8 @@ import com.yuanzhe.kotomo.ime.clipboard.ClipboardPanel
 import com.yuanzhe.kotomo.ime.clipboard.QuickPaste
 import com.yuanzhe.kotomo.ime.clipboard.QuickPasteStrip
 import com.yuanzhe.kotomo.settings.ChineseScript
-import com.yuanzhe.kotomo.settings.CompositionSpace
+import com.yuanzhe.kotomo.settings.EnterKey
+import com.yuanzhe.kotomo.settings.SpaceKey
 import com.yuanzhe.kotomo.settings.PcWide
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
@@ -187,6 +188,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /** What the last Mixed commit taught (its input, its candidate, the readings before), for [undoMixed]. */
     private var mixedLearned: Triple<String, com.yuanzhe.kotomo.engine.SnapshotCandidate, Learned>? = null
     private var mixedHeld = false
+    /** The candidate the space key chose ([SpaceKey.NEXT]): the field shows it and Enter commits it. */
+    private var spaceFocus: Int? = null
+    /** A space ([SpaceKey.NEXT]) pressed before the engine answered the letters; it acts on the answer. */
+    private var spacePending = false
     /** Main thread: the engine thread is deciding what a Mixed commit commits; keys wait in line. */
     private var mixedAwaiting = false
     private val queuedKeys = ArrayDeque<Triple<KeyAction, Boolean, Long>>()
@@ -1241,6 +1246,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             return undoMixed(undo)
         }
         emojiSearch?.let { if (searchKey(action, it)) return }
+        if (onChosenKey(action, longPress, downTime)) return
         if (mode == Mode.PC && pc.onKey(action, ic, downTime)) {
             refresh(downTime)
             return
@@ -1260,6 +1266,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 if (app != null && remembers) last.withApp(app) { it.copy(mode = mode) } else last
             }
             return
+        }
+        if (usesRime && !direct && action == KeyAction.Space && settings.chineseKeys.space == SpaceKey.NEXT &&
+            (chinesePreedit.isNotEmpty() || rimeAsked != rimeAnswered)
+        ) {
+            // `chinese.space` = next: space chooses a candidate instead of committing the first.
+            return nextCandidate()
         }
         if (usesRime && !direct && onChineseKey(action, longPress, downTime)) {
             refresh(0)
@@ -1305,15 +1317,19 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             KeyAction.Space -> if (composing.isNotEmpty() && mode == Mode.MIXED && !direct) {
                 // Mixed mode (ADR-010, `mixed.space`): space marks a boundary and commits nothing,
                 // unless the person chose that it commits the first candidate.
-                if (settings.mixed.space == CompositionSpace.COMMIT_FIRST) {
-                    commitMixed(null, null)
-                    return
+                when (settings.mixed.keys.space) {
+                    SpaceKey.COMMIT_FIRST -> return commitMixed(null, null)
+                    SpaceKey.NEXT -> return nextCandidate()
+                    SpaceKey.SEPARATE -> Unit
                 }
                 if (composing.last() != ' ' && composing.length < Core.MAX_COMPOSITION) {
                     composing.append(' ')
                     taps += null
                     ic.setComposingText(composing, 1)
                 }
+            } else if (composing.isNotEmpty() && mode == Mode.JAPANESE && settings.japaneseKeys.space == SpaceKey.NEXT) {
+                // Japanese mode (`japanese.space`): space converts, and again moves to the next candidate.
+                return nextCandidate()
             } else if (composing.isNotEmpty()) {
                 pick(0)
                 return
@@ -1331,14 +1347,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
             KeyAction.Enter -> {
                 previousWord = null
-                if (composing.isNotEmpty() && mode == Mode.JAPANESE && japaneseReading.isNotEmpty()) {
+                if (composing.isNotEmpty() && mode == Mode.JAPANESE && japaneseReading.isNotEmpty() && settings.japaneseKeys.enter == EnterKey.FIRST) {
+                    // `japanese.enter` = first: Enter commits the first candidate.
+                    pick(0)
+                    return
+                } else if (composing.isNotEmpty() && mode == Mode.JAPANESE && japaneseReading.isNotEmpty()) {
                     // Enter keeps the kana as typed, as Japanese keyboards do; after segments were
                     // chosen it commits the conversion as shown.
                     ic.commitText(if (japaneseSegments.any { it.pinned }) japaneseCandidates.firstOrNull()?.text ?: japaneseReading else japaneseReading, 1)
                     composing.clear()
                     taps.clear()
                     clearJapanese()
-                } else if (composing.isNotEmpty() && mode == Mode.MIXED && !direct) {
+                } else if (composing.isNotEmpty() && mode == Mode.MIXED && !direct && settings.mixed.keys.enter == EnterKey.FIRST) {
                     // Enter commits the best candidate (ADR-010); the letters as typed stay a candidate.
                     commitMixed(null, null)
                     return
@@ -1432,7 +1452,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
             KeyAction.Space -> rimeKey(SPACE, downTime) { typeSpace(downTime) }
             KeyAction.Backspace -> rimeKey(BACKSPACE, downTime) { if (!punctuation.backspace(ic)) sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
-            KeyAction.Enter -> rimeKey(RETURN, downTime) { editorEnter() }
+            // `chinese.enter`: the letters as typed (librime's Return), or the first candidate
+            // (librime's space) while there is a composition.
+            KeyAction.Enter -> rimeKey(RETURN, downTime, whileComposing = SPACE.takeIf { settings.chineseKeys.enter == EnterKey.FIRST }) { editorEnter() }
             else -> return false
         }
         return true
@@ -1442,17 +1464,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Runs [keycode] through librime on the engine thread and applies the result on the main thread;
      * [fallback] runs when librime did not take the key (or is not ready yet).
      * Inputs: [onlyIfComposing] sends the key only while librime has a composition, and then skips
-     * the fallback otherwise.
+     * the fallback otherwise; [whileComposing] is sent instead of [keycode] while it has one.
      * Notes: results are applied in key order and never dropped, since they can carry commits;
      * only the candidates of a result that a later key already superseded are not drawn.
      */
-    private fun rimeKey(keycode: Int, downTime: Long, onlyIfComposing: Boolean = false, fallback: () -> Unit) {
+    private fun rimeKey(keycode: Int, downTime: Long, onlyIfComposing: Boolean = false, whileComposing: Int? = null, fallback: () -> Unit) {
         rimeAsked++
         engine.post {
             val started = SystemClock.uptimeMillis()
             // Only keys that commit the top candidate first ask whether anything is composed.
-            val skip = onlyIfComposing && !(rimeReady && Rime.getComposition().isNotEmpty())
-            val handled = rimeReady && !skip && Rime.processKey(keycode, 0)
+            val composed = (onlyIfComposing || whileComposing != null) && rimeReady && Rime.getComposition().isNotEmpty()
+            val skip = onlyIfComposing && !composed
+            val handled = rimeReady && !skip && Rime.processKey(if (composed && whileComposing != null) whileComposing else keycode, 0)
             val state = rimeState(handled)
             val work = SystemClock.uptimeMillis() - started
             main.post {
@@ -1510,6 +1533,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             candidates = chineseCandidates
             candidateBar.show(candidates, downTime)
             shownCandidates.value = candidates
+            answeredSpace()
         }
     }
 
@@ -1569,11 +1593,84 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /**
+     * The space key under [SpaceKey.NEXT]: the first press shows the first candidate in the field,
+     * each further press the next one (after the last, the first again); Enter then commits it.
+     * Notes: a press before the engine answered the letters typed waits for that answer
+     * ([answeredSpace]), so it never chooses from an older list. Main thread.
+     */
+    private fun nextCandidate() {
+        val answered = if (usesRime) rimeAsked == rimeAnswered else shownGeneration == generation.toLong() && shownStage >= 1
+        if (!answered) {
+            spacePending = true
+            return
+        }
+        if (candidates.isEmpty()) return
+        val at = spaceFocus?.let { (it + 1) % candidates.size } ?: 0
+        spaceFocus = at
+        candidateBar.chosen = at
+        setComposition(candidates[at], candidates, true)
+    }
+
+    /** Lets a space that waited for the engine's answer act on it ([nextCandidate]). */
+    private fun answeredSpace() {
+        if (!spacePending) return
+        spacePending = false
+        nextCandidate()
+    }
+
+    /** Forgets the candidate the space key chose; [restore] shows the composition as typed again. */
+    private fun leaveChosen(restore: Boolean) {
+        spacePending = false
+        if (spaceFocus == null) return
+        spaceFocus = null
+        candidateBar.chosen = null
+        if (!restore || (composing.isEmpty() && chinesePreedit.isEmpty())) return
+        val shown = when {
+            usesRime -> chinesePreedit
+            mode == Mode.JAPANESE && japaneseReading.isNotEmpty() ->
+                if (japaneseSegments.any { it.pinned }) japaneseCandidates.firstOrNull()?.text ?: japaneseReading else japaneseReading
+            else -> composing.toString()
+        }
+        setComposition(shown, candidates, mode == Mode.JAPANESE && japaneseSegments.any { it.pinned })
+    }
+
+    /**
+     * Handles a key while the space key has chosen a candidate ([spaceFocus]), as Japanese
+     * keyboards do: space moves on, Enter commits the candidate shown, backspace returns to the
+     * composition as typed, and a character commits the candidate and is then typed.
+     * Returns: true when the key needs nothing more.
+     */
+    private fun onChosenKey(action: KeyAction, longPress: Boolean, downTime: Long): Boolean {
+        val at = spaceFocus
+        if (at == null) {
+            if (action != KeyAction.Space) spacePending = false
+            return false
+        }
+        when (action) {
+            KeyAction.Space -> if (settings.keys(mode)?.space == SpaceKey.NEXT) nextCandidate() else return false.also { leaveChosen(true) }
+            KeyAction.Backspace -> leaveChosen(true)
+            KeyAction.Enter -> {
+                leaveChosen(false)
+                pick(at)
+            }
+            is KeyAction.Text -> {
+                leaveChosen(false)
+                pick(at)
+                onKey(action, longPress, downTime)
+            }
+            KeyAction.Shift, is KeyAction.Symbols, KeyAction.Letters -> return false
+            else -> return false.also { leaveChosen(true) }
+        }
+        return true
+    }
+
+    /**
      * Commits candidate [index] in place of the composition (or a predicted word).
      * Side effects: in English mode also types a space and asks for next-word predictions.
      */
     private fun pick(index: Int) {
         if (mixedAwaiting) return
+        leaveChosen(false)
         aiUndo?.let { return undoAi(it) }
         if (emojiSearch != null) return pickFound(index)
         if (mode == Mode.MIXED && !direct && composing.isNotEmpty()) {
@@ -1664,6 +1761,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun refresh(downTime: Long) {
         if (!::keyboard.isInitialized) return
+        // Whatever redraws the candidates ends the space key's choice: its list is gone.
+        leaveChosen(true)
         val pad = field == Field.PHONE || field == Field.NUMBER || field == Field.DATETIME
         val s = settings
         val window = WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(this).bounds
@@ -1845,6 +1944,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 Probe.engineWork.add(work)
                 if (!takes(gen, 1)) return@post
                 showMixed(snapshot, raw, downTime)
+                answeredSpace()
             }
             // A long composition's first answer holds the best sentences only (PLAN §5.5). The
             // rest is its own job behind the keys already waiting, and is skipped when one of
@@ -1853,7 +1953,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 engine.post {
                     if (gen != mixedLatest) return@post
                     val full = mixed.refine() ?: return@post
-                    main.post { if (takes(gen, 2)) showMixed(full, raw, 0) }
+                    // A candidate the space key chose stays: the fuller list would move it.
+                    main.post { if (spaceFocus == null && takes(gen, 2)) showMixed(full, raw, 0) }
                 }
             }
         }
@@ -2078,6 +2179,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     return@post
                 }
                 showJapanese(segments, predicted, typed, crossed)
+                answeredSpace()
             }
         }
     }

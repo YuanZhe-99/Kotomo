@@ -2,6 +2,7 @@ package com.yuanzhe.kotomo.ime
 
 import android.content.Intent
 import android.text.InputType
+import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.test.core.app.ActivityScenario
@@ -14,12 +15,14 @@ import com.yuanzhe.kotomo.engine.Core
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Rime
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
-import com.yuanzhe.kotomo.settings.CompositionSpace
+import com.yuanzhe.kotomo.settings.EnterKey
+import com.yuanzhe.kotomo.settings.SpaceKey
 import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -102,8 +105,35 @@ class MixedTypingTest {
     /** `mixed.space` = commit_first: space commits the first candidate, as in Chinese mode. */
     @Test
     fun spaceCommitsWhenThePersonChoseSo() {
-        change { it.copy(mixed = it.mixed.copy(space = CompositionSpace.COMMIT_FIRST)) }
+        change { it.copy(mixed = it.mixed.copy(keys = it.mixed.keys.copy(space = SpaceKey.COMMIT_FIRST))) }
         assertEquals("你好", type("nihao ", expected = "你好", enter = false))
+    }
+
+    /**
+     * `mixed.space` = next (ADR-010): space shows the first candidate in the field without
+     * committing it, backspace returns to the letters, and Enter commits the candidate shown.
+     */
+    @Test
+    fun spaceChoosesACandidateWhenThePersonChoseSo() {
+        change { it.copy(mixed = it.mixed.copy(keys = it.mixed.keys.copy(space = SpaceKey.NEXT))) }
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys("nihao ")
+            assertEquals("你好", read(scenario))
+            assertTrue("space committed the candidate", composing(scenario))
+            device.findObject(By.descStartsWith(BACKSPACE)).click()
+            assertEquals("nihao", read(scenario))
+            keys(" ")
+            enter()
+            assertEquals("你好", read(scenario))
+            assertFalse("Enter left the candidate uncommitted", composing(scenario))
+        }
+    }
+
+    /** `mixed.enter` = shown: Enter commits the letters as the field shows them, not a candidate. */
+    @Test
+    fun enterCommitsTheLettersWhenThePersonChoseSo() {
+        change { it.copy(mixed = it.mixed.copy(keys = it.mixed.keys.copy(enter = EnterKey.SHOWN))) }
+        assertEquals("nihao", type("nihao", expected = "nihao"))
     }
 
     /**
@@ -347,6 +377,13 @@ class MixedTypingTest {
     private fun clear(scenario: ActivityScenario<FieldTestActivity>) {
         scenario.onActivity { it.findViewById<EditText>(FieldTestActivity.FIELD_ID).setText("") }
         Thread.sleep(WAIT_MS)
+    }
+
+    /** Whether the field still holds an uncommitted composition. */
+    private fun composing(scenario: ActivityScenario<FieldTestActivity>): Boolean {
+        var start = -1
+        scenario.onActivity { start = BaseInputConnection.getComposingSpanStart(it.findViewById<EditText>(FieldTestActivity.FIELD_ID).text) }
+        return start >= 0
     }
 
     /** Reads the field's text, waiting briefly for the keyboard's last commit to land. */

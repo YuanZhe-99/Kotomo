@@ -34,8 +34,39 @@ enum class PcWide { FULL, SPLIT }
 /** Chooses how strongly Mixed mode offers cross-language candidates (PLAN §2.3). */
 enum class MixedLevel { CONSERVATIVE, BALANCED, AGGRESSIVE }
 
-/** Chooses what the space key does while a Mixed-mode composition is open. */
-enum class CompositionSpace { SEPARATE, COMMIT_FIRST }
+/**
+ * Chooses what the space key does while a composition is open (ADR-010): mark a boundary and
+ * keep typing, commit the first candidate, or convert and then move to the next candidate.
+ *
+ * Notes: each of Chinese, Japanese and Mixed mode keeps its own choice; only Mixed mode offers
+ * [SEPARATE] (see [CompositionKeys.SPACE_CHOICES]).
+ */
+enum class SpaceKey { SEPARATE, COMMIT_FIRST, NEXT }
+
+/**
+ * Chooses what Enter commits while a composition is open (ADR-010): the composition as the field
+ * shows it (the letters, or the kana in Japanese mode), or the first candidate.
+ *
+ * Notes: after the space key chose a candidate ([SpaceKey.NEXT]) the field shows that candidate,
+ * and Enter commits it under either choice.
+ */
+enum class EnterKey { SHOWN, FIRST }
+
+/** Holds one input mode's space and Enter behavior during composition. */
+data class CompositionKeys(val space: SpaceKey, val enter: EnterKey) {
+    companion object {
+        /** Chinese mode as shipped: space commits the first candidate, Enter the letters. */
+        val CHINESE = CompositionKeys(SpaceKey.COMMIT_FIRST, EnterKey.SHOWN)
+        /** Japanese mode as Japanese keyboards do: space converts, Enter commits what is shown. */
+        val JAPANESE = CompositionKeys(SpaceKey.NEXT, EnterKey.SHOWN)
+        /** Mixed mode (ADR-010): space separates, Enter commits the first candidate. */
+        val MIXED = CompositionKeys(SpaceKey.SEPARATE, EnterKey.FIRST)
+
+        /** The space choices a mode offers: a boundary inside the composition exists in Mixed mode only. */
+        fun spaceChoices(mode: Mode): List<SpaceKey> =
+            if (mode == Mode.MIXED) SpaceKey.entries else listOf(SpaceKey.COMMIT_FIRST, SpaceKey.NEXT)
+    }
+}
 
 /**
  * Holds the cross-language conversion switches of one input mode (PLAN §9.10); every switch is
@@ -55,7 +86,7 @@ data class CrossLanguage(
 
 /**
  * Holds Mixed mode's settings: the level, the cross-language switches, the per-language candidate
- * weights (0–100) and the space key's behavior during composition.
+ * weights (0–100) and the space and Enter keys' behavior during composition.
  */
 data class Mixed(
     val level: MixedLevel = MixedLevel.BALANCED,
@@ -64,7 +95,7 @@ data class Mixed(
     val weightEnglish: Int = 60,
     val weightJapanese: Int = 60,
     val weightEmoji: Int = 30,
-    val space: CompositionSpace = CompositionSpace.SEPARATE,
+    val keys: CompositionKeys = CompositionKeys.MIXED,
 )
 
 /**
@@ -122,6 +153,8 @@ data class Settings(
     val hiddenModes: Set<Mode> = emptySet(),
     val mixed: Mixed = Mixed(),
     val japanese: CrossLanguage = CrossLanguage(),
+    val japaneseKeys: CompositionKeys = CompositionKeys.JAPANESE,
+    val chineseKeys: CompositionKeys = CompositionKeys.CHINESE,
     val chineseScript: ChineseScript = ChineseScript.SIMPLIFIED,
     /** The fuzzy-pinyin rules turned on (PLAN §9.6); none by default. */
     val chineseFuzzy: Set<FuzzyRule> = emptySet(),
@@ -178,6 +211,14 @@ data class Settings(
      * Returns [wanted] when the language choice offers it, otherwise the default mode, otherwise
      * the first mode offered (a hidden mode is never used).
      */
+    /** The space and Enter behavior of [mode]'s compositions; null for modes without a choice. */
+    fun keys(mode: Mode): CompositionKeys? = when (mode) {
+        Mode.CHINESE -> chineseKeys
+        Mode.JAPANESE -> japaneseKeys
+        Mode.MIXED -> mixed.keys
+        else -> null
+    }
+
     fun usable(wanted: Mode?): Mode = wanted?.takeIf { it in modes } ?: defaultMode.takeIf { it in modes } ?: modes.first()
 
     companion object {
@@ -261,6 +302,11 @@ internal object SettingsFormat {
     private val mixedWeightJapanese = intPreferencesKey("mixed.weight_japanese")
     private val mixedWeightEmoji = intPreferencesKey("mixed.weight_emoji")
     private val mixedSpace = stringPreferencesKey("mixed.space")
+    private val mixedEnter = stringPreferencesKey("mixed.enter")
+    private val japaneseSpace = stringPreferencesKey("japanese.space")
+    private val japaneseEnter = stringPreferencesKey("japanese.enter")
+    private val chineseSpace = stringPreferencesKey("chinese.space")
+    private val chineseEnter = stringPreferencesKey("chinese.enter")
     private val chineseScript = stringPreferencesKey("chinese.script")
     private val englishSuggestions = booleanPreferencesKey("english.suggestions")
     private val englishAutoCapitalize = booleanPreferencesKey("english.auto_capitalize")
@@ -322,9 +368,11 @@ internal object SettingsFormat {
                 weightEnglish = p.int(mixedWeightEnglish, Settings.WEIGHT_RANGE, d.mixed.weightEnglish),
                 weightJapanese = p.int(mixedWeightJapanese, Settings.WEIGHT_RANGE, d.mixed.weightJapanese),
                 weightEmoji = p.int(mixedWeightEmoji, Settings.WEIGHT_RANGE, d.mixed.weightEmoji),
-                space = p.enum(mixedSpace, CompositionSpace.entries, d.mixed.space),
+                keys = readKeys(p, Mode.MIXED, mixedSpace, mixedEnter, d.mixed.keys),
             ),
             japanese = readCross(p, "japanese"),
+            japaneseKeys = readKeys(p, Mode.JAPANESE, japaneseSpace, japaneseEnter, d.japaneseKeys),
+            chineseKeys = readKeys(p, Mode.CHINESE, chineseSpace, chineseEnter, d.chineseKeys),
             chineseScript = p.enum(chineseScript, ChineseScript.entries, d.chineseScript),
             chineseFuzzy = FuzzyRule.entries.filterTo(mutableSetOf()) { p[fuzzyKey(it)] ?: (it in d.chineseFuzzy) },
             englishSuggestions = p[englishSuggestions] ?: d.englishSuggestions,
@@ -397,7 +445,9 @@ internal object SettingsFormat {
         p.put(mixedWeightEnglish, old.mixed.weightEnglish, new.mixed.weightEnglish)
         p.put(mixedWeightJapanese, old.mixed.weightJapanese, new.mixed.weightJapanese)
         p.put(mixedWeightEmoji, old.mixed.weightEmoji, new.mixed.weightEmoji)
-        p.put(mixedSpace, old.mixed.space.key, new.mixed.space.key)
+        writeKeys(p, mixedSpace, mixedEnter, old.mixed.keys, new.mixed.keys)
+        writeKeys(p, japaneseSpace, japaneseEnter, old.japaneseKeys, new.japaneseKeys)
+        writeKeys(p, chineseSpace, chineseEnter, old.chineseKeys, new.chineseKeys)
         writeCross(p, "japanese", old.japanese, new.japanese)
         p.put(chineseScript, old.chineseScript.key, new.chineseScript.key)
         FuzzyRule.entries.forEach { p.put(fuzzyKey(it), it in old.chineseFuzzy, it in new.chineseFuzzy) }
@@ -476,6 +526,15 @@ internal object SettingsFormat {
 
     /** Names the key of one cross-language switch, `<mode>.cross.<name>`. */
     private fun crossKey(mode: String, name: String) = booleanPreferencesKey("$mode.cross.$name")
+
+    /** Reads one mode's space and Enter choices; a space value the mode does not offer reads as [default]. */
+    private fun readKeys(p: Preferences, mode: Mode, space: Preferences.Key<String>, enter: Preferences.Key<String>, default: CompositionKeys) =
+        CompositionKeys(p.enum(space, CompositionKeys.spaceChoices(mode), default.space), p.enum(enter, EnterKey.entries, default.enter))
+
+    private fun writeKeys(p: MutablePreferences, space: Preferences.Key<String>, enter: Preferences.Key<String>, old: CompositionKeys, new: CompositionKeys) {
+        p.put(space, old.space.key, new.space.key)
+        p.put(enter, old.enter.key, new.enter.key)
+    }
 
     /** Names the key of one fuzzy-pinyin rule's switch, `chinese.fuzzy.<rule>`. */
     private fun fuzzyKey(rule: FuzzyRule) = booleanPreferencesKey("chinese.fuzzy.${rule.key}")
