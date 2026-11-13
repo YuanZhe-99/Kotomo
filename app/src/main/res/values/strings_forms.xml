@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Japanese word forms and parts of speech (PLAN §10.1, §10.2). -->
+<resources>
+    <string name="candidate_forms">Forms</string>
+    <string name="candidate_word" translatable="false">%1$s · %2$s</string>
+    <string name="form_plain">Dictionary form</string>
+    <string name="form_polite">Polite</string>
+    <string name="form_masu">-masu</string>
+    <string name="form_masen">-masen</string>
+    <string name="form_mashita">-mashita</string>
+    <string name="form_te">-te</string>
+    <string name="form_ta">-ta (past)</string>
+    <string name="form_nai">-nai (not)</string>
+    <string name="form_ba">-ba (if)</string>
+    <string name="form_potential">Potential</string>
+    <string name="form_passive">Passive</string>
+    <string name="form_causative">Causative</string>
+    <string name="form_volitional">Volitional</string>
+    <string name="form_imperative">Imperative</string>
+    <string name="form_honorific">Honorific</string>
+    <string name="form_humble">Humble</string>
+    <string name="pos_noun">Noun</string>
+    <string name="pos_verb">Verb</string>
+    <string name="pos_adjective">Adjective</string>
+    <string name="pos_adverb">Adverb</string>
+    <string name="pos_particle">Particle</string>
+    <string name="pos_auxiliary">Auxiliary verb</string>
+    <string name="pos_adnominal">Adnominal</string>
+    <string name="pos_conjunction">Conjunction</string>
+    <string name="pos_interjection">Interjection</string>
+    <string name="pos_prefix">Prefix</string>
+    <string name="pos_symbol">Symbol</string>
+</resources>

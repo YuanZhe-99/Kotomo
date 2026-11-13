@@ -9,7 +9,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | 组件 | 仓库与版本 | 用途 | 许可证 | 修改 | 义务 |
 |---|---|---|---|---|---|
 | MyApps 的工作规范与文档检查 | `YuanZhe-99/Kyokai`（`tools/checkdocs`）、`YuanZhe-99/MyApps-AI`（`tool/check_docs.py`）、MyApps 的 `AGENTS.md` 规则 | `tool/CheckDocs.java` 沿用其镜像与链接规则；`AGENTS.md` 沿用其工作规范 | AGPL-3.0 与 GPL-3.0，与 Kotomo 同一作者 | 为 Kotomo 重新编写 | 除 Kotomo 自身的许可证外无其他义务 |
-| Mozc 词典数据（`src/data/dictionary_oss`：`dictionary00–09.txt`、`id.def`、`README.txt`） | `google/mozc` 标签 3.35.6354 | 为跨语言词库提供词条、读音、词性 ID 与代价（S5；构建输入，生成的词库尚未随应用分发）；为 `emoji.tsv` 的日文键提供假名读音（随应用分发） | 源自 IPAdic（mecab-ipadic-2.7.0-20070801，NAIST 与 ICOT 条款）、冲绳词典数据与 Google 增补 | 无 | 由其派生的任何词库都随附 `README.txt` 中的声明与免责条款 |
+| Mozc 词典数据（`src/data/dictionary_oss`：`dictionary00–09.txt`、`id.def`、`README.txt`） | `google/mozc` 标签 3.35.6354 | 为跨语言词库提供词条、读音、词性 ID 与代价（S5；构建输入，生成的词库尚未随应用分发）；为 `emoji.tsv` 的日文键提供假名读音（随应用分发）；`id.def` 的词性名称编入 `libkotomo_mozc.so`，用于日文候选的词性与活用（随应用分发，PLAN §10.1、§10.2） | 源自 IPAdic（mecab-ipadic-2.7.0-20070801，NAIST 与 ICOT 条款）、冲绳词典数据与 Google 增补 | 无 | 由其派生的任何词库都随附 `README.txt` 中的声明与免责条款 |
 | Unihan | Unicode 18.0.0（`Unihan.zip`） | 为拼音 → 日文映射提供读音（`kMandarin`，以 `kXHC1983`、`kTGHZ2013`、`kHanyuPinyin` 佐证）、`kSimplifiedVariant` 与 `kJapaneseOldVariant`（S5，随 `cross.klx` 分发）；为 `emoji.tsv` 的拼音键提供 `kMandarin` | Unicode License v3 | 无 | 附上 Unicode 版权与许可声明 |
 | CC-CEDICT | MDBG 发布于 2026-11-11T02:50:39Z | 为拼音 → 日文映射（S5，随 `cross.klx` 分发）与 `emoji.tsv` 的拼音键（随应用分发）提供词级拼音 | CC BY-SA 4.0（MDBG；基于 Paul Andrew Denisowski 的 CEDICT） | 无 | 署名并链接许可；派生的读音仍为 CC BY-SA 4.0 |
 | Unicode Emoji 数据（`emoji-test.txt`） | Unicode Emoji 18.0（`Public/18.0.0/emoji/`，日期 2026-04-30） | Emoji 面板的 Emoji 顺序、分组与肤色变体（`emoji.tsv`，生成后随 APK 分发） | Unicode License v3 | 去掉 Component 组 | 附上 Unicode 版权与许可声明 |

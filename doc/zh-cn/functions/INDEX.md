@@ -20,6 +20,8 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/CandidateBar.kt` | 按键上方的一行：可滑动的候选胶囊、展开箭头、空闲时的工具栏（“更多”，然后是放得下的用户工具）、状态提示、Emoji 搜索的查询词（结果之前）、长按后显示的候选详情（读音、来源，学到的词可忘记）、空格键选中的候选（`<mode>.space` = `next`） | `show`、`hint`、`details`、`chosen`、`onTouchEvent` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiPanel.kt` | 在键盘位置显示的 Compose 面板：Emoji 面板（按分组列出系统字体能显示的全部 Emoji；从键盘记忆读取常用与最近使用（仅在输入框允许学习时记录）、搜索标签；收藏、组合与颜文字（PLAN §10.6）；长按卡片选择肤色、收藏或取消收藏）、全部候选，以及片段修改（整句与各片段的按钮、所选片段的候选；日文模式为缩短、延长，混合模式为提交到这里、恢复输入） | `EmojiPanel`、`Recents`、`TonePicker`、`CandidatesPanel`、`SegmentPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiExtras.kt` | Emoji 面板自己的列表（PLAN §10.6）：为 Kotomo 编写的颜文字与组合，存储的收藏、组合与词语 → Emoji 映射，读取时做检查（纯 Kotlin，有单元测试） | `EmojiExtras` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Inflection.kt` | 日文活用（PLAN §10.1）：由 Mozc 描述的词条得出原形，再给出各种形式（ます、ません、ました、て、た、ない、ば、可能、被动、使役、意志、命令、尊敬、谦让），按 id.def 的每个活用型一张规则表，敬语来自少数换词动词的短表（纯 Kotlin，有单元测试，T16） | `Inflection.word`、`Inflection.forms` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/FormsPanel.kt` | 在键盘位置显示的变形面板（日文候选详情里的“变形”按钮）：每种形式及其名称；选一个就替换当前组合提交 | `FormsPanel`、`formLabel` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/EmojiPage.kt` | 设置中的 Emoji 页（PLAN §10.6）：收藏与清空、用户的组合、用户为词语指定的 Emoji | `EmojiPage` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`load` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardHistory.kt` | 剪贴板历史（[clipboard.md](../clipboard.md)）：只在允许时记录（敏感输入框、敏感剪贴与无痕模式不记录）、去重、固定与快捷短语、保留期与数量上限、以 Keystore 密钥加密的 AES-GCM 文件、内存快照；剪贴分类 | `onPrimaryClip`、`allowedIn`、`items`、`ClipFile`、`ClipKind.of` |
@@ -55,7 +57,7 @@
 | `core/rime/` | 中文引擎（S2）：把 librime 及其依赖构建为 `libkotomo_rime.so` 的 CMake 构建、桥接层、数据整理与主机测试 | `jni/rime_bridge.h`、`jni/rime_spellings.h`（方案的拼写表）、`jni/kotomo_rime_api.h`（交给协调层的函数表）、`stage-data.cmake`、`tests/rime_bridge_test.cc` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Rime.kt` | `libkotomo_rime.so` 的 Kotlin 外观（只在引擎线程上调用） | `initialize`、`deploy`、`processKey`、`setLearning` |
 | `scripts/fetch-boost.sh` | 下载并校验 librime 需要的 Boost 头文件 | — |
-| `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换、固定片段与固定边界转换、预测，JNI，主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`kotomo_mozc_api.h`（交给协调层的函数表）、`kotomo_mozc_service.cc`（供 `core/mixed` 使用的主机行服务）、`tests/kotomo_mozc_test.cc` |
+| `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换、固定片段与固定边界转换、预测，从词典查词性与活用（`Describe`，编入 id.def 的词性名称，PLAN §10.1、§10.2），JNI，主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`kotomo_mozc_api.h`（交给协调层的函数表）、`kotomo_mozc_service.cc`（供 `core/mixed` 使用的主机行服务）、`tests/kotomo_mozc_test.cc` |
 | `core/mixed/` | 混合输入协调层，应用的第四个原生库 `libkotomo_core.so`（[engine-contract.md](../engine-contract.md)）：在请求之间保存组合的会话、请求与快照的编解码、输入模型、候选网格及其提议者（拼音、假名与助词、英文、跨语言）、k-best 解码器、按目标语言收尾、用户锁定的片段、一次提交的一级撤销、基于按下位置的按键纠错、光标前文字的语言偏置、已学习读法的代价调整、长组合的两阶段回答，以及输入同一个组合期间记住的各引擎回答（`cached_engines.h`）；不链接任何引擎 | `session.h`、`request.h`、`snapshot.h`、`coordinator.h`、`engines.h`、`options.h`、`propose.h`、`decode.h`、`finish.h` |
 | `core/mixed/device/`、`core/mixed/jni/` | 设备上的协调层：经各引擎库交出的函数表实现 `Engines` 的三个引擎，以及 `engine/Core.kt` 的 JNI 入口 | `api_engines.h`、`core_jni.cc` |
 | `core/mixed/cross_lexicon.h`、`cross_lexicon_build.h`、`tools/compile_lexicon.cc` | 运行时的跨语言词库（[lexicon-format.md](../lexicon-format.md)）：编译后的文件只读映射、按键二分查找，每个偏移都检查；把生成器的两张表编译成它的主机编译器及其命令行工具 | `CrossLexicon::Map`、`PinyinJa`、`EnJa`、`CompileLexicon` |

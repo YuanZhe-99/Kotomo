@@ -69,6 +69,14 @@
     <!-- Combinations and kaomoji: wider cells, text that scales with the font. -->
     <dimen name="emoji_wide_text">16sp</dimen>
     <dimen name="emoji_tab_text">10sp</dimen>
+    <!-- The forms panel of a Japanese word (PLAN §10.1). -->
+    <dimen name="forms_gap">6dp</dimen>
+    <dimen name="forms_radius">12dp</dimen>
+    <dimen name="forms_chip_height">52dp</dimen>
+    <dimen name="forms_chip_pad">12dp</dimen>
+    <dimen name="forms_back_height">48dp</dimen>
+    <dimen name="forms_label_text">11sp</dimen>
+    <dimen name="forms_text">18sp</dimen>
     <!-- The space between section tabs; the row scrolls when they do not fit. -->
     <dimen name="emoji_tab_gap">6dp</dimen>
     <dimen name="emoji_picker_pad">6dp</dimen>

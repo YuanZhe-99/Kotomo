@@ -1,5 +1,7 @@
 #include "kotomo/kotomo_mozc.h"
 
+#include <cstddef>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -328,6 +330,57 @@ PosIds MozcEngine::LookupPosIds(std::string_view reading,
   }
   const uint16_t noun = modules.GetPosMatcher().GetGeneralNounId();
   return {.lid = noun, .rid = noun, .from_dictionary = false};
+}
+
+namespace {
+
+struct PosNameEntry {
+  uint16_t id;
+  const char* pos;
+};
+
+constexpr PosNameEntry kPosNames[] = {
+#include "kotomo/kotomo_pos_names.inc"
+};
+
+// Returns the byte length of the last UTF-8 code point of a non-empty `text`.
+size_t LastCodepointLength(std::string_view text) {
+  size_t n = 1;
+  while (n < text.size() && (static_cast<unsigned char>(text[text.size() - n]) & 0xC0) == 0x80) {
+    ++n;
+  }
+  return n;
+}
+
+}  // namespace
+
+std::string_view MozcEngine::PosName(uint16_t id) {
+  // id.def lists the ids densely from 0, in order.
+  if (id < std::size(kPosNames) && kPosNames[id].id == id) {
+    return kPosNames[id].pos;
+  }
+  return {};
+}
+
+std::optional<WordInfo> MozcEngine::Describe(std::string_view surface,
+                                             std::string_view reading) const {
+  while (!surface.empty() && !reading.empty()) {
+    const PosIds ids = LookupPosIds(reading, surface);
+    if (ids.from_dictionary) {
+      return WordInfo{.value = std::string(surface), .key = std::string(reading),
+                      .pos = std::string(PosName(ids.lid))};
+    }
+    // Okurigana are the same kana in the surface and the reading: drop one shared
+    // trailing code point and look again (行きます → 行き).
+    const size_t n = LastCodepointLength(surface);
+    if (n > reading.size() || surface.substr(surface.size() - n) != reading.substr(reading.size() - n) ||
+        n == surface.size() || n == reading.size()) {
+      break;
+    }
+    surface.remove_suffix(n);
+    reading.remove_suffix(n);
+  }
+  return std::nullopt;
 }
 
 std::string MozcEngine::ToHiragana(std::string_view romaji) const {

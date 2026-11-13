@@ -10,11 +10,22 @@
 load("//:build_defs.bzl", "mozc_cc_binary", "mozc_cc_library", "mozc_cc_test", "mozc_select")
 load("//android/jni:cross_build_binary.bzl", "cross_build_binary")
 
+# The part of speech of every Mozc POS id (id.def's first six fields: POS, three
+# subdivisions, conjugation type, conjugation form), for Describe (PLAN §10.1,
+# §10.2). Generated from the same id.def the data set is built from, so the ids match.
+genrule(
+    name = "pos_names",
+    srcs = ["//data/dictionary_oss:id.def"],
+    outs = ["kotomo_pos_names.inc"],
+    cmd = "awk '{ n = split($$2, f, \",\"); printf \"{%s, \\\"%s,%s,%s,%s,%s,%s\\\"},\\n\", $$1, f[1], f[2], f[3], f[4], f[5], f[6] }' $< > $@",
+)
+
 mozc_cc_library(
     name = "glue",
     srcs = [
         "kotomo_mozc.cc",
         "kotomo_mozc_api.cc",
+        ":pos_names",
     ],
     hdrs = [
         "kotomo_mozc.h",

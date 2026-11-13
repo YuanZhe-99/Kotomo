@@ -62,6 +62,13 @@ struct PosIds {
   bool from_dictionary = false;  // false: Mozc has no such entry; general noun
 };
 
+/// Holds what Mozc's dictionary says about a word (PLAN §10.1, §10.2).
+struct WordInfo {
+  std::string value;  // the entry that matched: the surface, or its leading part
+  std::string key;    // its reading
+  std::string pos;    // id.def's POS fields: POS,sub1,sub2,sub3,conjugation type,form
+};
+
 /// Owns one Mozc engine and the session handler that drives it.
 ///
 /// Notes: not thread-safe. Kotomo's engine thread is the only caller (AGENTS.md,
@@ -125,6 +132,19 @@ class MozcEngine {
   /// Returns: the entry's ids, or the general-noun ids with
   /// `from_dictionary == false` when Mozc has no such entry.
   PosIds LookupPosIds(std::string_view reading, std::string_view surface) const;
+
+  /// Describes `surface` read as `reading` from Mozc's dictionary: its part of
+  /// speech and, for a verb or adjective, its conjugation type and form.
+  /// Inputs: a candidate's surface and reading (`行きます`, `いきます`).
+  /// Returns: the first dictionary entry found while trailing kana that the
+  /// surface and the reading share are dropped one at a time (`行きます` →
+  /// `行き`, the 連用形 of 行く), with its POS fields; nullopt when none is found.
+  /// Side effects: none; nothing is learned.
+  std::optional<WordInfo> Describe(std::string_view surface,
+                                   std::string_view reading) const;
+
+  /// Returns id.def's POS fields of a Mozc POS id, or "" for an unknown id.
+  static std::string_view PosName(uint16_t id);
 
   /// Maps typed romaji to hiragana through Mozc's own romaji table, as a
   /// session's composer would before conversion (`kka` → っか, a final `n` → ん).

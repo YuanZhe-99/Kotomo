@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Japanese word forms and parts of speech (PLAN §10.1, §10.2). -->
+<resources>
+    <string name="candidate_forms">变形</string>
+    <string name="form_plain">原形</string>
+    <string name="form_polite">礼貌形</string>
+    <string name="form_masu">ます形</string>
+    <string name="form_masen">否定（ません）</string>
+    <string name="form_mashita">过去（ました）</string>
+    <string name="form_te">て形</string>
+    <string name="form_ta">た形</string>
+    <string name="form_nai">ない形</string>
+    <string name="form_ba">ば形（假定）</string>
+    <string name="form_potential">可能形</string>
+    <string name="form_passive">被动形</string>
+    <string name="form_causative">使役形</string>
+    <string name="form_volitional">意志形</string>
+    <string name="form_imperative">命令形</string>
+    <string name="form_honorific">尊敬语</string>
+    <string name="form_humble">谦让语</string>
+    <string name="pos_noun">名词</string>
+    <string name="pos_verb">动词</string>
+    <string name="pos_adjective">形容词</string>
+    <string name="pos_adverb">副词</string>
+    <string name="pos_particle">助词</string>
+    <string name="pos_auxiliary">助动词</string>
+    <string name="pos_adnominal">连体词</string>
+    <string name="pos_conjunction">接续词</string>
+    <string name="pos_interjection">感叹词</string>
+    <string name="pos_prefix">接头词</string>
+    <string name="pos_symbol">符号</string>
+</resources>

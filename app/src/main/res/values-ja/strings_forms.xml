@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Japanese word forms and parts of speech (PLAN §10.1, §10.2). -->
+<resources>
+    <string name="candidate_forms">活用</string>
+    <string name="form_plain">辞書形</string>
+    <string name="form_polite">丁寧形</string>
+    <string name="form_masu">ます形</string>
+    <string name="form_masen">ません</string>
+    <string name="form_mashita">ました</string>
+    <string name="form_te">て形</string>
+    <string name="form_ta">た形</string>
+    <string name="form_nai">ない形</string>
+    <string name="form_ba">ば形</string>
+    <string name="form_potential">可能形</string>
+    <string name="form_passive">受身形</string>
+    <string name="form_causative">使役形</string>
+    <string name="form_volitional">意向形</string>
+    <string name="form_imperative">命令形</string>
+    <string name="form_honorific">尊敬語</string>
+    <string name="form_humble">謙譲語</string>
+    <string name="pos_noun">名詞</string>
+    <string name="pos_verb">動詞</string>
+    <string name="pos_adjective">形容詞</string>
+    <string name="pos_adverb">副詞</string>
+    <string name="pos_particle">助詞</string>
+    <string name="pos_auxiliary">助動詞</string>
+    <string name="pos_adnominal">連体詞</string>
+    <string name="pos_conjunction">接続詞</string>
+    <string name="pos_interjection">感動詞</string>
+    <string name="pos_prefix">接頭詞</string>
+    <string name="pos_symbol">記号</string>
+</resources>

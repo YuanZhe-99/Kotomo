@@ -99,6 +99,33 @@ TEST_F(MozcEngineTest, LooksUpPosIdsOfDictionaryEntry) {
 }
 
 // S3, T07-001 at the converter stage: [池袋/いけぶくろ pinned] + にかいにいこう.
+TEST_F(MozcEngineTest, DescribesConjugatedVerbs) {
+  // T16: the dictionary entry and its conjugation type and form.
+  const auto base = engine_->Describe("行く", "いく");
+  ASSERT_TRUE(base.has_value());
+  EXPECT_EQ(base->value, "行く");
+  EXPECT_EQ(base->pos.rfind("動詞,", 0), 0u) << base->pos;
+  EXPECT_NE(base->pos.find("五段・カ行促音便"), std::string::npos) << base->pos;
+  EXPECT_NE(base->pos.find("基本形"), std::string::npos) << base->pos;
+  // Trailing kana shared by surface and reading are dropped: 行きます → 行き.
+  const auto masu = engine_->Describe("行きます", "いきます");
+  ASSERT_TRUE(masu.has_value());
+  EXPECT_EQ(masu->value, "行き");
+  EXPECT_NE(masu->pos.find("連用形"), std::string::npos) << masu->pos;
+  const auto eat = engine_->Describe("食べる", "たべる");
+  ASSERT_TRUE(eat.has_value());
+  EXPECT_NE(eat->pos.find("一段"), std::string::npos) << eat->pos;
+  const auto noun = engine_->Describe("池袋", "いけぶくろ");
+  ASSERT_TRUE(noun.has_value());
+  EXPECT_EQ(noun->pos.rfind("名詞", 0), 0u) << noun->pos;
+}
+
+TEST_F(MozcEngineTest, DescribesNothingForPinyin) {
+  // Negative: a pinyin reading is not a Mozc reading.
+  EXPECT_FALSE(engine_->Describe("池袋", "ちだい").has_value());
+  EXPECT_EQ(MozcEngine::PosName(65535), "");
+}
+
 TEST_F(MozcEngineTest, PinnedSpanConvertsWithTheRest) {
   const auto conversion = Timed("pinned 池袋 + にかいにいこう", [] {
     return engine_->PinnedConvert(

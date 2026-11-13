@@ -67,6 +67,19 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
     internal val nativeHandle: Long get() = checkOpen()
 
     /** Releases the native engine; later calls fail. Side effects: frees Mozc's memory. */
+    /** What Mozc's dictionary says about a word: the [entry] and [reading] that matched, and id.def's [pos] fields. */
+    data class Description(val entry: String, val reading: String, val pos: String)
+
+    /**
+     * Describes [surface] read as [reading] from Mozc's dictionary (PLAN §10.1, §10.2): its part of
+     * speech and, for a verb or adjective, its conjugation type and form. Trailing kana the two
+     * share are dropped until an entry matches (行きます → 行き).
+     * Returns: the description, or null when Mozc has no such word.
+     * Notes: engine thread; nothing is learned.
+     */
+    fun describe(surface: String, reading: String): Description? =
+        nativeDescribe(checkOpen(), surface, reading)?.takeIf { it.size == 3 }?.let { Description(it[0], it[1], it[2]) }
+
     override fun close() {
         nativeClose(handle)
         handle = 0
@@ -135,5 +148,8 @@ class Mozc private constructor(private var handle: Long) : AutoCloseable {
 
         @JvmStatic
         private external fun nativePredict(handle: Long, reading: String, incognito: Boolean): Array<String>?
+
+        @JvmStatic
+        private external fun nativeDescribe(handle: Long, surface: String, reading: String): Array<String>?
     }
 }

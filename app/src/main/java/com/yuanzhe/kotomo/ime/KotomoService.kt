@@ -144,6 +144,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private lateinit var content: LinearLayout
     private var emojiPanel: ComposeView? = null
     private var candidatesPanel: ComposeView? = null
+    /** Main thread: the forms panel of a Japanese word (PLAN §10.1) and what it shows. */
+    private var formsPanel: ComposeView? = null
+    private val shownForms = androidx.compose.runtime.mutableStateOf<List<Inflection.Inflected>>(emptyList())
+    /** Main thread: the forms of the candidate whose details are shown, behind their Forms button. */
+    private var detailsForms: List<Inflection.Inflected> = emptyList()
     private var segmentPanel: ComposeView? = null
     private var quickPanel: ComposeView? = null
     private var clipboardPanel: ComposeView? = null
@@ -988,13 +993,83 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val forget = if (rime?.type == "user_phrase") getString(R.string.candidate_forget) else null
         details = CandidateDetails(index, if (reading.isEmpty()) source else getString(R.string.candidate_details, reading, source), forget)
         candidateBar.details = details
+        detailsForms = emptyList()
+        // A Japanese word also shows its dictionary form and part of speech, and its forms when it
+        // conjugates (PLAN §10.1, §10.2); one segment only, as a form replaces the whole composition.
+        if (mode == Mode.JAPANESE && !direct && !emoji && reading.isNotEmpty() && japaneseSegments.size <= 1) describeJapanese(index, text, reading)
     }
 
-    /** Closes the details, or forgets the learned word they show when [forget] is its index. */
+    /**
+     * Asks Mozc's dictionary what Japanese candidate [index] is and adds its dictionary form, part
+     * of speech and, when it conjugates, the Forms button to the details shown (PLAN §10.1, §10.2).
+     * Notes: the lookup runs on the engine thread; details that changed meanwhile stay as they are.
+     */
+    private fun describeJapanese(index: Int, text: String, reading: String) {
+        engine.post {
+            val d = mozc?.describe(text, reading)
+            main.post {
+                val shown = details?.takeIf { it.index == index } ?: return@post
+                if (d == null) return@post
+                val word = Inflection.word(d.entry, d.reading, d.pos)
+                val forms = word?.let { w -> listOf(Inflection.Inflected(Inflection.Form.PLAIN, w.text, w.reading)) + Inflection.forms(w) }
+                    .orEmpty().filter { it.text != text }
+                val extra = listOfNotNull((word?.text ?: d.entry).takeIf { it != text }, posLabel(d.pos)?.let(::getString)).joinToString(" · ")
+                detailsForms = forms
+                details = shown.copy(
+                    text = if (extra.isEmpty()) shown.text else getString(R.string.candidate_word, shown.text, extra),
+                    forget = if (forms.isEmpty()) shown.forget else getString(R.string.candidate_forms),
+                )
+                candidateBar.details = details
+            }
+        }
+    }
+
+    /** Maps the first of id.def's POS fields to its name in the interface language, or null. */
+    private fun posLabel(pos: String): Int? = when (pos.substringBefore(',')) {
+        "名詞" -> R.string.pos_noun
+        "動詞" -> R.string.pos_verb
+        "形容詞" -> R.string.pos_adjective
+        "副詞" -> R.string.pos_adverb
+        "助詞" -> R.string.pos_particle
+        "助動詞" -> R.string.pos_auxiliary
+        "連体詞" -> R.string.pos_adnominal
+        "接続詞" -> R.string.pos_conjunction
+        "感動詞" -> R.string.pos_interjection
+        "接頭詞" -> R.string.pos_prefix
+        "記号" -> R.string.pos_symbol
+        else -> null
+    }
+
+    /** Shows the forms of the word whose details were open in the keyboard's place (PLAN §10.1). */
+    private fun showForms() {
+        val height = keyboard.height
+        val panel = formsPanel ?: ComposeView(this).also { view ->
+            formsPanel = view
+            view.setContent { FormsPanel(shownForms, onPick = { i -> showKeyboard(); commitForm(i) }, onBack = ::showKeyboard) }
+        }
+        shownForms.value = detailsForms
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
+    /** Commits form [i] of the forms panel in place of the Japanese composition. */
+    private fun commitForm(i: Int) {
+        val form = shownForms.value.getOrNull(i) ?: return
+        val ic = currentInputConnection ?: return
+        if (mode != Mode.JAPANESE) return
+        ic.commitText(form.text, 1)
+        composing.clear()
+        taps.clear()
+        clearJapanese()
+        refresh(0)
+    }
+
+    /** Closes the details, or acts on their button: forgets the learned word, or shows a word's forms. */
     private fun onDetails(forget: Int?) {
         details = null
         candidateBar.details = null
-        if (forget != null) forget(forget)
+        // The button is Forms for a Japanese word that conjugates, Forget for a learned Chinese one.
+        if (forget != null) if (detailsForms.isNotEmpty()) showForms() else forget(forget)
     }
 
     /**

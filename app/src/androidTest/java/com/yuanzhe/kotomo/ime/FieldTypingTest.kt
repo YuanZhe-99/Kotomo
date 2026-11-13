@@ -419,6 +419,34 @@ class FieldTypingTest {
     }
 
     /**
+     * T16 (PLAN §10.1, §10.2): a long press on 食べます shows the Forms button; its panel commits
+     * 食べない in place of the composition.
+     */
+    @Test
+    fun japaneseFormsReplaceTheComposition() {
+        inMode(Mode.JAPANESE) {
+            val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }.visibleBounds
+                "tabemasu".forEach { device.findObject(By.desc(it.toString())).click() }
+                Thread.sleep(READ_MS * 3)
+                // The candidate bar is drawn, not a view tree: the first candidate sits at its start,
+                // the details' button at its end, in the row above the keys.
+                val dp = instrumentation.targetContext.resources.displayMetrics.density
+                val y = (q.top - 32 * dp).toInt()
+                device.swipe((q.left + 40 * dp).toInt(), y, (q.left + 40 * dp).toInt(), y, 120)
+                Thread.sleep(READ_MS)
+                device.click((device.displayWidth - 36 * dp).toInt(), y)
+                checkNotNull(device.wait(Until.findObject(By.text("食べない")), WAIT_MS)) { "no forms panel" }.click()
+                assertEquals("食べない", read(scenario))
+                assertFalse("the form was left composing", composing(scenario))
+            }
+        }
+    }
+
+    /**
      * T14-emoji-panel (PLAN §10.6): a favorite is sent from Favorites, the long-press card removes
      * it, and a kaomoji is sent from Kaomoji.
      */

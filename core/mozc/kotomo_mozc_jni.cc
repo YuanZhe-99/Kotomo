@@ -222,4 +222,34 @@ Java_com_yuanzhe_kotomo_engine_Mozc_nativePredict(JNIEnv* env, jclass,
   return array;
 }
 
+/// Describes a candidate from Mozc's dictionary (PLAN §10.1, §10.2).
+/// Returns: {value, reading, POS fields} of the entry found; null when none is,
+/// for a closed handle or an invalid string.
+JNIEXPORT jobjectArray JNICALL
+Java_com_yuanzhe_kotomo_engine_Mozc_nativeDescribe(JNIEnv* env, jclass,
+                                                   jlong handle, jstring surface,
+                                                   jstring reading) {
+  const auto value = kotomo::mozc::ToUtf8(env, surface);
+  const auto key = kotomo::mozc::ToUtf8(env, reading);
+  if (handle == 0 || !value || !key) {
+    return nullptr;
+  }
+  const auto info = FromHandle(handle)->Describe(*value, *key);
+  if (!info) {
+    return nullptr;
+  }
+  jclass string_class = env->FindClass("java/lang/String");
+  jobjectArray array = env->NewObjectArray(3, string_class, nullptr);
+  if (array == nullptr) {
+    return nullptr;  // OutOfMemoryError is pending
+  }
+  jsize i = 0;
+  for (const std::string* field : {&info->value, &info->key, &info->pos}) {
+    jstring text = kotomo::mozc::ToJava(env, *field);
+    env->SetObjectArrayElement(array, i++, text);
+    env->DeleteLocalRef(text);
+  }
+  return array;
+}
+
 }  // extern "C"
