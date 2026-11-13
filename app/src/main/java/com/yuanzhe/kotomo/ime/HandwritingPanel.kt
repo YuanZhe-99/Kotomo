@@ -61,7 +61,8 @@ private enum class InkState { CHECKING, NEEDS_DOWNLOAD, DOWNLOADING, READY, DOWN
  *
  * Inputs: [start] the language it opens in, [chinese] the Chinese model for the person's script;
  * [before] reads the text before the cursor; [onText] commits a candidate; [onSpace] and
- * [onBackspace] act as the keys do when nothing is written; [onBack] returns to the keys.
+ * [onBackspace] act as the keys do when nothing is written; [onBack] returns to the keys;
+ * [onDownloaded] follows a finished model download.
  * Notes: main thread. Writing is recognized shortly after each stroke, on ML Kit's threads; a
  * missing model is downloaded only after the person taps Download under the notice naming Google.
  * The strokes are kept only while the panel is open and nothing written is learned.
@@ -70,6 +71,7 @@ private enum class InkState { CHECKING, NEEDS_DOWNLOAD, DOWNLOADING, READY, DOWN
 fun HandwritingPanel(
     start: InkLang, chinese: InkLang, before: () -> String,
     onText: (String) -> Unit, onSpace: () -> Unit, onBackspace: () -> Unit, onBack: () -> Unit,
+    onDownloaded: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val recognizer = remember { InkRecognizer() }
@@ -120,6 +122,7 @@ fun HandwritingPanel(
                 } else if (download) {
                     state = InkState.DOWNLOADING
                     recognizer.download(lang)
+                    onDownloaded()
                     InkState.READY
                 } else {
                     InkState.NEEDS_DOWNLOAD

@@ -15,4 +15,5 @@
     <string name="hw_lang_tw">中国語（台湾）</string>
     <string name="hw_lang_hk">中国語（香港）</string>
     <string name="hw_lang_ja">日本語</string>
+    <string name="hw_stylus_needs_model">スタイラスで入力欄に書くには、先に Kotomo の「手書き」ツールで手書きモデルをダウンロードしてください。</string>
 </resources>

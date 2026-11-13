@@ -19,6 +19,8 @@ import android.os.SystemClock
 import android.os.UserManager
 import android.text.InputType
 import android.view.KeyEvent
+import android.view.MotionEvent
+import android.widget.Toast
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -3078,11 +3080,92 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onSpace = { currentInputConnection?.commitText(" ", 1) },
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onBack = ::showKeyboard,
+                    onDownloaded = { inkModels = null },
                 )
             }
         }
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
+    /** The handwriting models on the device, as last asked in this process; null before the first stylus session. */
+    private var inkModels: Set<InkLang>? = null
+    private var inkCheck: Job? = null
+    private var stylusRecognizer: InkRecognizer? = null
+    private val stylusInk = StylusInk()
+    private var stylusView: StylusInkView? = null
+    private val stylusIdle = Runnable { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) recognizeStylus() }
+
+    /** The language stylus writing is read in: as the handwriting panel opens ([InkLang.forMode]). */
+    private fun stylusLang() = InkLang.forMode(mode, appScript ?: settings.chineseScript)
+
+    private fun inkRecognizer() = stylusRecognizer ?: InkRecognizer().also { stylusRecognizer = it }
+
+    /** Puts the view that draws the pen's strokes into the system's handwriting window (Android 14+). */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    override fun onPrepareStylusHandwriting() {
+        val view = StylusInkView(this, stylusInk, KeyboardColors.color(this, R.color.kb_accent))
+        stylusView = view
+        stylusHandwritingWindow?.setContentView(view)
+    }
+
+    /**
+     * Accepts stylus handwriting in a field (PLAN §12, Android 14 and later: "write in any field").
+     * Returns: false in direct fields and when the language's model is known to be missing.
+     * Notes: main thread. Which models are here is asked once per process, at the first session,
+     * so ML Kit starts only for someone who writes with a stylus.
+     */
+    override fun onStartStylusHandwriting(): Boolean {
+        val info = currentInputEditorInfo ?: return false
+        if (Fields.direct(info.inputType)) return false
+        val models = inkModels
+        if (models != null && stylusLang() !in models) return false
+        if (models == null && inkCheck == null) {
+            inkCheck = lifecycleScope.launch {
+                inkModels = runCatching { inkRecognizer().downloaded() }.getOrDefault(emptySet())
+                inkCheck = null
+            }
+        }
+        commitComposition()
+        stylusInk.clear()
+        return true
+    }
+
+    /** Collects the pen's strokes; recognition follows a short pause after the pen lifts. */
+    override fun onStylusHandwritingMotionEvent(motionEvent: MotionEvent) {
+        if (motionEvent.actionMasked == MotionEvent.ACTION_DOWN) main.removeCallbacks(stylusIdle)
+        if (stylusInk.add(motionEvent)) main.postDelayed(stylusIdle, STYLUS_PAUSE_MS)
+        stylusView?.invalidate()
+    }
+
+    /**
+     * Reads what the pen wrote and commits the best candidate, then ends the session.
+     * Side effects: commits text; without the model, says where to download it.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun recognizeStylus() {
+        val strokes = stylusInk.strokes.toList()
+        val view = stylusView
+        lifecycleScope.launch {
+            inkCheck?.join()
+            val lang = stylusLang()
+            val here = inkModels?.contains(lang) == true
+            if (!here && strokes.isNotEmpty()) Toast.makeText(this@KotomoService, R.string.hw_stylus_needs_model, Toast.LENGTH_LONG).show()
+            val text = if (here && strokes.isNotEmpty()) {
+                val before = currentInputConnection?.getTextBeforeCursor(InkRecognizer.PRE_CONTEXT, 0)?.toString().orEmpty()
+                runCatching { inkRecognizer().recognize(lang, strokes, view?.width?.toFloat() ?: 0f, view?.height?.toFloat() ?: 0f, before) }.getOrNull()?.firstOrNull()
+            } else {
+                null
+            }
+            text?.let { currentInputConnection?.commitText(it, 1) }
+            finishStylusHandwriting()
+        }
+    }
+
+    override fun onFinishStylusHandwriting() {
+        main.removeCallbacks(stylusIdle)
+        stylusInk.clear()
+        stylusView?.invalidate()
     }
 
     private fun showEmoji() {
@@ -3135,6 +3218,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         /** The compiled cross-language lexicon (doc/en-us/lexicon-format.md), stored uncompressed. */
         const val LEXICON = "cross.klx"
         const val NOTICE_MS = 1500L
+        /** How long the pen rests before stylus writing is read and committed. */
+        const val STYLUS_PAUSE_MS = 700L
         /** The most of the screen's width a floating keyboard takes. */
         const val FLOAT_SHARE = 0.8f
         /** The API level that added TextAttribute.Builder.setTextSuggestionSelected. */

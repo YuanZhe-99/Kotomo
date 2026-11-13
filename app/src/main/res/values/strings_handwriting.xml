@@ -15,4 +15,5 @@
     <string name="hw_lang_tw">Chinese (Taiwan)</string>
     <string name="hw_lang_hk">Chinese (Hong Kong)</string>
     <string name="hw_lang_ja">Japanese</string>
+    <string name="hw_stylus_needs_model">To write in fields with a stylus, first download the handwriting model in Kotomo\'s Handwriting tool.</string>
 </resources>

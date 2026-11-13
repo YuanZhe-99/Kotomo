@@ -2,4 +2,5 @@
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="com.yuanzhe.kotomo.settings.MainActivity"
     android:supportsSwitchingToNextInputMethod="true"
-    android:supportsInlineSuggestions="true" />
+    android:supportsInlineSuggestions="true"
+    android:supportsStylusHandwriting="true" />

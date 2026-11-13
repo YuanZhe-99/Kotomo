@@ -15,4 +15,5 @@
     <string name="hw_lang_tw">中文（台灣）</string>
     <string name="hw_lang_hk">中文（香港）</string>
     <string name="hw_lang_ja">日語</string>
+    <string name="hw_stylus_needs_model">要用觸控筆在輸入欄位中書寫，請先在 Kotomo 的「手寫」工具中下載手寫模型。</string>
 </resources>
