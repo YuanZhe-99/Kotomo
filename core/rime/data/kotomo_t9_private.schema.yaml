@@ -1,0 +1,11 @@
+# Kotomo: kotomo_t9 without the user dictionary, for sensitive fields and incognito mode, as
+# luna_pinyin_simp_private is for luna_pinyin_simp (nothing typed is learned).
+__include: kotomo_t9.schema:/
+schema:
+  schema_id: kotomo_t9_private
+  name: 朙月拼音·简化字（九宫格，不学习）
+  version: "0.31"
+  dependencies:
+    - stroke
+__patch:
+  translator/enable_user_dict: false

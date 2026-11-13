@@ -39,4 +39,14 @@ class FlickTest {
         assertTrue(Kana.composes('ゔ') && Kana.composes('ー'))
         assertFalse(Kana.composes('ア') || Kana.composes('a'))
     }
+
+    @Test
+    fun nineKeyTypesDigitsForLetters() { // PLAN §10.9
+        val keys = Layout.nineKey().rows.flatMap { it.keys }
+        val digits = keys.mapNotNull { k -> (k.action as? KeyAction.Text)?.text?.takeIf { it.single() in '2'..'9' }?.let { it to k.label } }.toMap()
+        assertEquals(mapOf("2" to "ABC", "3" to "DEF", "4" to "GHI", "5" to "JKL", "6" to "MNO", "7" to "PQRS", "8" to "TUV", "9" to "WXYZ"), digits)
+        // The separator key types ', and nothing types a letter (negative).
+        assertEquals(KeyAction.Text("'"), keys.first { it.label == "分词" }.action)
+        assertEquals(emptyList<Key>(), keys.filter { (it.action as? KeyAction.Text)?.text?.singleOrNull() in 'a'..'z' })
+    }
 }

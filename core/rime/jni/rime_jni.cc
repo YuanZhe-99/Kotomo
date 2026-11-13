@@ -136,6 +136,12 @@ JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_setLearning(JNIEn
   return rb::SetLearning(enabled == JNI_TRUE);
 }
 
+/// Chooses the 9-key schema or the letter one; see rime_bridge::SetNineKey.
+JNIEXPORT jboolean JNICALL Java_com_yuanzhe_kotomo_engine_Rime_setNineKey(JNIEnv*, jobject,
+                                                                           jboolean enabled) {
+  return rb::SetNineKey(enabled == JNI_TRUE);
+}
+
 /// Returns the address of the coordinator's function table (kotomo_rime_api.h) as a long.
 JNIEXPORT jlong JNICALL Java_com_yuanzhe_kotomo_engine_Rime_api(JNIEnv*, jobject) {
   return reinterpret_cast<jlong>(KotomoRimeGetApi());

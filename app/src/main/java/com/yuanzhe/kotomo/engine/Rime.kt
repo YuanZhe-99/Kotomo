@@ -112,6 +112,14 @@ object Rime {
     external fun setLearning(enabled: Boolean): Boolean
 
     /**
+     * Chooses the Chinese 9-key schema, whose spellings are keypad digits (64426 reads nihao, PLAN
+     * §10.9), or the letter one; learning applies as [setLearning] set it.
+     * Returns: whether the schema was selected (true when nothing changes).
+     * Side effects: discards the composition when the schema changes.
+     */
+    external fun setNineKey(enabled: Boolean): Boolean
+
+    /**
      * Returns the address of the library's function table for the mixed-input coordinator
      * (`core/rime/jni/kotomo_rime_api.h`); [Core] hands it to its own library, which then calls
      * librime without another JNI crossing. Notes: valid for the life of the process.

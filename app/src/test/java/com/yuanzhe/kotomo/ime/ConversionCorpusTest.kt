@@ -44,6 +44,8 @@ class ConversionCorpusTest {
         val double: DoublePinyin? = null,
         /** The output script other than Simplified (`taiwan`, `hong_kong`, `traditional`), as `chinese.script` sets it. */
         val script: String? = null,
+        /** Typed on the Chinese 9-key layout: the input is keypad digits (`chinese+nine`, PLAN §10.9). */
+        val nine: Boolean = false,
     ) {
         /** Names the librime build the line needs (its rules and scheme), for grouping and the report. */
         val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "")
@@ -109,7 +111,9 @@ class ConversionCorpusTest {
                     require(mode == Mode.CHINESE) { "corpus line ${n + 1}: a script is for chinese lines" }
                     option.removePrefix("script:").also { require(it in SCRIPTS) { "corpus line ${n + 1}: unknown script $it" } }
                 }
-                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") }
+                val nine = "nine" in c[1].split('+').drop(1)
+                require(!nine || mode == Mode.CHINESE) { "corpus line ${n + 1}: the 9-key layout is for chinese lines" }
+                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && it != "nine" }
                 val fuzzy = if (fuzzyOption != null) {
                     val option = fuzzyOption
                     require(option.startsWith("fuzzy:") && (mode == Mode.CHINESE || mode == Mode.MIXED)) {
@@ -132,7 +136,7 @@ class ConversionCorpusTest {
                 val negative = alternatives.all { it.startsWith("!") }
                 require(negative || alternatives.none { it.startsWith("!") }) { "corpus line ${n + 1}: mixed ! and plain outputs" }
                 require(alternatives.all { it.removePrefix("!").isNotEmpty() }) { "corpus line ${n + 1}: empty output" }
-                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script)
+                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script, nine)
             }
         val duplicates = lines.groupBy { it.id }.filterValues { it.size > 1 }.keys
         require(duplicates.isEmpty()) { "duplicate corpus ids: $duplicates" }
@@ -169,7 +173,9 @@ class ConversionCorpusTest {
         Mode.CHINESE -> {
             useRules(line.fuzzy, line.double)
             Rime.clear()
-            // The script options as KotomoService.applyEngineSettings sets them.
+            // Selecting a schema resets its options: the 9-key one first, then the script options
+            // as KotomoService.applyEngineSettings sets them.
+            Rime.setNineKey(line.nine)
             Rime.setOption("zh_hans", line.script == null)
             Rime.setOption("zh_hant_tw", line.script == "taiwan")
             Rime.setOption("zh_hant_hk", line.script == "hong_kong")
@@ -189,6 +195,8 @@ class ConversionCorpusTest {
         Mode.MIXED -> {
             useRules(line.fuzzy)
             Rime.clear()
+            Rime.setNineKey(false)
+            Rime.setOption("zh_hans", true)
             val c = core ?: checkNotNull(Core.open(rime = true, mozc, english, lexicon.path)) { "the coordinator did not open" }.also {
                 core = it
                 check(it.lexiconEntries > 0) { "the cross-language lexicon did not map" }
@@ -294,7 +302,7 @@ class ConversionCorpusTest {
             lines.forEach { line ->
                 val o = outcomes.getValue(line.id)
                 val want = line.expected.joinToString("|") { if (line.negative) "!$it" else it }
-                val mode = line.mode.name.lowercase() + line.build + (line.script?.let { "+script:$it" } ?: "")
+                val mode = line.mode.name.lowercase() + line.build + (line.script?.let { "+script:$it" } ?: "") + (if (line.nine) "+nine" else "")
                 appendLine("${now[line.id]} ${line.id} $mode '${line.input}' want $want within ${line.rank}: " +
                     "at ${o.position ?: "-"} [${o.shown.take(SHOWN).joinToString(" / ")}]")
             }

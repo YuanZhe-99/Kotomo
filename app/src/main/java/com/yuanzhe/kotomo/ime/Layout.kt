@@ -261,6 +261,31 @@ data class Layout(val rows: List<Row>) {
         }
 
         /**
+         * Builds the Chinese 9-key layout (PLAN §10.9): keys 2–9 carry the letters abc … wxyz and
+         * type their digit, which librime's 9-key schema reads as pinyin (64426 → nihao); 分词 types
+         * ' to separate syllables. The side columns match the flick layout's (symbols, Emoji,
+         * English, backspace, space, Enter); the bottom row holds Chinese punctuation, each with
+         * more on a flick. [style] mirrors the side columns.
+         */
+        fun nineKey(style: KeyStyle = KeyStyle()): Layout {
+            fun digit(d: String, letters: String) = Key(letters, KeyAction.Text(d), hint = d)
+            fun mark(label: String, flick: List<String>) = Key(label, KeyAction.Text(flick[0]), flick = flick)
+            val rows = listOf(
+                Row(listOf(Key("?123", KeyAction.Symbols(0), function = true), Key("分词", KeyAction.Text("'"), hint = "1"), digit("2", "ABC"), digit("3", "DEF"), backspace().copy(width = 1f))),
+                Row(listOf(Key("☺", KeyAction.Emoji, function = true), digit("4", "GHI"), digit("5", "JKL"), digit("6", "MNO"), Key("", KeyAction.Space, function = true))),
+                Row(listOf(Key("ABC", KeyAction.SetMode(Mode.ENGLISH), function = true), digit("7", "PQRS"), digit("8", "TUV"), digit("9", "WXYZ"), Key("⏎", KeyAction.Enter, function = true))),
+                Row(listOf(
+                    mark("，", listOf("，", "、", "；", "：", "…")),
+                    mark("。", listOf("。", "…", "·", "—", "")),
+                    mark("？", listOf("？", "（", "）", "“", "”")),
+                    mark("！", listOf("！", "～", "《", "》", "")),
+                    mark("、", listOf("、", "「", "」", "【", "】")),
+                )),
+            )
+            return Layout(if (style.mirrored) rows.take(3).map { r -> r.copy(keys = listOf(r.keys.last()) + r.keys.subList(1, r.keys.size - 1) + r.keys.first()) } + rows.last() else rows)
+        }
+
+        /**
          * Picks what a flick from ([dx], [dy]) types on a key with [Key.flick]: the tap's kana
          * within [slop], otherwise the direction the finger moved most (left, up, right, down).
          * Returns: the text, or null when that direction has none.

@@ -120,6 +120,7 @@ the table lists every key.
 | `emoji.combos` | string | empty | The person's own emoji combinations, one per line; the panel shows them after Kotomo's under Combinations |
 | `emoji.mappings` | string | empty | The person's emoji for words, `word=emoji` per line (the word in lowercase letters as typed, at most 24); they come first among the emoji suggestions for exactly those letters |
 | `japanese.flick` | boolean | `false` | Japanese mode uses the 12-key flick layout |
+| `chinese.nine_key` | boolean | `false` | Chinese mode uses the 9-key layout: keys 2–9 stand for their letters and librime's 9-key schema reads the digits as pinyin (PLAN §10.9); the fuzzy-pinyin rules and a double-pinyin scheme apply to it as to the letter layout (with double pinyin on, the digits spell the scheme's two keys); the person's and the downloaded dictionaries, whose codes are letters, are not reached |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 
 ## Theme file

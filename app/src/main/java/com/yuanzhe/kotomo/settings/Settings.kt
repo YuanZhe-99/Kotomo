@@ -197,6 +197,8 @@ data class Settings(
     val floating: Boolean = false,
     /** Japanese mode uses the 12-key flick layout instead of romaji on QWERTY (PLAN §10.9). */
     val japaneseFlick: Boolean = false,
+    /** Chinese mode uses the 9-key layout: keypad digits read as pinyin (PLAN §10.9). */
+    val chineseNineKey: Boolean = false,
     /** The emoji panel's favorites, one per line in the order added (PLAN §10.6; EmojiExtras.parseFavorites). */
     val emojiFavorites: String = "",
     /** The person's own emoji combinations, one per line (EmojiExtras.parseCombos). */
@@ -367,6 +369,7 @@ internal object SettingsFormat {
     private val longPressMap = stringPreferencesKey("keys.long_press_custom")
     private val floating = booleanPreferencesKey("layout.floating")
     private val japaneseFlick = booleanPreferencesKey("japanese.flick")
+    private val chineseNineKey = booleanPreferencesKey("chinese.nine_key")
     private val emojiFavorites = stringPreferencesKey("emoji.favorites")
     private val emojiCombos = stringPreferencesKey("emoji.combos")
     private val emojiMappings = stringPreferencesKey("emoji.mappings")
@@ -451,6 +454,7 @@ internal object SettingsFormat {
             ),
             floating = p[floating] ?: d.floating,
             japaneseFlick = p[japaneseFlick] ?: d.japaneseFlick,
+            chineseNineKey = p[chineseNineKey] ?: d.chineseNineKey,
             emojiFavorites = p[emojiFavorites] ?: d.emojiFavorites,
             emojiCombos = p[emojiCombos] ?: d.emojiCombos,
             emojiMappings = p[emojiMappings] ?: d.emojiMappings,
@@ -525,6 +529,7 @@ internal object SettingsFormat {
         p.put(mirrored, old.keyStyle.mirrored, new.keyStyle.mirrored)
         p.put(floating, old.floating, new.floating)
         p.put(japaneseFlick, old.japaneseFlick, new.japaneseFlick)
+        p.put(chineseNineKey, old.chineseNineKey, new.chineseNineKey)
         p.put(emojiFavorites, old.emojiFavorites, new.emojiFavorites)
         p.put(emojiCombos, old.emojiCombos, new.emojiCombos)
         p.put(emojiMappings, old.emojiMappings, new.emojiMappings)

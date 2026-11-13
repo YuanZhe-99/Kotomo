@@ -16,6 +16,8 @@
     <string name="japanese_flick_desc">Type kana on a 12-key pad: tap for the あ column, flick left, up, right or down for the others</string>
     <string name="chinese_idioms">Idiom completion</string>
     <string name="chinese_idioms_desc">After the first characters of an idiom, offer the rest. Uses the Idioms dictionary you download under Dictionaries</string>
+    <string name="chinese_nine_key">9-key layout</string>
+    <string name="chinese_nine_key_desc">Type pinyin on nine keys: each key stands for its letters (6 4 4 2 6 for nihao); 分词 separates syllables</string>
     <string name="chinese_strokes">Rare characters by strokes</string>
     <string name="chinese_strokes_desc">Start with u, then h 一, s 丨, p 丿, n 丶, z 乙 for the strokes in order</string>
     <string name="chinese_quick">Quick input</string>

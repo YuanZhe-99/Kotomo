@@ -109,6 +109,7 @@
 | `emoji.combos` | string | 空 | 用户自己的 Emoji 组合，每行一个；面板在“组合”中把它们排在 Kotomo 自带的之后 |
 | `emoji.mappings` | string | 空 | 用户为词语指定的 Emoji，每行 `词=Emoji`（词为按键入方式写的小写字母，至多 24 个）；输入正好这些字母时排在 Emoji 候选最前 |
 | `japanese.flick` | boolean | `false` | 日文模式使用 12 键滑动布局 |
+| `chinese.nine_key` | boolean | `false` | 中文模式使用九宫格：2–9 键代表各自的字母，librime 的九宫格方案把数字读作拼音（PLAN §10.9）；模糊音规则与双拼方案像在字母键盘上一样作用于它（打开双拼时，数字拼的是方案的两个键）；用户词库与下载的词库以字母为编码，九宫格查不到 |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo` | 不放在工具栏上的工具，以逗号连接；它们和工具栏放不下的工具一起在“更多”里。与 `toolbar.order` 一起写入；已存的 `toolbar.order` 中缺少的工具（以后的版本新增的）按默认位置放置 |
 
 ## 主题文件

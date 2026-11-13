@@ -764,8 +764,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun applyEngineSettings() {
         val script = appScript ?: settings.chineseScript
         val learning = !incognito && !locked && !sensitive
+        val nine = nineKey
         engine.post {
             if (rimeReady) {
+                Rime.setNineKey(nine)
                 Rime.setLearning(learning)
                 Rime.setOption("zh_hans", script == ChineseScript.SIMPLIFIED)
                 Rime.setOption("zh_hant_tw", script == ChineseScript.TAIWAN)
@@ -779,6 +781,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
         }
     }
+
+    /** Main thread: whether the Chinese 9-key layout is up, so librime runs its 9-key schema. */
+    private var nineKey = false
 
     /** Engine thread: the script whose regional words were read last. */
     private var regionalScript: ChineseScript? = null
@@ -1709,6 +1714,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     rimeKey('`'.code, downTime) { ic.commitText(action.text, 1) }
                 } else if (c != null && c in 'a'..'z' && !longPress) {
                     rimeKey(c.code, downTime) { ic.commitText(action.text, 1) }
+                } else if (c != null && nineKey && (c in '2'..'9' || (c == '\'' && chinesePreedit.isNotEmpty()))) {
+                    // 9-key layout: digits are pinyin keys, ' separates syllables (PLAN §10.9).
+                    rimeKey(c.code, downTime) { ic.commitText(action.text, 1) }
                 } else if (c == ';' && settings.doublePinyin?.semicolon == true && chinesePreedit.isNotEmpty()) {
                     // Microsoft and Sogou double pinyin type ing with ; (b's long press) (PLAN §10.4).
                     rimeKey(c.code, downTime) { ic.commitText(action.text, 1) }
@@ -2137,10 +2145,17 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.enterStyle = Fields.enter(currentInputEditorInfo?.imeOptions ?: 0)
         // E-mail, web-address and code-like fields take ASCII symbols whatever the mode.
         val symbolMode = if (field == Field.EMAIL || field == Field.URL || field == Field.CODE) Mode.ENGLISH else mode
+        // The 9-key layout needs librime's 9-key schema; it follows the layout (PLAN §10.9).
+        val nine = mode == Mode.CHINESE && s.chineseNineKey && !direct && field == Field.TEXT
+        if (nine != nineKey) {
+            nineKey = nine
+            applyEngineSettings()
+        }
         keyboard.layout = when {
             pad -> Layout.pad(field)
             symbols -> Layout.symbols(symbolMode, split, symbolPage, hinge = keyboard.hinge != null, style = s.keyStyle)
             mode == Mode.JAPANESE && s.japaneseFlick && !direct && field == Field.TEXT -> Layout.flick(s.keyStyle)
+            nine -> Layout.nineKey(s.keyStyle)
             else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null, style = s.keyStyle)
         }
         keyboard.gap = s.keyStyle.gapDp * resources.displayMetrics.density

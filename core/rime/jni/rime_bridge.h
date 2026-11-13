@@ -99,6 +99,13 @@ void SetOption(const std::string& name, bool value);
 /// Side effects: discards the composition.
 bool SetLearning(bool enabled);
 
+/// Chooses the Chinese 9-key schema, whose spellings are keypad digits (PLAN §10.9), or the
+/// letter one; learning keeps applying as SetLearning set it.
+/// Returns: whether the schema was selected (true when nothing changes).
+/// Side effects: discards the composition when the schema changes. The coordinator's spellings
+///   (Mixed mode) stay those of luna_pinyin_simp.
+bool SetNineKey(bool enabled);
+
 /// Closes the session and stops librime, flushing the user dictionary.
 void Shutdown();
 

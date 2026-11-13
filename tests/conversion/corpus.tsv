@@ -176,3 +176,8 @@ T11-009	chinese+script:hong_kong		dishi	的士	3	§10.3: 的士, the Hong Kong w
 T11-010	chinese+script:hong_kong		dianyou	電郵	3	§10.3: 電郵, the Hong Kong word for e-mail
 T11-N01	chinese		ruanti	!軟體	3	negative: Simplified output never shows the Taiwan form
 T11-011	chinese+script:taiwan		nihao	你好	1	§10.3: regional words never push an ordinary first word aside when none is among the candidates
+T01-030	chinese+nine		64426	你好	1	9-key layout (PLAN §10.9): keypad digits read as pinyin, 6 mno 4 ghi 2 abc
+T01-031	chinese+nine		94664486	中国	3	9-key: zhong (94664) guo (486)
+T01-032	chinese+nine		96'744	我是	3	9-key: wo (96), the 1 key (') to separate, shi (744)
+T01-033	chinese+nine		2345464	北京|背景	3	9-key: bei (234) jing (5464)
+T01-N30	chinese		64426	!你好	5	negative: on the letter layout digits are not pinyin

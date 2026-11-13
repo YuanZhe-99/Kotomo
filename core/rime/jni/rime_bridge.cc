@@ -25,6 +25,9 @@ namespace {
 
 constexpr const char* kSchema = "luna_pinyin_simp";
 constexpr const char* kPrivateSchema = "luna_pinyin_simp_private";
+// The same two for the Chinese 9-key layout: spellings in keypad digits (PLAN §10.9).
+constexpr const char* kNineKeySchema = "kotomo_t9";
+constexpr const char* kNineKeyPrivateSchema = "kotomo_t9_private";
 
 // The service modules plus the deployer's, so Deploy() can run synchronously on the engine thread.
 const char* kModules[] = {"default", "deployer", nullptr};
@@ -32,16 +35,18 @@ const char* kModules[] = {"default", "deployer", nullptr};
 RimeApi* api = nullptr;
 RimeSessionId session = 0;
 bool learning = true;
+bool nine_key = false;
 // RimeTraits keeps pointers, and librime reads the directories again when it reinitializes.
 std::string shared_dir;
 std::string user_dir;
 // The deploy tasks that failed in the last Deploy().
 std::string failed_tasks;
 
-/// Selects the schema that matches `learning` in the open session.
+/// Selects the schema that matches `learning` and `nine_key` in the open session.
 bool ApplyLearning() {
-  return session != 0 &&
-         api->select_schema(session, learning ? kSchema : kPrivateSchema);
+  const char* schema = nine_key ? (learning ? kNineKeySchema : kNineKeyPrivateSchema)
+                                : (learning ? kSchema : kPrivateSchema);
+  return session != 0 && api->select_schema(session, schema);
 }
 
 /// Maps the spelling table of the schema the session runs: the deployed one in the user
@@ -236,6 +241,12 @@ void SetOption(const std::string& name, bool value) {
 
 bool SetLearning(bool enabled) {
   learning = enabled;
+  return ApplyLearning();
+}
+
+bool SetNineKey(bool enabled) {
+  if (enabled == nine_key) return true;
+  nine_key = enabled;
   return ApplyLearning();
 }
 

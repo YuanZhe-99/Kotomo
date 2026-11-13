@@ -32,7 +32,9 @@ set(rime_files
   "${tp}/rime-stroke/stroke.schema.yaml"
   "${KOTOMO_ROOT}/core/rime/data/default.custom.yaml"
   "${KOTOMO_ROOT}/core/rime/data/luna_pinyin_simp.custom.yaml"
-  "${KOTOMO_ROOT}/core/rime/data/luna_pinyin_simp_private.schema.yaml")
+  "${KOTOMO_ROOT}/core/rime/data/luna_pinyin_simp_private.schema.yaml"
+  "${KOTOMO_ROOT}/core/rime/data/kotomo_t9.schema.yaml"
+  "${KOTOMO_ROOT}/core/rime/data/kotomo_t9_private.schema.yaml")
 set(opencc_files
   "${tp}/opencc/data/dictionary/CJK_Compatibility_Ideographs.txt"
   "${tp}/opencc/data/dictionary/TSPhrases.txt"

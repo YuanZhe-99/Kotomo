@@ -374,6 +374,7 @@ internal fun ChinesePage(settings: Settings, store: SettingsStore) {
         }
     }
     Section(null) {
+        SwitchRow(R.string.chinese_nine_key, R.string.chinese_nine_key_desc, settings.chineseNineKey) { on -> store.set { it.copy(chineseNineKey = on) } }
         SwitchRow(R.string.chinese_idioms, R.string.chinese_idioms_desc, settings.idioms) { on -> store.set { it.copy(idioms = on) } }
         SwitchRow(R.string.chinese_strokes, R.string.chinese_strokes_desc, settings.strokeLookup) { on -> store.set { it.copy(strokeLookup = on) } }
         SwitchRow(R.string.chinese_quick, R.string.chinese_quick_desc, settings.quickInput) { on -> store.set { it.copy(quickInput = on) } }

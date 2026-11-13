@@ -16,6 +16,8 @@
     <string name="japanese_flick_desc">12 キーでかなを入力します。タップであ段、左・上・右・下へのフリックでほかの段</string>
     <string name="chinese_idioms">四字熟語の補完</string>
     <string name="chinese_idioms_desc">中国語の四字熟語の最初の文字を入力すると、残りを候補に出します。「辞書」でダウンロードする成語辞書を使います</string>
+    <string name="chinese_nine_key">9 キー配列（中国語）</string>
+    <string name="chinese_nine_key_desc">9 つのキーでピンインを入力します。各キーはその文字を表します（nihao は 6 4 4 2 6）。分词で音節を区切ります</string>
     <string name="chinese_strokes">画数で難しい漢字を入力</string>
     <string name="chinese_strokes_desc">u に続けて筆順どおりに h 一、s 丨、p 丿、n 丶、z 乙 を入力します</string>
     <string name="chinese_quick">クイック入力</string>

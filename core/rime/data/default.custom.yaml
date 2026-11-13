@@ -1,7 +1,10 @@
 # Kotomo: the schemas librime deploys for Kotomo.
 # luna_pinyin_simp is the normal pinyin schema; luna_pinyin_simp_private is the same schema with the
-# user dictionary turned off, selected for sensitive fields (no learning, no personalized ranking).
+# user dictionary turned off, selected for sensitive fields (no learning, no personalized ranking);
+# kotomo_t9 and kotomo_t9_private are the same two for the Chinese 9-key layout (PLAN §10.9).
 patch:
   schema_list:
     - schema: luna_pinyin_simp
     - schema: luna_pinyin_simp_private
+    - schema: kotomo_t9
+    - schema: kotomo_t9_private

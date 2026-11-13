@@ -16,6 +16,8 @@
     <string name="japanese_flick_desc">在 12 键上输入假名：点按输入あ段，向左、上、右、下滑动输入其他各段</string>
     <string name="chinese_idioms">成语补全</string>
     <string name="chinese_idioms_desc">打出成语的前几个字后，提供后面的字。需要在“词库”中下载“成语”词库</string>
+    <string name="chinese_nine_key">九宫格</string>
+    <string name="chinese_nine_key_desc">在九个键上输入拼音：每个键代表它上面的字母（nihao 按 6 4 4 2 6）；“分词”分隔音节</string>
     <string name="chinese_strokes">按笔画输入生僻字</string>
     <string name="chinese_strokes_desc">先打 u，再按笔顺打 h 一、s 丨、p 丿、n 丶、z 乙</string>
     <string name="chinese_quick">快捷输入</string>

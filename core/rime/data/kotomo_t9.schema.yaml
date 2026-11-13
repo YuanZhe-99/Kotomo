@@ -1,0 +1,20 @@
+# Kotomo: luna_pinyin_simp typed on the Chinese 9-key layout (PLAN §10.9).
+# Every spelling is written in keypad digits (abc 2, def 3, ghi 4, jkl 5, mno 6, pqrs 7, tuv 8,
+# wxyz 9), so 64426 reads nihao; ' (the 1 key) separates syllables. Digits no longer pick candidates
+# (Kotomo selects by index, never by key). The dictionary, the run-time tables and the fuzzy-pinyin
+# rules come with the include, as in luna_pinyin_simp_private.schema.yaml.
+__include: luna_pinyin_simp.schema:/
+schema:
+  schema_id: kotomo_t9
+  name: 朙月拼音·简化字（九宫格）
+  version: "0.31"
+  dependencies:
+    - stroke
+__patch:
+  # Its own spelling table: luna_pinyin_simp's prism holds the letter spellings Mixed mode and the
+  # letter layout use, and sharing it let the digits replace them.
+  translator/prism: kotomo_t9
+  speller/alphabet: "23456789"
+  speller/algebra/+:
+    - xlit/abcdefghijklmnopqrstuvwxyz/22233344455566677778889999/
+  menu/alternative_select_keys: "!@#$%^&*("

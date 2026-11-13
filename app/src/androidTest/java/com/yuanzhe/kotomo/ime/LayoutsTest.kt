@@ -66,6 +66,27 @@ class LayoutsTest {
         }
     }
 
+    /**
+     * Positive (PLAN §10.9): on the Chinese 9-key layout MNO GHI GHI ABC MNO (6 4 4 2 6) and space
+     * type 你好; negative: the letter layout has no MNO key.
+     */
+    @Test
+    fun nineKeyTypesPinyin() {
+        change { it.copy(chineseNineKey = true) }
+        memory.update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.CHINESE) } }
+        open { scenario ->
+            listOf("MNO", "GHI", "GHI", "ABC", "MNO").forEach(::key)
+            Thread.sleep(KEY_MS * 3)
+            checkNotNull(device.wait(Until.findObject(By.descStartsWith(SPACE)), WAIT_MS)) { "no space" }.click()
+            assertEquals("你好", read(scenario))
+        }
+        change { it.copy(chineseNineKey = false) }
+        open { _ ->
+            checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "the letter layout did not come back" }
+            assertFalse(device.hasObject(By.desc("MNO")))
+        }
+    }
+
     /** Positive: floating, the keys are narrower than the screen and the grip moves them up. */
     @Test
     fun floatingKeyboardMovesWithItsGrip() {
@@ -133,6 +154,8 @@ class LayoutsTest {
         const val MODIFY = "゛゜小"
         /** The Enter key's description starts with this (R.string.key_enter, English). */
         const val ENTER = "Enter"
+        /** The space key's description starts with this (R.string.key_space, English). */
+        const val SPACE = "Space"
         /** The floating grip's description (R.string.float_grip, English). */
         const val GRIP = "Move the keyboard"
         const val WAIT_MS = 5000L

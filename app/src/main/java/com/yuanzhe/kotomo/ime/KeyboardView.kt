@@ -32,6 +32,8 @@ private const val FLICK_SLOP = 2f
 private const val LABEL_MAX_WIDTH = 0.86f
 private const val LABEL_MAX_HEIGHT = 0.6f
 private const val HINT_MAX_HEIGHT = 0.24f
+/** The share of the width a label keeps on a key with a corner hint. */
+private const val HINTED_LABEL_WIDTH = 0.78f
 
 /**
  * Shrinks [paint]'s text size so [label] fits a key of [width] × [height] px: labels keep their
@@ -538,7 +540,9 @@ class KeyboardView(
                     else -> keyText
                 } * textScale
                 labelPaint.typeface = Typeface.DEFAULT
-                fitLabel(labelPaint, label, k.right - k.left, k.bottom - k.top)
+                // A key with a corner hint leaves the hint's corner to it.
+                val hinted = k.key.hint != null && hints
+                fitLabel(labelPaint, label, (k.right - k.left) * if (hinted) HINTED_LABEL_WIDTH else 1f, k.bottom - k.top)
                 val baseline = k.centerY - (labelPaint.descent() + labelPaint.ascent()) / 2
                 canvas.drawText(label, k.centerX, baseline, labelPaint)
             }
