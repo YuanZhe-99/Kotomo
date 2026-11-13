@@ -43,6 +43,8 @@ class TranslateTest {
         device.executeShellCommand("ime enable $IME")
         device.executeShellCommand("ime set $IME")
         device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
+        // A clip copied by an earlier test brings the quick-paste strip, which moves the bar.
+        instrumentation.runOnMainSync { instrumentation.targetContext.getSystemService(android.content.ClipboardManager::class.java).clearPrimaryClip() }
     }
 
     /** Negative: with AI off, Translate shows a notice and no panel. */
@@ -72,8 +74,10 @@ class TranslateTest {
     @Test
     fun translatesOnlyAfterDownloadAndReplace() = withSettings({ translateOnly(it).copy(ai = it.ai.copy(enabled = true)) }) {
         open(0) { scenario ->
-            tapTranslate()
-            checkNotNull(device.wait(Until.findObject(By.text(s(com.yuanzhe.kotomo.R.string.translate_from))), WAIT_MS)) { "the translate panel did not open" }
+            // A notice from an earlier case may still cover the toolbar: tap again until the panel opens.
+            val from = By.text(s(com.yuanzhe.kotomo.R.string.translate_from))
+            repeat(ATTEMPTS) { if (!device.hasObject(from)) { tapTranslate(); device.wait(Until.hasObject(from), SHORT_MS * 2) } }
+            checkNotNull(device.wait(Until.findObject(from), WAIT_MS)) { "the translate panel did not open" }
             val notice = s(com.yuanzhe.kotomo.R.string.translate_download_notice)
             val replace = s(com.yuanzhe.kotomo.R.string.ai_replace)
             // Either the models are missing (then the panel waits for Download) or already there.
@@ -110,14 +114,21 @@ class TranslateTest {
             .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, imeOptions)
         ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
             checkNotNull(device.wait(Until.findObject(By.descStartsWith(SPACE)), WAIT_MS)) { "Kotomo's keys did not appear" }
-            scenario.onActivity { a -> a.findViewById<EditText>(FieldTestActivity.FIELD_ID).apply { setText("hello world"); setSelection(11) } }
-            Thread.sleep(SHORT_MS)
+            // The keyboard may still settle the field it just started in; set the text until it stays.
+            repeat(ATTEMPTS) {
+                if (text(scenario) == "hello world") return@repeat
+                scenario.onActivity { a -> a.findViewById<EditText>(FieldTestActivity.FIELD_ID).apply { setText("hello world"); setSelection(11) } }
+                Thread.sleep(SHORT_MS)
+            }
+            check(text(scenario) == "hello world") { "the field did not keep its text" }
             block(scenario)
         }
     }
 
     /** Taps the toolbar's last button, where the only tool on the bar sits. */
     private fun tapTranslate() {
+        // The quick-paste strip of a clip an earlier test copied covers the bar for up to a minute.
+        device.wait(Until.gone(By.text(s(com.yuanzhe.kotomo.R.string.quick_copied))), QUICK_PASTE_MS)
         val pad = res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.toolbar_pad) + res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.toolbar_button) / 2
         device.click(device.displayWidth - pad, barY())
         device.waitForIdle()
@@ -160,6 +171,8 @@ class TranslateTest {
         const val SPACE = "Space"
         const val WAIT_MS = 10_000L
         const val SHORT_MS = 1_500L
+        const val ATTEMPTS = 3
+        const val QUICK_PASTE_MS = 65_000L
         /** Two or three language models of about 30 MB each. */
         const val DOWNLOAD_MS = 240_000L
     }

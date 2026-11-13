@@ -308,6 +308,20 @@ class DictionaryStore(
         saveUser(user.copy(entries = kept + preview.entries.filter { it.key !in keys }))
     }
 
+    /** Returns the person's list as the text of `user.json` (for a backup, PLAN §11.6). */
+    suspend fun exportUser(): String = withContext(io) { DictionaryFormat.writeUser(user, System.currentTimeMillis()) }
+
+    /**
+     * Replaces the person's list with [text] from [exportUser] (a restore, PLAN §11.6).
+     * Returns: false when the text is not such a list or the store is read-only (locked).
+     * Notes: [text] comes from a backup file: every entry is checked as when `user.json` is read;
+     * the list before the restore becomes the previous version, so Roll back undoes it.
+     */
+    suspend fun restoreUser(text: String): Boolean {
+        val read = DictionaryFormat.readUser(text) ?: return false
+        return change { saveUser(read) }
+    }
+
     /**
      * Swaps `user.json` with the previous version (rollback; a second call undoes it).
      * Returns: false when read-only or there is no previous version.

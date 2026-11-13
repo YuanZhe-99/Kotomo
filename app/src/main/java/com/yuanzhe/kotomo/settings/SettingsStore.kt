@@ -18,6 +18,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.yuanzhe.kotomo.dictionary.Json
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import kotlinx.coroutines.flow.first
 import java.io.File
 
 /**
@@ -107,6 +117,64 @@ class SettingsStore(private val data: DataStore<Preferences>, private val scope:
         }
     }
 
+    /**
+     * Returns every value of the settings file, typed, as JSON (for a backup, PLAN §11.6).
+     * Notes: unknown keys (a newer version's) are included.
+     */
+    suspend fun exportRaw(): String {
+        val prefs = data.data.first()
+        val out = sortedMapOf<String, Any?>()
+        prefs.asMap().forEach { (k, v) ->
+            val (type, value) = when (v) {
+                is Boolean -> "boolean" to v
+                is Int -> "int" to v.toLong()
+                is Long -> "long" to v
+                is Float -> "float" to v.toDouble()
+                is Double -> "double" to v
+                is String -> "string" to v
+                is Set<*> -> "string_set" to v.filterIsInstance<String>().sorted()
+                else -> return@forEach
+            }
+            out[k.name] = linkedMapOf("type" to type, "value" to value)
+        }
+        return Json.write(linkedMapOf("format_version" to RAW_VERSION, "values" to out), indent = true)
+    }
+
+    /**
+     * Replaces the settings file's values with [text] from [exportRaw] (a restore).
+     * Returns: false when the text is not such an export (nothing changes then).
+     * Notes: [text] comes from a backup file: values of an unknown type are skipped, and
+     * [SettingsFormat.read] range-checks every known key when it is read.
+     */
+    suspend fun importRaw(text: String): Boolean {
+        @Suppress("UNCHECKED_CAST")
+        val o = runCatching { Json.parse(text) }.getOrNull() as? Map<String, Any?> ?: return false
+        @Suppress("UNCHECKED_CAST")
+        val values = o["values"] as? Map<String, Any?> ?: return false
+        data.updateData {
+            mutablePreferencesOf().apply {
+                values.forEach { (name, raw) ->
+                    @Suppress("UNCHECKED_CAST")
+                    val m = raw as? Map<String, Any?> ?: return@forEach
+                    val v = m["value"]
+                    when (m["type"]) {
+                        "boolean" -> (v as? Boolean)?.let { this[booleanPreferencesKey(name)] = it }
+                        "int" -> (v as? Long)?.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.let { this[intPreferencesKey(name)] = it.toInt() }
+                        "long" -> (v as? Long)?.let { this[longPreferencesKey(name)] = it }
+                        "float" -> (v as? Number)?.let { this[floatPreferencesKey(name)] = it.toFloat() }
+                        "double" -> (v as? Number)?.let { this[doublePreferencesKey(name)] = it.toDouble() }
+                        "string" -> (v as? String)?.let { this[stringPreferencesKey(name)] = it }
+                        "string_set" -> (v as? List<*>)?.let { this[stringSetPreferencesKey(name)] = it.filterIsInstance<String>().toSet() }
+                    }
+                }
+            }
+        }
+        return true
+    }
+
+    /** Replaces the current theme with [t] (a restore); writes the theme file. */
+    suspend fun replaceTheme(t: Theme) = updateTheme { t }
+
     /** Applies the theme file's values over the Preferences file's, when there is a theme file. */
     private fun Settings.with(t: Theme?) = if (t == null) this else copy(theme = t.base, keyRadiusDp = t.keyRadiusDp)
 
@@ -119,6 +187,9 @@ class SettingsStore(private val data: DataStore<Preferences>, private val scope:
     }
 
     companion object {
+        /** The format version of [exportRaw]'s JSON. */
+        private const val RAW_VERSION = 1L
+
         /** The settings file's name under `files/datastore/` (`.preferences_pb` added). */
         private const val FILE = "settings"
         /** The current theme, under `files/`. */

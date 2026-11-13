@@ -77,6 +77,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val store = SettingsStore.get(this)
+        // A scheduled backup is not kept across reboots; schedule it again (PLAN §11.6).
+        com.yuanzhe.kotomo.backup.AutoBackup.schedule(this)
         // The keyboard's Dictionaries and Themes tools open their page (PLAN §10.10).
         val start = intent.getStringExtra(EXTRA_PAGE)?.let { name -> Page.entries.firstOrNull { it.name == name && it.root == it } }
         setContent { KotomoTheme { SettingsApp(store, start) } }
@@ -109,6 +111,7 @@ internal enum class Page(@StringRes val title: Int) {
     EMOJI(R.string.page_emoji),
     THEMES(R.string.page_themes),
     DICTIONARIES(R.string.page_dictionaries),
+    BACKUP(R.string.page_backup),
     AI(R.string.page_ai),
     PRIVACY(R.string.page_privacy),
     CLIPBOARD(R.string.page_clipboard),
@@ -195,6 +198,7 @@ private fun PageContent(page: Page, settings: Settings, store: SettingsStore, op
         Page.EMOJI -> EmojiPage(settings, store)
         Page.THEMES -> ThemesPage(settings, store)
         Page.DICTIONARIES -> DictionariesPage()
+        Page.BACKUP -> BackupPage()
         Page.AI -> AiPage(settings, store)
         Page.PRIVACY -> PrivacyPage(settings, store, open)
         Page.CLIPBOARD -> ClipboardPage(settings, store)
@@ -270,6 +274,7 @@ private fun HomePage(settings: Settings, store: SettingsStore, open: (Page) -> U
     }
     Group(stringResource(R.string.section_data)) {
         LinkRow(stringResource(R.string.badge_dictionaries), Page.DICTIONARIES, stringResource(R.string.page_dictionaries_desc), open)
+        LinkRow(stringResource(R.string.badge_backup), Page.BACKUP, stringResource(R.string.page_backup_desc), open)
         LinkRow(stringResource(R.string.badge_ai), Page.AI, stringResource(if (settings.ai.enabled) R.string.page_ai_desc_on else R.string.page_ai_desc_off), open)
         LinkRow(stringResource(R.string.badge_diagnostics), Page.DIAGNOSTICS, stringResource(R.string.page_diagnostics_desc), open, last = true)
     }
