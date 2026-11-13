@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
         val store = SettingsStore.get(this)
         // A scheduled backup is not kept across reboots; schedule it again (PLAN §11.6).
         com.yuanzhe.kotomo.backup.AutoBackup.schedule(this)
+        com.yuanzhe.kotomo.backup.Sync.schedule(this)
         // The keyboard's Dictionaries and Themes tools open their page (PLAN §10.10).
         val start = intent.getStringExtra(EXTRA_PAGE)?.let { name -> Page.entries.firstOrNull { it.name == name && it.root == it } }
         setContent { KotomoTheme { SettingsApp(store, start) } }

@@ -69,3 +69,27 @@ needs a boot permission Kotomo does not declare): the keyboard and the settings 
 again when they start. The page lists the backups in the folder, newest first, each with Restore.
 
 Not built: incremental backups (each backup is whole; the parts are small JSON files and pictures).
+
+## Sync
+
+Sync (`PLAN.md` §11.7, `backup/Sync.kt`) keeps a copy of chosen parts at one place and brings in
+the changes other devices made there. It follows MyApps-DATA's invariants, rewritten in Kotlin.
+
+| Rule | How it is built |
+|---|---|
+| Off by default | `kind` is `off`; nothing connects until the person chooses a place and taps Sync now or turns on the daily sync |
+| Places | A folder the person chose (a document tree another app may sync), or a WebDAV folder over HTTPS that already exists; only GET, PUT and DELETE are used |
+| Only a confirmed server | Before the first WebDAV connection a notice names the host; requests go only to that host, and redirects are not followed |
+| What is synced | Settings, themes and the dictionary by default; learned readings and the keyboard memory (history data) only when ticked; the clipboard never |
+| One file per part | `kotomo-sync-<part>.kbak`, the backup container without a password, holding that part alone |
+| Conflicts never settle by themselves | Per part, the state keeps this device's data time and the hash of the copy at the last sync. Only this device changed: send; only the copy changed: receive (through the restore, so Undo on the page takes it back); both changed, or both hold data at the first sync: a conflict, listed with "Keep this device's" and "Use the synced copy" |
+| Lock and retry | `kotomo-sync-lock.json` names the device and an expiry five minutes ahead; a device waits 2, 4 and 8 s for another's lock, then reports busy; the lock is deleted when the sync ends. A lock is best effort: neither a folder nor plain WebDAV offers an atomic create |
+| Restore pauses sync | A restore turns the daily sync off first |
+| UTC and unknown members | Every file stores UTC milliseconds and keeps members a newer version wrote |
+| The password | Kept only on the device, AES-GCM with a Keystore key in `files/sync/password.kenc`; never synced or backed up |
+
+`files/sync/config.json`: `format_version` (1), `kind` (`off`, `folder`, `webdav`), `folder`
+(`content://` address), `url` (`https://` only), `user`, `confirmed_host`, `modules` (part
+names), `auto`, `device` (a random id for the lock). `files/sync/state.json`: `modules` (per part
+`local_utc_ms` and `remote_sha256`), `conflicts`, `last_utc_ms`. The daily sync is a JobScheduler
+job that needs a network for WebDAV and leaves conflicts for the person.

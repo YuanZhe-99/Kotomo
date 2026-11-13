@@ -136,7 +136,7 @@ class Backups(context: Context) {
     }
 
     /** When module [m]'s data on this device last changed (its files' times), or null when there is none. */
-    private fun updated(m: BackupModule): Long? {
+    internal fun updated(m: BackupModule): Long? {
         val files = app.filesDir
         val paths = when (m) {
             BackupModule.SETTINGS -> listOf(File(files, "datastore/settings.preferences_pb"))

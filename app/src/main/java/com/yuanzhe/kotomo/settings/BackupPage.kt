@@ -47,6 +47,7 @@ import com.yuanzhe.kotomo.backup.BackupModule
 import com.yuanzhe.kotomo.backup.BackupProblem
 import com.yuanzhe.kotomo.backup.Backups
 import com.yuanzhe.kotomo.backup.ModulePreview
+import com.yuanzhe.kotomo.backup.Sync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,7 +69,7 @@ private sealed interface Opened {
  * Side effects: writes only the files the person picks or the folder they granted; a restore
  * replaces the chosen modules after keeping the current data for Undo.
  * Notes: a backup file is untrusted input ([BackupFormat.unpack] checks it); the clipboard is
- * never included.
+ * never included. The sync sections follow ([SyncSection]); a restore turns automatic sync off.
  */
 @Composable
 internal fun BackupPage() {
@@ -226,6 +227,8 @@ internal fun BackupPage() {
         }
     }
 
+    SyncSection { it.label }
+
     when (val o = opened) {
         null -> Unit
         is Opened.Sealed -> PasswordDialog(onDismiss = { opened = null }) { pass -> scope.launch { open(o.bytes, pass.toCharArray()) } }
@@ -233,6 +236,8 @@ internal fun BackupPage() {
             opened = null
             busy = true
             scope.launch {
+                // Automatic sync is turned off before a restore (PLAN §11.7).
+                if (withContext(Dispatchers.IO) { Sync.pauseAuto(context) }) Toast.makeText(context, R.string.sync_paused, Toast.LENGTH_LONG).show()
                 val done = backups.restore(o.content, chosen)
                 busy = false
                 canUndo = backups.canUndo()

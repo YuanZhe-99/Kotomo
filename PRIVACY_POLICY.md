@@ -37,6 +37,7 @@ and device-to-device transfer are turned off for it.
 | Translation (off with writing help, which is off by default): the text you translate, held only while the keyboard's translate panel is open; translated on the device by ML Kit. Its language models (about 30 MB per language) are downloaded from Google only when you tap Download under a notice that says so, and can be deleted on Settings → Writing help | Translation you ask for | Never stored or logged; never in sensitive fields or incognito mode |
 | Emoji style (Settings → Themes): which style the keyboard's emoji panel uses, the Noto Color Emoji font if you downloaded it (from raw.githubusercontent.com, only after a notice that names it; the request carries nothing of yours), and a font you imported | Drawing emoji your way in the keyboard | — (no personal data) |
 | Backups (Settings → Backup and sync): only when you make one, a file where you save it with the parts you tick (settings, themes, your dictionary, learned readings, keyboard memory; never the clipboard), encrypted if you set a password; automatic backups, if you turn them on, go to a folder you choose, are not encrypted and keep the newest five by default. Before a restore Kotomo keeps a copy of the current data in its private storage so you can undo it | Moving to another device, undoing mistakes | — (you choose where the file goes) |
+| Sync (off by default; Settings → Backup and sync): the parts you tick (settings, themes and your dictionary by default; learned readings and keyboard memory only if you tick them; never the clipboard) go, when you sync, to a folder you chose or to your own WebDAV server over HTTPS, after a notice that names its host. The WebDAV password is kept encrypted on the device and never synced or backed up | Keeping your devices alike | Never what you type, never the clipboard |
 | Downloaded dictionaries: the words of each dictionary you downloaded, its previous version, where it came from and its license, and whether you accepted the download notice. The downloaded files are converted and then deleted | The downloaded words among the candidates | — (the files hold none of your data) |
 | Diagnostics: timings of key presses and drawing, memory use, the state of the dictionaries | The Diagnostics page, to find problems | Never what you type |
 
@@ -87,11 +88,13 @@ downloaded.
   dictionary. Downloads run in the background and can be cancelled; a failed or cancelled download
   changes nothing.
 
-## Features that are not there yet
+## Sync
 
-Sync is planned. Each will be described here, and disclosed in the app before its
-first use, in the same change that adds it; none of them will send what you type anywhere without
-your explicit choice.
+Kotomo connects to a sync server only if you set up WebDAV sync, only to the host you confirmed,
+and only over HTTPS, when you tap Sync now or once a day if you turned that on. It sends the synced
+parts' files and a small lock file naming a random id of this device, with your user name and
+password for that server; it never sends what you type or the clipboard. Folder sync writes into a
+folder you chose; whatever app syncs that folder handles it from there.
 
 ## Contact
 

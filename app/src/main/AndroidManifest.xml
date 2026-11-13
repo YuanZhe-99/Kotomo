@@ -45,6 +45,10 @@
 
         <!-- Deploys librime's data in its own process (PLAN §4.2). -->
         <service
+            android:name=".backup.AutoSyncJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service
             android:name=".backup.AutoBackupJob"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
