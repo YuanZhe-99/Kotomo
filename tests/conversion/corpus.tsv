@@ -164,3 +164,15 @@ T01-022	chinese+double:microsoft		nihk	你好	1	Microsoft double pinyin: ni, h +
 T01-023	chinese+double:ziranma		vsgo	中国	1	Ziranma double pinyin: zh (v) + ong (s), g + uo (o)
 T01-024	chinese+double:sogou		bzj;	北京	1	Sogou double pinyin: b + ei (z), j + ing (;)
 T01-N21	chinese+double:xiaohe		nihao	!你好	1	with double pinyin on, full pinyin is no longer read as full pinyin
+T11-001	chinese+script:taiwan		ruanjian	軟體	3	§10.3: in Taiwan output the mainland reading still gives the Taiwan word (OpenCC phrases, §8.4)
+T11-002	chinese+script:taiwan		ruanti	軟體	3	§10.3: the Taiwan word typed by its own pinyin
+T11-003	chinese+script:taiwan		huashu	滑鼠	3	§10.3: 滑鼠, the Taiwan word for mouse
+T11-004	chinese+script:taiwan		wanglu	網路	3	§10.3: 網路, the Taiwan word for network
+T11-005	chinese+script:taiwan		yinbiaoji	印表機	3	§10.3: 印表機, the Taiwan word for printer
+T11-006	chinese+script:taiwan		jichengche	計程車	3	§10.3: 計程車, the Taiwan word for taxi
+T11-007	chinese+script:taiwan		jieyun	捷運	3	§10.3: 捷運, Taiwan's metro
+T11-008	chinese+script:taiwan		zixun	資訊	3	§10.3: 資訊, the Taiwan word for information
+T11-009	chinese+script:hong_kong		dishi	的士	3	§10.3: 的士, the Hong Kong word for taxi; known gap: OpenCC's HKPhrases does not list it
+T11-010	chinese+script:hong_kong		dianyou	電郵	3	§10.3: 電郵, the Hong Kong word for e-mail
+T11-N01	chinese		ruanti	!軟體	3	negative: Simplified output never shows the Taiwan form
+T11-011	chinese+script:taiwan		nihao	你好	1	§10.3: regional words never push an ordinary first word aside when none is among the candidates

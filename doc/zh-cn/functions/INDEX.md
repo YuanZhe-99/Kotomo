@@ -22,6 +22,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiExtras.kt` | Emoji 面板自己的列表（PLAN §10.6）：为 Kotomo 编写的颜文字与组合，存储的收藏、组合与词语 → Emoji 映射，读取时做检查（纯 Kotlin，有单元测试） | `EmojiExtras` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Inflection.kt` | 日文活用（PLAN §10.1）：由 Mozc 描述的词条得出原形，再给出各种形式（ます、ません、ました、て、た、ない、ば、可能、被动、使役、意志、命令、尊敬、谦让），按 id.def 的每个活用型一张规则表，敬语来自少数换词动词的短表（纯 Kotlin，有单元测试，T16） | `Inflection.word`、`Inflection.forms` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/FormsPanel.kt` | 在键盘位置显示的变形面板（日文候选详情里的“变形”按钮）：每种形式及其名称；选一个就替换当前组合提交 | `FormsPanel`、`formLabel` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Regional.kt` | 台湾、香港用词参与排序（PLAN §10.3）：OpenCC 的 `TWPhrases.txt`、`HKPhrases.txt` 写出的词，按字形读取一次，在前八个候选之中时移到最前，用于中文与混合模式（有单元测试，语料 T11） | `Regional.words`、`Regional.promote` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/EmojiPage.kt` | 设置中的 Emoji 页（PLAN §10.6）：收藏与清空、用户的组合、用户为词语指定的 Emoji | `EmojiPage` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`load` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardHistory.kt` | 剪贴板历史（[clipboard.md](../clipboard.md)）：只在允许时记录（敏感输入框、敏感剪贴与无痕模式不记录）、去重、固定与快捷短语、保留期与数量上限、以 Keystore 密钥加密的 AES-GCM 文件、内存快照；剪贴分类 | `onPrimaryClip`、`allowedIn`、`items`、`ClipFile`、`ClipKind.of` |

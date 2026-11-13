@@ -62,7 +62,10 @@ and fails now is a regression and fails the run; lines that fail in the baseline
 gaps. Run it before and after every change to an engine, a lexicon or ranking, and accept a new
 baseline (`--update`) only after reading the report. A Chinese or Mixed line can name fuzzy-pinyin
 rules after its mode (`chinese+fuzzy:z_zh,n_l`, `chinese+fuzzy:all`): the runner then deploys the
-rule file the app generates on the prebuilt data and converts on that build. `run.sh` then runs the
+rule file the app generates on the prebuilt data and converts on that build. A Chinese line may
+also name a double-pinyin scheme (`chinese+double:xiaohe`) or an output script
+(`chinese+script:taiwan`, `hong_kong`, `traditional`), set as the keyboard sets them, regional
+ranking included (T11). `run.sh` then runs the
 same corpus through the coordinator alone (`core/mixed/host/`): `kotomo_mixed_corpus` converts
 the Mixed lines and, as a baseline, the single-language lines among the candidates of their
 language, writes `build/conversion/mixed-report.txt` with a gap class for every failed line and

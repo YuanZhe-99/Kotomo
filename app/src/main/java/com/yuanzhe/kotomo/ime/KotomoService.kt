@@ -771,8 +771,19 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 Rime.setOption("zh_hant_tw", script == ChineseScript.TAIWAN)
                 Rime.setOption("zh_hant_hk", script == ChineseScript.HONG_KONG)
             }
+            // The region's words, read once per script from the same OpenCC tables (PLAN §10.3).
+            if (script != regionalScript) {
+                regionalScript = script
+                val words = Regional.table(script)?.let { Regional.words(java.io.File(RimeFiles(this).shared, "opencc/$it")) }.orEmpty()
+                main.post { regionalWords = words }
+            }
         }
     }
+
+    /** Engine thread: the script whose regional words were read last. */
+    private var regionalScript: ChineseScript? = null
+    /** Main thread: the regional words of the Taiwan or Hong Kong script, empty otherwise (PLAN §10.3). */
+    private var regionalWords: Set<String> = emptySet()
 
     /**
      * Changes the Chinese script from the quick panel: for every app, and remembered for the
@@ -1715,7 +1726,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         rimeCandidates = state.candidates
         val emoji = emojiFor(state.preedit)
         emojiShown = emoji.toSet()
-        val entries = Candidates.chinese(state.candidates.map { it.text }, state.input, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji))
+        val entries = Regional.promote(
+            Candidates.chinese(state.candidates.map { it.text }, state.input, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)),
+            regionalWords,
+        ) { it >= 0 }
         chineseCandidates = entries.map { it.first } + idiomRest
         // Completions are not librime's: picking one commits it as it is (index −1).
         rimeIndexes = entries.map { it.second } + idiomRest.map { -1 }
@@ -2222,10 +2236,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         mixedSnapshot = snapshot
         val emoji = emojiFor(raw)
         emojiShown = emoji.toSet()
-        val entries = Candidates.mixed(
-            snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji,
-            Candidates.emojiPosition(settings.mixed.weightEmoji),
-        )
+        val entries = Regional.promote(
+            Candidates.mixed(snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)),
+            regionalWords,
+        ) { it >= 0 }
         mixedIndexes = entries.map { it.second }
         candidates = entries.map { it.first }
         // `mixed.cross.readings`: how a cross-language Japanese candidate is read.

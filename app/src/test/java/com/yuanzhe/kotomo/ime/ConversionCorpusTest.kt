@@ -42,6 +42,8 @@ class ConversionCorpusTest {
         val rank: Int,
         val fuzzy: Set<FuzzyRule> = emptySet(),
         val double: DoublePinyin? = null,
+        /** The output script other than Simplified (`taiwan`, `hong_kong`, `traditional`), as `chinese.script` sets it. */
+        val script: String? = null,
     ) {
         /** Names the librime build the line needs (its rules and scheme), for grouping and the report. */
         val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "")
@@ -103,7 +105,11 @@ class ConversionCorpusTest {
                     require(mode == Mode.CHINESE) { "corpus line ${n + 1}: double pinyin is for chinese lines" }
                     DoublePinyin.entries.firstOrNull { it.key == option.removePrefix("double:") } ?: error("corpus line ${n + 1}: unknown scheme $option")
                 }
-                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") }
+                val script = c[1].split('+').drop(1).firstOrNull { it.startsWith("script:") }?.let { option ->
+                    require(mode == Mode.CHINESE) { "corpus line ${n + 1}: a script is for chinese lines" }
+                    option.removePrefix("script:").also { require(it in SCRIPTS) { "corpus line ${n + 1}: unknown script $it" } }
+                }
+                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") }
                 val fuzzy = if (fuzzyOption != null) {
                     val option = fuzzyOption
                     require(option.startsWith("fuzzy:") && (mode == Mode.CHINESE || mode == Mode.MIXED)) {
@@ -126,7 +132,7 @@ class ConversionCorpusTest {
                 val negative = alternatives.all { it.startsWith("!") }
                 require(negative || alternatives.none { it.startsWith("!") }) { "corpus line ${n + 1}: mixed ! and plain outputs" }
                 require(alternatives.all { it.removePrefix("!").isNotEmpty() }) { "corpus line ${n + 1}: empty output" }
-                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double)
+                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script)
             }
         val duplicates = lines.groupBy { it.id }.filterValues { it.size > 1 }.keys
         require(duplicates.isEmpty()) { "duplicate corpus ids: $duplicates" }
@@ -163,9 +169,22 @@ class ConversionCorpusTest {
         Mode.CHINESE -> {
             useRules(line.fuzzy, line.double)
             Rime.clear()
+            // The script options as KotomoService.applyEngineSettings sets them.
+            Rime.setOption("zh_hans", line.script == null)
+            Rime.setOption("zh_hant_tw", line.script == "taiwan")
+            Rime.setOption("zh_hant_hk", line.script == "hong_kong")
             Rime.setInput(line.input)
             val texts = Rime.getCandidates(Candidates.CHINESE_LIMIT).map { it.text }
-            Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition()), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT)).map { it.first }
+            // The region's words take part in ranking as on the keyboard (PLAN §10.3).
+            val regional = when (line.script) {
+                "taiwan" -> Regional.words(rimeShared.resolve("opencc/TWPhrases.txt"))
+                "hong_kong" -> Regional.words(rimeShared.resolve("opencc/HKPhrases.txt"))
+                else -> emptySet()
+            }
+            Regional.promote(
+                Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition()), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT)),
+                regional,
+            ) { it >= 0 }.map { it.first }
         }
         Mode.MIXED -> {
             useRules(line.fuzzy)
@@ -275,7 +294,7 @@ class ConversionCorpusTest {
             lines.forEach { line ->
                 val o = outcomes.getValue(line.id)
                 val want = line.expected.joinToString("|") { if (line.negative) "!$it" else it }
-                val mode = line.mode.name.lowercase() + line.build
+                val mode = line.mode.name.lowercase() + line.build + (line.script?.let { "+script:$it" } ?: "")
                 appendLine("${now[line.id]} ${line.id} $mode '${line.input}' want $want within ${line.rank}: " +
                     "at ${o.position ?: "-"} [${o.shown.take(SHOWN).joinToString(" / ")}]")
             }
@@ -294,6 +313,8 @@ class ConversionCorpusTest {
         const val SHOWN = 5
         /** The default of `mixed.weight_emoji`. */
         const val MIXED_EMOJI_WEIGHT = 30
+        /** The scripts a Chinese line may name (`chinese+script:taiwan`). */
+        val SCRIPTS = setOf("traditional", "taiwan", "hong_kong")
         const val RESULTS_HEADER = "id\tstatus\tposition\tshown"
     }
 }

@@ -52,7 +52,7 @@ librime、英文库与协调层的库（`libkotomo_core.so`），编译跨语言
 `ConversionCorpusTest`。混合模式的行经 `Core` 逐键输入，所以跨过的是与手机上相同的 JNI 边界与函数表。它需要预编译的
 中文数据、主机版 Mozc、英文词典、Emoji 数据与词库的两张表（`CrossLexicon.java`）。基线中通过、这次失败的行是回退，会让运行失败；在基线中也失败的行是已知差距。每次改动引擎、
 词库或排序前后都运行它，读过报告之后才用 `--update` 接受新的基线。中文或混合模式的行可以在模式后写出模糊音规则
-（`chinese+fuzzy:z_zh,n_l`、`chinese+fuzzy:all`）：运行器先在预编译数据上部署应用生成的规则文件，再在这份构建上转换。
+（`chinese+fuzzy:z_zh,n_l`、`chinese+fuzzy:all`）：运行器先在预编译数据上部署应用生成的规则文件，再在这份构建上转换。中文语料行还可以指定双拼方案（`chinese+double:xiaohe`）或输出字形（`chinese+script:taiwan`、`hong_kong`、`traditional`），按键盘的方式设置，包括地区用词的排序（T11）。
 `run.sh` 随后让同一份语料单独经过协调层（`core/mixed/host/`）：`kotomo_mixed_corpus` 转换混合行，并把单语行作为
 基线、在各自语言的候选中判定，写出 `build/conversion/mixed-report.txt`（每个未通过的行带有差距分类），并把混合行与
 `tests/conversion/baseline-mixed.tsv` 比较。它另外需要主机版的 Mozc 行服务。两次运行并列报告：应用路线给出键盘会
