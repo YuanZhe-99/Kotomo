@@ -53,6 +53,27 @@ class FieldTypingTest {
         inMode(Mode.CHINESE) { assertEquals("你好", typeInto(InputType.TYPE_CLASS_TEXT, 0, "nihao", expected = "你好")) }
     }
 
+    /**
+     * T13-quick (PLAN §10.4, §10.8): v then rq offers today's date first (Space types it); with the
+     * quick input off, vrq goes to librime and the date is not typed.
+     */
+    @Test
+    fun quickInputTypesTheDate() {
+        val today = java.time.LocalDate.now().let { "${it.year}年${it.monthValue}月${it.dayOfMonth}日" }
+        inMode(Mode.CHINESE) {
+            assertEquals(today, typeInto(InputType.TYPE_CLASS_TEXT, 0, "vrq", expected = today))
+            withSettings({ it.copy(quickInput = false) }) {
+                assertTrue(typeInto(InputType.TYPE_CLASS_TEXT, 0, "vrq", expected = today) != today)
+            }
+        }
+    }
+
+    /** T13-strokes (PLAN §10.4): u then h s looks up 十 by its strokes. */
+    @Test
+    fun strokeLookupTypesACharacter() {
+        inMode(Mode.CHINESE) { assertEquals("十", typeInto(InputType.TYPE_CLASS_TEXT, 0, "uhs", expected = "十")) }
+    }
+
     /** T12 positive: a field asking for no personalized learning still converts Chinese. */
     @Test
     fun noLearningFieldStillConvertsPinyin() {

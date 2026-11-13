@@ -69,6 +69,7 @@ import com.yuanzhe.kotomo.ime.Posture
 import com.yuanzhe.kotomo.ime.LearningData
 import com.yuanzhe.kotomo.ime.Mode
 import com.yuanzhe.kotomo.ime.Tool
+import com.yuanzhe.kotomo.ime.QuickInput
 import com.yuanzhe.kotomo.ime.Probe
 import com.yuanzhe.kotomo.ime.RimeFiles
 import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
@@ -366,6 +367,20 @@ internal fun ChinesePage(settings: Settings, store: SettingsStore) {
     }
     Section(null) {
         SwitchRow(R.string.chinese_idioms, R.string.chinese_idioms_desc, settings.idioms) { on -> store.set { it.copy(idioms = on) } }
+        SwitchRow(R.string.chinese_strokes, R.string.chinese_strokes_desc, settings.strokeLookup) { on -> store.set { it.copy(strokeLookup = on) } }
+        SwitchRow(R.string.chinese_quick, R.string.chinese_quick_desc, settings.quickInput) { on -> store.set { it.copy(quickInput = on) } }
+        Inset {
+            var text by remember(settings.quickCustom) { mutableStateOf(settings.quickCustom) }
+            val apply = { store.set { it.copy(quickCustom = QuickInput.formatCustom(QuickInput.parseCustom(text))) } }
+            androidx.compose.material3.OutlinedTextField(
+                text, { text = it },
+                Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) apply() },
+                label = { Text(stringResource(R.string.chinese_quick_custom)) },
+                placeholder = { Text(stringResource(R.string.chinese_quick_custom_example)) },
+                minLines = 2, maxLines = 6,
+            )
+            Note(stringResource(R.string.chinese_quick_note))
+        }
     }
     val (initials, finals) = FuzzyRule.entries.partition { it.ordinal <= FuzzyRule.L_R.ordinal }
     Section(stringResource(R.string.fuzzy_initials)) {

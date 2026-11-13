@@ -16,4 +16,11 @@
     <string name="japanese_flick_desc">在 12 鍵上輸入假名：點按輸入あ段，向左、上、右、下滑動輸入其他各段</string>
     <string name="chinese_idioms">成語補全</string>
     <string name="chinese_idioms_desc">打出成語的前幾個字後，提供後面的字。需要在「詞庫」中下載「成語」詞庫</string>
+    <string name="chinese_strokes">按筆畫輸入罕用字</string>
+    <string name="chinese_strokes_desc">先打 u，再按筆順打 h 一、s 丨、p 丿、n 丶、z 乙</string>
+    <string name="chinese_quick">快速輸入</string>
+    <string name="chinese_quick_desc">以 v 開頭：數字（v1234 → 一千二百三十四、金額大寫），vrq 日期，vsj 時間，vxq 星期，vu 加十六進位編碼輸入 Unicode 字元，或算式（v1+2*3）</string>
+    <string name="chinese_quick_custom">自訂快速替換</string>
+    <string name="chinese_quick_custom_example">dz=你的地址</string>
+    <string name="chinese_quick_note">每行一個縮寫（字母與數字）、一個等號和替換文字；打 v 加縮寫即可。</string>
 </resources>

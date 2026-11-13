@@ -156,3 +156,6 @@ T08-J11	mixed		zikan	時間	5	equivalent spellings in Mixed mode: zi / ji
 T08-J12	mixed		jikan	時間	5	zi / ji
 T08-J13	mixed		syasin	写真	5	sya / sha
 T08-J14	mixed		shashin	写真	5	sya / sha
+T01-020	chinese		`hs	十	5	stroke lookup (PLAN §10.4): the app types the backquote for u; h 一 then s 丨
+T01-N20	chinese		`hs	!时	1	stroke lookup is not pinyin: hs must not read as the abbreviation of a word
+T03-030	japanese		わたしはにほんじん	私は日本人	3	kana typed on the 12-key flick layout go to Mozc as typed (PLAN §10.9)

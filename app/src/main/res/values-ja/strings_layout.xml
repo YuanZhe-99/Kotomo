@@ -16,4 +16,11 @@
     <string name="japanese_flick_desc">12 キーでかなを入力します。タップであ段、左・上・右・下へのフリックでほかの段</string>
     <string name="chinese_idioms">四字熟語の補完</string>
     <string name="chinese_idioms_desc">中国語の四字熟語の最初の文字を入力すると、残りを候補に出します。「辞書」でダウンロードする成語辞書を使います</string>
+    <string name="chinese_strokes">画数で難しい漢字を入力</string>
+    <string name="chinese_strokes_desc">u に続けて筆順どおりに h 一、s 丨、p 丿、n 丶、z 乙 を入力します</string>
+    <string name="chinese_quick">クイック入力</string>
+    <string name="chinese_quick_desc">v で始めます：数字（v1234 → 一千二百三十四、大字の金額）、vrq 日付、vsj 時刻、vxq 曜日、vu と 16 進コードで Unicode 文字、計算式（v1+2*3）</string>
+    <string name="chinese_quick_custom">自分用のクイック置換</string>
+    <string name="chinese_quick_custom_example">dz=住所</string>
+    <string name="chinese_quick_note">1 行に略語（英数字）、等号、置き換える文字を書きます。v と略語で入力します。</string>
 </resources>

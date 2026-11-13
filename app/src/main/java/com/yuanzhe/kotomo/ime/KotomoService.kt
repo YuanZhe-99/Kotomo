@@ -1459,10 +1459,15 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun onChineseKey(action: KeyAction, longPress: Boolean, downTime: Long): Boolean {
         val ic = currentInputConnection ?: return false
+        if (quickKey(action, longPress, ic)) return true
         when (action) {
             is KeyAction.Text -> {
                 val c = action.text.singleOrNull()
-                if (c != null && c in 'a'..'z' && !longPress) {
+                if (c == 'u' && !longPress && chinesePreedit.isEmpty() && settings.strokeLookup) {
+                    // u starts a lookup by strokes (h 一, s 丨, p 丿, n 丶, z 乙), for rare characters (PLAN §10.4):
+                    // luna_pinyin's reverse lookup takes the backquote; no syllable starts with u.
+                    rimeKey('`'.code, downTime) { ic.commitText(action.text, 1) }
+                } else if (c != null && c in 'a'..'z' && !longPress) {
                     rimeKey(c.code, downTime) { ic.commitText(action.text, 1) }
                 } else {
                     // Punctuation, digits and capitals commit the top candidate first.
@@ -1561,8 +1566,69 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
     }
 
+    /** Main thread: the quick-input query after `v` in Chinese mode (PLAN §10.4), or null when not in one. */
+    private var quick: StringBuilder? = null
+
+    /**
+     * Handles a key of the quick input (PLAN §10.4, §10.8): `v` at the start of a Chinese
+     * composition opens it; letters, digits and `+ - * / ^ ( ) .` extend the query, Space types the
+     * first candidate, Enter the query as typed, backspace deletes (past the `v` it closes).
+     * Returns: whether the key was the quick input's; another key first commits the query as typed.
+     * Notes: the candidates come from [QuickInput] with the local time and the person's own
+     * replacements; nothing reaches librime, nothing is learned.
+     */
+    private fun quickKey(action: KeyAction, longPress: Boolean, ic: InputConnection): Boolean {
+        val q = quick
+        if (q == null) {
+            if (action != KeyAction.Text(QuickInput.PREFIX.toString()) || longPress || chinesePreedit.isNotEmpty() || !settings.quickInput) return false
+            quick = StringBuilder()
+            showQuick(ic)
+            return true
+        }
+        when {
+            action is KeyAction.Text && action.text.length == 1 && (action.text[0] in 'a'..'z' || action.text[0] in "0123456789+-*/^()." ) && !longPress -> {
+                q.append(action.text)
+                showQuick(ic)
+            }
+            action == KeyAction.Backspace -> if (q.isEmpty()) endQuick(ic, "") else {
+                q.setLength(q.length - 1)
+                showQuick(ic)
+            }
+            action == KeyAction.Space -> endQuick(ic, chineseCandidates.firstOrNull() ?: "${QuickInput.PREFIX}$q")
+            action == KeyAction.Enter -> endQuick(ic, "${QuickInput.PREFIX}$q")
+            else -> {
+                endQuick(ic, "${QuickInput.PREFIX}$q")
+                return false
+            }
+        }
+        return true
+    }
+
+    /** Shows the quick-input query as the composition and its conversions as candidates. */
+    private fun showQuick(ic: InputConnection) {
+        val q = quick ?: return
+        chinesePreedit = "${QuickInput.PREFIX}$q"
+        ic.setComposingText(chinesePreedit, 1)
+        val custom = QuickInput.parseCustom(settings.quickCustom)
+        chineseCandidates = QuickInput.candidates(q.toString(), java.time.LocalDateTime.now(), custom)
+        rimeIndexes = chineseCandidates.map { -1 }
+        candidates = chineseCandidates
+        candidateBar.show(candidates, 0)
+        shownCandidates.value = candidates
+    }
+
+    /** Ends the quick input, committing [text] (empty: nothing). */
+    private fun endQuick(ic: InputConnection, text: String) {
+        quick = null
+        ic.commitText(text, 1)
+        chinesePreedit = ""
+        chineseCandidates = emptyList()
+        rimeIndexes = emptyList()
+    }
+
     /** Drops librime's composition without committing (the field keeps what it shows). */
     private fun clearChinese() {
+        quick = null
         if (chinesePreedit.isEmpty() && chineseCandidates.isEmpty()) return
         chinesePreedit = ""
         chineseInput = ""
@@ -1714,6 +1780,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             if (rimeIndex < 0) {
                 // An emoji or the letters as typed: either replaces the whole composition.
                 val text = candidates.getOrNull(index) ?: return
+                // Also an idiom's completion or a quick-input conversion (PLAN §10.4, §10.8).
+                quick = null
                 engine.post {
                     if (rimeReady) Rime.clear()
                     main.post {

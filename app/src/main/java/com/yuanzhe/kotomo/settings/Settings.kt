@@ -199,6 +199,12 @@ data class Settings(
     val japaneseFlick: Boolean = false,
     /** After the first characters of an idiom, offer the rest (needs the Idioms dictionary; PLAN §10.8). */
     val idioms: Boolean = true,
+    /** `v` at the start of a Chinese composition opens the quick input (PLAN §10.4). */
+    val quickInput: Boolean = true,
+    /** The person's quick-input replacements, `abbreviation=text` per line (QuickInput.parseCustom). */
+    val quickCustom: String = "",
+    /** `u` at the start of a Chinese composition looks characters up by strokes (PLAN §10.4). */
+    val strokeLookup: Boolean = true,
 ) {
     /** The tools the toolbar shows after More, in order; the rest are under More. */
     val tools: List<Tool> get() = toolOrder.filter { it !in hiddenTools }
@@ -354,6 +360,9 @@ internal object SettingsFormat {
     private val floating = booleanPreferencesKey("layout.floating")
     private val japaneseFlick = booleanPreferencesKey("japanese.flick")
     private val idioms = booleanPreferencesKey("chinese.idioms")
+    private val quickInput = booleanPreferencesKey("chinese.quick_input")
+    private val quickCustom = stringPreferencesKey("chinese.quick_custom")
+    private val strokeLookup = booleanPreferencesKey("chinese.stroke_lookup")
 
     /**
      * Reads the settings from a Preferences file.
@@ -431,6 +440,9 @@ internal object SettingsFormat {
             floating = p[floating] ?: d.floating,
             japaneseFlick = p[japaneseFlick] ?: d.japaneseFlick,
             idioms = p[idioms] ?: d.idioms,
+            quickInput = p[quickInput] ?: d.quickInput,
+            quickCustom = p[quickCustom] ?: d.quickCustom,
+            strokeLookup = p[strokeLookup] ?: d.strokeLookup,
         )
     }
 
@@ -498,6 +510,9 @@ internal object SettingsFormat {
         p.put(floating, old.floating, new.floating)
         p.put(japaneseFlick, old.japaneseFlick, new.japaneseFlick)
         p.put(idioms, old.idioms, new.idioms)
+        p.put(quickInput, old.quickInput, new.quickInput)
+        p.put(quickCustom, old.quickCustom, new.quickCustom)
+        p.put(strokeLookup, old.strokeLookup, new.strokeLookup)
         if (old.keyStyle.longPress != new.keyStyle.longPress) p[longPressMap] = KeyStyle.format(new.keyStyle.longPress)
         // Both lists are written together, so a later read knows which tools were in the list.
         if (old.toolOrder != new.toolOrder || old.hiddenTools != new.hiddenTools) {

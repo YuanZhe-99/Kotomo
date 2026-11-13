@@ -101,6 +101,9 @@
 | `layout.mirrored` | boolean | `false` | 功能键放到另一侧：底行与 ⇧ … ⌫ 一行左右翻转 |
 | `layout.floating` | boolean | `false` | 键盘悬浮在 App 之上，可拖动；悬浮时不分离 |
 | `chinese.idioms` | boolean | `true` | 中文提交的内容是某个成语的开头时，提供后面的字（PLAN §10.8）；成语来自下载的成语词库（`zh-thuocl-idioms`），没有下载就不提供 |
+| `chinese.quick_input` | boolean | `true` | 中文组合以 `v` 开头时进入快捷输入：数字、金额大写、日期、时间、Unicode、算式、自定义替换（PLAN §10.4） |
+| `chinese.quick_custom` | string | 空 | 用户的快捷替换，每行 `缩写=文字`（小写字母与数字，至多 16 个）；其他行丢弃 |
+| `chinese.stroke_lookup` | boolean | `true` | 中文组合以 `u` 开头时按笔画查字（luna_pinyin 的笔画反查） |
 | `japanese.flick` | boolean | `false` | 日文模式使用 12 键滑动布局 |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo` | 不放在工具栏上的工具，以逗号连接；它们和工具栏放不下的工具一起在“更多”里。与 `toolbar.order` 一起写入；已存的 `toolbar.order` 中缺少的工具（以后的版本新增的）按默认位置放置 |
 

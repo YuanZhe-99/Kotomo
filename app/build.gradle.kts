@@ -248,9 +248,9 @@ abstract class RimeDataTask : DefaultTask() {
                 into(outputDir.dir("rime"))
                 // The compiled build/ replaces these sources on the phone; they are only read when
                 // the data is compiled again, which prebuilt data never needs (about 10 MB). The
-                // stroke data serves only librime's backquote stroke lookup, which Kotomo does not
-                // offer; without it the reverse-lookup translator is skipped (about 9.5 MB).
-                exclude("essay.txt", "*.dict.yaml", "stroke.*", "build/stroke.*")
+                // compiled stroke data (about 9.4 MB) stays: it serves the stroke lookup that u
+                // starts in Chinese mode (PLAN §10.4, librime's backquote reverse lookup).
+                exclude("essay.txt", "*.dict.yaml", "stroke.schema.yaml")
             }
             return
         }
