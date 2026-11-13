@@ -51,6 +51,37 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 | THUOCL（11 个领域词表） | `thunlp/THUOCL` `master`（2018-11-21 后未变，`a30ce79d`） | 11 个词库包 `zh-thuocl-*` | MIT；README 要求引用 | 读音由 rime-ice 的单字表推出（没有主导读音的多音字丢弃），权重缩放 | 保留 MIT 声明；引用"THUOCL：清华大学开放中文词库"（2016）；读音为 GPL-3.0（rime-ice） |
 | fcitx5-pinyin-zhwiki 的 `web-slang-<日期>.dict.yaml` | `felixonmars/fcitx5-pinyin-zhwiki` 最新发布；主机测试锁定 0.3.1（转储 20261018） | 词库包 `zh-web-slang` | CC BY-SA 4.0（维基百科）；转换器 Unlicense | 丢弃拼写出的拉丁字母 | 署名维基百科贡献者并链接许可证；词库包保持 CC BY-SA 4.0 |
 
+## 来源审查（技术验证 S8）
+
+2026-11-12 对照各来源的官方页面、仓库或发布源核实。"未读"表示本次审查没有核实该点，不是结论。结论分三种：**可用**、**有条件可用**（满足所写条件后可用）、**不可用**。本节不会把任何数据文件放进仓库。
+
+| 来源 | 核实到的最新版本 | 读到的许可证 | 结论 | 义务与说明 |
+|---|---|---|---|---|
+| JMdict 与 KANJIDIC2（EDRDG） | jmdict-simplified 3.6.2+20261109214828（2026-11-09） | EDRDG 许可下的 CC BY-SA 4.0；JMdict 只覆盖日文与英文，其他语言的释义另有版权；KANJIDIC2 中的拼音、SKIP 等编码归各贡献者 | JMdict 英文：可用（已分发）。KANJIDIC2：不使用 | 在专门的页面（关于或数据来源）致谢 EDRDG，随附或链接许可与文档，不得声称版权，保持定期更新的办法（许可把数据过期视为违规；只靠发布版本是否满足，留给用户决定） |
+| Unicode 数据：Unihan、`emoji-test.txt`、CLDR（cldr-json） | cldr-json 49.0.0（2026-10-22），Unicode 18.0 | 按记录为 Unicode License v3；未读许可证文本 | 可用（已分发） | Unicode 声明（`THIRD_PARTY_NOTICES.md`） |
+| SudachiDict | v20261015（2026-10-15） | `LEGAL`：整个发行版为 Apache-2.0；`small_lex` 带 UniDic 的 BSD 式声明；`core_lex` 与 `notcore_lex` 来自 NEologd，`LEGAL` 没有为它单独写许可证，只列出致谢（Hatena、日本邮政、一份车站名表、一份人名数据、网络抓取数据） | 有条件可用：`small_lex` 可用；`core_lex` 与 `notcore_lex` 可按 Apache-2.0 声明使用，其子来源没有逐一核实 | 任何衍生词库包都附带 `LEGAL` 与 UniDic 声明；暂不提供 |
+| THUOCL | `a30ce79d`，未变 | README：研究与商用均免费；仓库标为 MIT | 可用（已提供下载） | 保留声明与引用 |
+| rime-ice | 发布源标签 `nightly`（API 标的发布日期为 2024-05-21，资产每日重建，`build-lock.json` 固定在 2026.06.30） | 按记录为 GPL-3.0；未读许可证文本 | 可用（已提供下载） | GPL-3.0，署名作者 |
+| Noto Emoji | v2026-09-24-unicode18_0（2026-09-24），Unicode 18.0 | 字体 SIL OFL-1.1；工具与"大部分"图像资源 Apache-2.0；旗帜（`third_party/region-flags`）为公有领域或不受版权保护；没有写明署名要求 | 有条件可用：读完"大部分"之外的例外与旗帜文件自己的条款（未读）后，可作样式包 | 附 OFL 与 Apache-2.0 文本；仍在数据来源页署名 |
+| Twemoji（jdecked） | v17.0.3（2026-06-01），Emoji 17.0 | 代码 MIT，图形 CC BY 4.0；项目接受在 README、关于或设置页中提及 | 可用 | 在"关于"中署名并链接许可证；Unicode 18.0 新增的 Emoji 缺失，由系统字体补上 |
+| OpenMoji | 17.0.0（2026-04-23） | 按 `PLAN.md` 的记录为 CC BY-SA 4.0；未读 | 有条件可用：相同方式共享会波及改编后的图像；不作为第一个样式包的候选 | 使用前先核实许可证 |
+| Apple 的 Emoji；来源不明的图像 | — | 按记录为 Apple 的许可与 App Review 指南 5.2.5；本次未重读 | 不可用 | 永不分发 |
+| JLPT 词汇表（Tanos，Jonathan Waller） | 该网站已无法解析；镜像写明作者 Jonathan Waller 与"CC BY"，没有版本；词表非官方（JLPT 不公布词表） | 版本未注明 | 暂不可用 | 适用"不分发未注明版本的 CC 许可"的规则；若找到许可页面或版本再重新评估 |
+| 铁道数据，MLIT 国土数值情报 N02 | 2024 年版（`N02-24`） | 数据集页面标明 2020 年版起为 CC BY 4.0；站点的总条款为公共数据许可 1.0 | 有条件可用：站名可用；数据集不含读音 | 注明来源与页面网址，并说明做过加工；读音取自 Mozc 或 SudachiDict；基于基础地图的产品所需的测量法批准不涉及站名，Kotomo 不使用几何数据 |
+| 駅データ.jp | — | 其使用条款未读 | 读过之前不可用 | — |
+| Wikidata 标签 | — | 结构化数据（主、Property、Lexeme 命名空间）为 CC0，标签包括在内 | 有条件可用：取得文件并量过覆盖率后，可用于日文 ↔ 中文的专有名词对 | 不要求署名；讨论页为 CC BY-SA 4.0，不使用 |
+| Tatoeba 例句 | — | 默认 CC BY 2.0 FR；部分例句与音频带有其他条件（ND、SA、非商用音频） | 有条件可用：只作例句或测试句，按每句的许可证过滤；不用音频 | 署名作者 |
+| Wiktionary、Chinese Open Wordnet | — | 未读 | 读过之前不可用 | — |
+
+数据缺口（`PLAN.md` §3.3）：
+
+- 日文词条的常见中文释义：没有找到许可明确的来源。JMdict 没有中文；CC-CEDICT 只对用相同汉字书写的词有用，拼音 → 日文的映射已经在用；Wikidata 标签可能覆盖专有名词。该功能等待。
+- JLPT 分级：等待（没有可用的词表）。
+- 车站名：MLIT N02 的站名，加上取自 Mozc 或 SudachiDict 的读音；数据集之外的线路仍然缺失。
+- 专业领域词库：中文有 THUOCL 的 11 个词表（已提供下载）；日文没有找到许可明确的来源，所以日文领域词库等待。
+
+留给用户决定：JMdict 只随发布版本更新是否满足 EDRDG 的更新规则，以及 Noto Emoji 与 Wikidata 两项是否按"有条件可用"推进。
+
 ## 计划中的组件
 
 以下组件目前既未包含、也未提供下载。加入某个组件时，连同其确切版本、文件、修改与义务写入上面的清单；技术验证 S8
@@ -68,7 +99,7 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 | SCOWLv2（en-wl/wordlist） | 类 MIT（`Copyright`）；大于 80 号的词表另附 UKACD 条款 | 英文词 | 不提供：发布只有源文件，要用 Python 与 SQLite 才能生成词表；英文词条尚未使用 |
 | Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |
 | Twemoji（jdecked） | 图形 CC BY 4.0，代码 MIT | Emoji 样式包 | 在"关于"中署名 |
-| ML Kit GenAI 与翻译 | Google 的 ML Kit 条款 | 设备端 AI 与翻译 | 其数据处理方式在技术验证 S8 中核实，并写入隐私政策 |
+| ML Kit GenAI 与翻译 | Google 的 ML Kit 条款 | 设备端 AI 与翻译 | 其 SDK 收集什么已在 S8 中读过（`upstream.md` 的 ML Kit 一节）并写入隐私政策；条款本身未读 |
 
 ## 永不分发
 

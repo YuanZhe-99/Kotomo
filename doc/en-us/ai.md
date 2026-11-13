@@ -12,7 +12,7 @@ It follows `PLAN.md` §11 and the behavior contract's AI rule.
 | Never on the key path | The keyboard only hands text over; inference runs in `AiActivity`, a foreground screen, because GenAI serves only the foreground app |
 | Never in sensitive fields | Refused in sensitive fields (`Fields.sensitive`: passwords, `IME_FLAG_NO_PERSONALIZED_LEARNING`), in direct-typing fields (e-mail, URL) and in incognito mode |
 | Preview, confirm, undo | Suggestions are shown first; the field changes only on Replace, and the candidate bar then offers Undo until the next key |
-| Nothing leaves the device | Kotomo sends no text. AICore downloads the model through the system; the network permission (merged from ML Kit, and used by Kotomo only for the downloads the person starts) carries no typed text |
+| Nothing leaves the device | Kotomo sends no text (ML Kit's own diagnostics are in `upstream.md` and the privacy policy). AICore downloads the model through the system; the network permission (merged from ML Kit, and used by Kotomo only for the downloads the person starts) carries no typed text |
 | Nothing is logged or stored | Neither the text nor the results are logged; the hand-off lives only in memory, and the selected text is dropped from it when the screen closes without Replace (a configuration change such as a rotation keeps it) |
 
 ## The hand-off

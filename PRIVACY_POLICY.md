@@ -7,7 +7,9 @@ those (AGENTS.md, "Documentation maintenance").
 ## In short
 
 - Typing works offline, and what you type is never sent over the network. The app holds the
-  internet permission, which the ML Kit library for on-device AI declares; Kotomo itself uses the
+  internet permission, which the ML Kit library for on-device AI declares (Google's ML Kit may send
+  its own diagnostic data, such as app name and version, identifiers and sizes, when writing help
+  or translation runs; Kotomo adds no text to it); Kotomo itself uses the
   network only for dictionary downloads you start, after a notice before the first one (see
   "Downloaded dictionaries").
 - What you type stays on your device. Kotomo has no analytics, no advertising, no crash upload and

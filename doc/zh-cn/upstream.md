@@ -77,6 +77,8 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | 只有默认输入法和焦点应用能读取剪贴板（Android 10+）；默认输入法读取时不显示提示（Android 12+）；敏感剪贴带 `ClipDescription.EXTRA_IS_SENSITIVE`；系统在最后一次访问后最迟 60 分钟清除剪贴板（Android 13+） | Kotomo 自己保存剪贴板历史，从不记录敏感剪贴 | 已阅读 |
 | `ComposeView` 需要视图树中的 `LifecycleOwner` 与 `SavedStateRegistryOwner`；没有面向输入法的官方指南 | 技术验证 S1 决定面板是否使用 Compose | 已阅读 |
 | 输入法只能经 `InputConnection` 作用于输入框：`sendKeyEvent` 把一个 `KeyEvent`（键码、meta 状态、`FLAG_SOFT_KEYBOARD`）像来自键盘一样交给获得焦点的视图；无法发送扫描码或 X11 keysym，无法指定远端协议，也无法向别的应用注入指针事件。到达不处理它的 Activity 的 `KEYCODE_ESCAPE` 等同返回 | PC 布局（PLAN §10.11）把每个键（字母也一样）作为带 meta 状态的按键事件发出（应用读取它们时 Ctrl+C 成立）；远程桌面或终端应用是否转发由该应用决定；不做触摸板。它的插桩测试不按 Esc | 模拟器测试 `PcKeysTest`（T20） |
+| Android 15 及以上会对不受信任的 `NotificationListenerService` 读取的通知隐去一次性验证码；只有受信任的应用（如伴侣设备关联）可免除 | 从通知读取验证码（`PLAN.md` §10.7）在 Android 15 及以上看不到未隐去的验证码，文档也没有给输入法提供免除的途径；该功能可能只在 Android 14 及更早版本上可用 | 已读（Android 15 行为变更，2026-11-12）；Android 16、17 的变更未读 |
+| Google Play 的用户数据政策要求在访问敏感数据前给出显著的应用内说明并取得明确同意；用户数据与无障碍 API 两页没有专门写 `NotificationListenerService` 或验证码；搜索摘要称 Play Protect 的指引把未经明确同意读取通知内容列为禁止 | 该功能需要计划中已有的说明与同意界面；Play 审核是否接受，靠公开页面无法判定 | 部分已读（Play Protect 页面与 Play Console 声明表单未读） |
 
 ## ML Kit
 
@@ -85,6 +87,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | GenAI 只在应用位于最前台时推理；前台服务得到 `BACKGROUND_USE_BLOCKED`；每应用配额返回 `BUSY` 与 `PER_APP_BATTERY_USE_QUOTA_EXCEEDED`。开发者报告从 `InputMethodService` 调用同样被拒 | AI 在用户打开的 Kotomo 界面中运行；技术验证 S7 在设备上核实 | 已阅读 |
 | 校对与重写（beta）支持英语、日语、法语、德语、意大利语、西班牙语和韩语，不含中文，输入少于 256 token，需要 API 26 及以上，解锁 bootloader 的设备不可用；Prompt API（beta）输入少于 4,000 token | 英文和日文使用这些 API；中文不提供校对与重写，也不使用 Prompt API | 已阅读 |
 | 设备端翻译覆盖中文、日文和英文（每种语言约 30 MB，按需下载）；不含英语的语言对经英语中转。它是 ML Kit 的普通 API，不属于 GenAI，文档没有前台限制的说明 | 翻译直接在键盘中运行（技术验证 S7 确认）；中日互译的质量评估之后再提供 | 已阅读 |
+| ML Kit 的数据披露页列出其 SDK 收集的内容：GenAI 为所配置的语言、设备与应用信息（包名、版本）、用于诊断与分析的标识符、每次安装的标识符、性能指标、输入输出的大小、事件类型与错误码；翻译另有源语言与目标语言，并使用 Firebase Remote Config 与 Installations；语言识别另有识别出的语言。页面称数据在传输中加密、不转交第三方，并由开发者自己填写 Play 的数据安全表单；它没有说明输入文字本身是否离开设备 | Kotomo 自己不发送文字（`ai.md`），但隐私政策写明 ML Kit 可能发送这些诊断数据，数据安全表单也要列出；ML Kit 不发送输入文字这一点没有核实 | 2026-11-12 已读（ML Kit 服务条款未读） |
 
 ## 数据集
 

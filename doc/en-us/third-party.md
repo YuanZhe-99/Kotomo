@@ -60,10 +60,49 @@ license, attribution and (THUOCL) citation in its `pack.json`.
 | THUOCL (11 domain lists) | `thunlp/THUOCL` `master` (unchanged since 2018-11-21, `a30ce79d`) | the 11 packs `zh-thuocl-*` | MIT; the README asks for the citation | readings derived from rime-ice's character list (polyphones without a dominant reading dropped), weights scaled | keep the MIT notice; cite "THUOCL: Tsinghua Open Chinese Lexicon" (2016); readings are GPL-3.0 (rime-ice) |
 | fcitx5-pinyin-zhwiki `web-slang-<date>.dict.yaml` | `felixonmars/fcitx5-pinyin-zhwiki`, the latest release; host tests pin 0.3.1 (dump 20261018) | the pack `zh-web-slang` | CC BY-SA 4.0 (Wikipedia); converter Unlicense | spelled-out Latin letters dropped | attribution to Wikipedia contributors and a link to the license; the pack stays CC BY-SA 4.0 |
 
+## Source audit (spike S8)
+
+Checked on 2026-11-12 against each source's official page, repository or release feed. "Not read"
+marks a point that was not verified in this audit; it is not a conclusion. Verdicts: **usable**,
+**conditional** (usable once the stated condition holds) and **not usable**. Nothing here puts a
+data file in the repository.
+
+| Source | Latest checked | License as read | Verdict | Obligations and notes |
+|---|---|---|---|---|
+| JMdict and KANJIDIC2 (EDRDG) | jmdict-simplified 3.6.2+20261109214828 (2026-11-09) | CC BY-SA 4.0 under the EDRDG licence; JMdict covers Japanese and English, other languages are separate copyright; in KANJIDIC2 the pinyin, SKIP and other codes stay with their contributors | JMdict English: usable (shipped). KANJIDIC2: not used | acknowledge the EDRDG on a dedicated screen (About or Sources), ship or link the licence and documentation, never claim copyright, keep a procedure for regular updates (the licence treats stale data as a violation; whether releases alone meet it is an open question for the user) |
+| Unicode data: Unihan, `emoji-test.txt`, CLDR (cldr-json) | cldr-json 49.0.0 (2026-10-22), Unicode 18.0 | Unicode License v3 as recorded; text not read | usable (shipped) | the Unicode notice (`THIRD_PARTY_NOTICES.md`) |
+| SudachiDict | v20261015 (2026-10-15) | `LEGAL`: Apache-2.0 for the distribution; `small_lex` carries the UniDic BSD-style notice; `core_lex` and `notcore_lex` derive from NEologd, for which `LEGAL` names no separate license and lists acknowledgements (Hatena, Japan Post, a station-name list, a personal-name dataset, web-crawled data) | conditional: `small_lex` usable; `core_lex` and `notcore_lex` usable under the Apache-2.0 notice, their sub-sources not verified one by one | ship `LEGAL` and the UniDic notice with any derived pack; not offered yet |
+| THUOCL | `a30ce79d`, unchanged | README: free for research and commercial use; the repository lists MIT | usable (offered) | keep the notice and the citation |
+| rime-ice | release feed tag `nightly` (the API dates the release 2024-05-21; the assets are rebuilt, `build-lock.json` pins 2026.06.30) | GPL-3.0 as recorded; text not read | usable (offered) | GPL-3.0, credit the authors |
+| Noto Emoji | v2026-09-24-unicode18_0 (2026-09-24), Unicode 18.0 | fonts SIL OFL-1.1; tools and "most" image resources Apache-2.0; flags (`third_party/region-flags`) public domain or exempt; no attribution requirement stated | conditional: usable as a style pack once the exceptions to "most" and the flag files' own terms are read (not read) | ship the OFL and Apache-2.0 texts; credit anyway on the sources page |
+| Twemoji (jdecked) | v17.0.3 (2026-06-01), Emoji 17.0 | code MIT, graphics CC BY 4.0; the project accepts a mention in a README, About or Settings screen | usable | credit in About and link the license; emoji new in Unicode 18.0 are missing, the system font fills them |
+| OpenMoji | 17.0.0 (2026-04-23) | CC BY-SA 4.0 as recorded in `PLAN.md`; not read | conditional: share-alike reaches adapted images; not a candidate for the first style pack | verify the license before any use |
+| Apple emoji; images of unknown origin | — | Apple's license and App Review Guideline 5.2.5 as recorded; not re-read | not usable | never shipped |
+| JLPT vocabulary lists (Tanos, Jonathan Waller) | the site no longer resolves; mirrors name Jonathan Waller and "CC BY" without a version; the lists are unofficial (the JLPT publishes none) | version unstated | not usable now | the rule against a CC license of unstated version applies; reopen if the license page or a version turns up |
+| Railway station data, MLIT 国土数値情報 N02 | 2024 edition (`N02-24`) | the dataset page labels the 2020 edition on as CC BY 4.0; the site's general terms are the Public Data License 1.0 | conditional: station names usable; the dataset carries no readings | credit the source and the page URL and say it was processed; take readings from Mozc or SudachiDict; the Survey Act approval for products built on the basemaps does not reach names, and Kotomo uses no geometry |
+| 駅データ.jp | — | its terms of use were not read | not usable until read | — |
+| Wikidata labels | — | structured data (main, Property, Lexeme namespaces) is CC0, labels included | conditional: usable for Japanese ↔ Chinese pairs of proper nouns once a file is fetched and its coverage measured | no attribution required; discussion pages are CC BY-SA 4.0 and are not used |
+| Tatoeba sentences | — | CC BY 2.0 FR by default; some sentences and audio carry other conditions (ND, SA, non-commercial audio) | conditional: example or test sentences only, filtered by each sentence's license; no audio | credit the authors |
+| Wiktionary, Chinese Open Wordnet | — | not read | not usable until read | — |
+
+Data gaps (`PLAN.md` §3.3):
+
+- Common Chinese glosses of Japanese words: no source with a clear license found. JMdict has no
+  Chinese; CC-CEDICT only helps for words written with the same characters, which the pinyin →
+  Japanese mapping already uses; Wikidata labels could cover proper nouns. The feature waits.
+- JLPT levels: waits (no usable list).
+- Station names: MLIT N02 names plus readings from Mozc or SudachiDict; lines outside the dataset
+  stay missing.
+- Domain dictionaries: Chinese has THUOCL's eleven lists (offered); no Japanese source with a clear
+  license was found, so Japanese domains wait.
+
+Open for the user: whether shipping JMdict with releases only meets the EDRDG's update rule, and
+whether the Noto Emoji and Wikidata items go ahead as conditional.
+
 ## Planned components
 
 Nothing below is included or downloaded yet. Each component enters the inventory with its exact
-version, files, modifications and obligations when it is added; spike S8 completes the audit. The
+version, files, modifications and obligations when it is added; the audit above (spike S8) covers the sources and assets considered so far. The
 Q6 evaluation of the dictionary sources not offered for download is in `dictionaries.md`.
 
 | Component | License | Planned use | Notes |
@@ -78,7 +117,7 @@ Q6 evaluation of the dictionary sources not offered for download is in `dictiona
 | SCOWLv2 (en-wl/wordlist) | MIT-like (`Copyright`); lists above size 80 add the UKACD terms | English words | not offered: the release ships only sources that need Python and SQLite to produce a list; English words are not used yet |
 | Noto Emoji | images Apache-2.0, font OFL-1.1, flags public domain | emoji style pack | — |
 | Twemoji (jdecked) | graphics CC BY 4.0, code MIT | emoji style pack | attribution in About |
-| ML Kit GenAI and translation | Google's ML Kit terms | on-device AI and translation | its data handling is checked in spike S8 and stated in the privacy policy |
+| ML Kit GenAI and translation | Google's ML Kit terms | on-device AI and translation | what its SDKs collect is read in S8 (`upstream.md`, ML Kit) and stated in the privacy policy; the terms themselves are not read |
 
 ## Never shipped
 
