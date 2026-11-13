@@ -64,6 +64,10 @@ internal val CODE = listOf(
 /** Lists the dictionary data Kotomo uses and its authors, as in `doc/en-us/third-party.md`. */
 internal val DATA = listOf(
     Credit(
+        "Noto Color Emoji", "v2026-09-24-unicode18_0", "SIL OFL-1.1", R.string.use_noto_emoji,
+        "https://github.com/googlefonts/noto-emoji", "https://openfontlicense.org/", holder = "© 2013 Google LLC",
+    ),
+    Credit(
         "rime-luna-pinyin, rime-prelude, rime-essay, rime-stroke", "", "LGPL-3.0", R.string.use_rime_data,
         "https://github.com/rime", "https://www.gnu.org/licenses/lgpl-3.0.html",
     ),

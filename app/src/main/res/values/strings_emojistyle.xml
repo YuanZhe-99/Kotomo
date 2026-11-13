@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Emoji style packs (Settings → Themes, PLAN §11.5). -->
+    <string name="emoji_style_title">Emoji style</string>
+    <string name="emoji_style_note">Changes how emoji look in the keyboard only. The app you type in shows them with its own emoji font: what you send is the same emoji. The emoji style is separate from the keyboard\'s colors.</string>
+    <string name="emoji_style_system">System</string>
+    <string name="emoji_style_noto">Noto Color Emoji</string>
+    <string name="emoji_style_custom">Your font</string>
+    <string name="emoji_style_missing">Not on this device yet</string>
+    <string name="emoji_noto_download">Download (10.7 MB)</string>
+    <string name="emoji_noto_notice">Noto Color Emoji (Google\'s Noto Emoji project, SIL Open Font License 1.1) is downloaded from %1$s and checked before use. Nothing you type is sent.</string>
+    <string name="emoji_noto_downloading">Downloading…</string>
+    <string name="emoji_noto_delete">Delete Noto Color Emoji</string>
+    <string name="emoji_noto_failed">The download failed or the file did not match</string>
+    <string name="emoji_custom_import">Import a font…</string>
+    <string name="emoji_custom_notice">Use only a font you have the right to use. It is copied into Kotomo and drawn only in the keyboard.</string>
+    <string name="emoji_custom_bad">That file is not a font Kotomo can use</string>
+    <string name="emoji_custom_delete">Remove your font</string>
+    <string name="emoji_custom_named">Your font: %1$s</string>
+    <string name="use_noto_emoji">The optional emoji style, downloaded on request</string>
+    <string name="emoji_style_sample" translatable="false">😀 🎉 🍣 🗼 👍🏽 🇯🇵</string>
+</resources>

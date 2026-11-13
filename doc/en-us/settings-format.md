@@ -164,6 +164,19 @@ A shared theme file (Export) is one theme object with the picture inside as `bac
 re-encodes the picture as PNG (at most 2048 pixels on its long side), and shows a preview before the
 theme is used.
 
+## Emoji style file
+
+The emoji style (PLAN §11.5) lives in `files/emoji/style.json` (`ime/EmojiStyles.kt`), with the
+fonts beside it: `noto-color-emoji.ttf` (downloaded, checked against the pinned size and SHA-256)
+and `custom.ttf` (imported: at most 40 MB, a TrueType or OpenType file that Android loads).
+
+| Member | Type | Meaning |
+|---|---|---|
+| `format_version` | int | The format; this build writes 1 and never lowers a newer value |
+| `updated_utc_ms` | int | When it was written, UTC milliseconds |
+| `style` | string: `system`, `noto`, `custom` | How the keyboard's emoji panel draws emoji; a style whose font is missing draws the system's |
+| `custom_name` | string, at most 60 characters | The imported font's name, as shown |
+
 ## Keyboard memory file
 
 What the keyboard remembers by itself, rather than what the person sets, lives in

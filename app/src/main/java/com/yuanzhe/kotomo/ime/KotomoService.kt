@@ -2963,6 +2963,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 val lists = androidx.compose.runtime.remember(s.emojiFavorites, s.emojiCombos) {
                     EmojiLists(EmojiExtras.parseFavorites(s.emojiFavorites), EmojiExtras.COMBOS + EmojiExtras.parseCombos(s.emojiCombos))
                 }
+                // The emoji style draws the panel's emoji (PLAN §11.5); never read before the first unlock.
+                val styles = if (locked) null else EmojiStyles.get(this@KotomoService)
+                val style = styles?.config?.collectAsState()?.value
+                val typeface = androidx.compose.runtime.remember(style) { styles?.typeface() }
+                EmojiFont(typeface) {
                 EmojiPanel(
                     onEmoji = { currentInputConnection?.commitText(it, 1) },
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
@@ -2975,6 +2980,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     // A favorite is the person's own choice, kept like a setting; never before the first unlock.
                     onFavorite = { e -> if (!locked) store.set { it.copy(emojiFavorites = EmojiExtras.toggleFavorite(EmojiExtras.parseFavorites(it.emojiFavorites), e)) } },
                 )
+                }
             }
         }
         panelHost.removeAllViews()

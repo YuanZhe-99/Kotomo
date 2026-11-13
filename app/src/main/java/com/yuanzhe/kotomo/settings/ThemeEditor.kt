@@ -208,7 +208,7 @@ internal fun ThemesPage(settings: Settings, store: SettingsStore) {
 
     Section(stringResource(R.string.theme_saved)) {
         Inset {
-            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 OutlinedButton(onClick = { naming = true }) { Text(stringResource(R.string.theme_save)) }
                 OutlinedButton(onClick = { export.launch(EXPORT_NAME) }) { Text(stringResource(R.string.theme_export)) }
                 OutlinedButton(onClick = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }) { Text(stringResource(R.string.theme_import)) }
@@ -224,6 +224,9 @@ internal fun ThemesPage(settings: Settings, store: SettingsStore) {
             }
         }
     }
+
+    // The emoji style is its own setting, apart from the colors (PLAN §11.5).
+    EmojiStyleSection()
 
     Section(stringResource(R.string.theme_per_mode)) {
         Inset { Note(stringResource(R.string.theme_per_mode_note)) }

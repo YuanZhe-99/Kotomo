@@ -51,6 +51,7 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 |---|---|---|---|---|---|
 | rime-ice 的 `en_dicts/en_ext.dict.yaml`（发布附件 `en_dicts.zip`）与 `cn_dicts/8105.dict.yaml`（普通文件） | `iDvel/rime-ice` 最新发布（`nightly`）；主机测试锁定 2026.06.30（`6810e891`） | 词库包 `en-ice-tech`；THUOCL 词库包的单字读音 | GPL-3.0 | 转换：读音规范化、权重缩放到 0–100、丢弃无效行 | 与 Kotomo 同为 GPL-3.0；署名作者；转换后的词库包仍为 GPL-3.0 |
 | THUOCL（11 个领域词表） | `thunlp/THUOCL` `master`（2018-11-21 后未变，`a30ce79d`） | 11 个词库包 `zh-thuocl-*` | MIT；README 要求引用 | 读音由 rime-ice 的单字表推出（没有主导读音的多音字丢弃），权重缩放 | 保留 MIT 声明；引用"THUOCL：清华大学开放中文词库"（2016）；读音为 GPL-3.0（rime-ice） |
+| Noto Color Emoji（`2D/fonts/NotoColorEmoji.ttf`） | `googlefonts/noto-emoji` v2026-09-24-unicode18_0（Unicode 18.0），10,730,124 字节，SHA-256 锁定在 `EmojiStyles.kt` 中（仓库没有为它公布校验值） | Emoji 样式包 Noto Color Emoji（PLAN §11.5），只在键盘的 Emoji 面板中显示 | SIL OFL-1.1（`2D/fonts/LICENSE`）；其中的旗帜来自 `third_party/region-flags`，属于公有领域或不受著作权保护 | 无：按发布的原样使用字体文件 | 随附或链接 OFL 文本；不单独出售该字体；在来源页致谢 |
 | fcitx5-pinyin-zhwiki 的 `web-slang-<日期>.dict.yaml` | `felixonmars/fcitx5-pinyin-zhwiki` 最新发布；主机测试锁定 0.3.1（转储 20261018） | 词库包 `zh-web-slang` | CC BY-SA 4.0（维基百科）；转换器 Unlicense | 丢弃拼写出的拉丁字母 | 署名维基百科贡献者并链接许可证；词库包保持 CC BY-SA 4.0 |
 
 ## 来源审查（技术验证 S8）
@@ -64,7 +65,7 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 | SudachiDict | v20261015（2026-10-15） | `LEGAL`：整个发行版为 Apache-2.0；`small_lex` 带 UniDic 的 BSD 式声明；`core_lex` 与 `notcore_lex` 来自 NEologd，`LEGAL` 没有为它单独写许可证，只列出致谢（Hatena、日本邮政、一份车站名表、一份人名数据、网络抓取数据） | 有条件可用：`small_lex` 可用；`core_lex` 与 `notcore_lex` 可按 Apache-2.0 声明使用，其子来源没有逐一核实 | 任何衍生词库包都附带 `LEGAL` 与 UniDic 声明；暂不提供 |
 | THUOCL | `a30ce79d`，未变 | README：研究与商用均免费；仓库标为 MIT | 可用（已提供下载） | 保留声明与引用 |
 | rime-ice | 发布源标签 `nightly`（API 标的发布日期为 2024-05-21，资产每日重建，`build-lock.json` 固定在 2026.06.30） | 按记录为 GPL-3.0；未读许可证文本 | 可用（已提供下载） | GPL-3.0，署名作者 |
-| Noto Emoji | v2026-09-24-unicode18_0（2026-09-24），Unicode 18.0 | 字体 SIL OFL-1.1；工具与"大部分"图像资源 Apache-2.0；旗帜（`third_party/region-flags`）为公有领域或不受版权保护；没有写明署名要求 | 有条件可用：读完"大部分"之外的例外与旗帜文件自己的条款（未读）后，可作样式包 | 附 OFL 与 Apache-2.0 文本；仍在数据来源页署名 |
+| Noto Emoji | v2026-09-24-unicode18_0（2026-09-24），Unicode 18.0 | 字体 SIL OFL-1.1；工具与"大部分"图像资源 Apache-2.0；旗帜（`third_party/region-flags`）为公有领域或不受版权保护；没有写明署名要求 | 字体可用（2026-11-13 读过：README 把字体置于 OFL-1.1 之下，`third_party/region-flags/LICENSE` 说明旗帜属于公有领域或不受著作权保护；“大部分图像资源”的例外涉及图像文件，Kotomo 不使用它们）；作为下载提供 | 随附或链接 OFL 文本；仍在来源页致谢 |
 | Twemoji（jdecked） | v17.0.3（2026-06-01），Emoji 17.0 | 代码 MIT，图形 CC BY 4.0；项目接受在 README、关于或设置页中提及 | 可用 | 在"关于"中署名并链接许可证；Unicode 18.0 新增的 Emoji 缺失，由系统字体补上 |
 | OpenMoji | 17.0.0（2026-04-23） | 按 `PLAN.md` 的记录为 CC BY-SA 4.0；未读 | 有条件可用：相同方式共享会波及改编后的图像；不作为第一个样式包的候选 | 使用前先核实许可证 |
 | Apple 的 Emoji；来源不明的图像 | — | 按记录为 Apple 的许可与 App Review 指南 5.2.5；本次未重读 | 不可用 | 永不分发 |
@@ -99,8 +100,7 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 | mecab-ipadic-neologd 种子（20200910） | Apache-2.0，附 `COPYING` 中的来源致谢 | 日文新词 | 不提供：xz 压缩（Android 没有解码器）、322 万行、2020 年起停更 |
 | mozcdic-ut 地名、人名、jawiki | 公有领域（日本邮政邮编数据）；Apache-2.0；CC BY-SA 4.0 | 日文地名、人名、维基百科标题 | 不提供：bzip2 压缩（Android 没有解码器）；日文词条尚未使用 |
 | SCOWLv2（en-wl/wordlist） | 类 MIT（`Copyright`）；大于 80 号的词表另附 UKACD 条款 | 英文词 | 不提供：发布只有源文件，要用 Python 与 SQLite 才能生成词表；英文词条尚未使用 |
-| Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |
-| Twemoji（jdecked） | 图形 CC BY 4.0，代码 MIT | Emoji 样式包 | 在"关于"中署名 |
+| Twemoji（jdecked） | 图形 CC BY 4.0，代码 MIT | Emoji 样式包 | 尚未提供：jdecked 只发布 PNG 与 SVG 图像，没有字体，而键盘从字体绘制 Emoji；第三方构建的字体需要单独审查 |
 
 ## 永不分发
 

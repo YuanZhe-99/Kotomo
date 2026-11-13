@@ -148,6 +148,19 @@
 不带文件名。导入至多读取 12 MB，按上述规则检查每个值，把图片解码后重新编码为 PNG（长边至多 2048 像素），
 并在使用前显示预览。
 
+## Emoji 样式文件
+
+Emoji 样式（PLAN §11.5）存放在 `files/emoji/style.json`（`ime/EmojiStyles.kt`），字体放在它旁边：
+`noto-color-emoji.ttf`（下载，按锁定的大小与 SHA-256 核对）与 `custom.ttf`（导入：至多 40 MB、
+Android 能加载的 TrueType 或 OpenType 文件）。
+
+| 成员 | 类型 | 含义 |
+|---|---|---|
+| `format_version` | int | 格式版本；本版本写 1，且从不降低更新的值 |
+| `updated_utc_ms` | int | 写入时间，UTC 毫秒 |
+| `style` | string：`system`、`noto`、`custom` | 键盘的 Emoji 面板如何绘制 Emoji；字体缺失的样式按系统字体绘制 |
+| `custom_name` | string，至多 60 个字符 | 导入字体显示的名称 |
+
 ## 键盘记忆文件
 
 键盘自己记住的东西（而不是用户设置的东西）存放在 `files/keyboard/memory.json`（`ime/KeyboardMemory.kt`）：

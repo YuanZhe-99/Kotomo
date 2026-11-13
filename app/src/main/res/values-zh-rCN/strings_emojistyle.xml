@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Emoji style packs (Settings → Themes, PLAN §11.5). -->
+    <string name="emoji_style_title">Emoji 样式</string>
+    <string name="emoji_style_note">只改变 Emoji 在键盘中的样子。你输入的 App 用它自己的 Emoji 字体显示：发送出去的仍是同一个 Emoji。Emoji 样式与键盘的配色主题相互独立。</string>
+    <string name="emoji_style_system">系统</string>
+    <string name="emoji_style_noto">Noto Color Emoji</string>
+    <string name="emoji_style_custom">你的字体</string>
+    <string name="emoji_style_missing">本机上还没有</string>
+    <string name="emoji_noto_download">下载（10.7 MB）</string>
+    <string name="emoji_noto_notice">Noto Color Emoji（Google 的 Noto Emoji 项目，SIL Open Font License 1.1）从 %1$s 下载，使用前先核对。你输入的内容不会发送。</string>
+    <string name="emoji_noto_downloading">正在下载…</string>
+    <string name="emoji_noto_delete">删除 Noto Color Emoji</string>
+    <string name="emoji_noto_failed">下载失败，或文件与预期不符</string>
+    <string name="emoji_custom_import">导入字体…</string>
+    <string name="emoji_custom_notice">只使用你有权使用的字体。它会被复制到 Kotomo 中，只在键盘里显示。</string>
+    <string name="emoji_custom_bad">这个文件不是 Kotomo 能使用的字体</string>
+    <string name="emoji_custom_delete">移除你的字体</string>
+    <string name="emoji_custom_named">你的字体：%1$s</string>
+    <string name="use_noto_emoji">可选的 Emoji 样式，按需下载</string>
+</resources>

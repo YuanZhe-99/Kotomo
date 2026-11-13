@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Emoji style packs (Settings → Themes, PLAN §11.5). -->
+    <string name="emoji_style_title">絵文字のスタイル</string>
+    <string name="emoji_style_note">キーボード内での絵文字の見た目だけを変えます。入力先のアプリは独自の絵文字フォントで表示します。送られるのは同じ絵文字です。絵文字のスタイルはキーボードの配色テーマとは別です。</string>
+    <string name="emoji_style_system">システム</string>
+    <string name="emoji_style_noto">Noto Color Emoji</string>
+    <string name="emoji_style_custom">あなたのフォント</string>
+    <string name="emoji_style_missing">この端末にはまだありません</string>
+    <string name="emoji_noto_download">ダウンロード（10.7 MB）</string>
+    <string name="emoji_noto_notice">Noto Color Emoji（Google の Noto Emoji プロジェクト、SIL Open Font License 1.1）を %1$s からダウンロードし、使う前に照合します。入力した内容は送信しません。</string>
+    <string name="emoji_noto_downloading">ダウンロードしています…</string>
+    <string name="emoji_noto_delete">Noto Color Emoji を削除</string>
+    <string name="emoji_noto_failed">ダウンロードに失敗したか、ファイルが一致しませんでした</string>
+    <string name="emoji_custom_import">フォントをインポート…</string>
+    <string name="emoji_custom_notice">使用する権利のあるフォントだけを使ってください。Kotomo にコピーされ、キーボード内でだけ表示されます。</string>
+    <string name="emoji_custom_bad">このファイルは Kotomo で使えるフォントではありません</string>
+    <string name="emoji_custom_delete">あなたのフォントを削除</string>
+    <string name="emoji_custom_named">あなたのフォント：%1$s</string>
+    <string name="use_noto_emoji">オプションの絵文字スタイル（必要なときにダウンロード）</string>
+</resources>

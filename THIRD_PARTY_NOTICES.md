@@ -43,4 +43,5 @@ Not in the APK: the settings download them from their sources when the person as
 |---|---|---|
 | rime-ice | iDvel and the rime-ice contributors | GPL-3.0 |
 | THUOCL | Copyright (c) 2018 THUNLP. Cite: Han Shiyi, Zhang Yuhui, Ma Yunshan, Tu Cunchao, Guo Zhipeng, Liu Zhiyuan, Sun Maosong. THUOCL: Tsinghua Open Chinese Lexicon. Tsinghua University, 2016. | MIT |
+| Noto Color Emoji (emoji style, downloaded on request) | Copyright 2013 Google LLC; flags from region-flags, public domain or exempt | SIL Open Font License 1.1 |
 | fcitx5-pinyin-zhwiki web slang | Chinese Wikipedia contributors; converted by Felix Yan | CC BY-SA 4.0 (converter Unlicense) |
