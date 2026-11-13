@@ -72,7 +72,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的“更多”面板：不在工具栏上的工具，然后是快捷设置（单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用） | `QuickPanel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Kana.kt` | 12 键滑动布局的平假名（PLAN §10.9）：哪些字符参与组合，以及゛゜小键的循环（清音、浊音、半浊音、小写） | `Kana` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/InlineAutofill.kt` | 空闲工具栏上的自动填充服务内联建议（PLAN §10.10，Android 11 起）：带 Kotomo 胶囊样式的请求，以及由系统绘制的建议条（Kotomo 看不到其中的文字）。只在 debug 构建中的 `fieldtest/FakeAutofillService.kt` 为 `InlineAutofillTest` 提供一条建议 | `InlineAutofill` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除、撤销、重做）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | 通过 ML Kit GenAI 用 Gemini Nano 校对与改写（[ai.md](../ai.md)）：状态、由用户发起的下载、长文字拆分、错误映射 | `GenAi`、`AiAction`、`AiFailure` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`、`AiHandoff.kt` | 写作助手页面（语言、操作、建议、替换、复制）及其与键盘之间的内存交接 | `AiActivity`、`AiHandoff`、`AiRequest` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardColors.kt` | 按所选主题（跟随系统、浅色、深色、Material You）为视图与 Compose 面板提供键盘调色板 | `apply`、`color`、`kbColor` |

@@ -274,6 +274,11 @@ class FieldTypingTest {
                     assertEquals("hel", read(scenario))
                     listOf(EDIT_HOME, EDIT_PASTE).forEach { key(it) }
                     assertEquals("lohel", read(scenario))
+                    // T14-undo (PLAN §10.8): Undo takes the paste back, Redo brings it again.
+                    key(EDIT_UNDO)
+                    assertEquals("hel", read(scenario))
+                    key(EDIT_REDO)
+                    assertEquals("lohel", read(scenario))
                 }
             }
         }
@@ -507,6 +512,8 @@ class FieldTypingTest {
         const val EDIT_CUT = "Cut"
         const val EDIT_HOME = "Line start"
         const val EDIT_PASTE = "Paste"
+        const val EDIT_UNDO = "Undo"
+        const val EDIT_REDO = "Redo"
         const val ATTEMPTS = 3
         const val WAIT_MS = 3000L
         const val READS = 3

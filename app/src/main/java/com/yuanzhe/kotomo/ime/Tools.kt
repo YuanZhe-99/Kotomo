@@ -58,13 +58,15 @@ enum class Tool(val icon: Int, val label: Int) {
     LANGUAGE(R.drawable.ic_tool_language, R.string.tool_language),
     DICTIONARIES(R.drawable.ic_tool_dictionaries, R.string.tool_dictionaries),
     THEMES(R.drawable.ic_tool_themes, R.string.tool_themes),
-    FLOATING(R.drawable.ic_tool_floating, R.string.tool_floating);
+    FLOATING(R.drawable.ic_tool_floating, R.string.tool_floating),
+    UNDO(R.drawable.ic_tool_undo, R.string.tool_undo),
+    REDO(R.drawable.ic_tool_redo, R.string.tool_redo);
 
     companion object {
         /** The tools the person can order and hide: all but More, in their default order. */
         val configurable: List<Tool> = entries - MORE
         /** The tools that start under More rather than on the bar (the bar keeps its designed four). */
-        val offBar: Set<Tool> = setOf(EDIT, EMOJI, LANGUAGE, DICTIONARIES, THEMES, FLOATING)
+        val offBar: Set<Tool> = setOf(EDIT, EMOJI, LANGUAGE, DICTIONARIES, THEMES, FLOATING, UNDO, REDO)
     }
 }
 
@@ -134,7 +136,8 @@ private fun ToolButton(tool: Tool, modifier: Modifier, onClick: () -> Unit) {
 /**
  * Shows the cursor and text-editing keys in the keyboard's place (the Edit tool, PLAN §10.10):
  * arrows, line start and end, a Select switch that makes the arrows extend the selection, and
- * Select all, Cut, Copy, Paste and Delete.
+ * Select all, Cut, Copy, Paste and Delete, and Undo and Redo (PLAN §10.8; the field's own history,
+ * which fields without one ignore).
  * Inputs: [onKey] sends a keycode (with Shift while selecting); [onAction] runs a context menu
  * action id; [onBack] returns to the keys.
  */
@@ -170,6 +173,10 @@ fun EditPanel(onKey: (keycode: Int, select: Boolean) -> Unit, onAction: (Int) ->
                 EditRow {
                     EditKey(stringResource(R.string.edit_paste)) { select = false; onAction(android.R.id.paste) }
                     EditKey(stringResource(R.string.edit_delete), "⌫") { onKey(KeyEvent.KEYCODE_DEL, false) }
+                }
+                EditRow {
+                    EditKey(stringResource(R.string.tool_undo), "↶") { select = false; onAction(android.R.id.undo) }
+                    EditKey(stringResource(R.string.tool_redo), "↷") { select = false; onAction(android.R.id.redo) }
                 }
             }
         }

@@ -36,4 +36,6 @@
     <string name="toolbar_autofill_desc">自动填充服务的建议（保存的密码、地址）显示在候选栏中；Kotomo 看不到其中的内容</string>
     <string name="tool_floating">悬浮键盘</string>
     <string name="float_grip">移动键盘</string>
+    <string name="tool_undo">撤销</string>
+    <string name="tool_redo">重做</string>
 </resources>

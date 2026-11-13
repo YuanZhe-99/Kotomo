@@ -36,4 +36,6 @@
     <string name="toolbar_autofill_desc">自動入力サービスの候補（保存したパスワードや住所）を候補バーに表示します。Kotomo はその内容を見ません</string>
     <string name="tool_floating">フローティングキーボード</string>
     <string name="float_grip">キーボードを移動</string>
+    <string name="tool_undo">元に戻す</string>
+    <string name="tool_redo">やり直し</string>
 </resources>

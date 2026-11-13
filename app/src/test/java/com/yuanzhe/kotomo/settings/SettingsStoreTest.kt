@@ -253,7 +253,7 @@ class SettingsStoreTest {
         withData { data, _ ->
             val read = SettingsFormat.read(data.data.first())
             assertEquals(wanted.toolOrder, read.toolOrder)
-            assertEquals(listOf(Tool.EDIT, Tool.CLIPBOARD, Tool.SETTINGS, Tool.EMOJI, Tool.LANGUAGE, Tool.DICTIONARIES, Tool.THEMES, Tool.FLOATING), read.tools)
+            assertEquals(listOf(Tool.EDIT, Tool.CLIPBOARD, Tool.SETTINGS, Tool.EMOJI, Tool.LANGUAGE, Tool.DICTIONARIES, Tool.THEMES, Tool.FLOATING, Tool.UNDO, Tool.REDO), read.tools)
             assertFalse(Tool.MORE in read.toolOrder)
         }
     }
@@ -272,8 +272,8 @@ class SettingsStoreTest {
             assertEquals(listOf(Tool.SETTINGS, Tool.CLIPBOARD, Tool.TRANSLATE), read.tools)
             assertEquals(setOf(Tool.AI) + Tool.offBar, read.hiddenTools)
             SettingsStore(data, scope).update { it.copy(hiddenTools = it.hiddenTools - Tool.EDIT) }
-            assertEquals("settings,clipboard,ai,translate,edit,emoji,language,dictionaries,themes,floating,hologram", data.data.first()[order])
-            assertEquals("ai,emoji,language,dictionaries,themes,floating", data.data.first()[hidden])
+            assertEquals("settings,clipboard,ai,translate,edit,emoji,language,dictionaries,themes,floating,undo,redo,hologram", data.data.first()[order])
+            assertEquals("ai,emoji,language,dictionaries,themes,floating,undo,redo", data.data.first()[hidden])
         }
     }
 

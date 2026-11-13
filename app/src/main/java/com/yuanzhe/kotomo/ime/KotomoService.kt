@@ -1004,6 +1004,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             Tool.EDIT -> showEditPanel()
             Tool.EMOJI -> showEmoji()
             Tool.FLOATING -> store.set { it.copy(floating = !it.floating) }
+            // The field's own undo history (PLAN §10.8); the composition is finished first.
+            Tool.UNDO, Tool.REDO -> {
+                commitComposition()
+                currentInputConnection?.let { TextEditing.action(it, if (tool == Tool.UNDO) android.R.id.undo else android.R.id.redo) }
+            }
             Tool.LANGUAGE -> settings.modes.let { modes ->
                 showKeyboard()
                 switchMode(modes[(modes.indexOf(mode) + 1) % modes.size], 0)
