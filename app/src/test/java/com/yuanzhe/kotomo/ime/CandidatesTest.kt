@@ -76,14 +76,30 @@ class CandidatesTest {
     }
 
     @Test
+    fun everyModePlacesEmojiByTheirWeight() { // PLAN §10.6: their own weight, after the words by default
+        val texts = listOf("一", "二", "三", "四", "五", "六")
+        val at = Candidates.emojiPosition(30)
+        // Chinese: the letters as typed stay after the two best; the emoji come after five words.
+        val chinese = Candidates.chinese(texts, "yi", listOf("🙂"), at).map { it.first }
+        assertEquals(listOf("一", "二", "yi", "三", "四", "五", "🙂", "六"), chinese)
+        // At 100 they come right after the two best, as before; fewer words: they follow them all.
+        assertEquals(listOf("一", "二", "yi", "🙂", "三"), Candidates.chinese(texts.take(3), "yi", listOf("🙂"), Candidates.emojiPosition(100)).map { it.first })
+        assertEquals(listOf("一", "🙂"), Candidates.chinese(listOf("一"), "", listOf("🙂"), at).map { it.first })
+        // English and Japanese share withEmoji.
+        assertEquals(listOf("a", "b", "c", "d", "e", "🙂", "f"), Candidates.withEmoji(listOf("a", "b", "c", "d", "e", "f"), listOf("🙂"), at))
+        // Negative: no emoji, nothing moves.
+        assertEquals(texts, Candidates.chinese(texts, "", emptyList(), at).map { it.first })
+    }
+
+    @Test
     fun mixedKeepsTheEnginesOrderAndPlacesEmojiByWeight() { // T04, PLAN §2.3
         val texts = listOf("一", "二", "三", "四", "五", "六")
         // The default emoji weight (30) puts emoji after five candidates; the letters come last.
-        val list = Candidates.mixed(texts, "yi er", listOf("🙂"), Candidates.mixedEmojiPosition(30))
+        val list = Candidates.mixed(texts, "yi er", listOf("🙂"), Candidates.emojiPosition(30))
         assertEquals(listOf("一", "二", "三", "四", "五", "🙂", "六", "yi er"), list.map { it.first })
         assertEquals(listOf(0, 1, 2, 3, 4, Candidates.MIXED_EMOJI, 5, Candidates.MIXED_TYPED), list.map { it.second })
-        assertEquals(2, Candidates.mixedEmojiPosition(100))
-        assertEquals(7, Candidates.mixedEmojiPosition(0))
+        assertEquals(2, Candidates.emojiPosition(100))
+        assertEquals(7, Candidates.emojiPosition(0))
         // Fewer candidates than the position: the emoji follow them all.
         assertEquals(listOf("一", "🙂", "yi"), Candidates.mixed(listOf("一"), "yi", listOf("🙂"), 5).map { it.first })
     }

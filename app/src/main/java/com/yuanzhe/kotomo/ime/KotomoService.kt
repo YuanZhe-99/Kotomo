@@ -1715,7 +1715,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         rimeCandidates = state.candidates
         val emoji = emojiFor(state.preedit)
         emojiShown = emoji.toSet()
-        val entries = Candidates.chinese(state.candidates.map { it.text }, state.input, emoji)
+        val entries = Candidates.chinese(state.candidates.map { it.text }, state.input, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji))
         chineseCandidates = entries.map { it.first } + idiomRest
         // Completions are not librime's: picking one commits it as it is (index −1).
         rimeIndexes = entries.map { it.second } + idiomRest.map { -1 }
@@ -2224,7 +2224,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         emojiShown = emoji.toSet()
         val entries = Candidates.mixed(
             snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji,
-            Candidates.mixedEmojiPosition(settings.mixed.weightEmoji),
+            Candidates.emojiPosition(settings.mixed.weightEmoji),
         )
         mixedIndexes = entries.map { it.second }
         candidates = entries.map { it.first }
@@ -2847,7 +2847,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /** Puts [emoji] into [list] at the third place (after the most likely words), marking them. */
     private fun withEmoji(list: List<String>, emoji: List<String>): List<String> {
         emojiShown = emoji.toSet()
-        return Candidates.withEmoji(list, emoji)
+        return Candidates.withEmoji(list, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji))
     }
 
     /** Says why Chinese mode cannot convert yet (dictionary being prepared or failed), or null. */

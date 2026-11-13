@@ -154,18 +154,20 @@ internal object Candidates {
 
     /**
      * Lists Chinese candidates: librime's two best, then the letters as typed (English typed in
-     * Chinese mode, PLAN §8.2), then the emoji, then the rest of librime's candidates.
+     * Chinese mode, PLAN §8.2), then the emoji after the first [emojiPosition] of librime's
+     * candidates ([emojiPosition], PLAN §10.6), with the rest of librime's around them.
      * Inputs: [texts] are librime's candidates, best first; [typed] is librime's raw input.
      * Returns: each entry's text with where it comes from: its index in [texts], [TYPED] or
      * [EMOJI]; no text twice. The typed letters are left out when they are empty or are already
      * one of librime's candidates.
      */
-    fun chinese(texts: List<String>, typed: String, emoji: List<String>): List<Pair<String, Int>> {
-        val head = texts.withIndex().take(EMOJI_POSITION).map { it.value to it.index }
-        val tail = texts.withIndex().drop(EMOJI_POSITION).map { it.value to it.index }
+    fun chinese(texts: List<String>, typed: String, emoji: List<String>, emojiPosition: Int = EMOJI_POSITION): List<Pair<String, Int>> {
+        val indexed = texts.withIndex().map { it.value to it.index }
+        val at = maxOf(emojiPosition, EMOJI_POSITION)
         val letters = if (typed.isEmpty() || typed in texts) emptyList() else listOf(typed to TYPED)
         val seen = HashSet<String>()
-        return (head + letters + emoji.map { it to EMOJI } + tail).filter { seen.add(it.first) }
+        return (indexed.take(EMOJI_POSITION) + letters + indexed.drop(EMOJI_POSITION).take(at - EMOJI_POSITION) +
+            emoji.map { it to EMOJI } + indexed.drop(at)).filter { seen.add(it.first) }
     }
 
     /** Puts [emoji] into [list] after its first [position] entries, without duplicates. */
@@ -208,11 +210,12 @@ internal object Candidates {
     }
 
     /**
-     * Places emoji in Mixed mode by the emoji weight (`mixed.weight_emoji`, 0–100): after the two
-     * best candidates at 100, one place later for every 20 points below, so at the default of 30
-     * they follow the cross-language candidates as in PLAN §2.3's examples.
+     * Places emoji by the emoji weight (`mixed.weight_emoji`, 0–100) in every mode (PLAN §10.6:
+     * their own weight, after the words by default): after the two best candidates at 100, one
+     * place later for every 20 points below, so at the default of 30 they follow the
+     * cross-language candidates as in PLAN §2.3's examples.
      */
-    fun mixedEmojiPosition(weight: Int): Int = EMOJI_POSITION + (100 - weight.coerceIn(0, 100)) / 20
+    fun emojiPosition(weight: Int): Int = EMOJI_POSITION + (100 - weight.coerceIn(0, 100)) / 20
 
     /**
      * Builds the spans that choosing [surface] for segment [index] asks Mozc to convert: the

@@ -165,7 +165,7 @@ class ConversionCorpusTest {
             Rime.clear()
             Rime.setInput(line.input)
             val texts = Rime.getCandidates(Candidates.CHINESE_LIMIT).map { it.text }
-            Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition())).map { it.first }
+            Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition()), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT)).map { it.first }
         }
         Mode.MIXED -> {
             useRules(line.fuzzy)
@@ -182,7 +182,7 @@ class ConversionCorpusTest {
             check(snapshot.generation == generation && snapshot.input == line.input) { "${line.id}: the snapshot answers another request" }
             Candidates.mixed(
                 snapshot.candidates.map { it.text }, snapshot.input, Candidates.emoji(emoji, line.input),
-                Candidates.mixedEmojiPosition(MIXED_EMOJI_WEIGHT),
+                Candidates.emojiPosition(MIXED_EMOJI_WEIGHT),
             ).map { it.first }
         }
         Mode.JAPANESE -> {
@@ -197,13 +197,13 @@ class ConversionCorpusTest {
             c.clear(++generation)
             c.options(++generation, Core.Options())
             val own = Candidates.japanese(segments, predicted)
-            Candidates.withEmoji(Candidates.japaneseWithCross(own, crossed, reading).map { it.text }, Candidates.emoji(emoji, line.input))
+            Candidates.withEmoji(Candidates.japaneseWithCross(own, crossed, reading).map { it.text }, Candidates.emoji(emoji, line.input), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT))
         }
         Mode.ENGLISH -> if (line.input.isEmpty() && line.context.isEmpty()) {
             emptyList()
         } else {
             val words = english.suggestions(line.input, previous = line.context.ifEmpty { null }).map { it.word }
-            Candidates.withEmoji(Candidates.english(line.input, words), Candidates.emoji(emoji, line.input))
+            Candidates.withEmoji(Candidates.english(line.input, words), Candidates.emoji(emoji, line.input), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT))
         }
         // The PC layout converts nothing; no corpus line uses it.
         Mode.PC -> emptyList()
