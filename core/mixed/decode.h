@@ -21,7 +21,7 @@ struct Path {
 ///   number when it may not. Inputs: `previous` is null at the start of the input.
 /// Notes: an English word kept in a Chinese or Japanese sentence pays for it here; a change of
 ///   the language typed pays Costs::language_switch; a particle follows a Japanese word or kana,
-///   never the start or another particle.
+///   never the start or another particle. A locked piece costs nothing on either side.
 int32_t Transition(const Edge* previous, const Edge& next, Lang target, const Costs& costs);
 
 /// Finds the cheapest whole paths for one target language.

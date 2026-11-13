@@ -23,7 +23,9 @@ int32_t Transition(const Edge* previous, const Edge& next, Lang target, const Co
     if (target == Lang::kChinese) cost += costs.english_in_chinese;
     if (target == Lang::kJapanese) cost += costs.english_in_japanese;
   }
-  if (previous != nullptr && Typed(previous->kind) != Typed(next.kind)) {
+  const bool locked = next.kind == EdgeKind::kLocked ||
+                      (previous != nullptr && previous->kind == EdgeKind::kLocked);
+  if (!locked && previous != nullptr && Typed(previous->kind) != Typed(next.kind)) {
     cost += costs.language_switch;
   }
   return cost;

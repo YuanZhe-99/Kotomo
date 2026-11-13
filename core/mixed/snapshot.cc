@@ -23,6 +23,8 @@ std::string Encode(const Snapshot& snapshot) {
   w.Int(snapshot.stage);
   w.Str(snapshot.input);
   w.Int(snapshot.cursor);
+  w.Int(snapshot.focus_begin);
+  w.Int(snapshot.focus_end);
   w.Str(snapshot.commit);
   const uint16_t candidates = Count(snapshot.candidates.size());
   w.Int(candidates);
@@ -42,7 +44,7 @@ std::string Encode(const Snapshot& snapshot) {
       w.Str(piece.reading);
       w.Int(static_cast<uint8_t>(piece.typed));
       w.Int(static_cast<uint8_t>(piece.origin));
-      w.Int(static_cast<uint8_t>(piece.pinned ? 1 : 0));
+      w.Int(static_cast<uint8_t>((piece.pinned ? 1 : 0) | (piece.locked ? 2 : 0)));
     }
   }
   return out;
@@ -56,7 +58,8 @@ std::optional<Snapshot> Decode(std::string_view bytes) {
   uint16_t candidates = 0;
   if (!r.Int(&version) || version != kContractVersion || !r.Int(&s.generation) ||
       !r.Int(&s.stage) || !r.Str(&s.input) || !r.Int(&s.cursor) || s.cursor > s.input.size() ||
-      !r.Str(&s.commit) || !r.Int(&candidates)) {
+      !r.Int(&s.focus_begin) || !r.Int(&s.focus_end) || s.focus_begin > s.focus_end ||
+      s.focus_end > s.input.size() || !r.Str(&s.commit) || !r.Int(&candidates)) {
     return std::nullopt;
   }
   s.candidates.resize(candidates);
@@ -74,12 +77,13 @@ std::optional<Snapshot> Decode(std::string_view bytes) {
       if (!r.Int(&piece.begin) || !r.Int(&piece.end) || piece.begin > piece.end ||
           piece.end > s.input.size() || !r.Str(&piece.text) || !r.Str(&piece.reading) ||
           !r.Int(&typed) || typed > 2 || !r.Int(&origin) || origin > 5 || !r.Int(&pinned) ||
-          pinned > 1) {
+          pinned > 3) {
         return std::nullopt;
       }
       piece.typed = static_cast<Lang>(typed);
       piece.origin = static_cast<Origin>(origin);
-      piece.pinned = pinned == 1;
+      piece.pinned = pinned & 1;
+      piece.locked = pinned & 2;
     }
   }
   if (!r.Done()) return std::nullopt;

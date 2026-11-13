@@ -30,6 +30,12 @@ void FinishChinese(const Input& input, const Path& path, Engines& engines, const
   std::vector<ChineseWord> whole_input_run;  // librime's list when one run is the whole input
   for (size_t i = 0; i < path.edges.size();) {
     const Edge& first = *path.edges[i];
+    if (first.locked != nullptr) {
+      sentence.pieces.push_back(*first.locked);
+      sentence.text += first.text;
+      ++i;
+      continue;
+    }
     if (first.kind != EdgeKind::kPinyin) {
       sentence.pieces.push_back(MakePiece(input, first.begin, first.end, first.text,
                                           Lang::kEnglish, Origin::kEnglish, false));
@@ -72,8 +78,10 @@ void FinishEnglish(const Input& input, const Path& path, std::vector<Candidate>*
   for (const Edge* edge : path.edges) {
     if (!sentence.text.empty()) sentence.text += ' ';
     sentence.text += edge->text;
-    sentence.pieces.push_back(MakePiece(input, edge->begin, edge->end, edge->text, Lang::kEnglish,
-                                        Origin::kEnglish, false));
+    sentence.pieces.push_back(edge->locked != nullptr
+                                  ? *edge->locked
+                                  : MakePiece(input, edge->begin, edge->end, edge->text,
+                                              Lang::kEnglish, Origin::kEnglish, false));
   }
   out->push_back(std::move(sentence));
 }

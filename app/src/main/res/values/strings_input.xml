@@ -48,6 +48,8 @@
     <string name="segment_edit">Segment</string>
     <string name="segment_shorter">Shorter</string>
     <string name="segment_longer">Longer</string>
+    <string name="segment_commit_here">Commit up to here</string>
+    <string name="segment_restore">Restore input</string>
     <string name="segment_whole">Whole sentence</string>
     <string name="segment_position">Segment %1$d of %2$d · %3$s</string>
 </resources>

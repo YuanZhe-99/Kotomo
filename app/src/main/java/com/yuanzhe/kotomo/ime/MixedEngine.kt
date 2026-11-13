@@ -28,6 +28,8 @@ internal class MixedEngine {
     private var options: Core.Options? = null
     private var held = ""
     private var last: Snapshot? = null
+    /** The engine's last answer listed one span's readings, so [last] must be asked for again. */
+    private var spanShown = false
     private var generation = 0L
 
     /** Whether a coordinator is open (false before [attach], or when its library did not open). */
@@ -62,6 +64,57 @@ internal class MixedEngine {
         options = null
         held = ""
         last = null
+        spanShown = false
+    }
+
+    /**
+     * Lists the readings of the span [begin, end) of [raw] (PLAN §5.6).
+     * Returns: a snapshot whose candidates stand for that span ([Snapshot.focused]); null without
+     * a coordinator or when the span cuts a piece the person locked.
+     */
+    fun alternatives(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options, begin: Int, end: Int): Snapshot? {
+        type(raw, touches, wanted) ?: return null
+        val span = core?.alternatives(++generation, begin, end) ?: return null
+        if (span.focused) spanShown = true else last = span
+        return span.takeIf { it.focused }
+    }
+
+    /**
+     * Locks the span of [span] (from [alternatives]) to its candidate [index], or to the letters
+     * as typed for [Core.AS_TYPED], and converts the rest around it.
+     * Returns: the snapshot of the whole composition; unchanged when the engine has answered
+     * another request since [span].
+     */
+    fun lock(span: Snapshot, index: Int): Snapshot? = answer(core?.lock(++generation, span.generation, index))
+
+    /** Drops every locked piece of [raw]: it converts afresh. Returns: its snapshot. */
+    fun restore(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options): Snapshot? {
+        type(raw, touches, wanted) ?: return null
+        return answer(core?.restore(++generation))
+    }
+
+    /**
+     * Commits the best candidate's pieces of [raw] up to byte [end], a piece boundary inside it.
+     * Returns: a snapshot whose [Snapshot.commit] is their text and whose input is the rest,
+     * still composed with its locks; one with an empty commit when the boundary does not hold.
+     */
+    fun commitPrefix(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options, end: Int): Snapshot? {
+        val shown = type(raw, touches, wanted) ?: return null
+        return answer(core?.commitPrefix(++generation, shown.generation, 0, end))
+    }
+
+    /**
+     * Takes back the last commit. Returns: the snapshot of the composition it brought back, with
+     * its locked pieces; one with an empty input when there is nothing to take back.
+     */
+    fun undo(): Snapshot? = answer(core?.undo(++generation))
+
+    /** Records an answer about the whole composition as the engine's state. */
+    private fun answer(snapshot: Snapshot?): Snapshot? {
+        last = snapshot
+        held = snapshot?.input.orEmpty()
+        spanShown = false
+        return snapshot
     }
 
     /**
@@ -75,9 +128,11 @@ internal class MixedEngine {
      */
     fun type(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options): Snapshot? {
         val c = core ?: return null
-        if (options != wanted) {
+        if (options != wanted || spanShown) {
+            // Sending the options changes nothing else and answers with the whole composition.
             last = c.options(++generation, wanted)
             options = wanted
+            spanShown = false
         }
         val current = last
         val snapshot = when {

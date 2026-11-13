@@ -169,6 +169,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /** Main thread: for each shown Mixed candidate, its index in the snapshot, or a negative marker. */
     private var mixedIndexes = emptyList<Int>()
     /** Main thread: the engine may still hold a Mixed composition that the keyboard dropped. */
+    /** Main thread: the piece of the best Mixed candidate chosen in the segment panel, or null. */
+    private var mixedFocus: Int? = null
+    /** Main thread: that piece's readings as the engine listed them, once they arrived. */
+    private var mixedSpan: Snapshot? = null
+    /** Main thread: the text the last Mixed commit put in the field, until another key is pressed. */
+    private var mixedUndo: String? = null
     private var mixedHeld = false
     /** Main thread: the engine thread is deciding what a Mixed commit commits; keys wait in line. */
     private var mixedAwaiting = false
@@ -639,6 +645,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             return
         }
         if (mode == Mode.JAPANESE && !direct && japaneseSegments.isNotEmpty()) return showSegments()
+        if (mode == Mode.MIXED && !direct && mixedPieces().isNotEmpty()) return showSegments()
         val height = keyboard.height
         val panel = candidatesPanel ?: ComposeView(this).also { view ->
             candidatesPanel = view
@@ -1079,6 +1086,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val ic = currentInputConnection ?: return
         aiUndo = null
         details = null
+        // Backspace right after a Mixed commit takes it back (PLAN §5.6); any other key ends that.
+        val undo = mixedUndo
+        mixedUndo = null
+        if (undo != null && action == KeyAction.Backspace && composing.isEmpty() && mode == Mode.MIXED && !direct &&
+            ic.getTextBeforeCursor(undo.length, 0)?.toString() == undo
+        ) {
+            return undoMixed(undo)
+        }
         emojiSearch?.let { if (searchKey(action, it)) return }
         if (mode == Mode.PC && pc.onKey(action, ic, downTime)) {
             refresh(downTime)
@@ -1666,24 +1681,113 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             main.post {
                 Probe.engineWork.add(work)
                 if (!takes(gen, 1)) return@post
-                mixedSnapshot = snapshot
-                val emoji = emojiFor(raw)
-                emojiShown = emoji.toSet()
-                val entries = Candidates.mixed(
-                    snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji,
-                    Candidates.mixedEmojiPosition(settings.mixed.weightEmoji),
-                )
-                mixedIndexes = entries.map { it.second }
-                candidates = entries.map { it.first }
-                // `mixed.cross.readings`: how a cross-language Japanese candidate is read.
-                val readings = if (settings.mixed.cross.readings) {
-                    mixedIndexes.map { i -> snapshot?.candidates?.getOrNull(i)?.let(Candidates::mixedReading).orEmpty() }
-                } else {
-                    emptyList()
-                }
-                candidateBar.show(candidates, downTime, readings)
-                shownCandidates.value = candidates
+                showMixed(snapshot, raw, downTime)
             }
+        }
+    }
+
+    /**
+     * Shows a Mixed snapshot of the composition [raw]: its candidates with emoji and the letters
+     * as typed, the readings of cross-language Japanese candidates, and the segment panel's
+     * pieces (main thread).
+     */
+    private fun showMixed(snapshot: Snapshot?, raw: String, downTime: Long) {
+        mixedSnapshot = snapshot
+        val emoji = emojiFor(raw)
+        emojiShown = emoji.toSet()
+        val entries = Candidates.mixed(
+            snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji,
+            Candidates.mixedEmojiPosition(settings.mixed.weightEmoji),
+        )
+        mixedIndexes = entries.map { it.second }
+        candidates = entries.map { it.first }
+        // `mixed.cross.readings`: how a cross-language Japanese candidate is read.
+        val readings = if (settings.mixed.cross.readings) {
+            mixedIndexes.map { i -> snapshot?.candidates?.getOrNull(i)?.let(Candidates::mixedReading).orEmpty() }
+        } else {
+            emptyList()
+        }
+        candidateBar.show(candidates, downTime, readings)
+        shownCandidates.value = candidates
+        mixedSpan = null
+        // A piece stays chosen only while the segment panel is open on it.
+        val open = ::panelHost.isInitialized && panelHost.getChildAt(0) === segmentPanel
+        mixedFocus = mixedFocus?.takeIf { open && it in mixedPieces().indices }
+        updateSegmentPanel()
+        if (mixedFocus != null) focusSegment(mixedFocus)
+    }
+
+    /** The pieces of the best Mixed candidate, which the segment panel shows as chips. */
+    private fun mixedPieces() = mixedSnapshot?.candidates?.firstOrNull()?.pieces.orEmpty()
+
+    /**
+     * Runs one of the engine's local-change requests for the Mixed composition on the engine
+     * thread and shows its answer if nothing was typed meanwhile (PLAN §5.6).
+     * Inputs: [ask] gets the composition, its touches and the options, on the engine thread;
+     * [then] runs on the main thread before the answer is shown and returns the composition it
+     * now stands for (null to drop the answer).
+     */
+    private fun askMixed(
+        ask: (String, List<Pair<Int, Int>?>, Core.Options) -> Snapshot?,
+        then: (Snapshot, String) -> String? = { _, raw -> raw },
+    ) {
+        val raw = composing.toString()
+        val touches = taps.toList()
+        val options = mixedOptions()
+        val gen = ++generation
+        val serial = fieldSerial
+        engine.post {
+            attachMixed()
+            val snapshot = runCatching { ask(raw, touches, options) }.getOrNull()
+            main.post {
+                if (snapshot == null || serial != fieldSerial || composing.toString() != raw || !takes(gen, 1)) return@post
+                val now = then(snapshot, raw) ?: return@post
+                showMixed(snapshot, now, 0)
+            }
+        }
+    }
+
+    /**
+     * Takes back the Mixed commit that put [text] before the cursor: the engine brings the
+     * composition and its locked pieces back, then the text leaves the field and the letters are
+     * composed again. Keys pressed meanwhile wait, as during a commit.
+     */
+    private fun undoMixed(text: String) {
+        val serial = fieldSerial
+        mixedAwaiting = true
+        engine.post {
+            val snapshot = runCatching { attachMixed(); mixed.undo() }.getOrNull()
+            main.post {
+                mixedAwaiting = false
+                val ic = currentInputConnection
+                if (snapshot != null && snapshot.input.isNotEmpty() && serial == fieldSerial && ic != null &&
+                    ic.getTextBeforeCursor(text.length, 0)?.toString() == text
+                ) {
+                    // One edit for the field: a cursor report between the two steps would read
+                    // as the cursor leaving the composition (onUpdateSelection).
+                    ic.beginBatchEdit()
+                    ic.deleteSurroundingText(text.length, 0)
+                    composing.append(snapshot.input)
+                    repeat(snapshot.input.length) { taps += null }
+                    ic.setComposingText(composing, 1)
+                    ic.endBatchEdit()
+                    mixedHeld = true
+                    takes(++generation, 1)
+                    showMixed(snapshot, snapshot.input, 0)
+                } else if (serial == fieldSerial) {
+                    // Nothing to take back: the key deletes as usual.
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                }
+                drainQueuedKeys()
+            }
+        }
+    }
+
+    /** Lets the keys that waited for the engine act, in order. */
+    private fun drainQueuedKeys() {
+        while (!mixedAwaiting && queuedKeys.isNotEmpty()) {
+            val (action, longPress, downTime) = queuedKeys.removeFirst()
+            onKey(action, longPress, downTime)
         }
     }
 
@@ -1704,6 +1808,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         taps.clear()
         mixedSnapshot = null
         mixedIndexes = emptyList()
+        mixedFocus = null
+        mixedSpan = null
         mixedHeld = false
         mixedAwaiting = true
         engine.post {
@@ -1717,10 +1823,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 if (serial == fieldSerial) currentInputConnection?.commitText(text + then, 1) else queuedKeys.clear()
                 previousWord = null
                 refresh(0)
-                while (!mixedAwaiting && queuedKeys.isNotEmpty()) {
-                    val (action, longPress, downTime) = queuedKeys.removeFirst()
-                    onKey(action, longPress, downTime)
-                }
+                // Backspace as the very next key takes this commit back.
+                mixedUndo = text.takeIf { serial == fieldSerial && then.isEmpty() && it.isNotEmpty() }
+                drainQueuedKeys()
             }
         }
     }
@@ -1875,6 +1980,28 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** Rebuilds what the segment panel shows from the current conversion. */
     private fun updateSegmentPanel() {
+        if (mode == Mode.MIXED) {
+            val pieces = mixedPieces()
+            val focus = mixedFocus?.takeIf { it in pieces.indices }
+            val raw = composing.toString()
+            segmentView.value = if (pieces.isEmpty()) null else SegmentView(
+                texts = pieces.map { it.text },
+                readings = pieces.map { it.reading },
+                focus = focus,
+                // A piece lists its readings and its letters as typed; the whole sentence lists
+                // the engine's candidates.
+                candidates = if (focus == null) {
+                    mixedSnapshot?.candidates?.map { it.text }.orEmpty()
+                } else {
+                    mixedChoices(pieces[focus], raw).map { it.first }
+                },
+                shorter = focus != null && focus < pieces.size - 1,
+                longer = pieces.any { it.locked },
+                shorterLabel = R.string.segment_commit_here,
+                longerLabel = R.string.segment_restore,
+            )
+            return
+        }
         val segments = japaneseSegments
         val focus = segmentFocus?.takeIf { it in segments.indices }
         segmentView.value = if (segments.isEmpty()) null else SegmentView(
@@ -1895,7 +2022,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             view.setContent {
                 SegmentPanel(
                     view = segmentView,
-                    onFocus = { segmentFocus = it; updateSegmentPanel() },
+                    onFocus = ::focusSegment,
                     onPick = ::pickSegment,
                     onResize = ::resizeSegment,
                     onBack = ::showKeyboard,
@@ -1903,9 +2030,98 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
         }
         segmentFocus = segmentFocus?.takeIf { it in japaneseSegments.indices }
+        mixedFocus = null
         updateSegmentPanel()
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
+    /**
+     * Chooses the segment the panel lists candidates for (null for the whole sentence). In Mixed
+     * mode it asks the engine for that piece's readings in every language, which arrive a moment
+     * later; until then the panel lists the letters as typed.
+     */
+    private fun focusSegment(index: Int?) {
+        if (mode != Mode.MIXED) {
+            segmentFocus = index
+            return updateSegmentPanel()
+        }
+        mixedFocus = index
+        mixedSpan = null
+        updateSegmentPanel()
+        val piece = mixedPieces().getOrNull(index ?: return) ?: return
+        val raw = composing.toString()
+        val touches = taps.toList()
+        val options = mixedOptions()
+        engine.post {
+            attachMixed()
+            val span = mixed.alternatives(raw, touches, options, piece.begin, piece.end)
+            main.post {
+                if (composing.toString() != raw || mixedFocus != index || mode != Mode.MIXED) return@post
+                mixedSpan = span
+                updateSegmentPanel()
+            }
+        }
+    }
+
+    /**
+     * Lists what the segment panel offers for [piece] of the composition [raw]: each reading of
+     * the engine's answer with its index there, and the letters as typed ([Core.AS_TYPED]) in
+     * second place, where they stay on screen however many readings there are; when a reading
+     * already is those letters, it stands for them. Until the answer arrives, the letters alone.
+     */
+    private fun mixedChoices(piece: com.yuanzhe.kotomo.engine.Piece, raw: String): List<Pair<String, Int>> {
+        val typed = raw.substring(piece.begin.coerceAtMost(raw.length), piece.end.coerceAtMost(raw.length))
+        val readings = mixedSpan?.candidates.orEmpty().mapIndexed { i, c -> c.text to i }.distinctBy { it.first }
+        if (readings.any { it.first == typed }) return readings
+        return readings.take(1) + (typed to Core.AS_TYPED) + readings.drop(1)
+    }
+
+    /**
+     * Chooses candidate [index] of the Mixed segment panel: for the whole sentence it commits;
+     * for a piece it locks the piece to that reading, or to its letters as typed,
+     * and the engine converts the rest around it, never rewriting a locked piece (PLAN §5.6).
+     */
+    private fun pickMixedPiece(index: Int) {
+        val focus = mixedFocus
+        if (focus == null) {
+            val text = mixedSnapshot?.candidates?.getOrNull(index)?.text ?: return
+            if (mixedSnapshot?.input != composing.toString()) return
+            showKeyboard()
+            return commitMixed(index, text)
+        }
+        val span = mixedSpan ?: return
+        val piece = mixedPieces().getOrNull(focus) ?: return
+        val choice = mixedChoices(piece, composing.toString()).getOrNull(index)?.second ?: return
+        mixedFocus = null
+        askMixed({ _, _, _ -> mixed.lock(span, choice) })
+    }
+
+    /**
+     * Commits the best Mixed candidate's pieces up to the chosen one; the rest stays composed
+     * with its locked pieces, and typing goes on after it (PLAN §5.6).
+     */
+    private fun commitMixedPrefix() {
+        val piece = mixedPieces().getOrNull(mixedFocus ?: return) ?: return
+        mixedFocus = null
+        askMixed({ raw, touches, options -> mixed.commitPrefix(raw, touches, options, piece.end) }) { snapshot, _ ->
+            if (snapshot.commit.isNotEmpty()) {
+                val ic = currentInputConnection ?: return@askMixed null
+                ic.beginBatchEdit() // one edit, as in undoMixed
+                ic.commitText(snapshot.commit, 1)
+                val rest = snapshot.input
+                val kept = taps.takeLast(rest.length)
+                composing.setLength(0)
+                composing.append(rest)
+                taps.clear()
+                taps += kept
+                repeat(rest.length - kept.size) { taps += null }
+                ic.setComposingText(composing, 1)
+                ic.endBatchEdit()
+                previousWord = null
+            }
+            composing.toString()
+        }
     }
 
     /**
@@ -1913,6 +2129,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * candidate bar; for a segment it pins that segment and converts the rest again around it.
      */
     private fun pickSegment(index: Int) {
+        if (mode == Mode.MIXED) return pickMixedPiece(index)
         val focus = segmentFocus ?: return run { showKeyboard(); pick(index) }
         val segment = japaneseSegments.getOrNull(focus) ?: return
         val surface = Candidates.segment(segment).getOrNull(index)?.text ?: return
@@ -1921,6 +2138,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** Shrinks (−1) or grows (+1) the segment being edited by one character and converts again. */
     private fun resizeSegment(delta: Int) {
+        if (mode == Mode.MIXED) return if (delta < 0) commitMixedPrefix() else askMixed({ raw, touches, options -> mixed.restore(raw, touches, options) })
         val focus = segmentFocus ?: return
         reconvert(Candidates.resize(japaneseSegments, focus, delta) ?: return, focus)
     }

@@ -28,11 +28,23 @@ std::string Encode(const Request& request) {
       for (const int8_t weight : request.weight) w.Int(weight);
       break;
     case Command::kSelect:
+    case Command::kLock:
       w.Int(request.shown);
       w.Int(request.index);
       break;
+    case Command::kAlternatives:
+      w.Int(request.begin);
+      w.Int(request.end);
+      break;
+    case Command::kCommitPrefix:
+      w.Int(request.shown);
+      w.Int(request.index);
+      w.Int(request.end);
+      break;
     case Command::kBackspace:
     case Command::kClear:
+    case Command::kRestore:
+    case Command::kUndo:
       break;
   }
   return out;
@@ -45,7 +57,7 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
   uint8_t command = 0;
   Request request;
   if (!r.Int(&version) || version != kContractVersion || !r.Int(&request.generation) ||
-      !r.Int(&command) || command > static_cast<uint8_t>(Command::kSelect)) {
+      !r.Int(&command) || command > static_cast<uint8_t>(Command::kUndo)) {
     return std::nullopt;
   }
   request.command = static_cast<Command>(command);
@@ -67,10 +79,19 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
       }
       break;
     case Command::kSelect:
+    case Command::kLock:
       ok = r.Int(&request.shown) && r.Int(&request.index);
+      break;
+    case Command::kAlternatives:
+      ok = r.Int(&request.begin) && r.Int(&request.end) && request.begin < request.end;
+      break;
+    case Command::kCommitPrefix:
+      ok = r.Int(&request.shown) && r.Int(&request.index) && r.Int(&request.end);
       break;
     case Command::kBackspace:
     case Command::kClear:
+    case Command::kRestore:
+    case Command::kUndo:
       break;
   }
   if (!ok || !r.Done()) return std::nullopt;

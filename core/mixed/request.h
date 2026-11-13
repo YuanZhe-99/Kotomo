@@ -20,7 +20,15 @@ enum class Command : uint8_t {
   kOptions = 4,    // the level, the cross-language switches, the weights, the field's privacy
   kContext = 5,    // the text before the cursor
   kSelect = 6,     // commit one candidate of a snapshot
+  kAlternatives = 7,  // list the readings of one span of the composition (PLAN.md §5.6)
+  kLock = 8,          // lock the span of the last kAlternatives answer to one of its candidates
+  kRestore = 9,       // drop every lock: the raw input converts afresh
+  kCommitPrefix = 10, // commit a candidate's pieces up to a boundary; the rest stays composed
+  kUndo = 11,         // take back the last commit: the composition and its locks return
 };
+
+/// Request::index of kLock for "keep the letters as typed".
+inline constexpr uint16_t kAsTyped = 0xffff;
 
 /// Request::switches bits.
 inline constexpr uint8_t kSwitchPinyinToJapanese = 1;
@@ -49,8 +57,11 @@ struct Request {
   uint8_t targets = kTargetAll;  // kOptions: the target languages to convert into
   int8_t weight[3] = {0, 0, 0};  // kOptions: how far each language's weight was moved from its
                                  // default, −100…100, indexed by Lang
-  uint64_t shown = 0;       // kSelect: the generation of the snapshot the index counts in
-  uint16_t index = 0;       // kSelect
+  uint64_t shown = 0;       // kSelect, kLock, kCommitPrefix: the generation of the snapshot the
+                            // index counts in
+  uint16_t index = 0;       // kSelect, kCommitPrefix: the candidate; kLock: the candidate or kAsTyped
+  uint16_t begin = 0, end = 0;  // kAlternatives: the span, byte offsets in the composition;
+                                // kCommitPrefix: `end` is where the committed pieces stop
 
   bool operator==(const Request&) const = default;
 };

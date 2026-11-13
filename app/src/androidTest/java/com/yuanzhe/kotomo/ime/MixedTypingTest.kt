@@ -119,6 +119,70 @@ class MixedTypingTest {
         assertNotEquals("東京", text)
     }
 
+    /**
+     * T09 on the emulator (PLAN §5.6, §9.5): in the segment panel one piece of the sentence is
+     * changed (池袋 kept as the letters typed) and the rest, に買いに行こう, is not rewritten; the
+     * sentence commits as shown; backspace right after takes the commit back with the choice
+     * still in place, and Enter commits it again.
+     */
+    @Test
+    fun onePieceChangesAndTheRestStays() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys(SENTENCE_KEYS)
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("地代")), WAIT_MS)) { "the piece's other reading is not offered" }.click()
+            val changed = "地代" + SENTENCE.removePrefix("池袋")
+            checkNotNull(device.wait(Until.findObject(By.text(changed)), WAIT_MS)) { "the rest of the sentence did not stay" }.click()
+            assertEquals(changed, read(scenario))
+            // Undo: the letters are composed again; the chosen piece is still chosen.
+            checkNotNull(device.wait(Until.findObject(By.desc(BACKSPACE)), WAIT_MS)) { "the keys did not come back" }.click()
+            assertEquals(SENTENCE_KEYS, read(scenario))
+            enter()
+            assertEquals(changed, read(scenario))
+        }
+    }
+
+    /**
+     * T09 (PLAN §5.6, §9.5): "Restore input" drops the chosen piece and the sentence converts as
+     * before; "Commit up to here" sends the pieces up to the chosen one to the field and the
+     * rest stays composed.
+     */
+    @Test
+    fun restoresTheInputAndCommitsUpToAPiece() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys(SENTENCE_KEYS)
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("chidai")), WAIT_MS)) { "the piece's letters are not offered" }.click()
+            // The letters stay as typed in every sentence; the rest converts again around them.
+            checkNotNull(device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("chidai.+"))), WAIT_MS)) { "the piece did not change" }
+            checkNotNull(device.findObject(By.text("Restore input"))) { "no way back to the input" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text(SENTENCE)), WAIT_MS)) { "the input did not convert afresh" }
+            checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋 after restoring" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("Commit up to here")), WAIT_MS)) { "no partial commit" }.click()
+            // The rest is still composed, now a sentence of its own: the field holds its letters
+            // and choosing its conversion commits it after the piece.
+            assertEquals("池袋" + SENTENCE_KEYS.removePrefix("chidai "), read(scenario))
+            // The panel has settled by now (the read above waits): what is found is what is tapped.
+            val offered = checkNotNull(device.findObjects(By.clazz("android.widget.TextView")).firstOrNull { it.text.orEmpty().endsWith("に行こう") }) { "the rest is not offered" }
+            val text = offered.text
+            offered.click()
+            assertEquals("池袋$text", read(scenario))
+        }
+    }
+
+    /** Opens the segment panel from the candidate bar's expand arrow once the conversion is shown. */
+    private fun openSegments() {
+        Thread.sleep(READ_MS * 3)
+        val q = device.findObject(By.desc("q"))
+        val res = context.resources
+        val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+            res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+        device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+        checkNotNull(device.wait(Until.findObject(By.text(WHOLE)), WAIT_MS)) { "the segment panel did not open" }
+    }
+
     /** T04 positive: an English word typed in Mixed mode stays English (original language first). */
     @Test
     fun englishWordStaysEnglish() {
@@ -255,6 +319,8 @@ class MixedTypingTest {
         /** The space and Enter keys' descriptions start with these (R.string.key_space, key_enter; English). */
         const val SPACE = "Space"
         const val ENTER = "Enter"
+        const val BACKSPACE = "Delete"
+        const val WHOLE = "Whole sentence"
         /** The assets the keyboard maps in place (KotomoService.ENGLISH_DICT, LEXICON). */
         const val ENGLISH_DICT = "main_en_us.dict"
         const val LEXICON = "cross.klx"

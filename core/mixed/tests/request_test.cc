@@ -1,4 +1,4 @@
-// Host test of the request encoding (the engine ↔ app contract's input, version 3,
+// Host test of the request encoding (the engine ↔ app contract's input, version 4,
 // doc/en-us/engine-contract.md): round trip of every command and refusal of damaged buffers.
 
 #include <vector>
@@ -11,7 +11,7 @@ using namespace kotomo::mixed;
 using kotomo::mixed::test::Check;
 
 int main() {
-  std::vector<Request> samples(7);
+  std::vector<Request> samples(12);
   samples[0] = {.generation = 1, .command = Command::kSet, .text = "ni hao"};
   samples[1] = {.generation = 2, .command = Command::kKey, .code_point = 'n', .x = 650, .y = 375};
   samples[2] = {.generation = 3, .command = Command::kBackspace};
@@ -20,6 +20,11 @@ int main() {
                 .switches = kSwitchEnglishToKanji | kSwitchIncognito, .targets = 2, .weight = {-100, 0, 100}};
   samples[5] = {.generation = 6, .command = Command::kContext, .text = "前文"};
   samples[6] = {.generation = 1ull << 40, .command = Command::kSelect, .shown = 9, .index = 3};
+  samples[7] = {.generation = 8, .command = Command::kAlternatives, .begin = 3, .end = 9};
+  samples[8] = {.generation = 9, .command = Command::kLock, .shown = 8, .index = kAsTyped};
+  samples[9] = {.generation = 10, .command = Command::kRestore};
+  samples[10] = {.generation = 11, .command = Command::kCommitPrefix, .shown = 10, .index = 2, .end = 9};
+  samples[11] = {.generation = 12, .command = Command::kUndo};
   bool round_trip = true, truncated_refused = true, trailing_refused = true;
   for (const Request& sample : samples) {
     const std::string bytes = Encode(sample);
@@ -46,7 +51,7 @@ int main() {
   Check(!DecodeRequest(damaged(2, static_cast<char>(kContractVersion + 1))),
         "Q7-request-version-refused");
   Check(!DecodeRequest(damaged(0, 'X')), "Q7-request-magic-refused");
-  Check(!DecodeRequest(damaged(body - 1, 7)), "Q7-request-unknown-command-refused");
+  Check(!DecodeRequest(damaged(body - 1, 12)), "Q7-request-unknown-command-refused");
   Check(!DecodeRequest(damaged(body, 3)), "Q7-request-level-refused");
   Check(!DecodeRequest(damaged(body + 1, 32)), "Q7-request-switch-bit-refused");
   Check(!DecodeRequest(damaged(body + 2, 8)), "Q7B-request-target-bit-refused");

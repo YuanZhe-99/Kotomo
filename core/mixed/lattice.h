@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "snapshot.h"
@@ -21,6 +22,7 @@ enum class EdgeKind : uint8_t {
   kPinyinJa,  // a Japanese word typed by its Chinese reading (cross-language lexicon)
   kEnJa,      // a Japanese word typed as its English counterpart (cross-language lexicon)
   kParticle,  // は, を or へ typed wa, o or e (PLAN.md §5.4)
+  kLocked,    // a piece the person chose (PLAN.md §5.6): fixed text, in every target language
 };
 
 /// Holds one edge of the lattice.
@@ -34,6 +36,7 @@ struct Edge {
   std::string text;     // the syllable or romaji as spelled, the English word as the dictionary
                         // writes it, or the Japanese surface
   std::string reading;  // hiragana, for the edges that enter a Japanese sentence
+  const Piece* locked = nullptr;  // kLocked only: the piece, owned by the caller of Convert
 };
 
 /// Returns: the language the edge's span was typed in.
@@ -53,8 +56,14 @@ class Lattice {
   /// Inputs: `letters` is the number of letters, so positions run from 0 to `letters`.
   explicit Lattice(size_t letters) : from_(letters + 1) {}
 
-  /// Adds an edge. Returns: false, adding nothing, for an empty span or one outside the lattice.
+  /// Adds an edge. Returns: false, adding nothing, for an empty span, one outside the lattice,
+  ///   or one that touches a locked span (only the lock's own edge stands there).
   bool Add(Edge edge);
+  /// Locks the letters [begin, end): adds the one edge that reads them as `piece` and refuses
+  /// every other edge that overlaps them, so no reading crosses or rewrites a locked piece.
+  /// Inputs: `piece` must outlive the lattice; its reading is hiragana for Japanese text.
+  /// Returns: false for an empty span, one outside the lattice or one overlapping another lock.
+  bool Lock(size_t begin, size_t end, const Piece& piece);
 
   /// Returns: the edges that start at `position`, in the order they were added.
   std::span<const Edge> From(size_t position) const { return from_[position]; }
@@ -67,6 +76,7 @@ class Lattice {
 
  private:
   std::vector<std::vector<Edge>> from_;
+  std::vector<std::pair<size_t, size_t>> locks_;
   size_t size_ = 0;
 };
 

@@ -47,6 +47,8 @@
     <string name="segment_edit">文節</string>
     <string name="segment_shorter">縮める</string>
     <string name="segment_longer">伸ばす</string>
+    <string name="segment_commit_here">ここまで確定</string>
+    <string name="segment_restore">入力に戻す</string>
     <string name="segment_whole">文全体</string>
     <string name="segment_position">文節 %1$d / %2$d · %3$s</string>
 </resources>

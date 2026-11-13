@@ -47,6 +47,8 @@
     <string name="segment_edit">片段</string>
     <string name="segment_shorter">缩短</string>
     <string name="segment_longer">延长</string>
+    <string name="segment_commit_here">提交到这里</string>
+    <string name="segment_restore">恢复输入</string>
     <string name="segment_whole">整句</string>
     <string name="segment_position">第 %1$d 段，共 %2$d 段 · %3$s</string>
 </resources>

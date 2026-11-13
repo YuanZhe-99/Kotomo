@@ -15,7 +15,7 @@ namespace kotomo::mixed {
 
 /// Names the contract version; Encode writes it and Decode refuses any other.
 /// Notes: bumped with every change to the fields below or their encoding, on both sides at once.
-inline constexpr uint16_t kContractVersion = 3;
+inline constexpr uint16_t kContractVersion = 4;
 
 /// Names a language: the one a span was typed in, or the one a candidate is written in.
 enum class Lang : uint8_t { kChinese = 0, kJapanese = 1, kEnglish = 2 };
@@ -46,6 +46,7 @@ struct Piece {
   Lang typed = Lang::kChinese;  // the language the span was typed in
   Origin origin = Origin::kRime;
   bool pinned = false;  // entered Mozc as a fixed value (cross-language word or particle)
+  bool locked = false;  // the person chose it; nothing rewrites it until they restore the input
 
   bool operator==(const Piece&) const = default;
 };
@@ -67,6 +68,9 @@ struct Snapshot {
   uint8_t stage = 0;        // 0: first candidates; 1 and up: later stages of the same generation
   std::string input;        // the letters and delimiters typed (the composition)
   uint16_t cursor = 0;      // byte offset of the cursor in `input`
+  // The span the candidates stand for when they answer kAlternatives: byte offsets in `input`.
+  // Both 0 otherwise: the candidates cover the whole input.
+  uint16_t focus_begin = 0, focus_end = 0;
   std::string commit;       // text this call commits to the field before anything else; often empty
   std::vector<Candidate> candidates;  // best first
 

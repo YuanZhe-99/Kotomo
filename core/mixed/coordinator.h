@@ -9,6 +9,7 @@
 #define KOTOMO_CORE_MIXED_COORDINATOR_H_
 
 #include <cstdint>
+#include <span>
 #include <string_view>
 
 #include "cross_lexicon.h"
@@ -40,7 +41,12 @@ class Coordinator {
   ///   ParseInput refuses gets no candidates.
   /// Side effects: asks the engines (librime's spelling table and conversion, Mozc's romaji table
   ///   and converter, the English dictionary); nothing learns.
-  Snapshot Convert(std::string_view composition, uint64_t generation);
+  ///   `locks` are the pieces the person chose (PLAN.md §5.6), by their byte ranges in
+  ///   `composition`; every candidate keeps them as they are and converts the rest around them.
+  ///   A lock that does not start and end at letters of the composition is ignored. They must
+  ///   outlive the call.
+  Snapshot Convert(std::string_view composition, uint64_t generation,
+                   std::span<const Piece> locks = {});
 
  private:
   Engines& engines_;

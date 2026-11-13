@@ -490,7 +490,9 @@ fun CandidatesPanel(
 
 /**
  * Describes what the segment panel shows: each segment's text and reading, the segment being
- * edited (null for the whole sentence), the candidates listed, and whether it can shrink or grow.
+ * edited (null for the whole sentence), the candidates listed, and whether its two actions are
+ * available: Shorter and Longer for a Japanese conversion; in Mixed mode [shorterLabel] and
+ * [longerLabel] name Commit up to here and Restore input instead (PLAN §5.6).
  */
 data class SegmentView(
     val texts: List<String>,
@@ -499,6 +501,8 @@ data class SegmentView(
     val candidates: List<String>,
     val shorter: Boolean,
     val longer: Boolean,
+    val shorterLabel: Int = R.string.segment_shorter,
+    val longerLabel: Int = R.string.segment_longer,
 )
 
 /**
@@ -507,8 +511,8 @@ data class SegmentView(
  * candidates of the chosen one, and Shorter, Longer and Back.
  *
  * Inputs: [view] follows the service; [onFocus] chooses a segment (null for the whole sentence);
- * [onPick] chooses candidate n of what is listed; [onResize] shrinks (−1) or grows (+1) the
- * chosen segment; [onBack] returns to the keys.
+ * [onPick] chooses candidate n of what is listed; [onResize] runs the first (−1) or second (+1)
+ * action of [SegmentView]; [onBack] returns to the keys.
  * Notes: choosing a segment's candidate pins it and converts the rest again around it; the
  * segments before it keep their boundaries (PLAN §5.6).
  */
@@ -559,8 +563,8 @@ fun SegmentPanel(
             }
         }
         Row(Modifier.fillMaxWidth().height(48.dp).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            SegmentButton(stringResource(R.string.segment_shorter), v.shorter, Modifier.weight(1f)) { onResize(-1) }
-            SegmentButton(stringResource(R.string.segment_longer), v.longer, Modifier.weight(1f)) { onResize(1) }
+            SegmentButton(stringResource(v.shorterLabel), v.shorter, Modifier.weight(1f)) { onResize(-1) }
+            SegmentButton(stringResource(v.longerLabel), v.longer, Modifier.weight(1f)) { onResize(1) }
             Box(
                 Modifier
                     .weight(1f)

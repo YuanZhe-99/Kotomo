@@ -35,7 +35,8 @@ void OriginalLanguageFirst(std::vector<Candidate>* candidates) {
 
 }  // namespace
 
-Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation) {
+Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
+                              std::span<const Piece> locks) {
   Snapshot snapshot{.generation = generation, .stage = 0, .input = {}, .cursor = 0,
                     .candidates = {}};
   const auto input = ParseInput(composition);
@@ -49,6 +50,13 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation)
   snapshot.cursor = static_cast<uint16_t>(input->raw.size());
 
   Lattice lattice(input->size());
+  for (const Piece& lock : locks) {
+    // Byte offsets back to letter positions; the proposers then add nothing over the span.
+    const auto begin = std::find(input->offset.begin(), input->offset.end() - 1, lock.begin);
+    const auto last = std::find(input->offset.begin(), input->offset.end() - 1, lock.end - 1);
+    if (lock.begin >= lock.end || begin == input->offset.end() - 1 || last == input->offset.end() - 1) continue;
+    lattice.Lock(begin - input->offset.begin(), last - input->offset.begin() + 1, lock);
+  }
   ProposePinyin(*input, engines_, options_, &lattice);
   ProposeJapanese(*input, engines_, options_, &lattice);
   ProposeEnglish(*input, engines_, options_, &lattice);

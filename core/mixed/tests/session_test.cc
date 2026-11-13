@@ -1,4 +1,4 @@
-// Host test of the session (the engine side of the engine ↔ app contract, version 3) against
+// Host test of the session (the engine side of the engine ↔ app contract, version 4) against
 // the fake engines: keys, deletion, replacing and clearing the composition, options, selection.
 
 #include "check.h"
@@ -130,5 +130,108 @@ int main() {
   // Negative: a composition cannot grow past the limit.
   for (size_t i = 0; i < kMaxInput + 10; ++i) Key(&session, 'a');
   Check(session.composition().size() == kMaxInput, "Q7-session-length-limit");
+  // T09 (PLAN.md §5.6, §9.5): local changes. `tushuguan book` reads as 图书馆 + book or
+  // 図書館 + 本; the person changes one piece at a time.
+  const auto set = [&session](const char* text) {
+    return session.Handle({.generation = ++generation, .command = Command::kSet, .text = text});
+  };
+  const auto alternatives = [&session](uint16_t begin, uint16_t end) {
+    return session.Handle({.generation = ++generation, .command = Command::kAlternatives,
+                           .begin = begin, .end = end});
+  };
+  const auto lock = [&session](const Snapshot& shown, int index) {
+    return session.Handle({.generation = ++generation, .command = Command::kLock,
+                           .shown = shown.generation, .index = static_cast<uint16_t>(index)});
+  };
+  const auto all_hold = [](const Snapshot& snapshot, const std::string& text, uint16_t begin) {
+    if (snapshot.candidates.empty()) return false;
+    for (const Candidate& c : snapshot.candidates) {
+      bool found = false;
+      for (const Piece& piece : c.pieces) {
+        found = found || (piece.locked && piece.text == text && piece.begin == begin);
+      }
+      if (!found || c.text.find(text) == std::string::npos) return false;
+    }
+    return true;
+  };
+  const Snapshot free_run = set("tushuguan book");
+  Check(Place(free_run, "图书馆book") >= 0 && Place(free_run, "図書館本") >= 0, "T09-free");
+  Snapshot span = alternatives(10, 14);
+  Check(span.focus_begin == 10 && span.focus_end == 14 && span.input == "tushuguan book" &&
+            Place(span, "book") >= 0 && Place(span, "本") >= 0 && Place(span, "ブック") >= 0 &&
+            span.candidates[0].pieces[0].begin == 10,
+        "T09-alternatives-of-a-span");
+  s = lock(span, Place(span, "本"));
+  Check(s.focus_end == 0 && all_hold(s, "本", 10) && Place(s, "图书馆本") >= 0 &&
+            Place(s, "図書館本") >= 0 && Place(s, "图书馆book") < 0,
+        "T09-lock-and-convert-around");
+  // The other piece changes; the locked one is not rewritten.
+  span = alternatives(0, 9);
+  Check(Place(span, "图书馆") >= 0 && Place(span, "図書館") >= 0, "T09-alternatives-of-another-span");
+  s = lock(span, Place(span, "図書館"));
+  Check(all_hold(s, "本", 10) && all_hold(s, "図書館", 0) && s.candidates[0].text == "図書館本",
+        "T09-confirmed-piece-not-rewritten");
+  // Typing on keeps the locks.
+  s = Key(&session, ' ');
+  s = Key(&session, 'a');
+  s = Key(&session, 'i');
+  Check(all_hold(s, "本", 10) && all_hold(s, "図書館", 0), "T09-locks-stay-while-typing");
+  // Deleting into a lock drops it, and only it.
+  for (int i = 0; i < 4; ++i) s = Send(&session, Command::kBackspace);
+  Check(s.input == "tushuguan boo", "T09-backspace-into-a-lock");
+  s = Key(&session, 'k');
+  Check(s.input == "tushuguan book" && all_hold(s, "図書館", 0) && !all_hold(s, "本", 10),
+        "T09-backspace-into-a-lock-drops-it");
+  // Restore: the raw input converts as if nothing had been chosen.
+  set("tushuguan book");
+  span = alternatives(10, 14);
+  lock(span, Place(span, "本"));
+  s = Send(&session, Command::kRestore);
+  Check(s.candidates.size() == free_run.candidates.size() &&
+            s.candidates[0].text == free_run.candidates[0].text && !all_hold(s, "本", 10),
+        "T09-restore-raw-input");
+  // Keep the English as typed.
+  span = alternatives(10, 14);
+  s = lock(span, kAsTyped);
+  Check(all_hold(s, "book", 10) && Place(s, "図書館本") < 0, "T09-keep-as-typed");
+  // Negative: a span that cuts a lock, a stale answer and a lock without a span change nothing.
+  Snapshot cut = alternatives(8, 12);
+  Check(cut.focus_end == 0 && all_hold(cut, "book", 10), "T09-span-cutting-a-lock-refused");
+  span = alternatives(0, 9);
+  Send(&session, Command::kContext);
+  s = lock(span, 0);
+  Check(!all_hold(s, span.candidates[0].text, 0), "T09-stale-lock-refused");
+  s = lock(s, 0);
+  Check(!all_hold(s, s.candidates[0].text, 0) && all_hold(s, "book", 10), "T09-lock-needs-a-span");
+  // Partial commit: the first piece goes to the field, the rest stays composed with its lock.
+  const int chinese = Place(s, "图书馆book");
+  Check(chinese >= 0, "T09-sentence-before-partial-commit");
+  Snapshot partial = session.Handle({.generation = ++generation, .command = Command::kCommitPrefix,
+                                     .shown = s.generation, .index = static_cast<uint16_t>(chinese),
+                                     .end = 9});
+  Check(partial.commit == "图书馆" && partial.input == "book" && all_hold(partial, "book", 0),
+        "T09-partial-commit");
+  // Undo brings the composition and its locks back, once.
+  s = Send(&session, Command::kUndo);
+  Check(s.commit.empty() && s.input == "tushuguan book" && all_hold(s, "book", 10), "T09-undo");
+  s = Send(&session, Command::kUndo);
+  Check(s.input == "tushuguan book", "T09-undo-only-once");
+  // Negative: a boundary inside a piece commits nothing.
+  partial = session.Handle({.generation = ++generation, .command = Command::kCommitPrefix,
+                            .shown = s.generation, .index = 0, .end = 5});
+  Check(partial.commit.empty() && partial.input == "tushuguan book", "T09-partial-commit-needs-a-boundary");
+  // Undo after a whole commit; a key typed after the commit ends it.
+  s = session.Handle({.generation = ++generation, .command = Command::kSelect,
+                      .shown = partial.generation, .index = 0});
+  Check(!s.commit.empty() && s.input.empty(), "T09-select-with-a-lock");
+  s = Send(&session, Command::kUndo);
+  Check(s.input == "tushuguan book" && all_hold(s, "book", 10), "T09-undo-a-whole-commit");
+  s = session.Handle({.generation = ++generation, .command = Command::kSelect,
+                      .shown = s.generation, .index = 0});
+  Key(&session, 'a');
+  s = Send(&session, Command::kUndo);
+  Check(s.input == "a", "T09-a-key-ends-undo");
+  Send(&session, Command::kClear);
+
   return kotomo::mixed::test::Result();
 }

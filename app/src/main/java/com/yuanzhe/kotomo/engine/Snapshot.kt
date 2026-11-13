@@ -15,8 +15,8 @@ enum class Origin { RIME, MOZC, ENGLISH, PINYIN_JA, EN_JA, RULE }
 /**
  * Holds one piece of a candidate: the byte range of the composition it stands for, what it
  * commits, its [reading] (hiragana for a Japanese piece, otherwise the letters typed), the
- * language the span was [typed] in, the [origin] of the text and whether it entered Mozc
- * [pinned].
+ * language the span was [typed] in, the [origin] of the text, whether it entered Mozc
+ * [pinned] and whether the person [locked] it (PLAN §5.6).
  */
 data class Piece(
     val begin: Int,
@@ -26,6 +26,7 @@ data class Piece(
     val typed: Lang,
     val origin: Origin,
     val pinned: Boolean,
+    val locked: Boolean = false,
 )
 
 /**
@@ -56,7 +57,9 @@ data class SnapshotCandidate(
 /**
  * Holds what the engine answers to one request (doc/en-us/engine-contract.md): the composition
  * as typed, the cursor's byte offset in it, text to [commit] first, and the candidates, best
- * first, for one [generation] and [stage].
+ * first, for one [generation] and [stage]. When it answers a request for one span's readings,
+ * [focusBegin] and [focusEnd] name that span of the composition and the candidates stand for it
+ * alone; both are 0 otherwise.
  */
 data class Snapshot(
     val generation: Long,
@@ -65,16 +68,21 @@ data class Snapshot(
     val cursor: Int,
     val commit: String,
     val candidates: List<SnapshotCandidate>,
+    val focusBegin: Int = 0,
+    val focusEnd: Int = 0,
 ) {
+    /** Whether the candidates stand for one span of the composition rather than all of it. */
+    val focused: Boolean get() = focusEnd != 0
+
     companion object {
         /** The contract version this decoder reads (`kContractVersion` in core/mixed/snapshot.h). */
-        const val VERSION = 3
+        const val VERSION = 4
 
         /**
          * Decodes the bytes the engine returned.
          * Returns: null for another contract version or any buffer that fails a check: the magic,
          * a length that runs past the end, bytes left over, text that is not UTF-8, a language or
-         * origin outside its range, a cursor or piece range outside the composition. A snapshot
+         * origin outside its range, a cursor, focus or piece range outside the composition. A snapshot
          * is dropped whole, never half-read.
          * Notes: the app's side of the JNI boundary, so everything is checked.
          */
@@ -88,6 +96,9 @@ data class Snapshot(
             val input = inputBytes.text()
             val cursor = b.short.toInt() and 0xffff
             if (cursor > inputBytes.size) return null
+            val focusBegin = b.short.toInt() and 0xffff
+            val focusEnd = b.short.toInt() and 0xffff
+            if (focusBegin > focusEnd || focusEnd > inputBytes.size) return null
             val commit = b.bytes().text()
             val candidates = List(b.short.toInt() and 0xffff) {
                 val text = b.bytes().text()
@@ -102,12 +113,12 @@ data class Snapshot(
                     val reading = b.bytes().text()
                     val typed = Lang.entries.getOrNull(b.get().toInt() and 0xff) ?: return null
                     val origin = Origin.entries.getOrNull(b.get().toInt() and 0xff) ?: return null
-                    val pinned = b.get().toInt().also { if (it != 0 && it != 1) return null } == 1
-                    Piece(begin, end, pieceText, reading, typed, origin, pinned)
+                    val marks = b.get().toInt().also { if (it !in 0..3) return null }
+                    Piece(begin, end, pieceText, reading, typed, origin, pinned = marks and 1 != 0, locked = marks and 2 != 0)
                 }
                 SnapshotCandidate(text, target, cost, flags, pieces)
             }
-            if (b.hasRemaining()) null else Snapshot(generation, stage, input, cursor, commit, candidates)
+            if (b.hasRemaining()) null else Snapshot(generation, stage, input, cursor, commit, candidates, focusBegin, focusEnd)
         } catch (_: BufferUnderflowException) {
             null
         } catch (_: CharacterCodingException) {

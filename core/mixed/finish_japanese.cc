@@ -5,6 +5,12 @@
 namespace kotomo::mixed {
 namespace {
 
+/// Decides whether an edge stands outside Mozc's conversion: an English word, or a locked piece
+/// that is not Japanese (it has no reading), kept as it is between conversions.
+bool Outside(const Edge& edge) {
+  return edge.kind == EdgeKind::kEnglish || (edge.locked != nullptr && edge.reading.empty());
+}
+
 /// Returns: where a pinned edge's text came from.
 Origin PinnedOrigin(EdgeKind kind) {
   return kind == EdgeKind::kPinyinJa ? Origin::kPinyinJa
@@ -58,6 +64,10 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
       continue;
     }
     const Edge& head = *path.edges[begin_edge];
+    if (head.locked != nullptr && segment.pinned && edge_index == begin_edge + 1) {
+      pieces->push_back(*head.locked);  // exactly as the person chose it
+      continue;
+    }
     const bool pinned = segment.pinned && edge_index == begin_edge + 1 && Pinned(head.kind);
     Piece piece = MakePiece(input, head.begin, path.edges[edge_index - 1]->end,
                             segment.words.front().text, pinned ? Typed(head.kind) : Lang::kJapanese,
@@ -80,19 +90,21 @@ void FinishJapanese(const Input& input, const Path& path, Engines& engines, cons
                      .flags = PathFlags(path), .pieces = {}};
   const bool one_free_run = std::all_of(path.edges.begin(), path.edges.end(), [](const Edge* e) {
     return e->kind == EdgeKind::kKana;
-  });
+  });  // false with any locked piece: a lock is never offered alternatives
   std::vector<JapaneseWord> alternatives;
   for (size_t i = 0; i < path.edges.size();) {
     const Edge& edge = *path.edges[i];
-    if (edge.kind == EdgeKind::kEnglish) {
-      sentence.pieces.push_back(MakePiece(input, edge.begin, edge.end, edge.text, Lang::kEnglish,
-                                          Origin::kEnglish, false));
+    if (Outside(edge)) {
+      sentence.pieces.push_back(edge.locked != nullptr
+                                    ? *edge.locked
+                                    : MakePiece(input, edge.begin, edge.end, edge.text,
+                                                Lang::kEnglish, Origin::kEnglish, false));
       ++i;
       continue;
     }
     size_t end = i;
     bool has_free = false;
-    for (; end < path.edges.size() && path.edges[end]->kind != EdgeKind::kEnglish; ++end) {
+    for (; end < path.edges.size() && !Outside(*path.edges[end]); ++end) {
       if (path.edges[end]->kind == EdgeKind::kKana) {
         sentence.cost -= costs.kana;  // Mozc's cost replaces the decoder's estimate
         has_free = true;

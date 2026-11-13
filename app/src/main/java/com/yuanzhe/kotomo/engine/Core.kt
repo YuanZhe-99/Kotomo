@@ -91,6 +91,41 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
     fun select(generation: Long, shown: Long, index: Int): Snapshot? =
         call(generation, SELECT) { it.putLong(shown).putShort(index.toShort()) }
 
+    /**
+     * Lists the readings of the composition's span [begin, end) (PLAN §5.6): the snapshot's
+     * candidates stand for that span alone ([Snapshot.focused]). Nothing changes; a span that
+     * cuts a locked piece gets the ordinary snapshot instead.
+     */
+    fun alternatives(generation: Long, begin: Int, end: Int): Snapshot? =
+        call(generation, ALTERNATIVES) { it.putShort(begin.toShort()).putShort(end.toShort()) }
+
+    /**
+     * Locks the span of the [alternatives] snapshot of generation [shown] to its candidate
+     * [index], or to the letters as typed for [AS_TYPED]; the rest converts around it and no
+     * later conversion rewrites it.
+     */
+    fun lock(generation: Long, shown: Long, index: Int): Snapshot? =
+        call(generation, LOCK) { it.putLong(shown).putShort(index.toShort()) }
+
+    /** Drops every lock: the raw input converts afresh. */
+    fun restore(generation: Long): Snapshot? = call(generation, RESTORE) {}
+
+    /**
+     * Commits the pieces of candidate [index] of the snapshot of generation [shown] that end at
+     * or before byte [end] of the composition, which must be a piece boundary inside it; the
+     * rest stays composed. Returns: a snapshot with [Snapshot.commit], or one that commits
+     * nothing when the boundary or the snapshot does not hold.
+     */
+    fun commitPrefix(generation: Long, shown: Long, index: Int, end: Int): Snapshot? =
+        call(generation, COMMIT_PREFIX) { it.putLong(shown).putShort(index.toShort()).putShort(end.toShort()) }
+
+    /**
+     * Takes back the last commit ([select] or [commitPrefix]): the composition and its locks
+     * return. Nothing happens once a key was typed after it. The caller removes the committed
+     * text from the field.
+     */
+    fun undo(generation: Long): Snapshot? = call(generation, UNDO) {}
+
     /** Releases the coordinator and unmaps the lexicon; later calls fail. */
     override fun close() {
         if (handle != 0L) nativeClose(handle)
@@ -128,6 +163,14 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         private const val OPTIONS = 4
         private const val CONTEXT = 5
         private const val SELECT = 6
+        private const val ALTERNATIVES = 7
+        private const val LOCK = 8
+        private const val RESTORE = 9
+        private const val COMMIT_PREFIX = 10
+        private const val UNDO = 11
+
+        /** [lock]'s index for keeping the span's letters as typed. */
+        const val AS_TYPED = 0xffff
 
         init {
             System.loadLibrary("kotomo_core")
