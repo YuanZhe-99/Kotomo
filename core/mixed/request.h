@@ -26,6 +26,7 @@ enum class Command : uint8_t {
   kCommitPrefix = 10, // commit a candidate's pieces up to a boundary; the rest stays composed
   kUndo = 11,         // take back the last commit: the composition and its locks return
   kLearn = 12,        // set what the person's history adds to one reading's cost (PLAN.md §9.9)
+  kRefine = 13,       // the later stage of the snapshot of this generation (PLAN.md §5.5)
 };
 
 /// Request::index of kLock for "keep the letters as typed".

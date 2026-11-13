@@ -21,6 +21,7 @@ std::string Encode(const Snapshot& snapshot) {
   w.Int(kContractVersion);
   w.Int(snapshot.generation);
   w.Int(snapshot.stage);
+  w.Int(static_cast<uint8_t>(snapshot.more));
   w.Str(snapshot.input);
   w.Int(snapshot.cursor);
   w.Int(snapshot.focus_begin);
@@ -56,12 +57,14 @@ std::optional<Snapshot> Decode(std::string_view bytes) {
   uint16_t version = 0;
   Snapshot s;
   uint16_t candidates = 0;
+  uint8_t more = 0;
   if (!r.Int(&version) || version != kContractVersion || !r.Int(&s.generation) ||
-      !r.Int(&s.stage) || !r.Str(&s.input) || !r.Int(&s.cursor) || s.cursor > s.input.size() ||
+      !r.Int(&s.stage) || !r.Int(&more) || more > 1 || !r.Str(&s.input) || !r.Int(&s.cursor) || s.cursor > s.input.size() ||
       !r.Int(&s.focus_begin) || !r.Int(&s.focus_end) || s.focus_begin > s.focus_end ||
       s.focus_end > s.input.size() || !r.Str(&s.commit) || !r.Int(&candidates)) {
     return std::nullopt;
   }
+  s.more = more != 0;
   s.candidates.resize(candidates);
   for (Candidate& candidate : s.candidates) {
     uint8_t target = 0;

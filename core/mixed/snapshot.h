@@ -15,7 +15,7 @@ namespace kotomo::mixed {
 
 /// Names the contract version; Encode writes it and Decode refuses any other.
 /// Notes: bumped with every change to the fields below or their encoding, on both sides at once.
-inline constexpr uint16_t kContractVersion = 5;
+inline constexpr uint16_t kContractVersion = 6;
 
 /// Names a language: the one a span was typed in, or the one a candidate is written in.
 enum class Lang : uint8_t { kChinese = 0, kJapanese = 1, kEnglish = 2 };
@@ -67,6 +67,7 @@ struct Candidate {
 struct Snapshot {
   uint64_t generation = 0;  // grows by one with every key or command
   uint8_t stage = 0;        // 0: first candidates; 1 and up: later stages of the same generation
+  bool more = false;        // a later stage will list more: ask for it with kRefine (PLAN.md §5.5)
   std::string input;        // the letters and delimiters typed (the composition)
   uint16_t cursor = 0;      // byte offset of the cursor in `input`
   // The span the candidates stand for when they answer kAlternatives: byte offsets in `input`.

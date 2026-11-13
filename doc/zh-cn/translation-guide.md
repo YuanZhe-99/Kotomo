@@ -122,6 +122,8 @@ Android 字符串资源中（英文、简体中文、繁体中文和日文），
 | learned reading | 已学习的读法 |
 | rank lower (a learned reading) | 降低排序 |
 | key correction | 按键纠错 |
+| refine (request of the contract) | 细化 |
+| later stage (of a snapshot) | 后一阶段 |
 
 ## 6. 审阅清单
 

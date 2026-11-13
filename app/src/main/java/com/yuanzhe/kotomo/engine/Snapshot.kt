@@ -63,7 +63,8 @@ data class SnapshotCandidate(
  * as typed, the cursor's byte offset in it, text to [commit] first, and the candidates, best
  * first, for one [generation] and [stage]. When it answers a request for one span's readings,
  * [focusBegin] and [focusEnd] name that span of the composition and the candidates stand for it
- * alone; both are 0 otherwise.
+ * alone; both are 0 otherwise. [more] says a later stage of the same generation will list more
+ * ([Core.refine], PLAN §5.5).
  */
 data class Snapshot(
     val generation: Long,
@@ -74,13 +75,14 @@ data class Snapshot(
     val candidates: List<SnapshotCandidate>,
     val focusBegin: Int = 0,
     val focusEnd: Int = 0,
+    val more: Boolean = false,
 ) {
     /** Whether the candidates stand for one span of the composition rather than all of it. */
     val focused: Boolean get() = focusEnd != 0
 
     companion object {
         /** The contract version this decoder reads (`kContractVersion` in core/mixed/snapshot.h). */
-        const val VERSION = 5
+        const val VERSION = 6
 
         /**
          * Decodes the bytes the engine returned.
@@ -96,6 +98,7 @@ data class Snapshot(
             if (b.short.toInt() and 0xffff != VERSION) return null
             val generation = b.long
             val stage = b.get().toInt() and 0xff
+            val more = b.get().toInt().also { if (it !in 0..1) return null } == 1
             val inputBytes = b.bytes()
             val input = inputBytes.text()
             val cursor = b.short.toInt() and 0xffff
@@ -122,7 +125,7 @@ data class Snapshot(
                 }
                 SnapshotCandidate(text, target, cost, flags, pieces)
             }
-            if (b.hasRemaining()) null else Snapshot(generation, stage, input, cursor, commit, candidates, focusBegin, focusEnd)
+            if (b.hasRemaining()) null else Snapshot(generation, stage, input, cursor, commit, candidates, focusBegin, focusEnd, more)
         } catch (_: BufferUnderflowException) {
             null
         } catch (_: CharacterCodingException) {

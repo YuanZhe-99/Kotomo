@@ -14,6 +14,7 @@ Snapshot Sample() {
   Snapshot s;
   s.generation = 7;
   s.stage = 1;
+  s.more = true;
   s.input = "hon wo";
   s.cursor = 6;
   s.commit = "本";

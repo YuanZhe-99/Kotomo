@@ -199,6 +199,24 @@ class MixedTypingTest {
         }
     }
 
+    /**
+     * PLAN §5.5 on the emulator: a long sentence is answered in two stages, and the later one
+     * arrives: the first holds at most one sentence per language, the panel lists more.
+     */
+    @Test
+    fun aLongSentenceGetsItsLaterStage() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use {
+            keys(SENTENCE_KEYS)
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text(SENTENCE)), WAIT_MS)) { "the sentence is not offered" }
+            // The field, the clock, "Whole sentence", the piece chips, the candidates, two actions:
+            // with three candidates at most there are fewer than these.
+            val pieces = 4
+            val shown = device.findObjects(By.clazz("android.widget.TextView")).size
+            assertTrue("only $shown texts: the later stage did not arrive", shown > 3 + pieces + 3 + 2)
+        }
+    }
+
     /** Opens the segment panel from the candidate bar's expand arrow once the conversion is shown. */
     private fun openSegments() {
         Thread.sleep(READ_MS * 3)

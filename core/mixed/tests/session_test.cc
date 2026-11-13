@@ -1,4 +1,4 @@
-// Host test of the session (the engine side of the engine ↔ app contract, version 5) against
+// Host test of the session (the engine side of the engine ↔ app contract, version 6) against
 // the fake engines: keys, deletion, replacing and clearing the composition, options, selection.
 
 #include "check.h"
@@ -34,7 +34,39 @@ int Place(const Snapshot& snapshot, const std::string& text) {
 
 }  // namespace
 
+/// Counts the English lookups that reach the engines.
+class Counting : public test::FakeEngines {
+ public:
+  std::vector<EnglishForm> English(std::string_view word) override {
+    ++english;
+    return test::FakeEngines::English(word);
+  }
+  int english = 0;
+};
+
 int main() {
+  {
+    // PLAN.md §5.5: a key more asks the engines only about the spans that end at the new
+    // letter; what was asked for the letters before it is remembered until the composition ends.
+    Counting counting;
+    const auto counted_lexicon = test::FakeLexicon();
+    Session incremental(counting, *counted_lexicon);
+    int before_last = 0;
+    for (const char c : std::string("tushuguanbook")) {
+      before_last = counting.english;
+      Key(&incremental, c);
+    }
+    const int for_last_key = counting.english - before_last;
+    Check(for_last_key > 0 && for_last_key <= 13, "Q7E-incremental-only-new-spans");
+    const int whole = counting.english;
+    Send(&incremental, Command::kBackspace);
+    Check(counting.english == whole, "Q7E-incremental-backspace-asks-nothing");
+    // Negative: the memory does not outlive the composition.
+    Send(&incremental, Command::kClear);
+    Key(&incremental, 'b');
+    Key(&incremental, 'o');
+    Check(counting.english > whole, "Q7E-incremental-forgotten-with-the-composition");
+  }
   test::FakeEngines engines;
   const auto lexicon = test::FakeLexicon();
   Session session(engines, *lexicon);
@@ -149,6 +181,25 @@ int main() {
             s.candidates[Place(s, "图书馆book")].cost == before_piece.candidates[Place(before_piece, "图书馆book")].cost,
         "T10-learned-piece");
   learn("", "", 0);
+  session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
+
+  // PLAN.md §5.5: a long composition is answered in two stages. Stage 0 holds each language's
+  // best sentence and says more follows; kRefine answers for the same generation as stage 1.
+  const Snapshot quick = session.Handle({.generation = ++generation, .command = Command::kSet,
+                                         .text = "tushuguan book tushuguan"});
+  Check(quick.stage == 0 && quick.more && !quick.candidates.empty() && quick.candidates.size() <= 3,
+        "Q7E-stage-0-quick");
+  const Snapshot full = session.Handle({.generation = generation, .command = Command::kRefine});
+  Check(full.stage == 1 && !full.more && full.generation == quick.generation && full.input == quick.input &&
+            full.candidates.size() >= quick.candidates.size() &&
+            full.candidates[0].text == quick.candidates[0].text && Replaces(full.generation, full.stage, quick.generation, quick.stage),
+        "Q7E-stage-1-refines-the-same-generation");
+  // What is on screen can be chosen at either stage.
+  s = session.Handle({.generation = ++generation, .command = Command::kSelect, .shown = full.generation, .index = 0});
+  Check(s.commit == full.candidates[0].text && !s.more, "Q7E-select-after-refine");
+  // Negative: a short composition is answered in full at once.
+  s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "tushuguan book"});
+  Check(!s.more && s.stage == 0 && s.candidates.size() > 3, "Q7E-short-input-one-stage");
   session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
 
   // T08 (PLAN.md §9.7, layer 1): `l` touched at the edge towards `k` also offers the reading

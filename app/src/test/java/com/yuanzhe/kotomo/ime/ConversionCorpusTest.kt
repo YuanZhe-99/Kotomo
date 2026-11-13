@@ -166,6 +166,8 @@ class ConversionCorpusTest {
             c.clear(++generation)
             var snapshot = checkNotNull(c.clear(++generation))
             for (key in line.input) snapshot = checkNotNull(c.key(++generation, key)) { "no snapshot for a key of ${line.id}" }
+            // A long line's first answer is the quick stage; the corpus ranks the full list.
+            if (snapshot?.more == true) snapshot = checkNotNull(c.refine(generation)) { "no later stage for ${line.id}" }
             check(snapshot.generation == generation && snapshot.input == line.input) { "${line.id}: the snapshot answers another request" }
             Candidates.mixed(
                 snapshot.candidates.map { it.text }, snapshot.input, Candidates.emoji(emoji, line.input),
@@ -180,7 +182,7 @@ class ConversionCorpusTest {
             Rime.clear()
             val c = core ?: checkNotNull(Core.open(rime = true, mozc, english, lexicon.path)) { "the coordinator did not open" }.also { core = it }
             c.options(++generation, Core.Options(chinese = false, english = false))
-            val crossed = Candidates.japaneseCross(c.set(++generation, line.input))
+            val crossed = Candidates.japaneseCross(c.set(++generation, line.input)?.let { if (it.more) c.refine(generation) else it })
             c.clear(++generation)
             c.options(++generation, Core.Options())
             val own = Candidates.japanese(segments, predicted)

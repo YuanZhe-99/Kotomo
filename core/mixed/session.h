@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "cached_engines.h"
 #include "coordinator.h"
 #include "request.h"
 
@@ -27,6 +28,8 @@ class Session {
  public:
   /// Inputs: `engines` and `lexicon` must outlive the session.
   Session(Engines& engines, const CrossLexicon& lexicon) : engines_(engines), lexicon_(lexicon) {}
+  Session(const Session&) = delete;
+  Session& operator=(const Session&) = delete;
 
   /// Applies one request and converts the composition it leaves.
   /// Returns: the snapshot for the request's generation (stage 0). A key that is not a letter, a
@@ -40,6 +43,11 @@ class Session {
   ///   up to a piece boundary and keeps the rest composed; kUndo brings back what the last
   ///   kSelect or kCommitPrefix took, until a key is typed. A span that cuts a lock, a boundary
   ///   that is not one, and an answer to another snapshot change nothing.
+  ///   A composition of sixteen letters or more is answered in two stages (PLAN.md §5.5): the
+  ///   snapshot of any other request holds each target language's best sentence only and sets
+  ///   `more`; kRefine then answers with the full list for the same generation, as stage 1.
+  ///   Shorter compositions get the full list at once. A commit (kSelect, kCommitPrefix) is
+  ///   always answered in full.
   ///   kLearn sets, forgets (adjust 0) or clears (both strings empty) what history adds to a
   ///   reading's cost.
   /// Side effects: asks the engines through the coordinator.
@@ -52,7 +60,9 @@ class Session {
   const Options& options() const { return options_; }
 
  private:
-  Engines& engines_;
+  /// The engines, with their answers remembered while one composition is typed (PLAN.md §5.5):
+  /// a key more asks only about the spans that end at the new letter.
+  mutable CachedEngines engines_;
   const CrossLexicon& lexicon_;
   Options options_;
   std::string composition_;

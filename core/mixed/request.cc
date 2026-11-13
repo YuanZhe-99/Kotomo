@@ -50,6 +50,7 @@ std::string Encode(const Request& request) {
     case Command::kClear:
     case Command::kRestore:
     case Command::kUndo:
+    case Command::kRefine:
       break;
   }
   return out;
@@ -62,7 +63,7 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
   uint8_t command = 0;
   Request request;
   if (!r.Int(&version) || version != kContractVersion || !r.Int(&request.generation) ||
-      !r.Int(&command) || command > static_cast<uint8_t>(Command::kLearn)) {
+      !r.Int(&command) || command > static_cast<uint8_t>(Command::kRefine)) {
     return std::nullopt;
   }
   request.command = static_cast<Command>(command);
@@ -100,6 +101,7 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
     case Command::kClear:
     case Command::kRestore:
     case Command::kUndo:
+    case Command::kRefine:
       break;
   }
   if (!ok || !r.Done()) return std::nullopt;

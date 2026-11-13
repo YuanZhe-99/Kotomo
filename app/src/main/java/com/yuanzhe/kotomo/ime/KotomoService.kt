@@ -176,6 +176,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /** Main thread: the text the last Mixed commit put in the field, until another key is pressed. */
     private var mixedUndo: String? = null
 
+    /** The generation of the newest Mixed conversion asked for; the engine thread reads it to drop a stale later stage. */
+    @Volatile private var mixedLatest = 0
+
     /** What the last Mixed commit taught (its input, its candidate, the readings before), for [undoMixed]. */
     private var mixedLearned: Triple<String, com.yuanzhe.kotomo.engine.SnapshotCandidate, Learned>? = null
     private var mixedHeld = false
@@ -1683,6 +1686,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun suggestMixed(raw: String, gen: Int, downTime: Long) {
         val touches = taps.toList()
         val options = mixedOptions()
+        mixedLatest = gen
         // The text before a new composition, never from a field that may leave no trace.
         val before = if (raw.length != 1) null else if (options.incognito) "" else
             currentInputConnection?.getTextBeforeCursor(MIXED_CONTEXT, 0)?.toString().orEmpty().removeSuffix(raw)
@@ -1697,6 +1701,16 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 Probe.engineWork.add(work)
                 if (!takes(gen, 1)) return@post
                 showMixed(snapshot, raw, downTime)
+            }
+            // A long composition's first answer holds the best sentences only (PLAN §5.5). The
+            // rest is its own job behind the keys already waiting, and is skipped when one of
+            // them made it stale, so typing never waits for it.
+            if (snapshot?.more == true) {
+                engine.post {
+                    if (gen != mixedLatest) return@post
+                    val full = mixed.refine() ?: return@post
+                    main.post { if (takes(gen, 2)) showMixed(full, raw, 0) }
+                }
             }
         }
     }
@@ -1904,7 +1918,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             // Pinyin and English read as Japanese, from the coordinator (`japanese.cross.*`).
             val crossed = if (cross != null && m != null) {
                 attachMixed()
-                Candidates.japaneseCross(mixed.type(typed, touches, cross))
+                // Japanese mode shows one list: the full answer at once.
+                Candidates.japaneseCross(mixed.type(typed, touches, cross).let { mixed.refine() ?: it })
             } else {
                 emptyList()
             }

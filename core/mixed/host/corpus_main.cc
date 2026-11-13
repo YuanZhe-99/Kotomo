@@ -12,6 +12,7 @@
 // Exit status: 0 when no Mixed line that passed in the baseline fails now; 1 on a regression;
 //   2 when the corpus, an engine or the lexicon cannot be opened.
 
+#include <cstdlib>
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -132,6 +133,45 @@ void Print(const Snapshot& snapshot) {
 
 }  // namespace
 
+/// Returns: the default options, with the prior costs named in the environment variable
+///   KOTOMO_COSTS replaced (`english_step=20,language_switch=400`), for tests/conversion/calibrate.sh:
+///   the sweep runs the whole corpus for each setting (PLAN.md §5.3), never one line.
+/// Notes: an unknown name or a value that is not a number ends the run, so a sweep cannot
+///   silently measure the defaults.
+Options CalibratedOptions() {
+  Options options;
+  const char* spec = std::getenv("KOTOMO_COSTS");
+  if (spec == nullptr) return options;
+  const std::pair<std::string_view, int32_t Costs::*> names[] = {
+      {"pinyin_syllable", &Costs::pinyin_syllable}, {"chinese_rank", &Costs::chinese_rank},
+      {"chinese_composed", &Costs::chinese_composed}, {"japanese_bias", &Costs::japanese_bias},
+      {"english_base", &Costs::english_base}, {"english_step", &Costs::english_step},
+      {"japanese_word", &Costs::japanese_word}, {"pinyin_to_japanese", &Costs::pinyin_to_japanese},
+      {"english_to_japanese", &Costs::english_to_japanese},
+      {"english_in_chinese", &Costs::english_in_chinese},
+      {"english_in_japanese", &Costs::english_in_japanese}, {"particle", &Costs::particle},
+      {"language_switch", &Costs::language_switch}, {"crossed_hint", &Costs::crossed_hint}};
+  std::string_view rest = spec;
+  while (!rest.empty()) {
+    const std::string_view item = rest.substr(0, rest.find(','));
+    rest.remove_prefix(std::min(rest.size(), item.size() + 1));
+    const size_t equals = item.find('=');
+    const auto name = std::find_if(std::begin(names), std::end(names), [&](const auto& n) {
+      return n.first == item.substr(0, equals);
+    });
+    char* end = nullptr;
+    const std::string value(equals == std::string_view::npos ? "" : item.substr(equals + 1));
+    const long number = std::strtol(value.c_str(), &end, 10);
+    if (name == std::end(names) || value.empty() || *end != 0) {
+      std::fprintf(stderr, "mixed corpus: KOTOMO_COSTS: cannot read '%.*s'\n",
+                   static_cast<int>(item.size()), item.data());
+      std::exit(2);
+    }
+    options.costs.*(name->second) = static_cast<int32_t>(number);
+  }
+  return options;
+}
+
 int main(int argc, char** argv) {
   const std::string option = argc == 4 ? argv[2] : "";
   if (argc != 2 && option != "--baseline" && option != "--convert") {
@@ -171,7 +211,7 @@ int main(int argc, char** argv) {
                          "(run java -Xmx4g lexicon/CrossLexicon.java, then kotomo_lexicon_compile)\n");
     return 2;
   }
-  Coordinator coordinator(*engines, *lexicon);
+  Coordinator coordinator(*engines, *lexicon, CalibratedOptions());
   if (option == "--convert") {
     Print(coordinator.Convert(argv[3], 1));
     return 0;

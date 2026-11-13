@@ -1,7 +1,7 @@
 # Engine ↔ app contract
 
 How the app and the native engine talk: what goes in, what comes out, and how the mixed-input
-coordinator (`core/mixed/`) reaches the three engines. This is **contract version 5**
+coordinator (`core/mixed/`) reaches the three engines. This is **contract version 6**
 (`kContractVersion` in `core/mixed/snapshot.h`, `Snapshot.VERSION` in `engine/Snapshot.kt`). Both
 sides exist: the engine side is `libkotomo_core.so` (`core/mixed/session.h`, `jni/core_jni.cc`),
 the app side is the facade `engine/Core.kt` with the decoder `engine/Snapshot.kt`. Mixed mode
@@ -48,6 +48,7 @@ All integers are little-endian. A string is a `u16` byte length followed by UTF-
 | 10 | commit prefix | u64: the generation of the snapshot on screen; u16: a candidate's index in it; u16 end: a byte offset of the composition | commits that candidate's pieces that end at or before the offset, which must be a piece boundary inside the composition; the rest stays composed and keeps its locks, moved to the new offsets. Otherwise nothing is committed |
 | 11 | undo | — | takes back the last commit (select or commit prefix): the composition and its locks return. One level only, and a key or a set after the commit ends it. The app removes the committed text from the field |
 | 12 | learn | string: letters typed, lower case, without delimiters; string: the text they were read as; i16 adjust | sets what the person's history adds to that reading's cost: negative for a reading chosen before, positive for a demoted one, 32767 for one that is never offered, 0 to forget it; both strings empty forgets everything. A candidate's cost moves by its whole input's reading and, when it has several pieces, by each piece's that is not locked. The engine keeps the table in memory only (the app owns the versioned file, `settings-format.md`) and ignores it while the incognito switch is set |
+| 13 | refine | — (the generation is that of the snapshot to refine) | changes nothing; answers with the full list for the composition as stage 1 of that generation. Asked after a snapshot that set `more` |
 
 Every request is answered with a snapshot of the composition it leaves. A request the engine
 cannot decode (another version, an unknown command, level or switch bit, a weight out of range, a
@@ -58,6 +59,16 @@ the composition and no candidates.
 Locks belong to the composition: typing on keeps them, set and clear drop them, and a backspace
 that reaches into the last locked piece drops that lock alone. Not in version 4: moving the cursor
 inside the composition and more than one level of undo.
+
+A composition of sixteen letters or more is answered in two stages. The snapshot of a key, a
+backspace or a set holds only the best sentence of each target language, without key
+corrections, and sets `more`; a refine request then returns the full list for the same
+generation as stage 1, which replaces stage 0 by the rule under "Stale updates". The app asks for
+it as a separate job on the engine thread and skips it when a newer key is already waiting, so
+typing never waits for the later stage. Shorter compositions and commits are answered in full
+at once. While one composition is typed the engine remembers the engines' answers, so a key more
+asks only about the spans that end at the new letter; the memory is dropped when the composition
+is empty.
 
 A key that arrives with a touch position near the edge of its key (within 35 units of being as
 close to a neighbouring key) also gets the composition read with that neighbour: the best
@@ -78,6 +89,7 @@ what a later edit locks or changes, so the other pieces are never rewritten.
 | version | u16 | the contract version; a decoder refuses any other |
 | generation | u64 | the request's generation |
 | stage | u8 | 0 for the first candidates of a generation, 1 and up for later stages |
+| more | u8 | 1 when a later stage will list more (ask with refine), else 0 |
 | input | string | the composition as typed |
 | cursor | u16 | byte offset of the cursor in the composition |
 | focus begin, focus end | u16, u16 | the span an alternatives request asked for; both 0 in every other snapshot |
@@ -97,7 +109,7 @@ what a later edit locks or changes, so the other pieces are never rewritten.
 
 A decoder checks everything: the magic, the version, every length against the buffer, that every
 string is UTF-8, the languages and origins against their ranges, the cursor, the focus and every piece range
-against the composition, the marks against their two bits, and that no byte is left over. A buffer that fails any check is dropped
+against the composition, the marks against their two bits, `more` against 0 and 1, and that no byte is left over. A buffer that fails any check is dropped
 whole.
 
 The unified candidate of the plan maps onto it as follows: text, target language and cost are

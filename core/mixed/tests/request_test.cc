@@ -11,7 +11,7 @@ using namespace kotomo::mixed;
 using kotomo::mixed::test::Check;
 
 int main() {
-  std::vector<Request> samples(13);
+  std::vector<Request> samples(14);
   samples[0] = {.generation = 1, .command = Command::kSet, .text = "ni hao"};
   samples[1] = {.generation = 2, .command = Command::kKey, .code_point = 'n', .x = 650, .y = 375};
   samples[2] = {.generation = 3, .command = Command::kBackspace};
@@ -26,6 +26,7 @@ int main() {
   samples[10] = {.generation = 11, .command = Command::kCommitPrefix, .shown = 10, .index = 2, .end = 9};
   samples[11] = {.generation = 12, .command = Command::kUndo};
   samples[12] = {.generation = 13, .command = Command::kLearn, .text = "shu", .chosen = "書", .adjust = -1500};
+  samples[13] = {.generation = 14, .command = Command::kRefine};
   bool round_trip = true, truncated_refused = true, trailing_refused = true;
   for (const Request& sample : samples) {
     const std::string bytes = Encode(sample);

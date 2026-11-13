@@ -4,6 +4,7 @@ import com.yuanzhe.kotomo.engine.Snapshot
 import com.yuanzhe.kotomo.engine.SnapshotCandidate
 import com.yuanzhe.kotomo.engine.Lang
 import com.yuanzhe.kotomo.engine.Mozc
+import com.yuanzhe.kotomo.engine.Origin
 
 /**
  * Builds the candidate lists the candidate bar shows from each engine's results.
@@ -24,7 +25,7 @@ internal object Candidates {
      * [cross]-language (typed as pinyin or English, from the coordinator) and, for those, whether
      * the coordinator ranked it before its own reading of the letters as romaji ([leads]).
      */
-    data class Japanese(val text: String, val reading: String, val cross: Boolean = false, val leads: Boolean = false)
+    data class Japanese(val text: String, val reading: String, val cross: Boolean = false, val leads: Boolean = false, val particle: Boolean = false)
 
     /** The most cross-language candidates Japanese mode adds to Mozc's own. */
     const val JAPANESE_CROSS = 3
@@ -34,12 +35,17 @@ internal object Candidates {
      * same letters (PLAN §2.3: Japanese mode also reads pinyin and English as Japanese).
      * Returns: its candidates written in Japanese that hold a cross-language piece, best first,
      * each with its reading; those the coordinator put before its first candidate typed as
-     * romaji throughout are marked [Japanese.leads]. Empty for null.
+     * romaji throughout are marked [Japanese.leads]. Before them comes the coordinator's best
+     * sentence typed as romaji throughout when it reads a `wa`, `o` or `e` as the particle は, を
+     * or へ ([Japanese.particle]): Mozc's own session reads those letters as わ, お and え
+     * (`watashiwanihonjin`, PLAN §5.4). Empty for null.
      */
     fun japaneseCross(snapshot: Snapshot?): List<Japanese> {
         val all = snapshot?.candidates.orEmpty().filter { it.target == Lang.JAPANESE }
         val plain = all.indexOfFirst { !it.crossLanguage }.let { if (it < 0) all.size else it }
-        return all.withIndex().filter { it.value.crossLanguage }
+        val particle = all.getOrNull(plain)?.takeIf { c -> c.pieces.any { it.origin == Origin.RULE } }
+            ?.let { c -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, particle = true) }
+        return listOfNotNull(particle) + all.withIndex().filter { it.value.crossLanguage }
             .map { (i, c) -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, cross = true, leads = i < plain) }
     }
 
@@ -50,15 +56,17 @@ internal object Candidates {
      * Returns: [own] with the new texts of [cross]: those that lead go right after Mozc's best
      * (romaji first, cross-language next, PLAN §2.3), or in front when the reading still holds
      * letters (`dongjing` is not Japanese as typed, so Mozc's reading of it is a guess); the
-     * others, which the coordinator itself ranks below the romaji reading, go last.
+     * others, which the coordinator itself ranks below the romaji reading, go last. A sentence
+     * read with a particle goes first: it is the romaji reading itself, read correctly.
      */
     fun japaneseWithCross(own: List<Japanese>, cross: List<Japanese>, reading: String): List<Japanese> {
         val texts = own.mapTo(HashSet()) { it.text }
         val added = cross.filter { texts.add(it.text) }.take(JAPANESE_CROSS)
         if (added.isEmpty()) return own
-        val (leading, trailing) = added.partition { it.leads }
+        val first = added.filter { it.particle }
+        val (leading, trailing) = added.filter { !it.particle }.partition { it.leads }
         val at = if (reading.any { it in 'a'..'z' || it in 'A'..'Z' }) 0 else minOf(1, own.size)
-        return own.take(at) + leading + own.drop(at) + trailing
+        return first + own.take(at) + leading + own.drop(at) + trailing
     }
 
     /** The most predicted words placed right after the best sentence. */

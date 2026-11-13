@@ -137,6 +137,13 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
     fun learn(generation: Long, input: String, text: String, adjust: Int): Snapshot? =
         call(generation, LEARN) { it.string(input.take(MAX_COMPOSITION)).string(text.take(MAX_COMPOSITION)).putShort(adjust.toShort()) }
 
+    /**
+     * Asks for the later stage of the snapshot of [generation], when that snapshot said
+     * [Snapshot.more] (PLAN §5.5): the full list for the same composition, as stage 1 of the
+     * same generation. Nothing changes.
+     */
+    fun refine(generation: Long): Snapshot? = call(generation, REFINE) {}
+
     /** Releases the coordinator and unmaps the lexicon; later calls fail. */
     override fun close() {
         if (handle != 0L) nativeClose(handle)
@@ -180,6 +187,7 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         private const val COMMIT_PREFIX = 10
         private const val UNDO = 11
         private const val LEARN = 12
+        private const val REFINE = 13
 
         /** [learn]'s adjustment for a reading that is never offered. */
         const val BLOCKED = 32767

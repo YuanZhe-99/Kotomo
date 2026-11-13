@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 5):
+ * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 6):
  * the snapshot decoder accepts exactly what the engine's encoder writes and drops anything else
  * whole, and a stale update never replaces a newer one.
  *
@@ -30,8 +30,8 @@ class SnapshotTest {
     }
 
     /** A snapshot of `hon wo` with a two-piece Japanese candidate and a Chinese one. */
-    private fun sample(version: Int = Snapshot.VERSION, target: Int = 1, pieceEnd: Int = 6, cursor: Int = 6, pinned: Int = 1, focusEnd: Int = 0) =
-        Bytes().raw("KS").u16(version).u64(7).u8(1).str("hon wo").u16(cursor).u16(0).u16(focusEnd).str("本").u16(2)
+    private fun sample(version: Int = Snapshot.VERSION, target: Int = 1, pieceEnd: Int = 6, cursor: Int = 6, pinned: Int = 1, focusEnd: Int = 0, more: Int = 1) =
+        Bytes().raw("KS").u16(version).u64(7).u8(1).u8(more).str("hon wo").u16(cursor).u16(0).u16(focusEnd).str("本").u16(2)
             .str("本を").u8(target).i32(4200).u8(8).u16(2)
             .u16(0).u16(3).str("本").str("ほん").u8(1).u8(1).u8(0)
             .u16(4).u16(pieceEnd).str("を").str("を").u8(1).u8(5).u8(pinned)
@@ -44,6 +44,7 @@ class SnapshotTest {
         val s = Snapshot.decode(sample())!!
         assertEquals(7L, s.generation)
         assertEquals(1, s.stage)
+        assertTrue(s.more)
         assertEquals("hon wo", s.input)
         assertEquals(6, s.cursor)
         assertEquals("本", s.commit)
@@ -60,7 +61,7 @@ class SnapshotTest {
 
     @Test
     fun decodesAnEmptySnapshot() {
-        val s = Snapshot.decode(Bytes().raw("KS").u16(Snapshot.VERSION).u64(0).u8(0).str("").u16(0).u16(0).u16(0).str("").u16(0).out.toByteArray())
+        val s = Snapshot.decode(Bytes().raw("KS").u16(Snapshot.VERSION).u64(0).u8(0).u8(0).str("").u16(0).u16(0).u16(0).str("").u16(0).out.toByteArray())
         assertNotNull(s)
         assertTrue(s!!.candidates.isEmpty())
     }
@@ -76,6 +77,7 @@ class SnapshotTest {
         assertNull("piece outside the composition", Snapshot.decode(sample(pieceEnd = 7)))
         assertNull("cursor outside the composition", Snapshot.decode(sample(cursor = 7)))
         assertNull("piece marks are two bits", Snapshot.decode(sample(pinned = 4)))
+        assertNull("more is a yes or no", Snapshot.decode(sample(more = 2)))
         assertNull("focus inside the composition", Snapshot.decode(sample(focusEnd = 7)))
         val focused = Snapshot.decode(sample(pinned = 3, focusEnd = 3))!!
         assertTrue(focused.focused && focused.focusEnd == 3)

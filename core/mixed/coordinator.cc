@@ -14,25 +14,33 @@ namespace kotomo::mixed {
 
 namespace {
 
-/// Applies "original language first" (AGENTS.md, behavior contract): when the cheapest candidate
-/// is cross-language and another candidate is written in a language its cross-language pieces
-/// were typed in, the best such candidate moves to the front.
-/// Notes: a cross-language sentence with no reading in the typed language stays first: there is
-///   no original-language candidate to prefer. So does one the person's history moved there.
-///   Without history a tie-break is not enough: the level decides how far cross-language goes.
+/// Applies "original language first" (AGENTS.md, behavior contract): a cross-language candidate
+/// never stands before every candidate written in the language its cross-language pieces were
+/// typed in. The best such candidate moves just in front of it, wherever in the list that is:
+/// `change` read as a Japanese word does not outrank the English word itself.
+/// Notes: a cross-language candidate with no reading in the typed language stays where it is:
+///   there is no original-language candidate to prefer. So does one the person's history moved
+///   up (kLearned). The level decides how far cross-language goes; this runs below aggressive.
 void OriginalLanguageFirst(std::vector<Candidate>* candidates) {
-  if (candidates->empty() || !(candidates->front().flags & kCross) || (candidates->front().flags & kLearned)) return;
-  bool typed[3] = {false, false, false};
-  for (const Piece& piece : candidates->front().pieces) {
-    if (piece.origin == Origin::kPinyinJa || piece.origin == Origin::kEnJa) {
-      typed[static_cast<int>(piece.typed)] = true;
-    }
-  }
-  const auto original =
-      std::find_if(candidates->begin(), candidates->end(), [&typed](const Candidate& c) {
-        return !(c.flags & kCross) && typed[static_cast<int>(c.target)];
+  // One pass per typed language: its best own candidate moves in front of the first
+  // cross-language candidate typed in it.
+  for (int lang = 0; lang < 3; ++lang) {
+    const auto crossed = std::find_if(candidates->begin(), candidates->end(), [lang](const Candidate& c) {
+      if (!(c.flags & kCross) || (c.flags & kLearned)) return false;
+      return std::any_of(c.pieces.begin(), c.pieces.end(), [lang](const Piece& piece) {
+        return (piece.origin == Origin::kPinyinJa || piece.origin == Origin::kEnJa) &&
+               static_cast<int>(piece.typed) == lang;
       });
-  if (original != candidates->end()) std::rotate(candidates->begin(), original, original + 1);
+    });
+    if (crossed == candidates->end()) continue;
+    const auto original = std::find_if(crossed, candidates->end(), [lang](const Candidate& c) {
+      return !(c.flags & kCross) && static_cast<int>(c.target) == lang;
+    });
+    const bool before = std::any_of(candidates->begin(), crossed, [lang](const Candidate& c) {
+      return !(c.flags & kCross) && static_cast<int>(c.target) == lang;
+    });
+    if (!before && original != candidates->end()) std::rotate(crossed, original, original + 1);
+  }
 }
 
 }  // namespace

@@ -26,6 +26,16 @@ constexpr int kKeyWidth = 100, kKeyHeight = 150;
 /// possibly meant for the neighbour (a touch 17 units from the border between two keys).
 constexpr int kNearKey = 35;
 
+/// From this many letters on, a composition is answered in two stages (PLAN.md §5.5).
+constexpr size_t kStagedLetters = 16;
+
+/// Returns: the number of letters in a composition (delimiters are not letters).
+size_t Letters(std::string_view composition) {
+  return static_cast<size_t>(std::count_if(composition.begin(), composition.end(), [](char c) {
+    return c != ' ' && c != '\'';
+  }));
+}
+
 /// The most alternative readings of the keys converted per request.
 constexpr size_t kKeyVariants = 2;
 
@@ -281,6 +291,8 @@ Snapshot Session::Handle(const Request& request) {
         learned_[request.text + '\t' + request.chosen] = request.adjust;
       }
       break;
+    case Command::kRefine:
+      break;  // nothing changes: the composition converts in full below
     case Command::kUndo:
       if (undo_) {
         composition_ = std::move(undo_->composition);
@@ -307,11 +319,21 @@ Snapshot Session::Handle(const Request& request) {
     snapshot.cursor = static_cast<uint16_t>(composition_.size());
     snapshot.focus_begin = request.begin;
     snapshot.focus_end = request.end;
+  } else if (request.command != Command::kRefine && commit.empty() && Letters(composition_) >= kStagedLetters) {
+    // Stage 0 of a long composition (PLAN.md §5.5): the best path of each target language,
+    // finished once, and no key corrections; kRefine brings the rest.
+    Options quick = options;
+    quick.paths = 1;
+    snapshot = Coordinator(engines_, lexicon_, quick, &learned_).Convert(composition_, request.generation, locks_);
+    snapshot.more = !snapshot.candidates.empty();
   } else {
     snapshot = Coordinator(engines_, lexicon_, options, &learned_).Convert(composition_, request.generation, locks_);
     AddKeyCorrections(options, &snapshot);
+    // A refinement is the later stage of the generation it was asked for.
+    if (request.command == Command::kRefine) snapshot.stage = 1;
   }
   snapshot.commit = std::move(commit);
+  if (composition_.empty()) engines_.Clear();  // the next composition asks afresh
   last_generation_ = snapshot.generation;
   last_ = snapshot.candidates;
   last_focus_begin_ = snapshot.focus_begin;

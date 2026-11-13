@@ -5,6 +5,8 @@ import com.yuanzhe.kotomo.engine.Origin
 import com.yuanzhe.kotomo.engine.Lang
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Mozc
+import com.yuanzhe.kotomo.engine.Piece
+import com.yuanzhe.kotomo.engine.Snapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -145,5 +147,18 @@ class CandidatesTest {
         val many = (1..5).map { Candidates.Japanese("語$it", "ご", cross = true) }
         assertEquals(own.size + Candidates.JAPANESE_CROSS, Candidates.japaneseWithCross(own, many, "かい").size)
         assertEquals(emptyList<Candidates.Japanese>(), Candidates.japaneseCross(null))
+    }
+
+    @Test
+    fun japaneseModeTakesTheParticleReadingFirst() { // T03-001, PLAN §5.4
+        fun piece(begin: Int, end: Int, text: String, reading: String, origin: Origin) =
+            Piece(begin, end, text, reading, Lang.JAPANESE, origin, pinned = false)
+        val particle = SnapshotCandidate("本は", Lang.JAPANESE, 10, 0, listOf(piece(0, 3, "本", "ほん", Origin.MOZC), piece(3, 5, "は", "は", Origin.RULE)))
+        val plain = SnapshotCandidate("本羽", Lang.JAPANESE, 20, 0, listOf(piece(0, 5, "本羽", "ほんわ", Origin.MOZC)))
+        val own = listOf(Candidates.Japanese("本羽", "ほんわ"), Candidates.Japanese("ほんわ", "ほんわ"))
+        val read = Candidates.japaneseCross(Snapshot(1, 0, "honwa", 5, "", listOf(particle, plain)))
+        assertEquals(listOf("本は", "本羽", "ほんわ"), Candidates.japaneseWithCross(own, read, "ほんわ").map { it.text })
+        // Negative: the coordinator's best romaji sentence has no particle; nothing is added.
+        assertEquals(own, Candidates.japaneseWithCross(own, Candidates.japaneseCross(Snapshot(1, 0, "honwa", 5, "", listOf(plain, particle))), "ほんわ"))
     }
 }

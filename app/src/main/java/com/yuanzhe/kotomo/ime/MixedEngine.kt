@@ -155,12 +155,15 @@ internal class MixedEngine {
      */
     fun undo(): Snapshot? = answer(core?.undo(++generation))
 
-    /** Records an answer about the whole composition as the engine's state. */
+    /** Records an answer about the whole composition as the engine's state and returns it in full. */
     private fun answer(snapshot: Snapshot?): Snapshot? {
-        last = snapshot
-        held = snapshot?.input.orEmpty()
+        // The person asked for this one (a piece chosen, the input restored, a commit taken
+        // back): it is shown complete, not in two stages.
+        val full = if (snapshot?.more == true) core?.refine(snapshot.generation) ?: snapshot else snapshot
+        last = full
+        held = full?.input.orEmpty()
         spanShown = false
-        return snapshot
+        return full
     }
 
     /**
@@ -194,6 +197,16 @@ internal class MixedEngine {
         last = snapshot
         held = snapshot?.input.orEmpty()
         return snapshot
+    }
+
+    /**
+     * Brings the later stage of the engine's last answer (PLAN §5.5).
+     * Returns: the full list for the same composition; null when the last answer was already
+     * complete, was about one span, or there is no coordinator.
+     */
+    fun refine(): Snapshot? {
+        val shown = last?.takeIf { it.more && !spanShown } ?: return null
+        return core?.refine(shown.generation)?.also { last = it }
     }
 
     /**
