@@ -107,7 +107,7 @@ can only be judged on a device; there it stays NOT_RUN.
 Cold start of the input method to its first keyboard frame: 737 ms. Process PSS while typing:
 155–214 MB (the instrumentation runs in the same process). Release APKs (unsigned, R8 on):
 arm64-v8a 84.5 MB, x86_64 85.4 MB. Most of the time per key is the emulator's frame wait, as in Q2;
-nothing on the key path was changed in Q10.
+nothing on the key path was changed in Q10. Offline: with airplane mode on, `FieldTypingTest`, `MixedTypingTest` and `HardKeyboardTest` pass 47 of 47 (Chinese, English, Japanese and Mixed typing).
 
 ## Known limitations
 
