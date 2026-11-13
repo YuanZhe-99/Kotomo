@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -351,10 +352,20 @@ private fun SetupCard() {
 
 /** Draws one setup step: its text, then "Done" or the button that does it. */
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun Step(text: String, done: Boolean, action: String, onClick: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-        Spacer(Modifier.width(dimensionResource(R.dimen.settings_card_gap)))
+    // A flow row: with a large font the button moves under the text instead of squeezing it.
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_card_gap)),
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_card_gap)),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            Modifier.weight(1f).widthIn(min = dimensionResource(R.dimen.settings_step_text_min)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
         if (done) {
             Text(stringResource(R.string.setup_done), color = MaterialTheme.colorScheme.primary)
         } else {

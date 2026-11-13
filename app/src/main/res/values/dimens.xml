@@ -139,6 +139,8 @@
     <dimen name="settings_card_radius">24dp</dimen>
     <dimen name="settings_card_pad">16dp</dimen>
     <dimen name="settings_card_gap">12dp</dimen>
+    <!-- A setup step's text keeps at least this width; past it the button wraps under the text. -->
+    <dimen name="settings_step_text_min">160dp</dimen>
     <dimen name="settings_row_min">72dp</dimen>
     <dimen name="settings_row_min_small">64dp</dimen>
     <dimen name="settings_row_pad">12dp</dimen>

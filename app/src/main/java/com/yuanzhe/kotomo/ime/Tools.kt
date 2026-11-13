@@ -129,7 +129,11 @@ private fun ToolButton(tool: Tool, modifier: Modifier, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(painterResource(tool.icon), contentDescription = null, colorFilter = ColorFilter.tint(kbColor(R.color.kb_ink)))
-        Text(stringResource(tool.label), fontSize = 12.sp, color = kbColor(R.color.kb_ink), textAlign = TextAlign.Center, maxLines = 1)
+        // Shrinks rather than cuts the label off at large font scales.
+        Text(
+            stringResource(tool.label), color = kbColor(R.color.kb_ink), textAlign = TextAlign.Center, maxLines = 1,
+            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = 12.sp),
+        )
     }
 }
 

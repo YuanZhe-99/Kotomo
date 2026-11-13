@@ -28,6 +28,21 @@ enum class Shift { OFF, ONCE, LOCKED }
 private const val MIN_FIT = 0.6f
 /** How far, in touch slops, a finger must move for a flick rather than a tap (PLAN §10.9). */
 private const val FLICK_SLOP = 2f
+/** The share of a key's width and height a label may fill, and of its height a corner hint may (largest font scale). */
+private const val LABEL_MAX_WIDTH = 0.86f
+private const val LABEL_MAX_HEIGHT = 0.6f
+private const val HINT_MAX_HEIGHT = 0.24f
+
+/**
+ * Shrinks [paint]'s text size so [label] fits a key of [width] × [height] px: labels keep their
+ * theme size until a large font scale would make them overflow the key.
+ */
+private fun fitLabel(paint: Paint, label: String, width: Float, height: Float) {
+    val maxWidth = width * LABEL_MAX_WIDTH
+    val measured = paint.measureText(label)
+    if (measured > maxWidth) paint.textSize *= maxWidth / measured
+    paint.textSize = minOf(paint.textSize, height * LABEL_MAX_HEIGHT)
+}
 
 /**
  * Draws one keyboard page as in the design and turns touches into key actions.
@@ -235,6 +250,8 @@ class KeyboardView(
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_key_shadow) }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    /** The corner hint's size from the theme, before [HINT_MAX_HEIGHT] caps it on short keys. */
+    private val hintText = res.getDimension(R.dimen.kb_hint_text)
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
         textSize = res.getDimension(R.dimen.kb_hint_text)
@@ -521,11 +538,14 @@ class KeyboardView(
                     else -> keyText
                 } * textScale
                 labelPaint.typeface = Typeface.DEFAULT
+                fitLabel(labelPaint, label, k.right - k.left, k.bottom - k.top)
                 val baseline = k.centerY - (labelPaint.descent() + labelPaint.ascent()) / 2
                 canvas.drawText(label, k.centerX, baseline, labelPaint)
             }
             val corner = if (k.key.action == KeyAction.Emoji) badges.getValue(mode) else k.key.hint?.takeIf { hints }
             if (corner != null) {
+                // With a large font the corner hint stays small enough not to run into the label.
+                hintPaint.textSize = minOf(hintText, (k.bottom - k.top) * HINT_MAX_HEIGHT)
                 canvas.drawText(corner, k.right - hintEnd, k.top + hintTop - hintPaint.ascent(), hintPaint)
             }
         }
