@@ -79,4 +79,5 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除、撤销、重做）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | 通过 ML Kit GenAI 用 Gemini Nano 校对与改写（[ai.md](../ai.md)）：状态、由用户发起的下载、长文字拆分、错误映射 | `GenAi`、`AiAction`、`AiFailure` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`、`AiHandoff.kt` | 写作助手页面（语言、操作、建议、替换、复制）及其与键盘之间的内存交接 | `AiActivity`、`AiHandoff`、`AiRequest` |
+| `app/src/main/java/com/yuanzhe/kotomo/ai/Translation.kt`、`ime/TranslatePanel.kt`、`settings/TranslationModels.kt` | 用 ML Kit 在本机进行中、英、日互译（[ai.md](../ai.md)）：猜测语言、一个语言对需要的模型、由用户发起的下载、翻译、删除；键盘的翻译面板（语言、预览、替换、复制）与 AI 页上已下载模型的列表 | `TranslateLang.guess`、`Translations`、`TranslatePanel`、`TranslationModels` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardColors.kt` | 按所选主题（跟随系统、浅色、深色、Material You）为视图与 Compose 面板提供键盘调色板 | `apply`、`color`、`kbColor` |

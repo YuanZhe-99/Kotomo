@@ -29,6 +29,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | rime-luna-pinyin、rime-prelude、rime-essay、rime-stroke | `rime/*`，分别在 `56b934b0`、`082425ea`、`054920de`、`1e8fff9b` | 拼音方案、词典、默认设置与语言模型；编译后的笔画数据随应用分发，供 `u` 开始的笔画查字（PLAN §10.4） | LGPL-3.0 | 无；Kotomo 增加 `default.custom.yaml` 与方案 `luna_pinyin_simp_private` | 随附 LGPL-3.0 与 GPL-3.0 文本，并提供数据来源 |
 | Mozc | `google/mozc` 3.35.6354（`0136c357`），子模块 `third_party/mozc` | 日文转换（`libkotomo_mozc.so` 与 `mozc.data`，S3；单独构建的库打包进 APK 时由日文模式使用） | BSD-3-Clause；词典数据适用 NAIST IPAdic 声明与 ICOT 条款，另有公有领域的冲绳词典与 Google 增补 | 无；Kotomo 的胶水层独立存放（`core/mozc`） | 完整随附 Mozc 的 LICENSE，包括 NAIST 声明与 ICOT 的 "NO WARRANTY" 一节 |
 | japanese-usage-dictionary、Abseil、Protocol Buffers | 由 Mozc 的 Bazel 构建获取（用法词典 2025-01-25、abseil-cpp 20260107.1、protobuf 34.1） | 编入 `mozc.data` 与 `libkotomo_mozc.so` | BSD-2-Clause；Apache-2.0；BSD-3-Clause | 无 | 声明与许可文本 |
+| Google ML Kit：`genai-proofreading`、`genai-rewriting`、`translate` | Google Maven 1.0.0-beta1、1.0.0-beta1、17.0.3（最新版本，2026-11-13） | 写作助手（经 AICore 用 Gemini Nano 校对、改写）与设备端翻译；翻译的语言模型（每种约 30 MB）只在用户点按“下载”时从 Google 下载 | ML Kit 服务条款（闭源；条款未读） | 无 | 在许可证页致谢；在隐私政策中写明 ML Kit 自身收集的数据（`upstream.md`） |
 | AndroidX（Compose、Material 3、Activity、Lifecycle、Core、SavedState、DataStore、Autofill）、Kotlin 标准库、kotlinx.coroutines、okio | Google Maven 与 Maven Central，版本见 `gradle/libs.versions.toml`（Compose BOM 2026.09.00、DataStore 1.3.0、Autofill 1.3.0、Kotlin 2.4.21） | 设置应用、键盘的 Compose 面板、设置文件、内联自动填充建议的样式 | Apache-2.0 | 无 | 随附 Apache-2.0 许可文本 |
 
 编译后的跨语言词库 `cross.klx`（`lexicon-format.md`）由 `lexicon/CrossLexicon.java` 与
@@ -100,7 +101,6 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 | SCOWLv2（en-wl/wordlist） | 类 MIT（`Copyright`）；大于 80 号的词表另附 UKACD 条款 | 英文词 | 不提供：发布只有源文件，要用 Python 与 SQLite 才能生成词表；英文词条尚未使用 |
 | Noto Emoji | 图像 Apache-2.0，字体 OFL-1.1，旗帜公有领域 | Emoji 样式包 | — |
 | Twemoji（jdecked） | 图形 CC BY 4.0，代码 MIT | Emoji 样式包 | 在"关于"中署名 |
-| ML Kit GenAI 与翻译 | Google 的 ML Kit 条款 | 设备端 AI 与翻译 | 其 SDK 收集什么已在 S8 中读过（`upstream.md` 的 ML Kit 一节）并写入隐私政策；条款本身未读 |
 
 ## 永不分发
 

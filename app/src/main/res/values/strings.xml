@@ -60,7 +60,6 @@
     <string name="space_english" translatable="false">English</string>
     <string name="bar_rime_preparing">Preparing the Chinese dictionary…</string>
     <string name="bar_rime_failed">The Chinese dictionary failed. See Diagnostics.</string>
-    <string name="bar_not_yet">Not available yet</string>
     <string name="candidates_collapse">Back to the keyboard</string>
     <string name="diag_rime_running">Preparing…</string>
     <string name="diag_rime_failed">Failed: %1$s</string>

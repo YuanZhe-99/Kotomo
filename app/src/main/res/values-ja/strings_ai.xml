@@ -52,5 +52,21 @@
     <string name="ai_note_how">AI ボタンをタップすると、選択した文章（選択がなければ入力欄全体）を処理します。先に候補を表示し、「置き換え」をタップしたときだけ文章が変わります。元に戻すこともできます。</string>
     <string name="ai_note_device">Android の AICore を通じて Gemini Nano でこの端末上で実行します。Kotomo は文章をどこにも送りません。Gemini Nano のない端末でも入力機能はすべて使えます。</string>
     <string name="ai_note_fields">パスワード欄、学習しないよう求める入力欄、シークレットモードでは文章アシストは動きません。</string>
-    <string name="ai_note_languages">英語と日本語に対応しています。中国語にはまだ対応していません。</string>
+    <string name="ai_note_languages">校正と書き換えは英語と日本語に対応し、中国語には対応していません。翻訳は中国語にも対応しています。</string>
+
+    <!-- Translation (the keyboard's translate panel and the AI page). -->
+    <string name="translate_from">翻訳元</string>
+    <string name="translate_to">翻訳先</string>
+    <string name="translate_lang_chinese">中文</string>
+    <string name="translate_back">戻る</string>
+    <string name="translate_download_notice">翻訳にはこの端末の言語モデルが必要です。モデルは Google（ML Kit）から取得し、1 言語あたり約 30 MB です。文章は送信されず、この端末で翻訳します。</string>
+    <string name="translate_downloading">言語モデルをダウンロードしています…</string>
+    <string name="translate_fail_download">言語モデルをダウンロードできませんでした。接続を確認して再試行してください。</string>
+    <string name="translate_fail">この文章は翻訳できませんでした。</string>
+    <string name="ai_note_translate">ツールバーの「翻訳」は ML Kit でこの端末上で中国語・英語・日本語を相互に翻訳します。言語モデルは「ダウンロード」をタップしたときだけ Google から取得します。中国語は簡体字で出力され、中国語 ↔ 日本語は英語を経由します。</string>
+    <string name="use_mlkit">この端末で動く文章アシストと翻訳</string>
+    <string name="translate_models">翻訳モデル</string>
+    <string name="translate_models_none">ダウンロードした言語モデルはありません</string>
+    <string name="translate_models_delete">削除</string>
+    <string name="translate_models_desc">%1$s · この端末</string>
 </resources>

@@ -318,6 +318,7 @@ dependencies {
     implementation(libs.androidx.autofill)
     implementation(libs.mlkit.genai.proofreading)
     implementation(libs.mlkit.genai.rewriting)
+    implementation(libs.mlkit.translate)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.savedstate.ktx)

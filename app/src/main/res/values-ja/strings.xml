@@ -49,7 +49,6 @@
     <string name="about_version">バージョン %1$s</string>
     <string name="bar_rime_preparing">中国語の辞書を準備しています…</string>
     <string name="bar_rime_failed">中国語の辞書を準備できませんでした。診断を確認してください。</string>
-    <string name="bar_not_yet">まだ使えません</string>
     <string name="candidates_collapse">キーボードに戻る</string>
     <string name="diag_rime_running">準備中…</string>
     <string name="diag_rime_failed">失敗：%1$s</string>

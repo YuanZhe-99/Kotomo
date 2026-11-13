@@ -701,8 +701,8 @@ internal fun PrivacyPage(settings: Settings, store: SettingsStore, open: (Page) 
 }
 
 /**
- * Draws the AI page: the switch that lets the keyboard's AI button work (off by default) and what
- * it does and never does.
+ * Draws the AI page: the switch that lets the keyboard's AI button and Translate work (off by
+ * default), what they do and never do, and, while on, the translation models on the device.
  */
 @Composable
 internal fun AiPage(settings: Settings, store: SettingsStore) {
@@ -711,11 +711,12 @@ internal fun AiPage(settings: Settings, store: SettingsStore) {
     }
     Section(null) {
         Inset {
-            listOf(R.string.ai_note_how, R.string.ai_note_device, R.string.ai_note_fields, R.string.ai_note_languages).forEach {
+            listOf(R.string.ai_note_how, R.string.ai_note_device, R.string.ai_note_fields, R.string.ai_note_languages, R.string.ai_note_translate).forEach {
                 Text(stringResource(it), style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
+    if (settings.ai.enabled) TranslationModels()
 }
 
 /** The clipboard retentions the Privacy page offers, in days. */

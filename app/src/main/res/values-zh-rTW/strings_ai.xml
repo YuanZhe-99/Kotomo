@@ -52,5 +52,21 @@
     <string name="ai_note_how">點按 AI 按鈕處理選取的文字，未選取時處理整個輸入框。先顯示建議；只有點按「取代」才會改動文字，復原可還原原文。</string>
     <string name="ai_note_device">透過 Android 的 AICore 用 Gemini Nano 在本機執行。Kotomo 不會把你的文字傳往任何地方。沒有 Gemini Nano 的裝置保留所有輸入功能。</string>
     <string name="ai_note_fields">寫作助手不會在密碼框、要求不學習的輸入框或無痕模式中執行。</string>
-    <string name="ai_note_languages">支援英語和日語，暫不支援中文。</string>
+    <string name="ai_note_languages">校對與改寫支援英語和日語，不支援中文；翻譯也支援中文。</string>
+
+    <!-- Translation (the keyboard's translate panel and the AI page). -->
+    <string name="translate_from">從</string>
+    <string name="translate_to">譯為</string>
+    <string name="translate_lang_chinese">中文</string>
+    <string name="translate_back">返回</string>
+    <string name="translate_download_notice">翻譯需要本機上的語言模型。模型來自 Google（ML Kit），每種語言約 30 MB。你的文字不會傳出：翻譯在本機進行。</string>
+    <string name="translate_downloading">正在下載語言模型…</string>
+    <string name="translate_fail_download">語言模型下載失敗。請檢查網路後重試。</string>
+    <string name="translate_fail">這段文字無法翻譯。</string>
+    <string name="ai_note_translate">工具列上的「翻譯」用 ML Kit 在本機進行中、英、日互譯。語言模型只在你點按「下載」時從 Google 下載；中文輸出為簡體，中日互譯經英語中轉。</string>
+    <string name="use_mlkit">在本機進行的寫作助手與翻譯</string>
+    <string name="translate_models">翻譯模型</string>
+    <string name="translate_models_none">尚未下載語言模型</string>
+    <string name="translate_models_delete">刪除</string>
+    <string name="translate_models_desc">%1$s · 在本機</string>
 </resources>

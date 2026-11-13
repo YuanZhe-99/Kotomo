@@ -25,3 +25,4 @@
   （按各自的标签；HeliBoard 唯一更新的标签是预发布的 4.3-beta1）；工具链与数据源同上一条。Kotomo 的 Mozc 胶水层
   加入了给协调层的函数表，因此重新构建了两个 Android 库，并把它们的哈希记入 `build-lock.json`；`mozc.data` 未变。
 - 2026-11-12 的来源审查（S8，`third-party.md`）：从发布源读到的最新版本：SudachiDict v20261015、Noto Emoji v2026-09-24-unicode18_0、Twemoji v17.0.3、OpenMoji 17.0.0、jmdict-simplified 3.6.2+20261109214828、cldr-json 49.0.0（均未变或为新记录）；THUOCL 未变。
+- 2026-11-13 为翻译（Q9）核对上游：新加入 ML Kit `translate` 17.0.3（最新版本）；ML Kit GenAI 校对与改写 1.0.0-beta1、librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2（更新的只有 4.3-beta1）、AGP 9.5.1 与 Kotlin 2.4.21（2.5.0 是候选版本）未变。

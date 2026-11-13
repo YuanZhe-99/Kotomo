@@ -49,7 +49,6 @@
     <string name="about_version">版本 %1$s</string>
     <string name="bar_rime_preparing">正在準備中文詞庫…</string>
     <string name="bar_rime_failed">中文詞庫準備失敗，請查看診斷。</string>
-    <string name="bar_not_yet">暫不可用</string>
     <string name="candidates_collapse">返回鍵盤</string>
     <string name="diag_rime_running">準備中…</string>
     <string name="diag_rime_failed">失敗：%1$s</string>

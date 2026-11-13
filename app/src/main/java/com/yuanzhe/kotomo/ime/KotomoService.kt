@@ -1000,8 +1000,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /**
      * Runs a toolbar tool, from the bar or from the More panel's grid (PLAN §10.10).
-     * Notes: Settings, Dictionaries and Themes open the settings app (at that page); Translate is
-     * not available yet.
+     * Notes: Settings, Dictionaries and Themes open the settings app (at that page).
      */
     private fun onTool(tool: Tool) {
         when (tool) {
@@ -1011,7 +1010,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             Tool.MORE -> toggleQuickPanel()
             Tool.CLIPBOARD -> showClipboard()
             Tool.AI -> startAi()
-            Tool.TRANSLATE -> showNotice(getString(R.string.bar_not_yet))
+            Tool.TRANSLATE -> showTranslate()
             Tool.EDIT -> showEditPanel()
             Tool.EMOJI -> showEmoji()
             Tool.FLOATING -> store.set { it.copy(floating = !it.floating) }
@@ -1057,36 +1056,48 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /**
-     * Hands the selected text, or the whole field when nothing is selected, to the AI screen.
-     * Side effects: commits the composition; starts [AiActivity] in its own task.
+     * Reads the text writing help and translation work on: the selection, or the whole field when
+     * nothing is selected and it is short enough.
+     * Returns: the field, the text and its absolute range, or null after showing why not.
+     * Side effects: commits the composition.
      * Notes: refuses (with a notice) while AI is off, in sensitive and direct fields and in
-     * incognito mode; Chinese-only text is refused because
-     * Gemini Nano's writing tools do not take Chinese (PLAN §11.1).
+     * incognito mode (PLAN §14).
      */
-    private fun startAi() {
+    private fun aiText(): AiText? {
         val info = currentInputEditorInfo
         when {
-            locked -> return showNotice(getString(R.string.locked_notice))
-            !settings.ai.enabled -> return showNotice(getString(R.string.ai_off_notice))
-            info == null || direct || sensitive || incognito -> return showNotice(getString(R.string.ai_not_here))
+            locked -> return null.also { showNotice(getString(R.string.locked_notice)) }
+            !settings.ai.enabled -> return null.also { showNotice(getString(R.string.ai_off_notice)) }
+            info == null || direct || sensitive || incognito -> return null.also { showNotice(getString(R.string.ai_not_here)) }
         }
         commitComposition()
-        val ic = currentInputConnection ?: return
+        val ic = currentInputConnection ?: return null
         val extracted = ic.getExtractedText(ExtractedTextRequest().apply { hintMaxChars = AI_MAX_CHARS + 1 }, 0)
-            ?: return showNotice(getString(R.string.ai_not_here))
+            ?: return null.also { showNotice(getString(R.string.ai_not_here)) }
         val all = extracted.text?.toString().orEmpty()
         val selStart = minOf(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, all.length)
         val selEnd = maxOf(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, all.length)
         val (from, to) = when {
             selEnd > selStart -> selStart to selEnd
             extracted.startOffset == 0 && all.length <= AI_MAX_CHARS -> 0 to all.length
-            else -> return showNotice(getString(R.string.ai_select_shorter))
+            else -> return null.also { showNotice(getString(R.string.ai_select_shorter)) }
         }
         val text = all.substring(from, to)
         when {
-            text.isBlank() -> return showNotice(getString(R.string.ai_empty))
-            text.length > AI_MAX_CHARS -> return showNotice(getString(R.string.ai_select_shorter))
+            text.isBlank() -> return null.also { showNotice(getString(R.string.ai_empty)) }
+            text.length > AI_MAX_CHARS -> return null.also { showNotice(getString(R.string.ai_select_shorter)) }
         }
+        return AiText(info, text, extracted.startOffset + from, extracted.startOffset + to)
+    }
+
+    /**
+     * Hands the selected text, or the whole field when nothing is selected, to the AI screen.
+     * Side effects: commits the composition; starts [AiActivity] in its own task.
+     * Notes: refuses where [aiText] does; Chinese-only text is refused because Gemini Nano's
+     * writing tools do not take Chinese (PLAN §11.1).
+     */
+    private fun startAi() {
+        val (info, text, start, end) = aiText() ?: return
         val kana = text.any { it in '\u3040'..'\u30ff' }
         val latin = text.any { it in 'a'..'z' || it in 'A'..'Z' }
         val han = text.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.HAN }
@@ -1095,10 +1106,42 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             han && !latin -> return showNotice(getString(R.string.ai_chinese))
             else -> AiLanguage.ENGLISH
         }
-        AiHandoff.begin(
-            AiRequest(info.packageName.orEmpty(), info.fieldId, text, extracted.startOffset + from, extracted.startOffset + to, language),
-        )
+        AiHandoff.begin(AiRequest(info.packageName.orEmpty(), info.fieldId, text, start, end, language))
         startActivity(Intent(this, AiActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /**
+     * Shows the translate panel (PLAN §11.1) in the keyboard's place for the selected text or the
+     * whole field.
+     * Side effects: commits the composition; on Replace puts the translation in place of the
+     * original if it is unchanged (Undo then offered), otherwise copies it and says so.
+     * Notes: refuses where [aiText] does. ML Kit's translation runs in the keyboard (no foreground
+     * rule), off the engine thread; nothing is stored.
+     */
+    private fun showTranslate() {
+        val (info, text, start, end) = aiText() ?: return
+        refresh(0)
+        val height = keyboard.height
+        val panel = ComposeView(this).apply {
+            setContent {
+                TranslatePanel(
+                    text = text,
+                    onReplace = { result ->
+                        showKeyboard()
+                        val now = currentInputEditorInfo ?: return@TranslatePanel
+                        replaceAi(now, AiRequest(info.packageName.orEmpty(), info.fieldId, text, start, end, AiLanguage.ENGLISH), result)
+                    },
+                    onCopy = { result ->
+                        clipboard.setPrimaryClip(ClipData.newPlainText(null, result))
+                        showKeyboard()
+                        showNotice(getString(R.string.ai_copied))
+                    },
+                    onBack = ::showKeyboard,
+                )
+            }
+        }
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
     }
 
     /**
@@ -1108,6 +1151,15 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun applyAiResult(info: EditorInfo) {
         val (request, result) = AiHandoff.take() ?: return
+        replaceAi(info, request, result)
+    }
+
+    /**
+     * Replaces [request]'s range in the field with [result] when the field is the same one and the
+     * original text is still there; otherwise copies [result] and says so.
+     * Side effects: the replacement, Undo offered until the next key.
+     */
+    private fun replaceAi(info: EditorInfo, request: AiRequest, result: String) {
         val ic = currentInputConnection ?: return
         val same = info.packageName == request.app && info.fieldId == request.fieldId &&
             textAt(request.start, request.end) == request.text
@@ -2848,6 +2900,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         const val RETURN = 0xff0d
     }
 }
+
+/** The text writing help or translation works on: the field, the text and its absolute range in it. */
+private data class AiText(val info: EditorInfo, val text: String, val start: Int, val end: Int)
 
 /** One AI replacement that Undo can take back: the range it now fills and both texts. */
 private data class AiUndo(val start: Int, val end: Int, val original: String, val replacement: String)

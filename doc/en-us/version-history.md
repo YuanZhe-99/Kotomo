@@ -34,3 +34,4 @@
   Kotomo's Mozc glue gained the coordinator's function table, so both Android libraries were
   rebuilt and their hashes recorded in `build-lock.json`; `mozc.data` is unchanged.
 - Source audit (S8) on 2026-11-12, `third-party.md`: latest releases read from the feeds: SudachiDict v20261015, Noto Emoji v2026-09-24-unicode18_0, Twemoji v17.0.3, OpenMoji 17.0.0, jmdict-simplified 3.6.2+20261109214828, cldr-json 49.0.0 (all unchanged or newly recorded); THUOCL unchanged.
+- Upstreams checked on 2026-11-13 for translation (Q9): ML Kit `translate` 17.0.3 added at its latest release; ML Kit GenAI proofreading and rewriting 1.0.0-beta1, librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2, HeliBoard 4.2 (newer only 4.3-beta1), AGP 9.5.1 and Kotlin 2.4.21 (2.5.0 is a release candidate) unchanged.

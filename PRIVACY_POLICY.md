@@ -11,7 +11,8 @@ those (AGENTS.md, "Documentation maintenance").
   its own diagnostic data, such as app name and version, identifiers and sizes, when writing help
   or translation runs; Kotomo adds no text to it); Kotomo itself uses the
   network only for dictionary downloads you start, after a notice before the first one (see
-  "Downloaded dictionaries").
+  "Downloaded dictionaries"), and ML Kit downloads translation models from Google only when you
+  tap Download in the translate panel.
 - What you type stays on your device. Kotomo has no analytics, no advertising, no crash upload and
   no account.
 - In password fields, in fields that ask not to be learned from, and in incognito mode, Kotomo
@@ -33,6 +34,7 @@ and device-to-device transfer are turned off for it.
 | Recently used emoji (up to 32) and how often each was sent (up to 200 counts) | The Frequently used and Recents groups of the emoji panel | Sensitive fields, incognito mode |
 | Per app: the last input mode used there, the mode you fixed for it, the Chinese script you chose there, and whether you turned off learning there or made its fields type code (the app's package name and those choices only) | The keyboard comes back in that mode and script | Sensitive fields, incognito mode |
 | Writing help (off by default): the text you hand to it, held in memory only while its screen is open and dropped when the screen closes; runs on the device with Gemini Nano, and Android's AICore downloads the model from Google when you tap Download | Proofreading and rewriting you ask for | Never stored or logged; never in sensitive fields or incognito mode |
+| Translation (off with writing help, which is off by default): the text you translate, held only while the keyboard's translate panel is open; translated on the device by ML Kit. Its language models (about 30 MB per language) are downloaded from Google only when you tap Download under a notice that says so, and can be deleted on Settings → Writing help | Translation you ask for | Never stored or logged; never in sensitive fields or incognito mode |
 | Downloaded dictionaries: the words of each dictionary you downloaded, its previous version, where it came from and its license, and whether you accepted the download notice. The downloaded files are converted and then deleted | The downloaded words among the candidates | — (the files hold none of your data) |
 | Diagnostics: timings of key presses and drawing, memory use, the state of the dictionaries | The Diagnostics page, to find problems | Never what you type |
 
@@ -85,7 +87,7 @@ downloaded.
 
 ## Features that are not there yet
 
-Translation and sync are planned. Each will be described here, and disclosed in the app before its
+Sync is planned. Each will be described here, and disclosed in the app before its
 first use, in the same change that adds it; none of them will send what you type anywhere without
 your explicit choice.
 
