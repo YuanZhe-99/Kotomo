@@ -1353,6 +1353,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         // The mode this field starts in may have its own theme (PLAN §11.4).
         checkLook()
         showKeyboard()
+        showKeys(super.onEvaluateInputViewShown())
         updateAutoCaps()
         aiUndo = null
         refresh(0)
@@ -1385,6 +1386,76 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         clearChinese()
         fieldSerial++
         super.onFinishInputView(finishingInput)
+    }
+
+    /** True while a physical key acts through [onKey]. */
+    private var fromHardKey = false
+
+    /** Key codes whose key-down Kotomo took from a physical keyboard; their key-ups are taken too. */
+    private val hardDown = HashSet<Int>()
+
+    /**
+     * Takes keys of a physical keyboard (PLAN §12): letters compose as on screen, number keys pick
+     * candidates, Esc drops the composition, Shift+Space switches the mode ([HardKeys]).
+     * Notes: main thread; keys Kotomo does not take go to the app unchanged.
+     */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val open = composing.isNotEmpty() || chinesePreedit.isNotEmpty()
+        val info = currentInputEditorInfo
+        if (currentInputConnection == null || info == null) return super.onKeyDown(keyCode, event)
+        // Read from the field itself: a field without the bar (a password field) never starts the
+        // input view, so [direct] may still describe the previous one.
+        val decision = HardKeys.map(keyCode, event.unicodeChar, event.metaState, mode, Fields.direct(info.inputType), open, candidates.size)
+        if (decision == HardKey.Pass) return super.onKeyDown(keyCode, event)
+        hardDown += keyCode
+        // The candidates need the bar: bring it back if the person hid the keyboard.
+        if (!isInputViewShown && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) requestShowSelf(0)
+        if (event.repeatCount > 0 && decision !is HardKey.Act) return true
+        when (decision) {
+            is HardKey.Act -> {
+                // A physical key has no touch point for the English engine's key model.
+                fromHardKey = true
+                try { onKey(decision.action, false, event.downTime) } finally { fromHardKey = false }
+            }
+            is HardKey.Pick -> pick(decision.index)
+            HardKey.Next -> nextCandidate()
+            HardKey.Cancel -> cancelComposition()
+            HardKey.NextMode -> {
+                val modes = settings.modes
+                onKey(KeyAction.SetMode(modes[(modes.indexOf(mode) + 1) % modes.size]), false, event.downTime)
+            }
+            HardKey.Pass -> Unit
+        }
+        return true
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        if (hardDown.remove(keyCode)) true else super.onKeyUp(keyCode, event)
+
+    /** Drops the open composition, committing nothing (Esc on a physical keyboard). */
+    private fun cancelComposition() {
+        currentInputConnection?.commitText("", 1)
+        composing.clear()
+        taps.clear()
+        clearChinese()
+        fieldSerial++
+        refresh(0)
+    }
+
+    /**
+     * Shows the bar alone above a physical keyboard (unless the person asked for the on-screen
+     * keys with it), the whole keyboard otherwise (PLAN §12).
+     * Returns: whether the input view shows; with a physical keyboard, in every field that composes.
+     */
+    override fun onEvaluateInputViewShown(): Boolean {
+        val shown = super.onEvaluateInputViewShown()
+        showKeys(shown)
+        return currentInputEditorInfo?.let { !Fields.direct(it.inputType) || shown } ?: shown
+    }
+
+    /** Shows the on-screen keys, or hides them ([shown] false) while a physical keyboard is in use alone. */
+    private fun showKeys(shown: Boolean) {
+        if (::keyboard.isInitialized) keyboard.visibility = if (shown) View.VISIBLE else View.GONE
     }
 
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
@@ -1487,7 +1558,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     return
                 } else if ((letter || kana) && !direct && !longPress) {
                     composing.append(action.text)
-                    taps += keyboard.lastTap?.let { (dx, dy) -> English.touchPoint(action.text[0], dx, dy) }
+                    taps += if (fromHardKey) null else keyboard.lastTap?.let { (dx, dy) -> English.touchPoint(action.text[0], dx, dy) }
                     ic.setComposingText(composing, 1)
                 } else if (spaced && composing.isEmpty() && settings.gestures.smartSpace && Fields.attaches(action.text) &&
                     ic.getTextBeforeCursor(1, 0)?.toString() == " "

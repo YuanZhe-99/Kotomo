@@ -86,4 +86,5 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | 通过 ML Kit GenAI 用 Gemini Nano 校对与改写（[ai.md](../ai.md)）：状态、由用户发起的下载、长文字拆分、错误映射 | `GenAi`、`AiAction`、`AiFailure` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`、`AiHandoff.kt` | 写作助手页面（语言、操作、建议、替换、复制）及其与键盘之间的内存交接 | `AiActivity`、`AiHandoff`、`AiRequest` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/Translation.kt`、`ime/TranslatePanel.kt`、`settings/TranslationModels.kt` | 用 ML Kit 在本机进行中、英、日互译（[ai.md](../ai.md)）：猜测语言、一个语言对需要的模型、由用户发起的下载、翻译、删除；键盘的翻译面板（语言、预览、替换、复制）与 AI 页上已下载模型的列表 | `TranslateLang.guess`、`Translations`、`TranslatePanel`、`TranslationModels` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/HardKeys.kt` | 外接物理键盘（PLAN §12）：每个键的作用（进入组合、按数字选候选、组合中的空格、回车、退格与 Esc、Shift+空格换下一个模式，其余交给应用；纯 Kotlin，有单元测试）；输入法服务的 `onKeyDown` 据此执行，在关闭了实体键盘旁的屏幕键盘时只显示候选栏 | `HardKeys.map`、`HardKey` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/KeyboardColors.kt` | 按所选主题（跟随系统、浅色、深色、Material You）为视图与 Compose 面板提供键盘调色板 | `apply`、`color`、`kbColor` |
