@@ -102,7 +102,7 @@ the table lists every key.
 | `pc.enabled` | boolean | `false` | Offer the PC layout (PLAN §10.11) in the language choice; it is the PC row's show/hide switch on the Input modes page, so the layout stays hidden until turned on. `modes.order` and `modes.hidden` list `pc` like the other modes |
 | `pc.host` | string: `windows`, `macos`, `linux` | `windows` | The computer the PC layout types to: the modifiers' names and order, the Fn page's shortcuts and the security combination (Ctrl+Alt+Del, ⌥⌘Esc on macOS); the key codes sent are the same |
 | `pc.wide` | string: `full`, `split` | `full` | The PC layout on a wide screen: the function strip and the whole PC keyboard, or the phone pages as two halves at the sides |
-| `toolbar.order` | string | `clipboard,ai,translate,settings,edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting` | The toolbar's tools after More (PLAN §10.10), tool names joined by commas; More is always first and never listed. A missing tool joins at the end, names this version does not know are kept after the known ones |
+| `toolbar.order` | string | `clipboard,ai,translate,settings,edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting,voice` | The toolbar's tools after More (PLAN §10.10), tool names joined by commas; More is always first and never listed. A missing tool joins at the end, names this version does not know are kept after the known ones |
 | `toolbar.inline_autofill` | boolean | `true` | Show an autofill service's inline suggestions over the idle toolbar (Android 11 and later, PLAN §10.10); off: Kotomo asks for none |
 | `keys.gap_dp` | int 2–12 | `6` | The gap between keys, in dp (PLAN §10.9) |
 | `keys.text_percent` | int 80–140 | `100` | Key label size, in percent of the design's |
@@ -121,7 +121,7 @@ the table lists every key.
 | `emoji.mappings` | string | empty | The person's emoji for words, `word=emoji` per line (the word in lowercase letters as typed, at most 24); they come first among the emoji suggestions for exactly those letters |
 | `japanese.flick` | boolean | `false` | Japanese mode uses the 12-key flick layout |
 | `chinese.nine_key` | boolean | `false` | Chinese mode uses the 9-key layout: keys 2–9 stand for their letters and librime's 9-key schema reads the digits as pinyin (PLAN §10.9); the fuzzy-pinyin rules and a double-pinyin scheme apply to it as to the letter layout (with double pinyin on, the digits spell the scheme's two keys); the person's and the downloaded dictionaries, whose codes are letters, are not reached |
-| `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
+| `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting,voice` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 
 ## Theme file
 

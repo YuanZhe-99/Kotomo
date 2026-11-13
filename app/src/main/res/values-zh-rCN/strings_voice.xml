@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_voice">语音输入</string>
+    <string name="voice_unavailable">语音输入需要 Android 的设备端语音识别，这台设备没有。Kotomo 从不把你的声音发给在线服务。</string>
+    <string name="voice_permission">语音输入需要使用麦克风。你说的话由 Android 的语音识别在本机识别；Kotomo 不录音，也不发送。</string>
+    <string name="voice_allow">允许使用麦克风</string>
+    <string name="voice_tap">点麦克风后说话</string>
+    <string name="voice_listening">正在听…</string>
+    <string name="voice_no_match">没有识别出内容。点一下重试。</string>
+    <string name="voice_needs_model">这台设备上没有这种语言的语音模型。Android 可以从它的语音识别提供方（多数设备上是 Google）下载。</string>
+    <string name="voice_downloading">Android 正在下载语音模型。下载完成后再试。</string>
+    <string name="voice_unsupported">这台设备的语音识别不支持这种语言。</string>
+    <string name="voice_fail">语音输入暂时不可用。</string>
+    <string name="voice_off_here">这个输入框中不能使用语音输入</string>
+    <string name="voice_start">开始说话</string>
+    <string name="voice_stop">停止</string>
+</resources>

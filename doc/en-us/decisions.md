@@ -301,3 +301,28 @@ handwriting offline before that); ML Kit may send its own diagnostics (`upstream
 **Reopens when.** The user wants handwriting without Google's code (for example a build without
 ML Kit, decision 10), or an open recognizer with Chinese and Japanese models of known license is
 found.
+
+## ADR-015 Voice typing through Android's on-device speech recognition
+
+**Decision.** Voice typing in Chinese (mainland or Taiwan Mandarin, by the person's script),
+English and Japanese (PLAN §12) uses only the system's on-device recognizer
+(`SpeechRecognizer.createOnDeviceSpeechRecognizer`, Android 12 and later). Kotomo asks for the
+microphone (`RECORD_AUDIO`) only when the person opens voice typing, through a screen that shows
+nothing but the system's dialog; it never records audio itself. A missing language model is
+downloaded by the system's speech service (Android 13 and later) only after the person taps
+Download under a notice saying so. Nothing heard is stored, logged or learned; voice typing is not
+offered in password, other sensitive or direct fields or in incognito mode.
+
+**Why.** It adds no library, model or license to Kotomo, runs offline once the model is on the
+device, and keeps audio inside the system's own recognition service. The default
+`SpeechRecognizer` may stream audio to remote servers (its documentation says so), which the
+behavior contract forbids without a disclosed, person-started use; an open recognizer (Vosk,
+whisper.cpp, sherpa-onnx with Chinese, English and Japanese models) would ship 50–500 MB of models
+whose sources and licenses need the user's choice.
+
+**Cost.** Devices without an on-device recognizer (most before Android 12, and many without
+Google's speech services) show that voice typing is unavailable. Which provider runs the
+recognizer and where its model comes from is the device's choice, not Kotomo's.
+
+**Reopens when.** The user picks an open recognizer and its models, or wants a network recognizer
+as an option the person enables with a notice.

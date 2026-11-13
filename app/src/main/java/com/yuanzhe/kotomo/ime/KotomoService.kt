@@ -1135,6 +1135,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             Tool.EDIT -> showEditPanel()
             Tool.EMOJI -> showEmoji()
             Tool.HANDWRITING -> showHandwriting()
+            Tool.VOICE -> showVoice()
             Tool.FLOATING -> store.set { it.copy(floating = !it.floating) }
             // The field's own undo history (PLAN §10.8); the composition is finished first.
             Tool.UNDO, Tool.REDO -> {
@@ -1369,6 +1370,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         onClip()
         // Back from the AI screen with a confirmed suggestion; after the field's connection settles.
         main.post { applyAiResult(info) }
+        // Back from allowing the microphone: voice typing opens again.
+        if (VoicePermissionActivity.reopen.getAndSet(false)) main.post { showVoice() }
     }
 
     override fun onWindowShown() {
@@ -1383,6 +1386,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     override fun onWindowHidden() {
         super.onWindowHidden()
+        // The microphone is never on while the keyboard is away.
+        if (voicePanel != null && ::panelHost.isInitialized && panelHost.getChildAt(0) === voicePanel) showKeyboard()
+        voicePanel = null
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         if (!locked) Probe.save(this)
     }
@@ -3088,6 +3094,47 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
     }
 
+    /** The voice panel while it is shown; leaving it closes the recognizer and the microphone. */
+    private var voicePanel: ComposeView? = null
+
+    /**
+     * Opens the voice typing panel in the keys' place (PLAN §12), in the mode's language.
+     * Notes: not in direct or sensitive fields or in incognito mode; the composition is committed
+     * first. Final results are committed as heard and learn nothing.
+     */
+    private fun showVoice() {
+        val info = currentInputEditorInfo ?: return
+        if (Fields.direct(info.inputType) || sensitive || incognito) return showNotice(getString(R.string.voice_off_here))
+        commitComposition()
+        refresh(0)
+        val script = appScript ?: settings.chineseScript
+        val height = keyboard.height
+        val panel = ComposeView(this).apply {
+            setContent {
+                VoicePanel(
+                    start = VoiceLang.forMode(mode, script),
+                    chinese = VoiceLang.chinese(script),
+                    onAskPermission = {
+                        startActivity(Intent(this@KotomoService, VoicePermissionActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    },
+                    onText = ::commitVoice,
+                    onBack = ::showKeyboard,
+                )
+            }
+        }
+        voicePanel = panel
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
+    }
+
+    /** Commits what voice typing heard; Latin words after a Latin word get a space between. */
+    private fun commitVoice(text: String) {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(1, 0)?.toString().orEmpty()
+        fun latin(c: Char) = c.isLetterOrDigit() && c.code < LATIN_END
+        ic.commitText(if (before.isNotEmpty() && latin(before.last()) && latin(text.first())) " $text" else text, 1)
+    }
+
     /** The handwriting models on the device, as last asked in this process; null before the first stylus session. */
     private var inkModels: Set<InkLang>? = null
     private var inkCheck: Job? = null
@@ -3218,6 +3265,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         /** The compiled cross-language lexicon (doc/en-us/lexicon-format.md), stored uncompressed. */
         const val LEXICON = "cross.klx"
         const val NOTICE_MS = 1500L
+        /** Characters below this are Latin-script for voice typing's spacing. */
+        const val LATIN_END = 0x0250
         /** How long the pen rests before stylus writing is read and committed. */
         const val STYLUS_PAUSE_MS = 700L
         /** The most of the screen's width a floating keyboard takes. */

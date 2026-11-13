@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_voice">音声入力</string>
+    <string name="voice_unavailable">音声入力には Android の端末内音声認識が必要ですが、この端末にはありません。Kotomo が音声をオンラインサービスに送ることはありません。</string>
+    <string name="voice_permission">音声入力にはマイクが必要です。話した内容は Android の音声認識がこの端末で認識します。Kotomo は録音も送信もしません。</string>
+    <string name="voice_allow">マイクを許可</string>
+    <string name="voice_tap">マイクをタップして話してください</string>
+    <string name="voice_listening">聞き取り中…</string>
+    <string name="voice_no_match">認識できませんでした。タップしてもう一度お試しください。</string>
+    <string name="voice_needs_model">この言語の音声モデルがこの端末にありません。Android の音声認識の提供元（ほとんどの端末では Google）からダウンロードできます。</string>
+    <string name="voice_downloading">Android が音声モデルをダウンロードしています。完了したらもう一度お試しください。</string>
+    <string name="voice_unsupported">この端末の音声認識はこの言語に対応していません。</string>
+    <string name="voice_fail">現在、音声入力は使用できません。</string>
+    <string name="voice_off_here">この入力欄では音声入力を使用できません</string>
+    <string name="voice_start">話し始める</string>
+    <string name="voice_stop">停止</string>
+</resources>

@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Voice typing (PLAN §12, ADR-015): asked for only when the person opens it. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -28,6 +31,14 @@
             android:label="@string/ai_title"
             android:taskAffinity=""
             android:windowSoftInputMode="stateAlwaysHidden" />
+
+        <!-- Shows only the system's microphone dialog for voice typing, then closes. -->
+        <activity
+            android:name=".ime.VoicePermissionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <service
             android:name=".ime.KotomoService"

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_voice">Voice typing</string>
+    <string name="voice_unavailable">Voice typing needs Android\'s on-device speech recognition, which this device does not have. Kotomo never sends your voice to an online service.</string>
+    <string name="voice_permission">Voice typing needs the microphone. What you say is recognized on this device by Android\'s speech recognition; Kotomo does not record or send it.</string>
+    <string name="voice_allow">Allow microphone</string>
+    <string name="voice_tap">Tap the microphone and speak</string>
+    <string name="voice_listening">Listening…</string>
+    <string name="voice_no_match">Nothing was recognized. Tap to try again.</string>
+    <string name="voice_needs_model">The speech model for this language is not on this device. Android can download it from the provider of its speech recognition (Google on most devices).</string>
+    <string name="voice_downloading">Android is downloading the speech model. Try again when it is done.</string>
+    <string name="voice_unsupported">This device\'s speech recognition does not offer this language.</string>
+    <string name="voice_fail">Voice typing is not available right now.</string>
+    <string name="voice_off_here">Voice typing is off in this field</string>
+    <string name="voice_start">Start speaking</string>
+    <string name="voice_stop">Stop</string>
+</resources>

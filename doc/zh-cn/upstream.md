@@ -73,6 +73,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 | Android 17（API 37）是最新稳定平台；Google Play 自 2026-08-31 起要求以 API 36 为目标；面向 API 35 及以上的应用必须支持 16 KB 页，Play 自 2027-02-01 起拒绝不支持的更新 | `compileSdk` 与 `targetSdk` 取 37；所有本地库 16 KB 对齐 | 已阅读 |
 | `IME_FLAG_NO_PERSONALIZED_LEARNING` 是请求而非保证；密码输入框使用 `TYPE_TEXT_VARIATION_*PASSWORD` 各变体与 `TYPE_NUMBER_VARIATION_PASSWORD` | Kotomo 把两者都当作硬规则 | 已阅读 |
 | 内联自动填充建议（API 30）、手写笔回调（API 33 起），以及面向 API 37 时用于中日韩转换的 `TextAttribute.Builder.setTextSuggestionSelected()` | 由需要它们的阶段使用 | 已阅读 |
+| `SpeechRecognizer.createOnDeviceSpeechRecognizer`（API 31）创建在设备上运行的识别器，`isOnDeviceRecognitionAvailable` 为假时抛出异常；`checkRecognitionSupport` 与 `triggerModelDownload`（API 33）报告并获取某种语言的模型，可能需要用户操作；默认的 `createSpeechRecognizer` 很可能把音频流式发送到远程服务器；所有调用都在主线程，需要 `RECORD_AUDIO`，用完必须 `destroy()` | 语音输入只使用设备端识别器（ADR-015） | 已读 |
 | Android 17 按设备内存限制应用内存，并且在未处理的旋转后不再恢复键盘可见性 | 内存在 Android 17 上测量 | 已阅读 |
 | 只有默认输入法和焦点应用能读取剪贴板（Android 10+）；默认输入法读取时不显示提示（Android 12+）；敏感剪贴带 `ClipDescription.EXTRA_IS_SENSITIVE`；系统在最后一次访问后最迟 60 分钟清除剪贴板（Android 13+） | Kotomo 自己保存剪贴板历史，从不记录敏感剪贴 | 已阅读 |
 | `ComposeView` 需要视图树中的 `LifecycleOwner` 与 `SavedStateRegistryOwner`；没有面向输入法的官方指南 | 技术验证 S1 决定面板是否使用 Compose | 已阅读 |
