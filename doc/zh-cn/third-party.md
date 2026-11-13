@@ -82,7 +82,7 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 - 车站名：MLIT N02 的站名，加上取自 Mozc 或 SudachiDict 的读音；数据集之外的线路仍然缺失。
 - 专业领域词库：中文有 THUOCL 的 11 个词表（已提供下载）；日文没有找到许可明确的来源，所以日文领域词库等待。
 
-用户 2026-11-13 的决定：有条件可用的各项按所写条件推进，包括 Noto Emoji 与 Wikidata。仍未决定：JMdict 只随发布版本更新是否满足 EDRDG 的更新规则。
+用户 2026-11-13 的决定：有条件可用的各项按所写条件推进，包括 Noto Emoji 与 Wikidata。同日另决定：JMdict 只随 Kotomo 发版更新，用户接受这满足 EDRDG 的更新规则；发版步骤本来就把所有数据源更新到最新版本（`AGENTS.md`），不另加流程。
 
 ## 计划中的组件
 

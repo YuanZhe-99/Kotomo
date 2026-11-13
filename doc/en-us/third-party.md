@@ -99,8 +99,9 @@ Data gaps (`PLAN.md` §3.3):
   license was found, so Japanese domains wait.
 
 Decided by the user on 2026-11-13: the conditional items go ahead on their stated conditions, the
-Noto Emoji and Wikidata ones included. Still open: whether shipping JMdict with releases only meets
-the EDRDG's update rule.
+Noto Emoji and Wikidata ones included. Also decided on 2026-11-13: JMdict is updated with each
+Kotomo release only, which the user accepts as meeting the EDRDG's update rule; the release steps
+already bring every data source to its latest version (`AGENTS.md`), so no other process is added.
 
 ## Planned components
 

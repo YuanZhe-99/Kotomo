@@ -1179,7 +1179,7 @@ Next blocking issue:
 - Kotomo 为 GPL-3.0。与之兼容、可以组合的上游许可证包括：BSD-3-Clause（librime、Mozc）、Apache-2.0（OpenCC、AOSP LatinIME）、LGPL-2.1-or-later（fcitx5-android）、LGPL-3.0（rime-luna-pinyin 等）、GPL-3.0（Trime、HeliBoard、rime-ice）、Unicode License v3（Unihan、CLDR）、CC BY 4.0，以及单向兼容 GPLv3 的 CC BY-SA 4.0（JMdict、CC-CEDICT 等）。打包 GPL-3.0-only 的数据（如 rime-ice）会使整个发行版实际上只能以 GPL-3.0 发布。
 - 不采用：许可证不明或不允许再分发的代码与数据（包括无许可声明的抓取词库）、仅限 GPL-2.0 或 CC BY-SA 3.0 的数据、未经授权的 Apple Emoji 图像、商业输入法的词库与素材。用户可以导入自己提供的词库文件，但应用不分发来源不明的词库。
 - 每个随应用分发的组件都在 `doc/en-us/third-party.md`（版本、来源、许可证、修改、义务）、`THIRD_PARTY_NOTICES.md` 和应用内的许可证页面中各有一条；生成的词库保留其来源数据的许可证与署名。
-- JMdict 等 EDRDG 数据：在"关于与致谢"中、从菜单进入的独立来源页上署名，并链接其许可与文档（只在启动页提及不够）；按上游版本规则定期更新数据。
+- JMdict 等 EDRDG 数据：在"关于与致谢"中、从菜单进入的独立来源页上署名，并链接其许可与文档（只在启动页提及不够）；随 Kotomo 每次发版更新到最新版本（用户 2026-11-13 决定，满足 EDRDG 的更新规则）。
 
 ### 15.2 设计参考与致谢（草案 §21.1–§21.3）
 
