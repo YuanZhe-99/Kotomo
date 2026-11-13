@@ -4,7 +4,7 @@
 |---|---|
 | Android phones (`arm64-v8a`) | Run on a Galaxy Z Fold (Android 17, release build): S1 and S2 pass there. P1's device checklist is not recorded line by line yet; only what appears on the screen could be checked. |
 | Android emulator (`x86_64`) | Android 17 (API 37.2) Google Play image with 16 KB pages on the development host: the release APK installs, Kotomo is selected as the keyboard and Japanese mode converts through Mozc (2026-11-10). For layouts and logic only; never evidence for latency, memory or on-device AI. |
-| Android tablets and foldables | P1 code in place (not yet run on a device): window size classes, a centred maximum width, keys below the hinge when half-folded, split halves and two space bars beside a vertical hinge (unit-tested). |
+| Android tablets and foldables | P1 code in place (not yet run on a device): window size classes, a centred maximum width, keys below the hinge when half-folded, split halves and two space bars beside a vertical hinge (unit-tested). 2026-11-13 on the emulator with `wm size`/`wm density` (2560×1600 and 1600×2560 at 320 dpi, 2208×1840 at 420 dpi): the letters split into two halves at the sides (g and v on both, as designed) over a full-width bottom row; screenshots looked at, light only. Not run on a tablet, a foldable or with a real hinge. |
 | Desktop hosts (Linux, macOS) | Build and test the engines and the app; the development host is x86_64 Linux (Debian 13). Never a product target. |
 
 ## Repository
@@ -88,6 +88,26 @@ Chinese path's first candidate update no longer counts the previous key's list a
 gaps: the per-key JNI design (one call per key with a versioned snapshot) is the engine ↔ app
 contract of Q4; the frame wait and the engine time on a device are unmeasured until the user runs
 the new APK (G1 checklist).
+
+## Emulator measurements (Q10, 2026-11-13)
+
+Emulator, not device latency: `LatencyTest` (T15) on emulator-5556 (Android 17, x86_64, debug,
+software rendering on a shared host) taps Kotomo's keys about every 150 ms, three words four times
+per mode, in a field that asks not to be learned from, and reads the diagnostics page's probes
+(timings only). The first-candidate target of `PLAN.md` §13.4 (p95 ≤ 50 ms on a mid-range device)
+can only be judged on a device; there it stays NOT_RUN.
+
+| Mode | Key typed → candidates drawn (n, p50 / p95 / max ms) | Engine work per key (p50 / p95 / max ms) |
+|---|---|---|
+| Chinese | 176, 68 / 114 / 255 | 17 / 79 / 165 |
+| Japanese | 132, 51 / 81 / 164 | 8 / 45 / 81 |
+| Mixed | 184, 56 / 96 / 156 | 17 / 54 / 139 |
+| English | 95, 58 / 105 / 170 | 9 / 60 / 384 |
+
+Cold start of the input method to its first keyboard frame: 737 ms. Process PSS while typing:
+155–214 MB (the instrumentation runs in the same process). Release APKs (unsigned, R8 on):
+arm64-v8a 84.5 MB, x86_64 85.4 MB. Most of the time per key is the emulator's frame wait, as in Q2;
+nothing on the key path was changed in Q10.
 
 ## Known limitations
 
