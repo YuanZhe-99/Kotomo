@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Emoji panel extras and the Emoji settings page (PLAN §10.6). -->
+<resources>
+    <string name="emoji_favorites">Favorites</string>
+    <string name="emoji_favorites_empty">Long-press an emoji to add it here</string>
+    <string name="emoji_combos">Combinations</string>
+    <string name="emoji_kaomoji">Kaomoji</string>
+    <string name="emoji_favorite_add">Add to favorites</string>
+    <string name="emoji_favorite_remove">Remove from favorites</string>
+    <string name="page_emoji">Emoji</string>
+    <string name="page_emoji_desc">Favorites · combinations · your emoji for words</string>
+    <string name="badge_emoji">E</string>
+    <string name="emoji_combos_field">Your combinations</string>
+    <string name="emoji_combos_example" translatable="false">🎈🎈</string>
+    <string name="emoji_combos_note">One per line. They follow Kotomo\'s under Combinations in the emoji panel.</string>
+    <string name="emoji_mappings_field">Your emoji for words</string>
+    <string name="emoji_mappings_example">neko=🐈</string>
+    <string name="emoji_mappings_note">One word as you type it (English, pinyin or romaji letters), an equals sign and the emoji per line. They come first among the emoji suggestions.</string>
+    <string name="emoji_favorites_count">Favorites: %1$d</string>
+    <string name="emoji_favorites_clear">Clear favorites</string>
+</resources>

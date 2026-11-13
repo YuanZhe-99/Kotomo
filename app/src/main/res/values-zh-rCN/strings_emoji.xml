@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Emoji panel extras and the Emoji settings page (PLAN §10.6). -->
+<resources>
+    <string name="emoji_favorites">收藏</string>
+    <string name="emoji_favorites_empty">长按 Emoji 可以收藏到这里</string>
+    <string name="emoji_combos">组合</string>
+    <string name="emoji_kaomoji">颜文字</string>
+    <string name="emoji_favorite_add">收藏</string>
+    <string name="emoji_favorite_remove">取消收藏</string>
+    <string name="page_emoji">Emoji</string>
+    <string name="page_emoji_desc">收藏 · 组合 · 自定义词语 Emoji</string>
+    <string name="badge_emoji">表</string>
+    <string name="emoji_combos_field">你的组合</string>
+    <string name="emoji_combos_note">每行一个，在 Emoji 面板的“组合”里排在 Kotomo 自带的之后。</string>
+    <string name="emoji_mappings_field">自定义词语 Emoji</string>
+    <string name="emoji_mappings_example">mao=🐈</string>
+    <string name="emoji_mappings_note">每行一个按键入方式写的词（英文、拼音或罗马字字母）、等号和 Emoji，在 Emoji 候选中排在最前。</string>
+    <string name="emoji_favorites_count">收藏：%1$d 个</string>
+    <string name="emoji_favorites_clear">清空收藏</string>
+</resources>

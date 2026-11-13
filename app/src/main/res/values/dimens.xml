@@ -66,6 +66,11 @@
     <dimen name="emoji_tab">36dp</dimen>
     <dimen name="emoji_tab_glyph">19dp</dimen>
     <dimen name="emoji_tab_icon">20dp</dimen>
+    <!-- Combinations and kaomoji: wider cells, text that scales with the font. -->
+    <dimen name="emoji_wide_text">16sp</dimen>
+    <dimen name="emoji_tab_text">10sp</dimen>
+    <!-- The space between section tabs; the row scrolls when they do not fit. -->
+    <dimen name="emoji_tab_gap">6dp</dimen>
     <dimen name="emoji_picker_pad">6dp</dimen>
     <dimen name="emoji_picker_radius">16dp</dimen>
     <dimen name="emoji_picker_elevation">6dp</dimen>

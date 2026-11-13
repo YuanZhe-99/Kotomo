@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Emoji panel extras and the Emoji settings page (PLAN §10.6). -->
+<resources>
+    <string name="emoji_favorites">お気に入り</string>
+    <string name="emoji_favorites_empty">絵文字を長押しするとここに追加できます</string>
+    <string name="emoji_combos">組み合わせ</string>
+    <string name="emoji_kaomoji">顔文字</string>
+    <string name="emoji_favorite_add">お気に入りに追加</string>
+    <string name="emoji_favorite_remove">お気に入りから削除</string>
+    <string name="page_emoji">絵文字</string>
+    <string name="page_emoji_desc">お気に入り · 組み合わせ · 単語ごとの絵文字</string>
+    <string name="badge_emoji">絵</string>
+    <string name="emoji_combos_field">自分の組み合わせ</string>
+    <string name="emoji_combos_note">1 行に 1 つ。絵文字パネルの「組み合わせ」で Kotomo の組み合わせの後に表示されます。</string>
+    <string name="emoji_mappings_field">単語ごとの絵文字</string>
+    <string name="emoji_mappings_example">neko=🐈</string>
+    <string name="emoji_mappings_note">1 行に、入力するとおりの単語（英語・ピンイン・ローマ字の文字）、等号、絵文字を書きます。絵文字の候補で最初に表示されます。</string>
+    <string name="emoji_favorites_count">お気に入り：%1$d 個</string>
+    <string name="emoji_favorites_clear">お気に入りを消去</string>
+</resources>

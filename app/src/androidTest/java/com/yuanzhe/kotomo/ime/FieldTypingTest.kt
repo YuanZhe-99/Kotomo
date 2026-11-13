@@ -419,6 +419,36 @@ class FieldTypingTest {
     }
 
     /**
+     * T14-emoji-panel (PLAN §10.6): a favorite is sent from Favorites, the long-press card removes
+     * it, and a kaomoji is sent from Kaomoji.
+     */
+    @Test
+    fun emojiPanelFavoritesAndKaomoji() {
+        val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+        withSettings({ it.copy(emojiFavorites = "🍎") }) {
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                checkNotNull(device.wait(Until.findObject(By.descStartsWith(EMOJI)), WAIT_MS)) { "Kotomo's keys did not appear" }.click()
+                checkNotNull(device.wait(Until.findObject(By.desc(FAVORITES)), WAIT_MS)) { "no Favorites tab" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text("🍎")), WAIT_MS)) { "the favorite is not shown" }.click()
+                assertEquals("🍎", read(scenario))
+                // The field shows the sent emoji too: the panel's cell is the last match.
+                device.findObjects(By.text("🍎")).last().longClick()
+                checkNotNull(device.wait(Until.findObject(By.desc(FAVORITE_REMOVE)), WAIT_MS)) { "no favorite switch" }.click()
+                Thread.sleep(READ_MS)
+                assertEquals("", SettingsStore.get(instrumentation.targetContext).current.emojiFavorites)
+                // The section tabs scroll: swipe them to the end, where Kaomoji is.
+                val bar = device.findObject(By.desc(FAVORITES)).visibleBounds
+                repeat(3) { device.swipe(device.displayWidth * 4 / 5, bar.centerY(), device.displayWidth / 5, bar.centerY(), 20) }
+                checkNotNull(device.wait(Until.findObject(By.desc(KAOMOJI)), WAIT_MS)) { "no Kaomoji tab" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text(EmojiExtras.KAOMOJI.first())), WAIT_MS)) { "no kaomoji" }.click()
+                assertEquals("🍎" + EmojiExtras.KAOMOJI.first(), read(scenario))
+            }
+        }
+    }
+
+    /**
      * Runs [block] with the current app fixed to [mode] in Kotomo's memory (the quick panel's
      * "Fix this mode here"), and releases it afterwards.
      */
@@ -522,6 +552,10 @@ class FieldTypingTest {
         const val BACK = "Back to the keyboard"
         /** The emoji panel's search tab (R.string.emoji_search, English). */
         const val SEARCH = "Search emoji"
+        /** The emoji panel's Favorites and Kaomoji tabs and the card's switch (R.string.emoji_*, English). */
+        const val FAVORITES = "Favorites"
+        const val KAOMOJI = "Kaomoji"
+        const val FAVORITE_REMOVE = "Remove from favorites"
         /** The symbols and backspace keys' descriptions (R.string.key_symbols, key_backspace; English). */
         const val SYMBOLS = "Symbols"
         const val BACKSPACE = "Delete"

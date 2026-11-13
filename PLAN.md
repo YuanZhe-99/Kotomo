@@ -908,6 +908,8 @@ G2 因此还不能判定通过：两项真机条目 NOT_RUN。
 
 2026-11-11（Q8 核对）：同上，没有新的进展；独立权重属于协调层的排序（Q7），面板的收藏、组合、颜文字与自定义映射未做。
 
+2026-11-13（Q8）：**面板的收藏、组合、颜文字与自定义映射已做**（`ime/EmojiExtras.kt`、`settings/EmojiPage.kt`）：长按任一 Emoji 打开的卡片里有肤色与收藏开关，收藏（`emoji.favorites`，至多 64 个）排在最近使用之后；“组合”是 Kotomo 自带的 10 个加上用户自己的（`emoji.combos`）；“颜文字”是为 Kotomo 编写的 36 个；用户为词语指定的 Emoji（`emoji.mappings`，`词=Emoji`）在输入正好这些字母时排在 Emoji 候选最前；设置首页新增 Emoji 页。自定义快捷输入见 §10.4 的 `chinese.quick_custom`。测试：主机 `EmojiExtrasTest` 4/4；模拟器 `FieldTypingTest.emojiPanelFavoritesAndKaomoji` 1/1。独立权重仍属协调层排序（Q7 之后再做）。
+
 ### 10.7 持久化剪贴板（草案 §12）
 
 - 文本历史、搜索、固定、收藏、分类、编辑、批量删除、自动过期、最大记录数、本地加密、备份与恢复、快捷短语；按 App 控制是否记录；密码与敏感内容默认不保存。

@@ -2674,7 +2674,17 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Returns: up to three emoji, best first.
      */
     private fun emojiFor(typed: String): List<String> =
-        if (direct || !settings.mixed.cross.emoji) emptyList() else Candidates.emoji(emojiIndex, typed)
+        if (direct || !settings.mixed.cross.emoji) emptyList() else Candidates.emoji(emojiIndex, typed, emojiMappings())
+
+    /** Main thread: the person's word → emoji mappings, parsed once per change of the setting. */
+    private var mappings: Pair<String, Map<String, List<String>>> = "" to emptyMap()
+
+    /** Returns the parsed `emoji.mappings` (PLAN §10.6), parsing again only when the text changed. */
+    private fun emojiMappings(): Map<String, List<String>> {
+        val text = settings.emojiMappings
+        if (mappings.first != text) mappings = text to EmojiExtras.parseMappings(text)
+        return mappings.second
+    }
 
     /** Puts [emoji] into [list] at the third place (after the most likely words), marking them. */
     private fun withEmoji(list: List<String>, emoji: List<String>): List<String> {
@@ -2790,6 +2800,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 }
             })
             view.setContent {
+                // Favorites and combinations follow the settings while the panel is open (PLAN §10.6).
+                val s by store.flow.collectAsState()
+                val lists = androidx.compose.runtime.remember(s.emojiFavorites, s.emojiCombos) {
+                    EmojiLists(EmojiExtras.parseFavorites(s.emojiFavorites), EmojiExtras.COMBOS + EmojiExtras.parseCombos(s.emojiCombos))
+                }
                 EmojiPanel(
                     onEmoji = { currentInputConnection?.commitText(it, 1) },
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
@@ -2798,6 +2813,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     // Sensitive fields record nothing, recent emoji included.
                     recordRecents = !locked && currentInputEditorInfo != null && remembers,
                     memory = memory(),
+                    lists = lists,
+                    // A favorite is the person's own choice, kept like a setting; never before the first unlock.
+                    onFavorite = { e -> if (!locked) store.set { it.copy(emojiFavorites = EmojiExtras.toggleFavorite(EmojiExtras.parseFavorites(it.emojiFavorites), e)) } },
                 )
             }
         }

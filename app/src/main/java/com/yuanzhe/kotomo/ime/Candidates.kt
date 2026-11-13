@@ -124,13 +124,14 @@ internal object Candidates {
     }
 
     /**
-     * Finds emoji for a composition (English words, pinyin, romaji; CLDR keywords).
+     * Finds emoji for a composition (English words, pinyin, romaji; CLDR keywords), the person's
+     * own mappings for exactly these letters first (PLAN §10.6).
      * Returns: up to [EMOJI_SUGGESTIONS] emoji, best first; none for fewer than two letters.
      */
-    fun emoji(index: EmojiIndex?, typed: String): List<String> {
+    fun emoji(index: EmojiIndex?, typed: String, mine: Map<String, List<String>> = emptyMap()): List<String> {
         val key = typed.lowercase().filter { it in 'a'..'z' }
         if (key.length < 2) return emptyList()
-        return index?.lookup(key, EMOJI_SUGGESTIONS).orEmpty()
+        return (mine[key].orEmpty() + index?.lookup(key, EMOJI_SUGGESTIONS).orEmpty()).distinct().take(EMOJI_SUGGESTIONS)
     }
 
     /**

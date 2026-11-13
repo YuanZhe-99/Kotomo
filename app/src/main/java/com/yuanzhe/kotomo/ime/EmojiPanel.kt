@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,18 +69,26 @@ import kotlinx.coroutines.withContext
  */
 private class PanelData(val index: EmojiIndex, val frequent: List<String>, val shownRecents: List<String>)
 
+/** The person's own parts of the panel (PLAN §10.6): favorites, then the combinations to offer. */
+class EmojiLists(val favorites: List<String> = emptyList(), val combos: List<String> = EmojiExtras.COMBOS)
+
 /**
- * One cell of the emoji grid: a section title (a [tab] title starts a section of the bottom bar),
- * the empty-recents hint or an emoji.
+ * One cell of the emoji grid: a section title (a [tab] title starts a section of the bottom bar,
+ * drawn with [icon] or [glyph]), an empty section's hint, an emoji, or a wider text (a combination
+ * or a kaomoji, [wide] cells to a row).
  */
 private sealed interface Cell {
-    data class Title(val label: Int, val tab: Boolean = true) : Cell
-    data object Empty : Cell
+    data class Title(val label: Int, val tab: Boolean = true, val icon: Int? = null, val glyph: String? = null) : Cell
+    data class Empty(val hint: Int) : Cell
     data class Emoji(val text: String, val toned: Boolean) : Cell
+    data class Wide(val text: String, val perRow: Int) : Cell
 }
 
-/** The open skin-tone picker: its choices and the long-pressed cell's place in the grid, in px. */
-private class Picker(val choices: List<String>, val centerX: Int, val top: Int, val bottom: Int)
+/**
+ * The open long-press card: the skin tones of [base] (or [base] alone), the favorite switch, and
+ * the long-pressed cell's place in the grid, in px.
+ */
+private class Picker(val base: String, val choices: List<String>, val centerX: Int, val top: Int, val bottom: Int)
 
 /** Maps an emoji group id of the asset to its title. */
 private fun groupTitle(id: String): Int = when (id) {
@@ -96,15 +105,17 @@ private fun groupTitle(id: String): Int = when (id) {
 
 /**
  * Shows the emoji panel in the keyboard's place, after Gboard's: every emoji of the system font
- * in one adaptive grid with a title per group, Frequently used and Recents first, and Search and
- * the group tabs between ABC and backspace at the bottom; long-pressing an emoji with skin tones (marked in its corner) opens a
- * tone picker above it.
+ * in one adaptive grid with a title per group, Frequently used, Recents and Favorites first,
+ * Combinations and Kaomoji last (PLAN §10.6), and Search and the section tabs between ABC and
+ * backspace at the bottom; long-pressing an emoji opens a card above it with its skin tones (an
+ * emoji that has them is marked in its corner) and the favorite switch.
  *
  * Inputs: [onEmoji] commits one emoji (a base emoji or a chosen tone); [onBackspace] deletes
  * before the cursor; [onBack] returns to the keyboard; [recordRecents] adds sent emoji to Recents
  * and must be false in sensitive fields and incognito (passwords, IME_FLAG_NO_PERSONALIZED_LEARNING);
  * [memory] is the keyboard's memory, null before the first unlock (then Recents is neither read
- * nor shown); [onSearch] opens the emoji search over the keys (PLAN §8.6).
+ * nor shown); [onSearch] opens the emoji search over the keys (PLAN §8.6); [lists] holds the
+ * favorites and combinations, [onFavorite] adds or removes a favorite (the caller stores it).
  * Side effects: reads the emoji asset on an I/O thread; records sent emoji in [memory] when
  * [recordRecents] is true.
  * Notes: built with Compose inside the input method window (S1's Compose check); the first frame
@@ -120,6 +131,8 @@ fun EmojiPanel(
     recordRecents: Boolean = false,
     memory: KeyboardMemory? = null,
     onSearch: () -> Unit = {},
+    lists: EmojiLists = EmojiLists(),
+    onFavorite: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val data by produceState<PanelData?>(null) {
@@ -133,7 +146,8 @@ fun EmojiPanel(
     val scope = rememberCoroutineScope()
     var picker by remember { mutableStateOf<Picker?>(null) }
     val loaded = data
-    val cells = remember(loaded) { loaded?.let(::cells).orEmpty() }
+    val cells = remember(loaded, lists) { loaded?.let { cells(it, lists) }.orEmpty() }
+    val tabs = remember(cells) { cells.filterIsInstance<Cell.Title>().filter { it.tab } }
     val starts = remember(cells) { cells.indices.filter { (cells[it] as? Cell.Title)?.tab == true } }
     val current by remember(starts) {
         derivedStateOf { starts.indices.lastOrNull { starts[it] <= grid.firstVisibleItemIndex } ?: 0 }
@@ -147,8 +161,8 @@ fun EmojiPanel(
             EmojiGrid(cells, grid, send) { i, cell ->
                 val info = grid.layoutInfo.visibleItemsInfo.firstOrNull { it.index == i } ?: return@EmojiGrid
                 val variants = loaded?.index?.variants(cell.text).orEmpty()
-                if (variants.isEmpty()) return@EmojiGrid
                 picker = Picker(
+                    cell.text,
                     listOf(cell.text) + variants,
                     info.offset.x + info.size.width / 2,
                     info.offset.y,
@@ -157,14 +171,17 @@ fun EmojiPanel(
             }
             picker?.let { p ->
                 Box(Modifier.matchParentSize().pointerInput(p) { detectTapGestures { picker = null } })
-                TonePicker(p, Modifier.matchParentSize()) {
+                TonePicker(p, p.base in lists.favorites, Modifier.matchParentSize(), onFavorite = {
+                    picker = null
+                    onFavorite(p.base)
+                }) {
                     picker = null
                     send(it)
                 }
             }
         }
         BottomBar(
-            loaded?.index?.groups.orEmpty(),
+            tabs,
             current,
             onTab = { i ->
                 picker = null
@@ -182,21 +199,40 @@ fun EmojiPanel(
 
 /**
  * Lays out the grid's cells: Frequently used (when any emoji was sent twice) and Recents (or its
- * hint) under the first tab, then each group under its title.
+ * hint) under the first tab, Favorites (or its hint), each group under its title, then
+ * Combinations and Kaomoji (PLAN §10.6).
  */
-private fun cells(data: PanelData): List<Cell> = buildList {
+private fun cells(data: PanelData, lists: EmojiLists): List<Cell> = buildList {
+    val recent = R.drawable.ic_emoji_recent
     if (data.frequent.isNotEmpty()) {
-        add(Cell.Title(R.string.emoji_frequent))
+        add(Cell.Title(R.string.emoji_frequent, icon = recent))
         data.frequent.forEach { add(Cell.Emoji(it, false)) }
     }
-    add(Cell.Title(R.string.emoji_recent, tab = data.frequent.isEmpty()))
-    if (data.shownRecents.isEmpty()) add(Cell.Empty)
+    add(Cell.Title(R.string.emoji_recent, tab = data.frequent.isEmpty(), icon = recent))
+    if (data.shownRecents.isEmpty()) add(Cell.Empty(R.string.emoji_recent_empty))
     data.shownRecents.forEach { add(Cell.Emoji(it, false)) }
+    add(Cell.Title(R.string.emoji_favorites, glyph = FAVORITE))
+    if (lists.favorites.isEmpty()) add(Cell.Empty(R.string.emoji_favorites_empty))
+    lists.favorites.forEach { add(Cell.Emoji(it, data.index.variants(it).isNotEmpty())) }
     for (g in data.index.groups) {
-        add(Cell.Title(groupTitle(g.id)))
+        add(Cell.Title(groupTitle(g.id), glyph = g.emoji.first()))
         g.emoji.forEach { add(Cell.Emoji(it, data.index.variants(it).isNotEmpty())) }
     }
+    if (lists.combos.isNotEmpty()) {
+        add(Cell.Title(R.string.emoji_combos, glyph = lists.combos.first().let { c -> c.substring(0, c.offsetByCodePoints(0, 1)) }))
+        lists.combos.forEach { add(Cell.Wide(it, COMBOS_PER_ROW)) }
+    }
+    add(Cell.Title(R.string.emoji_kaomoji, glyph = KAOMOJI_TAB))
+    EmojiExtras.KAOMOJI.forEach { add(Cell.Wide(it, KAOMOJI_PER_ROW)) }
 }
+
+/** The Favorites tab's glyph and the star of the long-press card. */
+private const val FAVORITE = "⭐"
+/** The Kaomoji tab's label, short enough for a tab (not one of the kaomoji, so it never stands for one). */
+private const val KAOMOJI_TAB = "(^^)"
+/** How many combinations and kaomoji share a row of the grid (at least one). */
+private const val COMBOS_PER_ROW = 4
+private const val KAOMOJI_PER_ROW = 3
 
 /**
  * Converts a dimension token to a text size: an sp token keeps its font scaling, a dp token (the
@@ -225,6 +261,8 @@ private fun EmojiGrid(
     val titleColor = kbColor(R.color.kb_ink_secondary)
     val titleSize = dimensionResource(R.dimen.emoji_header_text).asText()
     val titlePad = dimensionResource(R.dimen.emoji_header_pad)
+    val wideText = dimensionResource(R.dimen.emoji_wide_text).asText()
+    val wideColor = kbColor(R.color.kb_ink)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(cell),
         state = grid,
@@ -236,7 +274,15 @@ private fun EmojiGrid(
     ) {
         items(
             count = cells.size,
-            span = { i -> GridItemSpan(if (cells[i] is Cell.Emoji) 1 else maxLineSpan) },
+            span = { i ->
+                GridItemSpan(
+                    when (val c = cells[i]) {
+                        is Cell.Emoji -> 1
+                        is Cell.Wide -> maxOf(1, maxLineSpan / c.perRow)
+                        else -> maxLineSpan
+                    },
+                )
+            },
             contentType = { i -> cells[i]::class },
         ) { i ->
             when (val c = cells[i]) {
@@ -246,8 +292,8 @@ private fun EmojiGrid(
                     color = titleColor,
                     modifier = Modifier.padding(horizontal = titlePad, vertical = titlePad / 2),
                 )
-                Cell.Empty -> Text(
-                    stringResource(R.string.emoji_recent_empty),
+                is Cell.Empty -> Text(
+                    stringResource(c.hint),
                     fontSize = titleSize,
                     color = titleColor,
                     modifier = Modifier.padding(titlePad),
@@ -258,7 +304,7 @@ private fun EmojiGrid(
                         .clip(RoundedCornerShape(radius))
                         .combinedClickable(
                             onClick = { onEmoji(c.text) },
-                            onLongClick = if (c.toned) ({ onLongPress(i, c) }) else null,
+                            onLongClick = { onLongPress(i, c) },
                         )
                         .drawBehind {
                             if (!c.toned) return@drawBehind
@@ -276,25 +322,34 @@ private fun EmojiGrid(
                         },
                     contentAlignment = Alignment.Center,
                 ) { Text(c.text, fontSize = glyph) }
+                is Cell.Wide -> Box(
+                    Modifier
+                        .height(cell)
+                        .clip(RoundedCornerShape(radius))
+                        .clickable { onEmoji(c.text) },
+                    contentAlignment = Alignment.Center,
+                ) { Text(c.text, fontSize = wideText, color = wideColor, maxLines = 1, softWrap = false) }
             }
         }
     }
 }
 
 /**
- * Draws the skin-tone choices of one emoji in a card above the long-pressed cell (below it when
- * there is no room above), kept inside the panel.
- * Inputs: [modifier] must fill the area the picker may use; [onPick] receives the chosen emoji.
+ * Draws the skin-tone choices of one emoji and the favorite switch in a card above the
+ * long-pressed cell (below it when there is no room above), kept inside the panel.
+ * Inputs: [favorite] whether the emoji is a favorite now; [modifier] must fill the area the
+ * picker may use; [onPick] receives the chosen emoji; [onFavorite] switches the favorite.
  * Notes: drawn inside the panel rather than in a popup window, so it is never clipped by the
  * input method window.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun TonePicker(p: Picker, modifier: Modifier, onPick: (String) -> Unit) {
+private fun TonePicker(p: Picker, favorite: Boolean, modifier: Modifier, onFavorite: () -> Unit, onPick: (String) -> Unit) {
     val cell = dimensionResource(R.dimen.emoji_cell)
     val glyph = dimensionResource(R.dimen.emoji_glyph).asText()
     val pad = dimensionResource(R.dimen.emoji_picker_pad)
-    val columns = minOf(p.choices.size, integerResource(R.integer.emoji_picker_columns))
+    val columns = minOf(p.choices.size + 1, integerResource(R.integer.emoji_picker_columns))
+    val star = stringResource(if (favorite) R.string.emoji_favorite_remove else R.string.emoji_favorite_add)
     val label = stringResource(R.string.emoji_tones)
     Surface(
         modifier = modifier
@@ -325,17 +380,28 @@ private fun TonePicker(p: Picker, modifier: Modifier, onPick: (String) -> Unit) 
                     contentAlignment = Alignment.Center,
                 ) { Text(e, fontSize = glyph) }
             }
+            Box(
+                Modifier
+                    .size(cell)
+                    .clip(RoundedCornerShape(dimensionResource(R.dimen.emoji_radius)))
+                    .background(colorResource(if (favorite) R.color.kb_accent_container else android.R.color.transparent))
+                    .clickable(onClick = onFavorite)
+                    .semantics { contentDescription = star },
+                contentAlignment = Alignment.Center,
+            ) { Text(if (favorite) FAVORITE else "☆", fontSize = glyph, color = kbColor(R.color.kb_ink)) }
         }
     }
 }
 
 /**
- * Draws the bottom row: ABC, Search, a tab per section (Recents, then each group) and backspace.
- * Inputs: [current] is the section at the top of the grid; [onTab] receives a section index.
+ * Draws the bottom row: ABC, Search, a tab per section (Recents, Favorites, each group,
+ * Combinations, Kaomoji) and backspace; the tabs scroll when they do not fit.
+ * Inputs: [tabs] the sections' titles; [current] is the section at the top of the grid; [onTab]
+ * receives a section index.
  */
 @Composable
 private fun BottomBar(
-    groups: List<EmojiIndex.Group>,
+    tabs: List<Cell.Title>,
     current: Int,
     onTab: (Int) -> Unit,
     onBackspace: () -> Unit,
@@ -347,6 +413,7 @@ private fun BottomBar(
     val key = dimensionResource(R.dimen.emoji_bar_key)
     val tab = dimensionResource(R.dimen.emoji_tab)
     val tabGlyph = dimensionResource(R.dimen.emoji_tab_glyph).asText()
+    val tabText = dimensionResource(R.dimen.emoji_tab_text).asText()
     Row(
         Modifier
             .fillMaxWidth()
@@ -358,7 +425,11 @@ private fun BottomBar(
         BarKey(Modifier.width(key).semantics { contentDescription = back }, onBack) {
             Text("ABC", fontSize = dimensionResource(R.dimen.kb_function_text).asText(), color = ink)
         }
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.emoji_tab_gap)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Tab(stringResource(R.string.emoji_search), false, tab, onSearch) {
                 Image(
                     painterResource(R.drawable.ic_key_search),
@@ -367,17 +438,18 @@ private fun BottomBar(
                     colorFilter = ColorFilter.tint(ink),
                 )
             }
-            Tab(stringResource(R.string.emoji_recent), current == 0, tab, { onTab(0) }) {
-                Image(
-                    painterResource(R.drawable.ic_emoji_recent),
-                    contentDescription = null,
-                    modifier = Modifier.size(dimensionResource(R.dimen.emoji_tab_icon)),
-                    colorFilter = ColorFilter.tint(ink),
-                )
-            }
-            groups.forEachIndexed { i, g ->
-                Tab(stringResource(groupTitle(g.id)), current == i + 1, tab, { onTab(i + 1) }) {
-                    Text(g.emoji.first(), fontSize = tabGlyph)
+            tabs.forEachIndexed { i, t ->
+                Tab(stringResource(t.label), current == i, tab, { onTab(i) }) {
+                    if (t.icon != null) {
+                        Image(
+                            painterResource(t.icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(dimensionResource(R.dimen.emoji_tab_icon)),
+                            colorFilter = ColorFilter.tint(ink),
+                        )
+                    } else {
+                        Text(t.glyph.orEmpty(), fontSize = if ((t.glyph?.length ?: 0) > 2) tabText else tabGlyph, color = ink, maxLines = 1, softWrap = false)
+                    }
                 }
             }
         }
@@ -400,7 +472,7 @@ private fun androidx.compose.foundation.layout.RowScope.Tab(
     onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Box(Modifier.weight(1f, fill = false), contentAlignment = Alignment.Center) {
+    Box(contentAlignment = Alignment.Center) {
         Box(
             Modifier
                 .size(size)

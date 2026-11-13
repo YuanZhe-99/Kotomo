@@ -116,6 +116,9 @@ the table lists every key.
 | `chinese.quick_custom` | string | empty | The person's quick-input replacements, `abbreviation=text` per line (lowercase letters and digits, at most 16); other lines are dropped |
 | `chinese.stroke_lookup` | boolean | `true` | `u` at the start of a Chinese composition looks characters up by strokes (luna_pinyin's stroke reverse lookup) |
 | `chinese.double_pinyin` | string | `none` | The double-pinyin scheme: `none` (full pinyin), `microsoft`, `sogou`, `xiaohe`, `ziranma` (PLAN §10.4); an unknown value reads as full pinyin |
+| `emoji.favorites` | string | empty | The emoji panel's favorites, one per line in the order added (PLAN §10.6); at most 64, the oldest dropped first; switched from an emoji's long-press card |
+| `emoji.combos` | string | empty | The person's own emoji combinations, one per line; the panel shows them after Kotomo's under Combinations |
+| `emoji.mappings` | string | empty | The person's emoji for words, `word=emoji` per line (the word in lowercase letters as typed, at most 24); they come first among the emoji suggestions for exactly those letters |
 | `japanese.flick` | boolean | `false` | Japanese mode uses the 12-key flick layout |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 
