@@ -111,6 +111,7 @@ the table lists every key.
 | `layout.space_percent` | int 60–140 | `100` | The space bar's width, in percent of the design's |
 | `layout.mirrored` | boolean | `false` | The function keys on the other side: the bottom row and the ⇧ … ⌫ row mirrored |
 | `layout.floating` | boolean | `false` | The keyboard floats over the app and can be dragged; never split |
+| `chinese.idioms` | boolean | `true` | After a Chinese commit that starts an idiom, offer the rest (PLAN §10.8); the idioms come from the downloaded Idioms dictionary (`zh-thuocl-idioms`), so nothing is offered without it |
 | `japanese.flick` | boolean | `false` | Japanese mode uses the 12-key flick layout |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 

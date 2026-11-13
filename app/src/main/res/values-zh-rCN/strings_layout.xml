@@ -14,4 +14,6 @@
     <string name="keystyle_floating_desc">键盘悬浮在 App 之上；拖动上方的横条移动它</string>
     <string name="japanese_flick">12 键滑动输入</string>
     <string name="japanese_flick_desc">在 12 键上输入假名：点按输入あ段，向左、上、右、下滑动输入其他各段</string>
+    <string name="chinese_idioms">成语补全</string>
+    <string name="chinese_idioms_desc">打出成语的前几个字后，提供后面的字。需要在“词库”中下载“成语”词库</string>
 </resources>

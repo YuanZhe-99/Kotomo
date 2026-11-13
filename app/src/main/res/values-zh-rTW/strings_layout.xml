@@ -14,4 +14,6 @@
     <string name="keystyle_floating_desc">鍵盤懸浮在 App 之上；拖動上方的橫條移動它</string>
     <string name="japanese_flick">12 鍵滑動輸入</string>
     <string name="japanese_flick_desc">在 12 鍵上輸入假名：點按輸入あ段，向左、上、右、下滑動輸入其他各段</string>
+    <string name="chinese_idioms">成語補全</string>
+    <string name="chinese_idioms_desc">打出成語的前幾個字後，提供後面的字。需要在「詞庫」中下載「成語」詞庫</string>
 </resources>

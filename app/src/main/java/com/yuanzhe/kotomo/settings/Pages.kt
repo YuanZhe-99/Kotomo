@@ -364,6 +364,9 @@ internal fun ChinesePage(settings: Settings, store: SettingsStore) {
             Note(stringResource(R.string.chinese_script_note))
         }
     }
+    Section(null) {
+        SwitchRow(R.string.chinese_idioms, R.string.chinese_idioms_desc, settings.idioms) { on -> store.set { it.copy(idioms = on) } }
+    }
     val (initials, finals) = FuzzyRule.entries.partition { it.ordinal <= FuzzyRule.L_R.ordinal }
     Section(stringResource(R.string.fuzzy_initials)) {
         Inset { Note(stringResource(R.string.fuzzy_note)) }

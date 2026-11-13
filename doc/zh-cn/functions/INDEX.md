@@ -40,7 +40,7 @@
 | `lexicon/CheckSamples.java` | 用 `tests/lexicon/samples.tsv`（正例与反例）检查生成的表 | `main` |
 | `lexicon/llm-dictionary-prompt.txt` | 借助 LLM 制作词库的提示词（中文，来自用户的草案）；应用的 `llmPrompt` 任务把它打包为资源，供词库页的复制按钮使用 | — |
 | `app/src/main/java/com/yuanzhe/kotomo/dictionary/Entries.kt`、`Formats.kt` | 词库条目（[dictionaries.md](../dictionaries.md)）：语言、来源、拼音与假名读音、权重；导入（严格 UTF-8、TSV、CSV、JSON、Rime）及预览、重复与冲突，导出（纯 Kotlin，有单元测试） | `Entry`、`Readings`、`Weights`、`Formats.read`、`Formats.preview`、`Formats.write` |
-| `app/src/main/java/com/yuanzhe/kotomo/dictionary/DictionaryStore.kt` | 磁盘上的用户词库：带版本的 `user.json` 与 `user.prev.json`、`state.json`、已安装的词库包（`PackInfo`、词条及其 librime 词表）及其上一个版本、已接受的下载说明，每次修改后重写 librime 的三份词表（词库包那一份由各包自己的词表拼接）；每个进程一个存储，在 IO 调度器上由锁保护 | `DictionaryStore`、`DictionaryFormat`、`Dictionaries`、`PackInfo` |
+| `app/src/main/java/com/yuanzhe/kotomo/dictionary/DictionaryStore.kt` | 磁盘上的用户词库：带版本的 `user.json` 与 `user.prev.json`、`state.json`、已安装的词库包（`PackInfo`、词条及其 librime 词表）及其上一个版本、已接受的下载说明，每次修改后重写 librime 的三份词表（词库包那一份由各包自己的词表拼接）；供成语补全读取某个词库包的词表（`packTable`）；每个进程一个存储，在 IO 调度器上由锁保护 | `DictionaryStore`、`DictionaryFormat`、`Dictionaries`、`PackInfo`、`packTable` |
 | `app/src/main/java/com/yuanzhe/kotomo/dictionary/Protection.kt` | 用户词库的密码保护（ADR-012）：PBKDF2-HMAC-SHA256 派生密钥，带版本文件头的 AES-256-GCM 加密文件，用于 `user.kenc`、`user.prev.kenc` 与导出文件；存储的 `protect`、`unlock`、`lock`、`unprotect` | `Protection`、`SealException` |
 | `app/src/main/java/com/yuanzhe/kotomo/dictionary/Sources.kt` | 可下载的词库（[dictionaries.md](../dictionaries.md)、ADR-011）及其格式的转换器（Rime 词表、配合单字读音的 THUOCL），与所有词条一样经过检查；主机测试对锁定的文件运行同一份代码 | `Sources`、`DictionarySource`、`Convert`、`Conversion`、`Drop` |
 | `app/src/main/java/com/yuanzhe/kotomo/dictionary/Downloads.kt` | Kotomo 唯一的联网代码：只用 HTTPS 的传输层、按 GitHub 公布的 SHA-256 核对发布附件、经 HTTPS 下载普通文件、限制大小、可取消、转换与安装；在设置页之外运行的后台下载 | `Downloader`、`HttpsTransport`、`DictionaryDownloads`、`DownloadProblem` |
@@ -70,6 +70,7 @@
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
 | `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定；该运行已于 2026-11-04 随 GitHub 仓库删除，CI 重新存在之前它下载不到任何东西；`build-mozc.sh` 在本地构建同样的文件 | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的“更多”面板：不在工具栏上的工具，然后是快捷设置（单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用） | `QuickPanel` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Idioms.kt` | 成语补全（PLAN §10.8），取自下载的成语词库的词表：提交的内容开头的成语的后半部分 | `Idioms` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Kana.kt` | 12 键滑动布局的平假名（PLAN §10.9）：哪些字符参与组合，以及゛゜小键的循环（清音、浊音、半浊音、小写） | `Kana` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/InlineAutofill.kt` | 空闲工具栏上的自动填充服务内联建议（PLAN §10.10，Android 11 起）：带 Kotomo 胶囊样式的请求，以及由系统绘制的建议条（Kotomo 看不到其中的文字）。只在 debug 构建中的 `fieldtest/FakeAutofillService.kt` 为 `InlineAutofillTest` 提供一条建议 | `InlineAutofill` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除、撤销、重做）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |

@@ -596,6 +596,16 @@ class DictionaryStore(
         )
     }
 
+    /**
+     * Returns pack [id]'s librime table (`text\tcode\tweight` lines) while it is installed and on
+     * and downloaded dictionaries are on, otherwise null (idiom completion, PLAN §10.8).
+     */
+    fun packTable(id: String): File? {
+        val s = _state.value
+        if (!s.downloadsEnabled || s.packs.none { it.meta.id == id && it.enabled }) return null
+        return File(File(packsDir, id), TABLE).takeIf { it.isFile }
+    }
+
     /** Lists the installed packs with their switches. */
     private fun installed(): List<InstalledPack> = packsDir.listFiles().orEmpty()
         .filter { it.isDirectory && '.' !in it.name }

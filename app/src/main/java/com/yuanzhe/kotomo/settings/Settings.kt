@@ -197,6 +197,8 @@ data class Settings(
     val floating: Boolean = false,
     /** Japanese mode uses the 12-key flick layout instead of romaji on QWERTY (PLAN §10.9). */
     val japaneseFlick: Boolean = false,
+    /** After the first characters of an idiom, offer the rest (needs the Idioms dictionary; PLAN §10.8). */
+    val idioms: Boolean = true,
 ) {
     /** The tools the toolbar shows after More, in order; the rest are under More. */
     val tools: List<Tool> get() = toolOrder.filter { it !in hiddenTools }
@@ -351,6 +353,7 @@ internal object SettingsFormat {
     private val longPressMap = stringPreferencesKey("keys.long_press_custom")
     private val floating = booleanPreferencesKey("layout.floating")
     private val japaneseFlick = booleanPreferencesKey("japanese.flick")
+    private val idioms = booleanPreferencesKey("chinese.idioms")
 
     /**
      * Reads the settings from a Preferences file.
@@ -427,6 +430,7 @@ internal object SettingsFormat {
             ),
             floating = p[floating] ?: d.floating,
             japaneseFlick = p[japaneseFlick] ?: d.japaneseFlick,
+            idioms = p[idioms] ?: d.idioms,
         )
     }
 
@@ -493,6 +497,7 @@ internal object SettingsFormat {
         p.put(mirrored, old.keyStyle.mirrored, new.keyStyle.mirrored)
         p.put(floating, old.floating, new.floating)
         p.put(japaneseFlick, old.japaneseFlick, new.japaneseFlick)
+        p.put(idioms, old.idioms, new.idioms)
         if (old.keyStyle.longPress != new.keyStyle.longPress) p[longPressMap] = KeyStyle.format(new.keyStyle.longPress)
         // Both lists are written together, so a later read knows which tools were in the list.
         if (old.toolOrder != new.toolOrder || old.hiddenTools != new.hiddenTools) {

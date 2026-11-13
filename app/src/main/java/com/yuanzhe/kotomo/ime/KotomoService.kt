@@ -227,6 +227,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var chineseInput = ""
     /** Main thread: the mode fixed for the current app, or null (Compose state for the quick panel). */
     private val pinnedHere = androidx.compose.runtime.mutableStateOf<Mode?>(null)
+    /** Main thread: the idiom completions from the downloaded Idioms dictionary (PLAN §10.8). */
+    private var idioms = Idioms.NONE
+
     /** Main thread: the input view's root and the floating keyboard's grip, once the views exist. */
     private var inputRoot: InputRoot? = null
     private var floatGrip: FloatGrip? = null
@@ -506,6 +509,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             launch {
                 DictionaryStore.get(this@KotomoService).state.map { it.generation }.distinctUntilChanged()
                     .collect { if (it > 0) applyEngineSettings() }
+            }
+            // The idioms come from the downloaded Idioms dictionary; read again when the packs change.
+            launch {
+                val dictionaries = DictionaryStore.get(this@KotomoService)
+                dictionaries.state.map { s -> s.downloadsEnabled to s.packs.firstOrNull { it.meta.id == Idioms.PACK }?.let { it.enabled to it.count } }
+                    .distinctUntilChanged()
+                    .collect { idioms = withContext(Dispatchers.IO) { Idioms.from(dictionaries.packTable(Idioms.PACK)) } }
             }
         }
         store.flow.collect {
@@ -1518,6 +1528,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             state.commit != null -> ic.commitText(state.commit, 1)
             state.preedit.isEmpty() && chinesePreedit.isNotEmpty() -> ic.commitText("", 1)
         }
+        // After a commit, the rest of an idiom it starts is offered (PLAN §10.8).
+        val idiomRest = if (state.commit != null && state.preedit.isEmpty() && mode == Mode.CHINESE && settings.idioms) idioms.complete(state.commit) else emptyList()
         if (state.preedit.isNotEmpty()) {
             // API 37: the field learns the conversion candidates and that the composition shows the
             // reading, not a selected conversion (PLAN §8.2); segments that hold a chosen
@@ -1538,8 +1550,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val emoji = emojiFor(state.preedit)
         emojiShown = emoji.toSet()
         val entries = Candidates.chinese(state.candidates.map { it.text }, state.input, emoji)
-        chineseCandidates = entries.map { it.first }
-        rimeIndexes = entries.map { it.second }
+        chineseCandidates = entries.map { it.first } + idiomRest
+        // Completions are not librime's: picking one commits it as it is (index −1).
+        rimeIndexes = entries.map { it.second } + idiomRest.map { -1 }
         if (usesRime && newest) {
             candidates = chineseCandidates
             candidateBar.show(candidates, downTime)

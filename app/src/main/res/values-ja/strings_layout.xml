@@ -14,4 +14,6 @@
     <string name="keystyle_floating_desc">キーボードがアプリの上に浮かびます。上のバーをドラッグして移動します</string>
     <string name="japanese_flick">12 キーフリック入力</string>
     <string name="japanese_flick_desc">12 キーでかなを入力します。タップであ段、左・上・右・下へのフリックでほかの段</string>
+    <string name="chinese_idioms">四字熟語の補完</string>
+    <string name="chinese_idioms_desc">中国語の四字熟語の最初の文字を入力すると、残りを候補に出します。「辞書」でダウンロードする成語辞書を使います</string>
 </resources>
