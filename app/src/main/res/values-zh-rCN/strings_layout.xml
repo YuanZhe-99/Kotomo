@@ -23,4 +23,11 @@
     <string name="chinese_quick_custom">自定义快捷替换</string>
     <string name="chinese_quick_custom_example">dz=你的地址</string>
     <string name="chinese_quick_note">每行一个缩写（字母与数字）、一个等号和替换文字；打 v 加缩写即可。</string>
+    <string name="double_pinyin">双拼</string>
+    <string name="double_full">全拼</string>
+    <string name="double_microsoft">微软</string>
+    <string name="double_sogou">搜狗</string>
+    <string name="double_xiaohe">小鹤</string>
+    <string name="double_ziranma">自然码</string>
+    <string name="double_pinyin_note">每个音节两个键：先声母，后韵母。凡是打拼音的地方都适用，包括混合模式。微软与搜狗用 ;（长按 b）打 ing。更改后中文数据会重新生成一会儿。</string>
 </resources>

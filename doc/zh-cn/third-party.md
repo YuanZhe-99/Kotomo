@@ -15,6 +15,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | Unicode Emoji 数据（`emoji-test.txt`） | Unicode Emoji 18.0（`Public/18.0.0/emoji/`，日期 2026-04-30） | Emoji 面板的 Emoji 顺序、分组与肤色变体（`emoji.tsv`，生成后随 APK 分发） | Unicode License v3 | 去掉 Component 组 | 附上 Unicode 版权与许可声明 |
 | CLDR 注释与派生注释（cldr-json） | `unicode-org/cldr-json` 49.0.0（`a4b67247`），en、zh、zh-Hant 与 ja 的 `annotations` 与 `annotationsDerived` | Emoji 关键词与名称，即 `emoji.tsv` 的键 | Unicode License v3 | 无；键经过规范化（NFKC、小写） | 附上 Unicode 版权与许可声明 |
 | OpenCC 日文新字体表（`JPShinjitaiCharacters.txt`、`JPShinjitaiPhrases.txt`） | `BYVoid/OpenCC` ver.1.4.2 | 为拼音 → 日文映射把新字体映射到旧字体（S5） | Apache-2.0 | 无 | 附上许可与 NOTICE |
+| 双拼键位（微软、搜狗、小鹤、自然码） | 与 `rime/rime-double-pinyin`（微软、小鹤、自然码）及 rime-ice 的搜狗方案（`double_pinyin_sogou.schema.yaml`）核对 | `Fuzzy.kt` 为 `chinese.double_pinyin` 生成的拼写规则 | 这些方案是公开的键位；核对所用的方案文件为 LGPL-3.0 与 GPL-3.0 | 不复制任何文件：规则在 Kotomo 生成的 `kotomo_fuzzy.yaml` 中重新写出，沿用这些方案的规则顺序 | 除 Kotomo 的许可证外无 |
 | JMdict（英文），经 jmdict-simplified | jmdict-simplified 3.6.2+20261109214828（JMdict 2026-11-09） | 为英文 → 日文映射提供释义（S5，随 `cross.klx` 分发） | 依 EDRDG 许可的 CC BY-SA 4.0 | 无 | 在从菜单进入的独立来源页中注明 EDRDG 为版权所有者，链接许可与 JMdict 项目页，保持数据更新；派生的映射仍为 CC BY-SA 4.0 |
 | AOSP LatinIME 原生建议核心，经 HeliBoard | `HeliBorg/HeliBoard` v4.2（`0c60dffb`），`app/src/main/jni/src` | 英文纠错、补全与预测（`libkotomo_english.so`，S4） | Apache-2.0（AOSP 文件）；HeliBoard 整体为 GPL-3.0 | 无；以 Kotomo 自己的 JNI 桥接代替 LatinIME 的 JNI 文件 | 随附 Apache-2.0 许可文本并保留 AOSP 声明 |
 | AOSP LatinIME dicttool（仅为构建工具） | AOSP `platform/packages/inputmethods/LatinIME` `127336e9` | 构建时生成英文词典；不随应用分发 | Apache-2.0 | 无 | 对应用无义务 |

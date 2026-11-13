@@ -23,4 +23,11 @@
     <string name="chinese_quick_custom">自分用のクイック置換</string>
     <string name="chinese_quick_custom_example">dz=住所</string>
     <string name="chinese_quick_note">1 行に略語（英数字）、等号、置き換える文字を書きます。v と略語で入力します。</string>
+    <string name="double_pinyin">双拼</string>
+    <string name="double_full">全拼</string>
+    <string name="double_microsoft">Microsoft</string>
+    <string name="double_sogou">Sogou</string>
+    <string name="double_xiaohe">小鶴</string>
+    <string name="double_ziranma">自然碼</string>
+    <string name="double_pinyin_note">1 音節を 2 キーで入力します（声母、韻母の順）。混合モードを含め、ピンインを入力するすべての場所に適用されます。Microsoft と Sogou は ing を ;（b の長押し）で入力します。変更すると中国語データを少しの間作り直します。</string>
 </resources>

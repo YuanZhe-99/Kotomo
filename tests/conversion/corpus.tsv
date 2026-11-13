@@ -159,3 +159,8 @@ T08-J14	mixed		shashin	写真	5	sya / sha
 T01-020	chinese		`hs	十	5	stroke lookup (PLAN §10.4): the app types the backquote for u; h 一 then s 丨
 T01-N20	chinese		`hs	!时	1	stroke lookup is not pinyin: hs must not read as the abbreviation of a word
 T03-030	japanese		わたしはにほんじん	私は日本人	3	kana typed on the 12-key flick layout go to Mozc as typed (PLAN §10.9)
+T01-021	chinese+double:xiaohe		nihc	你好	1	Xiaohe double pinyin (PLAN §10.4): ni, h + ao (c)
+T01-022	chinese+double:microsoft		nihk	你好	1	Microsoft double pinyin: ni, h + ao (k)
+T01-023	chinese+double:ziranma		vsgo	中国	1	Ziranma double pinyin: zh (v) + ong (s), g + uo (o)
+T01-024	chinese+double:sogou		bzj;	北京	1	Sogou double pinyin: b + ei (z), j + ing (;)
+T01-N21	chinese+double:xiaohe		nihao	!你好	1	with double pinyin on, full pinyin is no longer read as full pinyin

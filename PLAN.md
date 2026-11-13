@@ -816,6 +816,8 @@ G2 因此还不能判定通过：两项真机条目 NOT_RUN。
 
 2026-11-12（Q8）：**U/V 模式式的快捷输入与笔画查字已做**。快捷输入（`ime/QuickInput.kt`，`chinese.quick_input` 默认开）：中文组合以 `v` 开头时，数字给出中文数字、金额大写、逐位读法与千分位，`u` 加十六进制给出 Unicode 字符，算式给出结果与等式，日期时间见 §10.8，还有用户自己的替换（`chinese.quick_custom`，每行 `缩写=文字`）；空格输入第一个候选，回车输入原文，不经过 librime、不学习。笔画查字（`chinese.stroke_lookup` 默认开）：组合为空时的 `u` 换成 librime 的反引号笔画反查（h 一、s 丨、p 丿、n 丶、z 乙），为此编译后的笔画数据随应用分发，**APK 增大约 9.4 MB（偏差，待用户决定是否接受）**。测试：主机 `QuickInputTest`，语料 T01-020、T01-N20；模拟器 `FieldTypingTest.quickInputTypesTheDate`、`strokeLookupTypesACharacter` 各 1/1。仍未做：拆字、常用特殊字符表。
 
+2026-11-12（Q8）：**双拼已做**（`ime/Fuzzy.kt` 的 `DoublePinyin`，`chinese.double_pinyin`，默认 `none` 即全拼）：微软、搜狗、小鹤、自然码四种，作为 librime 拼写规则写在模糊音规则文件之后，与模糊音一起部署，凡是输入拼音的地方（含混合模式）都生效；微软与搜狗的 ing 用 `;`（b 的长按）。键位与 rime-double-pinyin、rime-ice 的方案核对，未复制文件（`doc/en-us/third-party.md`）。测试：主机 `FuzzyTest` T08-double，语料 T01-021 至 T01-024、T01-N21。仍未做：自定义方案；预编辑显示按键原样而不是还原的全拼。
+
 ### 10.5 词库系统（草案 §7）
 
 - 类型：

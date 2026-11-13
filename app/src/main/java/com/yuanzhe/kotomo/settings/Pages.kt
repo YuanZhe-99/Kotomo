@@ -365,6 +365,14 @@ internal fun ChinesePage(settings: Settings, store: SettingsStore) {
             Note(stringResource(R.string.chinese_script_note))
         }
     }
+    Section(stringResource(R.string.double_pinyin)) {
+        Inset {
+            val options = listOf<com.yuanzhe.kotomo.ime.DoublePinyin?>(null) + com.yuanzhe.kotomo.ime.DoublePinyin.entries
+            val labels = listOf(R.string.double_full, R.string.double_microsoft, R.string.double_sogou, R.string.double_xiaohe, R.string.double_ziranma).map { stringResource(it) }
+            Choice(labels, options.indexOf(settings.doublePinyin)) { i -> store.set { it.copy(doublePinyin = options[i]) } }
+            Note(stringResource(R.string.double_pinyin_note))
+        }
+    }
     Section(null) {
         SwitchRow(R.string.chinese_idioms, R.string.chinese_idioms_desc, settings.idioms) { on -> store.set { it.copy(idioms = on) } }
         SwitchRow(R.string.chinese_strokes, R.string.chinese_strokes_desc, settings.strokeLookup) { on -> store.set { it.copy(strokeLookup = on) } }

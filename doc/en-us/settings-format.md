@@ -115,6 +115,7 @@ the table lists every key.
 | `chinese.quick_input` | boolean | `true` | `v` at the start of a Chinese composition opens the quick input: numbers, capital money, dates, times, Unicode, sums, the person's replacements (PLAN §10.4) |
 | `chinese.quick_custom` | string | empty | The person's quick-input replacements, `abbreviation=text` per line (lowercase letters and digits, at most 16); other lines are dropped |
 | `chinese.stroke_lookup` | boolean | `true` | `u` at the start of a Chinese composition looks characters up by strokes (luna_pinyin's stroke reverse lookup) |
+| `chinese.double_pinyin` | string | `none` | The double-pinyin scheme: `none` (full pinyin), `microsoft`, `sogou`, `xiaohe`, `ziranma` (PLAN §10.4); an unknown value reads as full pinyin |
 | `japanese.flick` | boolean | `false` | Japanese mode uses the 12-key flick layout |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 

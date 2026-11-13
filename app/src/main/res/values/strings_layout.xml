@@ -23,4 +23,11 @@
     <string name="chinese_quick_custom">Your quick replacements</string>
     <string name="chinese_quick_custom_example">dz=your address</string>
     <string name="chinese_quick_note">One abbreviation (letters and digits), an equals sign and the text per line; type v and the abbreviation.</string>
+    <string name="double_pinyin">Double pinyin</string>
+    <string name="double_full">Full pinyin</string>
+    <string name="double_microsoft">Microsoft</string>
+    <string name="double_sogou">Sogou</string>
+    <string name="double_xiaohe">Xiaohe</string>
+    <string name="double_ziranma">Ziranma</string>
+    <string name="double_pinyin_note">Two keys per syllable: the initial, then the final. It applies wherever you type pinyin, Mixed mode too. Microsoft and Sogou type ing with ; (long-press b). Changing it rebuilds the Chinese data for a moment.</string>
 </resources>

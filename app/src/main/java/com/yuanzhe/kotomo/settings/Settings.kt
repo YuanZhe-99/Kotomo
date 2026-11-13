@@ -205,6 +205,8 @@ data class Settings(
     val quickCustom: String = "",
     /** `u` at the start of a Chinese composition looks characters up by strokes (PLAN §10.4). */
     val strokeLookup: Boolean = true,
+    /** The double-pinyin scheme, or null for full pinyin (PLAN §10.4). */
+    val doublePinyin: com.yuanzhe.kotomo.ime.DoublePinyin? = null,
 ) {
     /** The tools the toolbar shows after More, in order; the rest are under More. */
     val tools: List<Tool> get() = toolOrder.filter { it !in hiddenTools }
@@ -363,6 +365,7 @@ internal object SettingsFormat {
     private val quickInput = booleanPreferencesKey("chinese.quick_input")
     private val quickCustom = stringPreferencesKey("chinese.quick_custom")
     private val strokeLookup = booleanPreferencesKey("chinese.stroke_lookup")
+    private val doublePinyin = stringPreferencesKey("chinese.double_pinyin")
 
     /**
      * Reads the settings from a Preferences file.
@@ -443,6 +446,7 @@ internal object SettingsFormat {
             quickInput = p[quickInput] ?: d.quickInput,
             quickCustom = p[quickCustom] ?: d.quickCustom,
             strokeLookup = p[strokeLookup] ?: d.strokeLookup,
+            doublePinyin = p[doublePinyin]?.let { raw -> com.yuanzhe.kotomo.ime.DoublePinyin.entries.firstOrNull { it.key == raw } },
         )
     }
 
@@ -513,6 +517,7 @@ internal object SettingsFormat {
         p.put(quickInput, old.quickInput, new.quickInput)
         p.put(quickCustom, old.quickCustom, new.quickCustom)
         p.put(strokeLookup, old.strokeLookup, new.strokeLookup)
+        p.put(doublePinyin, old.doublePinyin?.key ?: NONE, new.doublePinyin?.key ?: NONE)
         if (old.keyStyle.longPress != new.keyStyle.longPress) p[longPressMap] = KeyStyle.format(new.keyStyle.longPress)
         // Both lists are written together, so a later read knows which tools were in the list.
         if (old.toolOrder != new.toolOrder || old.hiddenTools != new.hiddenTools) {
@@ -594,6 +599,9 @@ internal object SettingsFormat {
     /** Sets [key] to [new] only when it differs from [old]. */
     /** An Android package name: dot-separated Java identifiers (anything else in the stored list is dropped). */
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
+
+    /** The stored value of an optional choice that is off (`chinese.double_pinyin`: full pinyin). */
+    private const val NONE = "none"
 
     private fun <T> MutablePreferences.put(key: Preferences.Key<T>, old: T, new: T) {
         if (old != new) this[key] = new

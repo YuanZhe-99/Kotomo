@@ -1,6 +1,7 @@
 package com.yuanzhe.kotomo.ime
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -65,7 +66,7 @@ class FuzzyTest {
     @Test
     fun fileTextIsExact() {
         val expected = """
-            # Kotomo: fuzzy pinyin, generated from the settings (chinese.fuzzy.*); rewritten on every change.
+            # Kotomo: fuzzy and double pinyin, generated from the settings (chinese.fuzzy.*, chinese.double_pinyin); rewritten on every change.
             # Rules: z_zh an_ang
             patch:
               speller/algebra/+:
@@ -87,5 +88,18 @@ class FuzzyTest {
         assertEquals(Fuzzy.hash(Fuzzy.yaml(all)), Fuzzy.hash(Fuzzy.yaml(all.reversed().toSet())))
         assertNotEquals(Fuzzy.hash(Fuzzy.yaml(setOf(FuzzyRule.N_L))), Fuzzy.hash(Fuzzy.yaml(setOf(FuzzyRule.L_R))))
         assertEquals(64, Fuzzy.hash(Fuzzy.yaml(all)).length)
+    }
+
+    /** T08-double (PLAN §10.4): a scheme alone writes a file; Microsoft also takes the semicolon. */
+    @Test
+    fun doublePinyinFile() {
+        val ms = checkNotNull(Fuzzy.yaml(emptySet(), DoublePinyin.MICROSOFT))
+        assertTrue("speller/alphabet: \"zyxwvutsrqponmlkjihgfedcba;\"" in ms)
+        assertTrue("\"xform/ing${'$'}/;/\"" in ms)
+        val xiaohe = checkNotNull(Fuzzy.yaml(setOf(FuzzyRule.Z_ZH), DoublePinyin.XIAOHE))
+        // The fuzzy rules come first, the scheme's rules after them; no semicolon for Xiaohe.
+        assertTrue(xiaohe.indexOf("fuzz/") < xiaohe.indexOf("xform/^zh/V/"))
+        assertFalse("alphabet" in xiaohe)
+        assertNotEquals(Fuzzy.hash(Fuzzy.yaml(emptySet(), DoublePinyin.SOGOU)), Fuzzy.hash(ms))
     }
 }
