@@ -25,6 +25,7 @@ enum class Command : uint8_t {
   kRestore = 9,       // drop every lock: the raw input converts afresh
   kCommitPrefix = 10, // commit a candidate's pieces up to a boundary; the rest stays composed
   kUndo = 11,         // take back the last commit: the composition and its locks return
+  kLearn = 12,        // set what the person's history adds to one reading's cost (PLAN.md §9.9)
 };
 
 /// Request::index of kLock for "keep the letters as typed".
@@ -41,6 +42,9 @@ inline constexpr uint8_t kSwitchAll = 31;
 /// Request::targets bits: the languages candidates may be written in, bit i for Lang i.
 inline constexpr uint8_t kTargetAll = 7;
 
+/// Request::adjust of kLearn for a reading the person blocked: it is never offered.
+inline constexpr int16_t kBlocked = 32767;
+
 /// Marks a key without a touch position.
 inline constexpr int16_t kNoCoordinate = -1;
 
@@ -48,7 +52,10 @@ inline constexpr int16_t kNoCoordinate = -1;
 struct Request {
   uint64_t generation = 0;  // the app's count of keys and commands; the snapshot returns it
   Command command = Command::kClear;
-  std::string text;         // kSet: the composition; kContext: the text before the cursor
+  std::string text;         // kSet: the composition; kContext: the text before the cursor;
+                            // kLearn: the letters typed, lower case, without delimiters
+  std::string chosen;       // kLearn: the text those letters were read as
+  int16_t adjust = 0;       // kLearn: added to the reading's cost; 0 forgets it, kBlocked hides it
   uint32_t code_point = 0;  // kKey
   int16_t x = kNoCoordinate, y = kNoCoordinate;  // kKey: the touch in the English engine's
                                                  // 1000 × 600 layout space, or kNoCoordinate

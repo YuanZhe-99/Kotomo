@@ -32,6 +32,11 @@ std::string Encode(const Request& request) {
       w.Int(request.shown);
       w.Int(request.index);
       break;
+    case Command::kLearn:
+      w.Str(request.text);
+      w.Str(request.chosen);
+      w.Int(request.adjust);
+      break;
     case Command::kAlternatives:
       w.Int(request.begin);
       w.Int(request.end);
@@ -57,7 +62,7 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
   uint8_t command = 0;
   Request request;
   if (!r.Int(&version) || version != kContractVersion || !r.Int(&request.generation) ||
-      !r.Int(&command) || command > static_cast<uint8_t>(Command::kUndo)) {
+      !r.Int(&command) || command > static_cast<uint8_t>(Command::kLearn)) {
     return std::nullopt;
   }
   request.command = static_cast<Command>(command);
@@ -81,6 +86,9 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
     case Command::kSelect:
     case Command::kLock:
       ok = r.Int(&request.shown) && r.Int(&request.index);
+      break;
+    case Command::kLearn:
+      ok = r.Str(&request.text) && r.Str(&request.chosen) && r.Int(&request.adjust);
       break;
     case Command::kAlternatives:
       ok = r.Int(&request.begin) && r.Int(&request.end) && request.begin < request.end;

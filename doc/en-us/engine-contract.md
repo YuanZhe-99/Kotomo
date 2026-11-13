@@ -1,7 +1,7 @@
 # Engine ↔ app contract
 
 How the app and the native engine talk: what goes in, what comes out, and how the mixed-input
-coordinator (`core/mixed/`) reaches the three engines. This is **contract version 4**
+coordinator (`core/mixed/`) reaches the three engines. This is **contract version 5**
 (`kContractVersion` in `core/mixed/snapshot.h`, `Snapshot.VERSION` in `engine/Snapshot.kt`). Both
 sides exist: the engine side is `libkotomo_core.so` (`core/mixed/session.h`, `jni/core_jni.cc`),
 the app side is the facade `engine/Core.kt` with the decoder `engine/Snapshot.kt`. Mixed mode
@@ -40,13 +40,14 @@ All integers are little-endian. A string is a `u16` byte length followed by UTF-
 | 2 | backspace | — | deletes the last character |
 | 3 | clear | — | drops the composition without committing |
 | 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; u8 targets; i8 × 3 weights for Chinese, Japanese, English | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito). The targets' bits name the languages candidates may be written in: 0 Chinese, 1 Japanese, 2 English; Mixed mode sets all three, Japanese mode only Japanese and takes the cross-language candidates (version 3). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates |
-| 5 | context | string: the text before the cursor | kept for ranking by context; nothing reads it yet. The app never sends it for a sensitive field |
+| 5 | context | string: the text before the cursor | candidates in the language that text ends in cost 300 units less (kana, or a Han character with kana before it: Japanese; a Han character otherwise: Chinese; a Latin letter: English). Kept in memory only. The app sends it when a composition starts and never for a field that may leave no trace |
 | 6 | select | u64: the generation of the snapshot on screen; u16: a candidate's index in it | commits that candidate: the snapshot's commit field holds its text and the composition is empty. When the engine's last snapshot is another one, or has no such candidate, nothing is committed |
 | 7 | alternatives | u16 begin, u16 end: a byte range of the composition | changes nothing; the snapshot's candidates stand for that span alone, in every language, and its focus fields name the span. A span that is empty, runs past the composition or cuts a locked piece gets the ordinary snapshot |
 | 8 | lock | u64: the generation of the alternatives snapshot; u16: a candidate's index in it, or 0xffff for the letters as typed | locks the span to that reading: the rest converts around it, every candidate holds the locked piece and no later conversion rewrites it. When the engine's last snapshot is another one, is not an alternatives snapshot or has no such candidate, nothing is locked |
 | 9 | restore | — | drops every lock; the raw input converts afresh |
 | 10 | commit prefix | u64: the generation of the snapshot on screen; u16: a candidate's index in it; u16 end: a byte offset of the composition | commits that candidate's pieces that end at or before the offset, which must be a piece boundary inside the composition; the rest stays composed and keeps its locks, moved to the new offsets. Otherwise nothing is committed |
 | 11 | undo | — | takes back the last commit (select or commit prefix): the composition and its locks return. One level only, and a key or a set after the commit ends it. The app removes the committed text from the field |
+| 12 | learn | string: letters typed, lower case, without delimiters; string: the text they were read as; i16 adjust | sets what the person's history adds to that reading's cost: negative for a reading chosen before, positive for a demoted one, 32767 for one that is never offered, 0 to forget it; both strings empty forgets everything. A candidate's cost moves by its whole input's reading and, when it has several pieces, by each piece's that is not locked. The engine keeps the table in memory only (the app owns the versioned file, `settings-format.md`) and ignores it while the incognito switch is set |
 
 Every request is answered with a snapshot of the composition it leaves. A request the engine
 cannot decode (another version, an unknown command, level or switch bit, a weight out of range, a
@@ -56,7 +57,12 @@ the composition and no candidates.
 
 Locks belong to the composition: typing on keeps them, set and clear drop them, and a backspace
 that reaches into the last locked piece drops that lock alone. Not in version 4: moving the cursor
-inside the composition, more than one level of undo, and anything about learning.
+inside the composition and more than one level of undo.
+
+A key that arrives with a touch position near the edge of its key (within 35 units of being as
+close to a neighbouring key) also gets the composition read with that neighbour: the best
+candidate of at most two such readings is added, marked fuzzy, at its cost plus 2500 and never
+first. Keys without a position convert exactly as typed.
 
 ## Output: the snapshot
 
@@ -80,7 +86,7 @@ what a later edit locks or changes, so the other pieces are never rewritten.
 | candidate: text | string | what choosing it commits |
 | candidate: target | u8 | the language it is written in: 0 Chinese, 1 Japanese, 2 English |
 | candidate: cost | i32 | the engine's cost, lower first; comparable only within one snapshot |
-| candidate: flags | u8 | bit 0 cross-language, bit 1 fuzzy or corrected, bit 2 emoji, bit 3 whole composition |
+| candidate: flags | u8 | bit 0 cross-language, bit 1 fuzzy or corrected, bit 2 emoji, bit 3 whole composition, bit 4 made cheaper by the person's history |
 | candidate: piece count | u16 | then that many pieces, in input order |
 | piece: begin, end | u16, u16 | the byte range of the composition the piece stands for |
 | piece: text | string | what the piece commits |

@@ -1,4 +1,4 @@
-// Host test of the session (the engine side of the engine ↔ app contract, version 4) against
+// Host test of the session (the engine side of the engine ↔ app contract, version 5) against
 // the fake engines: keys, deletion, replacing and clearing the composition, options, selection.
 
 #include "check.h"
@@ -107,9 +107,72 @@ int main() {
   Check(Place(s, "book") == 0 && s.candidates[0].target == Lang::kEnglish, "Q7B-session-targets-default-all");
   session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
 
-  // Context is kept and changes nothing yet.
-  s = session.Handle({.generation = ++generation, .command = Command::kContext, .text = "前"});
-  Check(s.input == "shu" && Place(s, "书") == 0, "Q7-session-context");
+  // T10 (PLAN.md §9.7, layer 4): the text before the cursor makes its language a little
+  // cheaper and nothing else; the original language still comes first.
+  const Snapshot no_context = s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
+  s = session.Handle({.generation = ++generation, .command = Command::kContext, .text = "これは本"});
+  Check(s.input == "shu" && Place(s, "书") == 0 &&
+            s.candidates[Place(s, "書")].cost == no_context.candidates[Place(no_context, "書")].cost - 300 &&
+            s.candidates[Place(s, "书")].cost == no_context.candidates[Place(no_context, "书")].cost,
+        "T10-context-japanese");
+  s = session.Handle({.generation = ++generation, .command = Command::kContext, .text = "前。"});
+  Check(s.candidates[Place(s, "书")].cost == no_context.candidates[Place(no_context, "书")].cost,
+        "T10-context-negative-punctuation-says-nothing");
+  s = session.Handle({.generation = ++generation, .command = Command::kContext, .text = ""});
+
+  // T10 (PLAN.md §9.8, §9.9): what the person chose before comes first, even across languages;
+  // a demoted reading sinks, a blocked one is not offered, forgetting restores the order.
+  const auto learn = [&session](const char* letters, const char* text, int16_t adjust) {
+    return session.Handle({.generation = ++generation, .command = Command::kLearn, .text = letters,
+                           .chosen = text, .adjust = adjust});
+  };
+  s = learn("shu", "書", -6000);
+  Check(s.input == "shu" && Place(s, "書") == 0 && (s.candidates[0].flags & kLearned) &&
+            s.candidates[0].cost == no_context.candidates[Place(no_context, "書")].cost - 6000,
+        "T10-learned-reading-first");
+  // Negative: a field that must leave no trace gets no personalized order.
+  s = session.Handle({.generation = ++generation, .command = Command::kOptions, .switches = kSwitchAll});
+  Check(Place(s, "书") == 0 && !(s.candidates[Place(s, "書")].flags & kLearned), "T12-incognito-ignores-history");
+  session.Handle({.generation = ++generation, .command = Command::kOptions});
+  s = learn("shu", "書", 0);
+  Check(Place(s, "书") == 0 && Place(s, "書") == Place(no_context, "書"), "T10-forgotten");
+  s = learn("shu", "书", 3000);
+  Check(Place(s, "书") > 0, "T10-demoted");
+  s = learn("shu", "书", kBlocked);
+  Check(Place(s, "书") < 0 && !s.candidates.empty(), "T10-blocked");
+  s = learn("", "", 0);
+  Check(Place(s, "书") == 0, "T10-cleared");
+  // A piece's reading is learned too: the sentence that holds it moves.
+  const Snapshot before_piece = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "tushuguan book"});
+  s = learn("book", "本", -2500);
+  Check(s.candidates[Place(s, "図書館本")].cost == before_piece.candidates[Place(before_piece, "図書館本")].cost - 2500 &&
+            s.candidates[Place(s, "图书馆book")].cost == before_piece.candidates[Place(before_piece, "图书馆book")].cost,
+        "T10-learned-piece");
+  learn("", "", 0);
+  session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
+
+  // T08 (PLAN.md §9.7, layer 1): `l` touched at the edge towards `k` also offers the reading
+  // with `k`, marked as a correction; a touch on the middle of the key offers none.
+  const auto typed = [&session](const char* word, int16_t last_x) {
+    Send(&session, Command::kClear);
+    Snapshot out;
+    for (const char* c = word; *c; ++c) {
+      out = session.Handle({.generation = ++generation, .command = Command::kKey,
+                            .code_point = static_cast<uint32_t>(*c),
+                            .x = static_cast<int16_t>(c[1] ? -1 : last_x), .y = static_cast<int16_t>(c[1] ? -1 : 225)});
+    }
+    return out;
+  };
+  s = typed("bool", 855);
+  Check(s.input == "bool" && Place(s, "book") >= 0 && (s.candidates[Place(s, "book")].flags & kFuzzy),
+        "T08-key-correction");
+  s = typed("bool", 900);
+  Check(Place(s, "book") < 0, "T08-key-correction-negative-touch-on-the-key");
+  s = typed("book", 745);  // `k` touched at its edge towards `j`: the word as typed stays first
+  Check(Place(s, "book") == 0, "T08-key-correction-never-first");
+  session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
+  s = Send(&session, Command::kBackspace);
+  s = Key(&session, 'u');
 
   // Selection commits a candidate of the snapshot on screen and empties the composition.
   const uint64_t shown = s.generation;

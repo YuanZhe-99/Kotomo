@@ -76,8 +76,9 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
     }
 
     /**
-     * Tells the engine the text before the cursor.
-     * Notes: the caller never sends it for a sensitive field (PLAN §14); nothing reads it yet.
+     * Tells the engine the text before the cursor: candidates in that text's language cost a
+     * little less (PLAN §9.7).
+     * Notes: the caller never sends it for a sensitive field (PLAN §14); it is kept in memory only.
      */
     fun context(generation: Long, before: String): Snapshot? =
         call(generation, CONTEXT) { it.string(before.takeLast(CONTEXT_CHARS)) }
@@ -126,6 +127,16 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
      */
     fun undo(generation: Long): Snapshot? = call(generation, UNDO) {}
 
+    /**
+     * Sets what the person's history adds to the cost of reading the letters [input] (lower
+     * case, no delimiters) as [text]: negative for a reading chosen before, positive for a
+     * demoted one, [BLOCKED] for one never to offer, 0 to forget it; both strings empty forgets
+     * everything (PLAN §9.9).
+     * Notes: the engine keeps it in memory only and ignores it for an incognito request.
+     */
+    fun learn(generation: Long, input: String, text: String, adjust: Int): Snapshot? =
+        call(generation, LEARN) { it.string(input.take(MAX_COMPOSITION)).string(text.take(MAX_COMPOSITION)).putShort(adjust.toShort()) }
+
     /** Releases the coordinator and unmaps the lexicon; later calls fail. */
     override fun close() {
         if (handle != 0L) nativeClose(handle)
@@ -153,8 +164,8 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         /** How much of the text before the cursor is handed over. */
         private const val CONTEXT_CHARS = 64
 
-        /** Room for the largest request: the header and a string of the longest composition. */
-        private const val REQUEST_BYTES = 16 + 3 * MAX_COMPOSITION + 2
+        /** Room for the largest request: the header, two strings of the longest composition and a number. */
+        private const val REQUEST_BYTES = 16 + 2 * (3 * MAX_COMPOSITION + 2) + 2
 
         private const val SET = 0
         private const val KEY = 1
@@ -168,6 +179,10 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         private const val RESTORE = 9
         private const val COMMIT_PREFIX = 10
         private const val UNDO = 11
+        private const val LEARN = 12
+
+        /** [learn]'s adjustment for a reading that is never offered. */
+        const val BLOCKED = 32767
 
         /** [lock]'s index for keeping the span's letters as typed. */
         const val AS_TYPED = 0xffff
@@ -205,9 +220,9 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         ).takeIf { it != 0L }?.let(::Core)
 
         /** Writes a string as the contract does: a u16 byte length, then UTF-8. */
-        private fun ByteBuffer.string(text: String) {
+        private fun ByteBuffer.string(text: String): ByteBuffer {
             val bytes = text.toByteArray(Charsets.UTF_8)
-            putShort(bytes.size.toShort()).put(bytes)
+            return putShort(bytes.size.toShort()).put(bytes)
         }
 
         @JvmStatic

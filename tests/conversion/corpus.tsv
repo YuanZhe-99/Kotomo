@@ -140,3 +140,19 @@ T08-N21	chinese+fuzzy:n_l,l_r		rihao	!你好	5	n/l with l/r must not make r stan
 T08-025	chinese+fuzzy:n_l,l_r		lihao	你好	3	with n/l and l/r on, l stands for n
 T08-026	chinese+fuzzy:n_l,l_r		liben	日本	3	with n/l and l/r on, l stands for r
 T08-N22	chinese+fuzzy:n_l,l_r		niben	!日本	5	with n/l and l/r on, n must not stand for r
+T08-030	mixed+fuzzy:z_zh		zongguo	中国	3	fuzzy pinyin through the coordinator: the deployed rules apply in Mixed mode (PLAN §9.7 layer 3)
+T08-N30	mixed		zongguo	!中国	3	negative: without the rule the coordinator does not read zong as zhong
+T08-J01	japanese		susi	寿司|すし	3	equivalent romaji spellings cost nothing (PLAN §9.6): si / shi
+T08-J02	japanese		sushi	寿司|すし	3	si / shi
+T08-J03	japanese		tuki	月|つき	3	tu / tsu
+T08-J04	japanese		tsuki	月|つき	3	tu / tsu
+T08-J05	japanese		zikan	時間	1	zi / ji
+T08-J06	japanese		jikan	時間	1	zi / ji
+T08-J07	japanese		syasin	写真	1	sya / sha
+T08-J08	japanese		shashin	写真	1	sya / sha
+T08-J09	japanese		huyu	冬	1	hu / fu
+T08-J10	japanese		fuyu	冬	1	hu / fu
+T08-J11	mixed		zikan	時間	5	equivalent spellings in Mixed mode: zi / ji
+T08-J12	mixed		jikan	時間	5	zi / ji
+T08-J13	mixed		syasin	写真	5	sya / sha
+T08-J14	mixed		shashin	写真	5	sya / sha

@@ -58,10 +58,8 @@ Not read yet: `pinyin_to_katakana` in either mode (no data maps pinyin to kataka
 
 ## Keys
 
-Mixed mode reads its keys on every key typed (the mixed-input coordinator gets them as options,
-`engine-contract.md`). Not read yet: `mixed.cross.pinyin_to_katakana` and `mixed.cross.readings`,
-and every `japanese.cross.*` switch, because Japanese mode does not convert through the
-coordinator yet; the settings app stores and shows them.
+What reads the cross-language switches is described under "Versioning and compatibility" above;
+the table lists every key.
 
 | Key | Type | Default | Setting |
 |---|---|---|---|
@@ -150,6 +148,35 @@ it starts and keeps it in memory.
 - The manifest excludes every file from Android backup and device transfer (`data_extraction_rules.xml`).
 
 The dictionaries keep their own versioned files (`files/dictionaries/user.json`, `state.json`), described in [dictionaries.md](dictionaries.md).
+
+## Learned readings file
+
+What Mixed mode learned from the candidates the person chose lives in
+`files/keyboard/learned.json` (`ime/MixedLearning.kt`), versioned like the settings file: unknown
+members are kept, a newer format version is never lowered, a damaged file is moved aside to
+`learned.json.unreadable`.
+
+| Key | Type | Meaning |
+|---|---|---|
+| `format_version` | int | this build writes `1` |
+| `updated_utc_ms` | long | time of the last change, UTC milliseconds |
+| `readings` | list | one object per learned reading |
+| reading: `input` | string | the letters typed, lower case, without spaces |
+| reading: `text` | string | what they were committed as |
+| reading: `count` | int | how often it was chosen |
+| reading: `used_utc_ms` | long | when it was last chosen, UTC milliseconds |
+| reading: `rank` | string | absent, or what the person decided: `demoted`, `blocked`, `pinned` |
+
+A commit in Mixed mode records the whole input's reading and, when the candidate has several
+pieces, each piece's. Each use lowers the reading's cost in the engine by 3000 units, up to three
+uses; the effect halves every 30 days since the last use and ends below a fifth of a use. A
+demoted reading costs 3000 more, a blocked one is never offered, a pinned one always leads. At
+most 2000 readings are kept; the weakest unranked ones go first. Nothing is recorded in a
+sensitive field, a field that asks for no personalized learning, incognito mode or before the
+first unlock, and there the engine ignores what was learned. Backspace right after a commit takes
+its learning back with it. Privacy → Learned readings lists them with Rank lower, Never offer,
+Keep first, Reset and Delete; Privacy → Clear learning data empties the file. The file is plain
+JSON in the app's private storage and never leaves the device.
 
 ## Direct Boot
 

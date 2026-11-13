@@ -208,6 +208,19 @@
     <string name="learning_clear_confirm_title">清除学习数据？</string>
     <string name="learning_clear_confirm">学到的词与词频、Emoji 历史与按 App 记住的模式将从这台设备上删除，无法撤销。你的设置、为 App 固定的模式、你的词库与剪贴板历史会保留。</string>
     <string name="learning_clear_cancel">取消</string>
+    <string name="page_learned">已学习的读法</string>
+    <string name="learned_open">查看学到的内容</string>
+    <string name="learned_desc">混合模式从你选过的候选中学到的内容：输入的字母和它变成的文字。学到的读法下次排在最前。密码输入框、要求不学习的输入框和无痕模式下不学习。</string>
+    <string name="learned_empty">还没有学到任何内容。</string>
+    <string name="learned_demote">降低排序</string>
+    <string name="learned_demoted">已降低排序</string>
+    <string name="learned_block">不再提供</string>
+    <string name="learned_blocked">不再提供</string>
+    <string name="learned_pin">固定首选</string>
+    <string name="learned_pinned">始终排在最前</string>
+    <string name="learned_reset">恢复默认</string>
+    <string name="learned_delete">删除</string>
+    <plurals name="learned_uses"><item quantity="other">选过 %d 次</item></plurals>
     <string name="privacy_offline">离线也能输入。你输入的内容从不经网络发送。</string>
     <string name="privacy_local">你输入的内容留在本机。没有统计分析、没有广告，也不上传崩溃信息。</string>
     <string name="privacy_sensitive">在密码框、要求不学习的输入框和无痕模式下，Kotomo 不学习，也不记录历史。</string>

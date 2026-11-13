@@ -9,7 +9,9 @@
 #define KOTOMO_CORE_MIXED_COORDINATOR_H_
 
 #include <cstdint>
+#include <map>
 #include <span>
+#include <string>
 #include <string_view>
 
 #include "cross_lexicon.h"
@@ -18,6 +20,11 @@
 #include "snapshot.h"
 
 namespace kotomo::mixed {
+
+/// Holds what the person's history adds to the cost of readings (PLAN.md §9.9): the key is the
+/// letters typed (lower case, no delimiters), a tab and the text they were read as; the value is
+/// negative for a reading chosen before, positive for a demoted one, kBlocked for a hidden one.
+using Learned = std::map<std::string, int16_t, std::less<>>;
 
 /// Converts typed letters into a snapshot of whole-input candidates in three target languages.
 ///
@@ -28,8 +35,12 @@ namespace kotomo::mixed {
 class Coordinator {
  public:
   /// Inputs: `engines` and `lexicon` must outlive the coordinator.
-  Coordinator(Engines& engines, const CrossLexicon& lexicon, Options options = {})
-      : engines_(engines), lexicon_(lexicon), options_(options) {}
+  ///   `learned` may be null; it is not read when `options.incognito` is set, so a field that
+  ///   must leave no trace gets no personalized order (PLAN.md §14).
+  Coordinator(Engines& engines, const CrossLexicon& lexicon, Options options = {},
+              const Learned* learned = nullptr)
+      : engines_(engines), lexicon_(lexicon), options_(options),
+        learned_(options.incognito ? nullptr : learned) {}
 
   /// Converts one composition.
   /// Inputs: `composition` holds letters, with spaces and apostrophes as boundary hints (PLAN.md
@@ -37,7 +48,8 @@ class Coordinator {
   /// Returns: a snapshot (stage 0) with the composition, the cursor at its end and up to
   ///   `Options::candidates` candidates in the languages of `Options::targets`, cheapest first after `Options::bias` of their target
   ///   language, each covering the whole input and no text twice. Below the aggressive level a cross-language candidate is never first while a
-  ///   candidate in the language its cross-language pieces were typed in exists. A composition
+  ///   candidate in the language its cross-language pieces were typed in exists, unless the
+  ///   person's history put it there. A learned reading of the whole input and of each piece moves a candidate's cost; a blocked one removes the candidate. A composition
   ///   ParseInput refuses gets no candidates.
   /// Side effects: asks the engines (librime's spelling table and conversion, Mozc's romaji table
   ///   and converter, the English dictionary); nothing learns.
@@ -52,6 +64,7 @@ class Coordinator {
   Engines& engines_;
   const CrossLexicon& lexicon_;
   Options options_;
+  const Learned* learned_;
 };
 
 }  // namespace kotomo::mixed

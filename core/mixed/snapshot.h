@@ -15,7 +15,7 @@ namespace kotomo::mixed {
 
 /// Names the contract version; Encode writes it and Decode refuses any other.
 /// Notes: bumped with every change to the fields below or their encoding, on both sides at once.
-inline constexpr uint16_t kContractVersion = 4;
+inline constexpr uint16_t kContractVersion = 5;
 
 /// Names a language: the one a span was typed in, or the one a candidate is written in.
 enum class Lang : uint8_t { kChinese = 0, kJapanese = 1, kEnglish = 2 };
@@ -35,6 +35,7 @@ inline constexpr uint8_t kCross = 1;     // holds a cross-language piece
 inline constexpr uint8_t kFuzzy = 2;     // matched through fuzzy pinyin or a correction
 inline constexpr uint8_t kEmoji = 4;     // an emoji, never part of a sentence
 inline constexpr uint8_t kSentence = 8;  // covers the whole input
+inline constexpr uint8_t kLearned = 16;  // the person's history made it cheaper
 
 /// Holds one piece of a candidate: the span of the input it stands for and how it was read, so a
 /// later edit can lock or change one piece without rewriting the others (PLAN.md §5.6).
@@ -56,7 +57,7 @@ struct Candidate {
   std::string text;              // what choosing it commits
   Lang target = Lang::kChinese;  // the language it is written in
   int32_t cost = 0;              // the decoder's cost, lower first; comparable within a snapshot
-  uint8_t flags = 0;             // kCross, kFuzzy, kEmoji, kSentence
+  uint8_t flags = 0;             // kCross, kFuzzy, kEmoji, kSentence, kLearned
   std::vector<Piece> pieces;     // in input order; empty for an emoji
 
   bool operator==(const Candidate&) const = default;

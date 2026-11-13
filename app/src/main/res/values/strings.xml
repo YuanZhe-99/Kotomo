@@ -222,6 +222,19 @@
     <string name="learning_clear_confirm_title">Clear learning data?</string>
     <string name="learning_clear_confirm">Learned words and frequencies, emoji history and the modes remembered per app are deleted from this device. This cannot be undone. Your settings, the modes you fixed for apps, your dictionaries and the clipboard history stay.</string>
     <string name="learning_clear_cancel">Cancel</string>
+    <string name="page_learned">Learned readings</string>
+    <string name="learned_open">See what was learned</string>
+    <string name="learned_desc">What Mixed mode learned from the candidates you chose: the letters you typed and what they became. A learned reading comes first next time. Nothing is learned in password fields, fields that ask for no learning, or incognito mode.</string>
+    <string name="learned_empty">Nothing learned yet.</string>
+    <string name="learned_demote">Rank lower</string>
+    <string name="learned_demoted">Ranked lower</string>
+    <string name="learned_block">Never offer</string>
+    <string name="learned_blocked">Never offered</string>
+    <string name="learned_pin">Keep first</string>
+    <string name="learned_pinned">Always first</string>
+    <string name="learned_reset">Reset</string>
+    <string name="learned_delete">Delete</string>
+    <plurals name="learned_uses"><item quantity="one">Chosen %d time</item><item quantity="other">Chosen %d times</item></plurals>
     <string name="privacy_offline">Typing works offline. Nothing you type is ever sent over the network.</string>
     <string name="privacy_local">What you type stays on this device. There is no analytics, no advertising and no crash upload.</string>
     <string name="privacy_sensitive">In password fields, in fields that ask not to be learned from and in incognito mode, Kotomo learns nothing and keeps no history.</string>

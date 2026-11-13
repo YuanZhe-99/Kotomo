@@ -124,6 +124,9 @@ Latin words only where it helps readability. The input modes are 中文, 英文,
 | request (of the contract) | 请求 |
 | session (of the coordinator) | 会话 |
 | compiled lexicon | 编译后的词库 |
+| learned reading | 已学习的读法 |
+| rank lower (a learned reading) | 降低排序 |
+| key correction | 按键纠错 |
 
 ## 6. Review checklist
 

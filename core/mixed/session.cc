@@ -3,6 +3,7 @@
 #include "input.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace kotomo::mixed {
 namespace {
@@ -16,7 +17,128 @@ bool Composes(uint32_t c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == ' ' || c == '\'';
 }
 
+/// The letter rows of the layout the touches are measured in (the English engine's 1000 × 600
+/// space, `English.touchPoint` in the app): each row's keys and where its first key starts.
+constexpr std::pair<std::string_view, int> kRows[] = {{"qwertyuiop", 0}, {"asdfghjkl", 50}, {"zxcvbnm", 150}};
+constexpr int kKeyWidth = 100, kKeyHeight = 150;
+
+/// How much nearer its own key's centre than a neighbour's a touch may be and still count as
+/// possibly meant for the neighbour (a touch 17 units from the border between two keys).
+constexpr int kNearKey = 35;
+
+/// The most alternative readings of the keys converted per request.
+constexpr size_t kKeyVariants = 2;
+
+/// Holds one key that may have been meant for its neighbour.
+struct NearKey {
+  size_t at;    // byte of the composition
+  char key;     // the neighbouring letter, in lower case
+  int margin;   // how much nearer the touch was to the typed key, 0…kNearKey
+};
+
+/// Finds the neighbouring key a touch nearly hit (PLAN.md §9.7, layer 1).
+/// Inputs: `typed` a lower-case letter; `x`, `y` the touch in the layout space.
+/// Returns: the nearest other letter and its margin, or nullopt when the touch has no position,
+///   fell outside the typed key's own area or was clearly on the key.
+std::optional<std::pair<char, int>> Neighbour(char typed, int x, int y) {
+  if (x < 0 || y < 0) return std::nullopt;
+  int own = -1, best = -1;
+  char other = 0;
+  for (int row = 0; row < 3; ++row) {
+    for (size_t i = 0; i < kRows[row].first.size(); ++i) {
+      const int dx = x - (kRows[row].second + static_cast<int>(i) * kKeyWidth + kKeyWidth / 2);
+      const int dy = y - (row * kKeyHeight + kKeyHeight / 2);
+      const int distance = static_cast<int>(std::lround(std::hypot(dx, dy)));
+      if (kRows[row].first[i] == typed) {
+        if (std::abs(dx) > kKeyWidth * 6 / 10 || std::abs(dy) > kKeyHeight * 6 / 10) return std::nullopt;
+        own = distance;
+      } else if (best < 0 || distance < best) {
+        best = distance;
+        other = kRows[row].first[i];
+      }
+    }
+  }
+  if (own < 0 || best - own > kNearKey) return std::nullopt;
+  return std::pair{other, std::max(best - own, 0)};
+}
+
+/// Names the language the text before the cursor is written in (PLAN.md §9.7, layer 4).
+/// Returns: Japanese when its last letter is kana, or a Han character with kana before it;
+///   Chinese for a Han character without; English for a Latin letter; nullopt when it ends in
+///   anything else or is empty.
+std::optional<Lang> ContextLanguage(std::string_view context) {
+  // Decode backwards; malformed bytes end the scan (the app sends valid UTF-8).
+  std::optional<Lang> last;
+  for (size_t end = context.size(), seen = 0; end > 0 && seen < 32; ++seen) {
+    size_t begin = end - 1;
+    while (begin > 0 && (static_cast<unsigned char>(context[begin]) & 0xc0) == 0x80) --begin;
+    const unsigned char lead = static_cast<unsigned char>(context[begin]);
+    uint32_t c = lead < 0x80 ? lead : lead < 0xe0 ? lead & 0x1f : lead < 0xf0 ? lead & 0x0f : lead & 0x07;
+    for (size_t i = begin + 1; i < end; ++i) c = (c << 6) | (static_cast<unsigned char>(context[i]) & 0x3f);
+    end = begin;
+    const bool kana = c >= 0x3040 && c <= 0x30ff;
+    const bool han = c >= 0x4e00 && c <= 0x9fff;
+    const bool latin = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    if (!last) {
+      if (kana) return Lang::kJapanese;
+      if (latin) return Lang::kEnglish;
+      if (!han) return std::nullopt;
+      last = Lang::kChinese;
+    } else if (kana) {
+      return Lang::kJapanese;
+    }
+  }
+  return last;
+}
+
 }  // namespace
+
+Options Session::Biased() const {
+  Options options = options_;
+  if (const auto lang = ContextLanguage(context_)) {
+    options.bias[static_cast<int>(*lang)] -= options.costs.context;
+  }
+  return options;
+}
+
+void Session::AddKeyCorrections(const Options& options, Snapshot* snapshot) const {
+  std::vector<NearKey> near;
+  for (size_t i = 0; i < composition_.size(); ++i) {
+    const char c = composition_[i];
+    if (c < 'a' || c > 'z') continue;
+    const bool locked = std::any_of(locks_.begin(), locks_.end(), [i](const Piece& lock) {
+      return i >= lock.begin && i < lock.end;
+    });
+    if (locked) continue;
+    if (const auto found = Neighbour(c, touches_[i].first, touches_[i].second)) {
+      near.push_back({i, found->first, found->second});
+    }
+  }
+  std::stable_sort(near.begin(), near.end(), [](const NearKey& a, const NearKey& b) { return a.margin < b.margin; });
+  if (near.size() > kKeyVariants) near.resize(kKeyVariants);
+  std::vector<Candidate> corrected;
+  for (const NearKey& key : near) {
+    std::string variant = composition_;
+    variant[key.at] = key.key;
+    Snapshot other = Coordinator(engines_, lexicon_, options, &learned_).Convert(variant, snapshot->generation, locks_);
+    if (other.candidates.empty()) continue;
+    Candidate& best = other.candidates.front();
+    best.cost += options.costs.key_correction + options.costs.key_correction_step * key.margin;
+    best.flags |= kFuzzy;
+    corrected.push_back(std::move(best));
+  }
+  for (Candidate& candidate : corrected) {
+    const bool known = std::any_of(snapshot->candidates.begin(), snapshot->candidates.end(),
+                                   [&candidate](const Candidate& c) { return c.text == candidate.text; });
+    if (known) continue;
+    // By cost, but never first: a correction is a suggestion (PLAN.md §9.7).
+    auto at = std::find_if(snapshot->candidates.begin(), snapshot->candidates.end(),
+                           [&candidate](const Candidate& c) { return c.cost > candidate.cost; });
+    if (at == snapshot->candidates.begin() && !snapshot->candidates.empty()) ++at;
+    snapshot->candidates.insert(at, std::move(candidate));
+  }
+  if (snapshot->candidates.size() > options.candidates) snapshot->candidates.resize(options.candidates);
+}
 
 void Session::DropPrefix(size_t bytes) {
   while (bytes < composition_.size() && (composition_[bytes] == ' ' || composition_[bytes] == '\'')) ++bytes;
@@ -150,6 +272,15 @@ Snapshot Session::Handle(const Request& request) {
         }
       }
       break;
+    case Command::kLearn:
+      if (request.text.empty() && request.chosen.empty()) {
+        learned_.clear();
+      } else if (request.adjust == 0) {
+        learned_.erase(request.text + '\t' + request.chosen);
+      } else {
+        learned_[request.text + '\t' + request.chosen] = request.adjust;
+      }
+      break;
     case Command::kUndo:
       if (undo_) {
         composition_ = std::move(undo_->composition);
@@ -160,9 +291,10 @@ Snapshot Session::Handle(const Request& request) {
       break;
   }
   Snapshot snapshot;
+  const Options options = Biased();
   if (alternatives) {
     // The span alone, in every language the options allow; its pieces are placed in the input.
-    snapshot = Coordinator(engines_, lexicon_, options_)
+    snapshot = Coordinator(engines_, lexicon_, options, &learned_)
                    .Convert(std::string_view(composition_).substr(request.begin, request.end - request.begin),
                             request.generation);
     for (Candidate& candidate : snapshot.candidates) {
@@ -176,7 +308,8 @@ Snapshot Session::Handle(const Request& request) {
     snapshot.focus_begin = request.begin;
     snapshot.focus_end = request.end;
   } else {
-    snapshot = Coordinator(engines_, lexicon_, options_).Convert(composition_, request.generation, locks_);
+    snapshot = Coordinator(engines_, lexicon_, options, &learned_).Convert(composition_, request.generation, locks_);
+    AddKeyCorrections(options, &snapshot);
   }
   snapshot.commit = std::move(commit);
   last_generation_ = snapshot.generation;

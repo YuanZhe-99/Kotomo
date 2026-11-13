@@ -8,8 +8,8 @@ import java.util.concurrent.Executors
 
 /**
  * Clears what Kotomo learned from typing (PLAN §8.8, Privacy → Clear learning data): librime's
- * learned words and frequencies, Mozc's conversion history, the emoji history, and the mode and
- * script remembered per app. Modes the person fixed for an app, the settings, the clipboard
+ * learned words and frequencies, Mozc's conversion history, Mixed mode's learned readings
+ * ([MixedLearning]), the emoji history, and the mode and script remembered per app. Modes the person fixed for an app, the settings, the clipboard
  * history (cleared on its own) and dictionaries the person added stay.
  *
  * Notes: the engines own their files while open, so when the keyboard is running it clears them on
@@ -28,12 +28,13 @@ object LearningData {
 
     /**
      * Clears the learning data.
-     * Side effects: deletes librime's user dictionaries and Mozc's profile, rewrites the keyboard
-     * memory; [done] runs on the main thread afterwards.
+     * Side effects: deletes librime's user dictionaries and Mozc's profile, empties Mixed mode's
+     * learned readings, rewrites the keyboard memory; [done] runs on the main thread afterwards.
      */
     fun clear(context: Context, done: () -> Unit) {
         val app = context.applicationContext
         KeyboardMemory.get(app).update(::forget)
+        MixedLearning.get(app).clear()
         val main = Handler(Looper.getMainLooper())
         keyboard?.let { return it(done) }
         background.execute {

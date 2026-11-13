@@ -37,6 +37,9 @@ struct Costs {
   int32_t particle = 1200;               // は, を or へ typed wa, o or e
   int32_t language_switch = 500;         // between spans typed in different languages
   int32_t crossed_hint = 2500;           // a span that runs across a delimiter the person typed
+  int32_t key_correction = 2500;         // a reading that takes one key for its neighbour
+  int32_t key_correction_step = 20;      // on top, each unit the touch was nearer its own key
+  int32_t context = 300;                 // off the language the text before the cursor is in
 };
 
 /// Chooses how strongly cross-language candidates compete (PLAN.md §2.3).

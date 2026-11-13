@@ -18,10 +18,11 @@ namespace kotomo::mixed {
 
 /// Holds one Mixed-mode composition and answers the app's requests about it.
 ///
-/// Notes: not thread-safe; the engine thread owns it. Nothing here learns: a selection only says
-/// what to commit. It keeps the pieces the person locked (PLAN.md §5.6) and what the last commit
-/// took away, so one commit can be undone. The touch positions and the context are kept for key correction and context
-/// ranking (PLAN.md §9.7, §9.8), which do not read them yet.
+/// Notes: not thread-safe; the engine thread owns it. Nothing here learns by itself: a selection only says
+/// what to commit, and the app decides what is remembered and tells it with kLearn (in memory
+/// only; the app keeps the versioned file). It keeps the pieces the person locked (PLAN.md §5.6) and what the last commit
+/// took away, so one commit can be undone. The touch positions
+/// feed key correction and the text before the cursor a small language bias (PLAN.md §9.7).
 class Session {
  public:
   /// Inputs: `engines` and `lexicon` must outlive the session.
@@ -39,7 +40,9 @@ class Session {
   ///   up to a piece boundary and keeps the rest composed; kUndo brings back what the last
   ///   kSelect or kCommitPrefix took, until a key is typed. A span that cuts a lock, a boundary
   ///   that is not one, and an answer to another snapshot change nothing.
-  /// Side effects: asks the engines through the coordinator; nothing is learned.
+  ///   kLearn sets, forgets (adjust 0) or clears (both strings empty) what history adds to a
+  ///   reading's cost.
+  /// Side effects: asks the engines through the coordinator.
   Snapshot Handle(const Request& request);
 
   /// Returns: the composition as typed.
@@ -62,6 +65,17 @@ class Session {
     std::vector<Piece> locks;
   };
 
+  /// Returns: the options in force with the language of the text before the cursor made a
+  ///   little cheaper (PLAN.md §9.7, layer 4): it moves near ties and never decides alone.
+  Options Biased() const;
+
+  /// Adds readings that take a key touched near its edge for the neighbouring key (PLAN.md
+  /// §9.7, layer 1): the best candidate of at most two such variants of the composition, marked
+  /// kFuzzy, placed by cost with a penalty and never first.
+  /// Notes: a key without a touch position, a touch clearly on its key and a locked piece are
+  ///   left alone, so input without positions converts exactly as before.
+  void AddKeyCorrections(const Options& options, Snapshot* snapshot) const;
+
   /// Removes the first `bytes` of the composition with their touches and locks, and the
   /// delimiters that then lead it.
   void DropPrefix(size_t bytes);
@@ -71,6 +85,7 @@ class Session {
   uint16_t last_focus_begin_ = 0, last_focus_end_ = 0;  // its span when it answered kAlternatives
   std::vector<Piece> locks_;             // in input order, never overlapping
   std::optional<State> undo_;            // the state before the last commit
+  Learned learned_;                      // what the person's history adds to readings' costs
 };
 
 }  // namespace kotomo::mixed

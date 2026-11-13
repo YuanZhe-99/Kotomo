@@ -48,9 +48,7 @@
 
 ## 键
 
-混合模式在每次按键时读取它的各个键（混合输入协调层把它们作为选项接收，见 `engine-contract.md`）。尚未读取的有：
-`mixed.cross.pinyin_to_katakana` 与 `mixed.cross.readings`，以及全部 `japanese.cross.*` 开关，因为日文模式
-还没有经协调层转换；设置应用保存并显示它们。
+跨语言开关由谁读取见上文"版本与兼容"；下表列出全部的键。
 
 | 键 | 类型 | 默认值 | 设置 |
 |---|---|---|---|
@@ -131,6 +129,29 @@ JSON 对象的文件会被移到 `current.json.unreadable`，并使用默认值�
 - 清单把所有文件排除在 Android 备份与设备迁移之外（`data_extraction_rules.xml`）。
 
 词库有自己的带版本文件（`files/dictionaries/user.json`、`state.json`），见 [dictionaries.md](dictionaries.md)。
+
+## 已学习读法文件
+
+混合模式从用户选过的候选中学到的内容保存在 `files/keyboard/learned.json`（`ime/MixedLearning.kt`），与设置
+文件一样带版本：保留不认识的成员，不降低更新的格式版本，损坏的文件移到 `learned.json.unreadable`。
+
+| 键 | 类型 | 含义 |
+|---|---|---|
+| `format_version` | int | 本版本写入 `1` |
+| `updated_utc_ms` | long | 最后一次修改的时间，UTC 毫秒 |
+| `readings` | list | 每条学到的读法一个对象 |
+| 读法：`input` | string | 输入的字母，小写，不含空格 |
+| 读法：`text` | string | 它们提交成的文字 |
+| 读法：`count` | int | 被选中的次数 |
+| 读法：`used_utc_ms` | long | 最后一次选中的时间，UTC 毫秒 |
+| 读法：`rank` | string | 缺省，或用户的决定：`demoted`、`blocked`、`pinned` |
+
+混合模式的一次提交记录整个输入的读法；候选有多个片段时，还记录每个片段的读法。每用一次，该读法在引擎中的
+代价降低 3000 个单位，最多计三次；效果自最后一次使用起每 30 天减半，低于五分之一次时归零。降低排序的读法
+代价增加 3000，不再提供的读法永不出现，固定首选的读法始终排在最前。最多保留 2000 条，最弱且未被用户排序的
+先被去掉。敏感输入框、要求不做个性化学习的输入框、无痕模式与首次解锁前不记录，此时引擎也不使用已学到的
+内容。提交后紧接着的退格连同它的学习一起撤回。隐私 → 已学习的读法列出它们，可降低排序、不再提供、固定首选、
+恢复默认与删除；隐私 → 清除学习数据清空该文件。文件是应用私有存储中的普通 JSON，不离开设备。
 
 ## Direct Boot
 

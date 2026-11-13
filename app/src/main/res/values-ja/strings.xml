@@ -208,6 +208,19 @@
     <string name="learning_clear_confirm_title">学習データを消去しますか？</string>
     <string name="learning_clear_confirm">学習した単語と頻度、絵文字の履歴、アプリごとに記憶したモードをこの端末から削除します。元に戻せません。設定、アプリに固定したモード、辞書、クリップボードの履歴は残ります。</string>
     <string name="learning_clear_cancel">キャンセル</string>
+    <string name="page_learned">学習した読み</string>
+    <string name="learned_open">学習した内容を見る</string>
+    <string name="learned_desc">混在モードが、選んだ候補から学習した内容です。入力した文字と、その変換結果を表示します。学習した読みは次回から先頭に表示されます。パスワード欄、学習を求めない入力欄、シークレットモードでは学習しません。</string>
+    <string name="learned_empty">まだ何も学習していません。</string>
+    <string name="learned_demote">順位を下げる</string>
+    <string name="learned_demoted">順位を下げています</string>
+    <string name="learned_block">表示しない</string>
+    <string name="learned_blocked">表示しません</string>
+    <string name="learned_pin">先頭に固定</string>
+    <string name="learned_pinned">常に先頭に表示</string>
+    <string name="learned_reset">元に戻す</string>
+    <string name="learned_delete">削除</string>
+    <plurals name="learned_uses"><item quantity="other">%d 回選択</item></plurals>
     <string name="privacy_offline">オフラインでも入力できます。入力した内容がネットワークで送信されることはありません。</string>
     <string name="privacy_local">入力した内容はこの端末から出ません。分析、広告、クラッシュレポートの送信はありません。</string>
     <string name="privacy_sensitive">パスワード欄、学習しないよう求める入力欄、シークレットモードでは、Kotomo は何も学習せず、履歴も残しません。</string>

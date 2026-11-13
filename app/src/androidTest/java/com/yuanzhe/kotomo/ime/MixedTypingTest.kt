@@ -45,6 +45,7 @@ class MixedTypingTest {
     private val context = instrumentation.targetContext
     private val store = SettingsStore.get(context)
     private lateinit var before: Settings
+    private lateinit var learnedBefore: Learned
 
     @Before
     fun selectKotomoInMixedMode() {
@@ -53,12 +54,37 @@ class MixedTypingTest {
         device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
         before = store.current
         KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.MIXED) } }
+        // Each test starts without history, so what one commits does not reorder the next.
+        learnedBefore = MixedLearning.get(context).current
+        MixedLearning.get(context).update { Learned() }
     }
 
     @After
     fun restore() = runBlocking {
         KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = null) } }
         store.update { before }
+        MixedLearning.get(context).update { learnedBefore }
+    }
+
+    /**
+     * T11, T12 (PLAN §9.9, §14): a commit teaches its reading, a field that asks for no
+     * personalized learning teaches nothing, and what the person ranks reaches the engine: a
+     * reading kept first is what Enter commits, until it is deleted.
+     */
+    @Test
+    fun learnsWhereTheFieldAllowsAndFollowsThePersonsRanking() {
+        val learning = MixedLearning.get(context)
+        assertEquals("你好", type("nihao", expected = "你好", imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+        assertEquals("a field that asks for no learning taught something", emptySet<Pair<String, String>>(), learning.current.readings.keys)
+        assertEquals("你好", type("nihao", expected = "你好"))
+        assertEquals(setOf("nihao" to "你好"), learning.current.readings.keys)
+        val plain = type("ai", expected = "", attempts = 1)
+        assertTrue("without history Enter commits $plain", plain.isNotEmpty() && plain != "愛")
+        val reading = LearnedReading("ai", "愛")
+        learning.update { Learned().ranked(reading, LearnedRank.PINNED) }
+        assertEquals("愛", type("ai", expected = "愛"))
+        learning.update { it.without(reading) }
+        assertEquals(plain, type("ai", expected = plain))
     }
 
     /** T04 positive: pinyin typed in Mixed mode converts to Chinese; Enter commits the best candidate. */
@@ -157,6 +183,7 @@ class MixedTypingTest {
             checkNotNull(device.wait(Until.findObject(By.text("chidai")), WAIT_MS)) { "the piece's letters are not offered" }.click()
             // The letters stay as typed in every sentence; the rest converts again around them.
             checkNotNull(device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("chidai.+"))), WAIT_MS)) { "the piece did not change" }
+            Thread.sleep(READ_MS) // the panel has just been redrawn; tap it where it now is
             checkNotNull(device.findObject(By.text("Restore input"))) { "no way back to the input" }.click()
             checkNotNull(device.wait(Until.findObject(By.text(SENTENCE)), WAIT_MS)) { "the input did not convert afresh" }
             checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋 after restoring" }.click()

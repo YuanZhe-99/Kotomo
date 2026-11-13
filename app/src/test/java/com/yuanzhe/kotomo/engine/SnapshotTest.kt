@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 4):
+ * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 5):
  * the snapshot decoder accepts exactly what the engine's encoder writes and drops anything else
  * whole, and a stale update never replaces a newer one.
  *

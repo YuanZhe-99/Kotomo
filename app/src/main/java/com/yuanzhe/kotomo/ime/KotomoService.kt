@@ -175,6 +175,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var mixedSpan: Snapshot? = null
     /** Main thread: the text the last Mixed commit put in the field, until another key is pressed. */
     private var mixedUndo: String? = null
+
+    /** What the last Mixed commit taught (its input, its candidate, the readings before), for [undoMixed]. */
+    private var mixedLearned: Triple<String, com.yuanzhe.kotomo.engine.SnapshotCandidate, Learned>? = null
     private var mixedHeld = false
     /** Main thread: the engine thread is deciding what a Mixed commit commits; keys wait in line. */
     private var mixedAwaiting = false
@@ -412,6 +415,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         // The person's dictionaries rewrote librime's tables: re-selecting the schema reloads them
         // (doc/en-us/dictionaries.md). Their files are personal data, never read before the first unlock.
         if (!locked) {
+            // Mixed mode's learned readings (a commit, the settings page, Clear learning data):
+            // the engine is told what they add to each reading's cost, off the key path.
+            launch {
+                MixedLearning.get(this@KotomoService).flow.collect { learned ->
+                    val adjustments = learned.adjustments(System.currentTimeMillis())
+                    engine.post { mixed.learned(adjustments) }
+                }
+            }
             launch {
                 DictionaryStore.get(this@KotomoService).state.map { it.generation }.distinctUntilChanged()
                     .collect { if (it > 0) applyEngineSettings() }
@@ -1672,10 +1683,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun suggestMixed(raw: String, gen: Int, downTime: Long) {
         val touches = taps.toList()
         val options = mixedOptions()
+        // The text before a new composition, never from a field that may leave no trace.
+        val before = if (raw.length != 1) null else if (options.incognito) "" else
+            currentInputConnection?.getTextBeforeCursor(MIXED_CONTEXT, 0)?.toString().orEmpty().removeSuffix(raw)
         mixedHeld = true
         engine.post {
             val started = SystemClock.uptimeMillis()
             attachMixed()
+            if (before != null) mixed.context(before)
             val snapshot = mixed.type(raw, touches, options)
             val work = SystemClock.uptimeMillis() - started
             main.post {
@@ -1771,6 +1786,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     repeat(snapshot.input.length) { taps += null }
                     ic.setComposingText(composing, 1)
                     ic.endBatchEdit()
+                    // The commit taught nothing after all.
+                    mixedLearned?.let { (raw, candidate, before) ->
+                        MixedLearning.get(this).update { it.uncommitted(raw, candidate, before) }
+                    }
+                    mixedLearned = null
                     mixedHeld = true
                     takes(++generation, 1)
                     showMixed(snapshot, snapshot.input, 0)
@@ -1814,10 +1834,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         mixedAwaiting = true
         engine.post {
             // Whatever happens on the way, the keys waiting in line must be let through again.
-            val text = runCatching {
+            val (text, candidate) = runCatching {
                 attachMixed()
                 mixed.commit(raw, touches, options, index, expected)
-            }.getOrDefault(expected ?: raw.trim())
+            }.getOrDefault((expected ?: raw.trim()) to null)
             main.post {
                 mixedAwaiting = false
                 if (serial == fieldSerial) currentInputConnection?.commitText(text + then, 1) else queuedKeys.clear()
@@ -1825,6 +1845,15 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 refresh(0)
                 // Backspace as the very next key takes this commit back.
                 mixedUndo = text.takeIf { serial == fieldSerial && then.isEmpty() && it.isNotEmpty() }
+                // Learn the reading, except where the field may leave no trace (PLAN §14): a
+                // sensitive field, one that asks for no learning, incognito, before the first unlock.
+                mixedLearned = null
+                if (candidate != null && serial == fieldSerial && !options.incognito) {
+                    val store = MixedLearning.get(this)
+                    val before = store.current
+                    store.update { it.committed(raw, candidate, System.currentTimeMillis()) }
+                    mixedLearned = Triple(raw, candidate, before)
+                }
                 drainQueuedKeys()
             }
         }
@@ -2389,6 +2418,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private companion object {
         const val ENGLISH_DICT = "main_en_us.dict"
         const val MOZC_DATA = "mozc.data"
+
+        /** How much text before the cursor Mixed mode's engine is told (PLAN §9.7). */
+        const val MIXED_CONTEXT = 32
         /** The compiled cross-language lexicon (doc/en-us/lexicon-format.md), stored uncompressed. */
         const val LEXICON = "cross.klx"
         const val NOTICE_MS = 1500L

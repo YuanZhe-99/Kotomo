@@ -43,6 +43,9 @@ data class SnapshotCandidate(
     /** Whether a piece of it was typed in another language than it is written in. */
     val crossLanguage: Boolean get() = flags and FLAG_CROSS != 0
 
+    /** Whether the person's earlier choices made it cheaper (PLAN §9.9). */
+    val learned: Boolean get() = flags and FLAG_LEARNED != 0
+
     /** Whether it was reached through fuzzy pinyin or a spelling correction. */
     val fuzzy: Boolean get() = flags and FLAG_FUZZY != 0
 
@@ -51,6 +54,7 @@ data class SnapshotCandidate(
         const val FLAG_FUZZY = 2
         const val FLAG_EMOJI = 4
         const val FLAG_SENTENCE = 8
+        const val FLAG_LEARNED = 16
     }
 }
 
@@ -76,7 +80,7 @@ data class Snapshot(
 
     companion object {
         /** The contract version this decoder reads (`kContractVersion` in core/mixed/snapshot.h). */
-        const val VERSION = 4
+        const val VERSION = 5
 
         /**
          * Decodes the bytes the engine returned.

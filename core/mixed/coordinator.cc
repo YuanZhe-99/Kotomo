@@ -8,6 +8,7 @@
 #include "input.h"
 #include "lattice.h"
 #include "propose.h"
+#include "request.h"
 
 namespace kotomo::mixed {
 
@@ -17,9 +18,10 @@ namespace {
 /// is cross-language and another candidate is written in a language its cross-language pieces
 /// were typed in, the best such candidate moves to the front.
 /// Notes: a cross-language sentence with no reading in the typed language stays first: there is
-///   no original-language candidate to prefer.
+///   no original-language candidate to prefer. So does one the person's history moved there.
+///   Without history a tie-break is not enough: the level decides how far cross-language goes.
 void OriginalLanguageFirst(std::vector<Candidate>* candidates) {
-  if (candidates->empty() || !(candidates->front().flags & kCross)) return;
+  if (candidates->empty() || !(candidates->front().flags & kCross) || (candidates->front().flags & kLearned)) return;
   bool typed[3] = {false, false, false};
   for (const Piece& piece : candidates->front().pieces) {
     if (piece.origin == Origin::kPinyinJa || piece.origin == Origin::kEnJa) {
@@ -81,6 +83,36 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
   }
 
   for (Candidate& candidate : found) candidate.cost += options_.bias[static_cast<int>(candidate.target)];
+  if (learned_ != nullptr && !learned_->empty()) {
+    // The whole input's reading, and each piece's when there are several.
+    const auto adjust = [this](std::string_view typed, std::string_view text) -> int32_t {
+      std::string key;
+      for (const char c : typed) {
+        if (c >= 'A' && c <= 'Z') key.push_back(static_cast<char>(c - 'A' + 'a'));
+        else if (c >= 'a' && c <= 'z') key.push_back(c);
+      }
+      key.push_back('\t');
+      key.append(text);
+      const auto it = learned_->find(key);
+      return it == learned_->end() ? 0 : it->second;
+    };
+    std::erase_if(found, [&](Candidate& candidate) {
+      int32_t total = adjust(input->raw, candidate.text);
+      bool blocked = total == kBlocked;
+      if (candidate.pieces.size() > 1) {
+        for (const Piece& piece : candidate.pieces) {
+          if (piece.locked) continue;  // the person chose it here; history has no say
+          const int32_t one = adjust(std::string_view(input->raw).substr(piece.begin, piece.end - piece.begin), piece.text);
+          blocked = blocked || one == kBlocked;
+          total += one;
+        }
+      }
+      if (blocked) return true;
+      candidate.cost += total;
+      if (total < 0) candidate.flags |= kLearned;
+      return false;
+    });
+  }
   std::stable_sort(found.begin(), found.end(),
                    [](const Candidate& a, const Candidate& b) { return a.cost < b.cost; });
   std::unordered_set<std::string> seen;

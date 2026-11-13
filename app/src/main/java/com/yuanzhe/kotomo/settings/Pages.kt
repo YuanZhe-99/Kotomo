@@ -501,7 +501,7 @@ internal fun ThemesPage(settings: Settings, store: SettingsStore) {
 
 /**
  * Draws the Privacy page: the incognito switch, clearing the learning data (after a confirmation,
- * [LearningData]), the clipboard settings (history, how long it
+ * [LearningData]), the link to the learned readings ([LearnedPage]), the clipboard settings (history, how long it
  * keeps unpinned items, quick paste, clearing, the link to the history page [ClipboardPage]) and
  * what Kotomo keeps and sends.
  * Inputs: open navigates to a sub-page.
@@ -518,6 +518,7 @@ internal fun PrivacyPage(settings: Settings, store: SettingsStore, open: (Page) 
             Label(stringResource(R.string.learning_clear_title))
             Note(stringResource(if (cleared) R.string.learning_cleared else R.string.learning_clear_desc))
             OutlinedButton(onClick = { confirm = true }) { Text(stringResource(R.string.learning_clear)) }
+            OutlinedButton(onClick = { open(Page.LEARNED) }) { Text(stringResource(R.string.learned_open)) }
         }
     }
     if (confirm) {
@@ -813,3 +814,54 @@ private const val THUMB_STEP = 4
 private const val HEIGHT_STEP = 5
 private const val ONE_HANDED_STEP = 2
 private const val RADIUS_STEP = 2
+
+/**
+ * Draws the Learned readings page (PLAN §9.8, §9.9): what Mixed mode learned from the person's
+ * choices, most recent first, each with what was typed and what it became, and the ways to rank
+ * it lower, hide it, keep it first or delete it.
+ * Notes: reads and changes [com.yuanzhe.kotomo.ime.MixedLearning]; the keyboard follows at once.
+ * The list shows the [LEARNED_SHOWN] most recent readings.
+ */
+@Composable
+internal fun LearnedPage() {
+    val store = com.yuanzhe.kotomo.ime.MixedLearning.get(LocalContext.current)
+    val learned by store.flow.collectAsState()
+    val readings = learned.readings.values.sortedByDescending { it.usedUtcMs }
+    Section(null) {
+        Inset {
+            Note(stringResource(if (readings.isEmpty()) R.string.learned_empty else R.string.learned_desc))
+        }
+        readings.take(LEARNED_SHOWN).forEach { reading ->
+            Inset {
+                Label("${reading.input} → ${reading.text}")
+                Note(
+                    when (reading.rank) {
+                        com.yuanzhe.kotomo.ime.LearnedRank.NORMAL -> pluralStringResource(R.plurals.learned_uses, reading.count, reading.count)
+                        com.yuanzhe.kotomo.ime.LearnedRank.DEMOTED -> stringResource(R.string.learned_demoted)
+                        com.yuanzhe.kotomo.ime.LearnedRank.BLOCKED -> stringResource(R.string.learned_blocked)
+                        com.yuanzhe.kotomo.ime.LearnedRank.PINNED -> stringResource(R.string.learned_pinned)
+                    },
+                )
+                androidx.compose.foundation.layout.FlowRow {
+                    val normal = reading.rank == com.yuanzhe.kotomo.ime.LearnedRank.NORMAL
+                    listOf(
+                        com.yuanzhe.kotomo.ime.LearnedRank.PINNED to R.string.learned_pin,
+                        com.yuanzhe.kotomo.ime.LearnedRank.DEMOTED to R.string.learned_demote,
+                        com.yuanzhe.kotomo.ime.LearnedRank.BLOCKED to R.string.learned_block,
+                    ).forEach { (rank, label) ->
+                        if (normal) TextButton(onClick = { store.update { it.ranked(reading, rank) } }) { Text(stringResource(label)) }
+                    }
+                    if (!normal) {
+                        TextButton(onClick = { store.update { it.ranked(reading, com.yuanzhe.kotomo.ime.LearnedRank.NORMAL) } }) {
+                            Text(stringResource(R.string.learned_reset))
+                        }
+                    }
+                    TextButton(onClick = { store.update { it.without(reading) } }) { Text(stringResource(R.string.learned_delete)) }
+                }
+            }
+        }
+    }
+}
+
+/** How many learned readings the page lists. */
+private const val LEARNED_SHOWN = 200

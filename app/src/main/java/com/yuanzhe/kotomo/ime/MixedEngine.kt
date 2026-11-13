@@ -4,6 +4,7 @@ import com.yuanzhe.kotomo.engine.Core
 import com.yuanzhe.kotomo.engine.English
 import com.yuanzhe.kotomo.engine.Mozc
 import com.yuanzhe.kotomo.engine.Snapshot
+import com.yuanzhe.kotomo.engine.SnapshotCandidate
 
 /**
  * Mixed mode's side of the engine thread: owns the coordinator ([Core]) and keeps the composition
@@ -13,8 +14,9 @@ import com.yuanzhe.kotomo.engine.Snapshot
  * the engine there (one key with its touch, one backspace, a clear, or the whole composition).
  *
  * Notes: engine thread only, like the engines it reaches. It converts in librime's one session,
- * so the caller runs it only while no Chinese-mode composition is open. Nothing here learns, and
- * nothing typed is logged.
+ * so the caller runs it only while no Chinese-mode composition is open. It learns nothing by
+ * itself: the keyboard tells it what the person's history adds ([learned]), and nothing typed is
+ * logged.
  */
 internal class MixedEngine {
     /** Names the file that holds the compiled cross-language lexicon (an asset inside the APK). */
@@ -27,10 +29,15 @@ internal class MixedEngine {
     private var parts: Parts? = null
     private var options: Core.Options? = null
     private var held = ""
+    /** The text before the composition the engine was last told. */
+    private var context = ""
     private var last: Snapshot? = null
     /** The engine's last answer listed one span's readings, so [last] must be asked for again. */
     private var spanShown = false
     private var generation = 0L
+    /** What the person's history adds to readings: as wanted, and as the open coordinator was told. */
+    private var learned: Map<Pair<String, String>, Int> = emptyMap()
+    private var told: Map<Pair<String, String>, Int> = emptyMap()
 
     /** Whether a coordinator is open (false before [attach], or when its library did not open). */
     val open: Boolean get() = core != null
@@ -51,6 +58,30 @@ internal class MixedEngine {
         detach()
         core = runCatching { Core.open(rime, mozc, english, lexicon?.path, lexicon?.offset ?: 0, lexicon?.length ?: 0) }.getOrNull()
         parts = wanted
+        tellLearned()
+    }
+
+    /**
+     * Sets what the person's history adds to each reading's cost ([MixedLearning]); the engine is
+     * told the differences, now and again after every reopening.
+     */
+    fun learned(adjustments: Map<Pair<String, String>, Int>) {
+        learned = adjustments
+        tellLearned()
+    }
+
+    /** Sends the readings that changed since the open coordinator was last told. */
+    private fun tellLearned() {
+        val c = core ?: return
+        if (learned == told) return
+        var answer: Snapshot? = null
+        for (key in told.keys - learned.keys) answer = c.learn(++generation, key.first, key.second, 0)
+        for ((key, adjust) in learned) if (told[key] != adjust) answer = c.learn(++generation, key.first, key.second, adjust)
+        told = learned
+        // Each answer is the whole composition's snapshot under the new history.
+        last = answer
+        held = answer?.input.orEmpty()
+        spanShown = false
     }
 
     /**
@@ -63,8 +94,23 @@ internal class MixedEngine {
         parts = null
         options = null
         held = ""
+        context = ""
+        told = emptyMap()
         last = null
         spanShown = false
+    }
+
+    /**
+     * Tells the engine the text before the composition, which makes that text's language a
+     * little cheaper (PLAN §9.7). Notes: one request, and only when the text changed; the caller
+     * passes an empty string wherever the field may leave no trace (PLAN §14).
+     */
+    fun context(before: String) {
+        val c = core ?: return
+        if (before == context) return
+        context = before
+        last = c.context(++generation, before)
+        held = last?.input.orEmpty()
     }
 
     /**
@@ -155,17 +201,19 @@ internal class MixedEngine {
      * Inputs: [raw], [touches] and [wanted] as for [type]; [index] the candidate's index in the
      * snapshot of [raw], or null for the best candidate; [expected] the text the person tapped,
      * or null.
-     * Returns: [expected] when given (what was tapped is what is committed); otherwise the best
-     * candidate's text, or [raw] without its outer spaces when there is no candidate or no
-     * coordinator.
+     * Returns: the text, [expected] when given (what was tapped is what is committed), otherwise
+     * the best candidate's text, or [raw] without its outer spaces when there is no candidate or
+     * no coordinator; and the engine's candidate when that text is one, for the keyboard to learn
+     * from where the field allows.
      * Side effects: the engine is told which candidate was chosen when it still holds the
-     * snapshot the choice was made on (learning will start from here); nothing is learned yet.
+     * snapshot the choice was made on; nothing is learned here.
      */
-    fun commit(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options, index: Int?, expected: String?): String {
+    fun commit(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options, index: Int?, expected: String?): Pair<String, SnapshotCandidate?> {
         val snapshot = type(raw, touches, wanted)
         val c = core
         val chosen = index ?: 0
-        val text = snapshot?.candidates?.getOrNull(chosen)?.text
+        val candidate = snapshot?.candidates?.getOrNull(chosen)
+        val text = candidate?.text
         if (c != null) {
             last = if (snapshot != null && text != null && (expected == null || expected == text)) {
                 c.select(++generation, snapshot.generation, chosen)
@@ -174,6 +222,6 @@ internal class MixedEngine {
             }
             held = last?.input.orEmpty()
         }
-        return expected ?: text ?: raw.trim()
+        return (expected ?: text ?: raw.trim()) to candidate?.takeIf { expected == null || expected == text }
     }
 }
