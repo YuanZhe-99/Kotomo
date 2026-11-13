@@ -10,6 +10,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
+import com.yuanzhe.kotomo.settings.SettingsStore
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -21,7 +23,7 @@ import org.junit.runner.RunWith
  * T21 (PLAN §12): a physical keyboard types through Kotomo. The emulator has a hardware keyboard;
  * with the on-screen keys turned off for it, only the candidate bar shows, letters compose, number
  * keys pick candidates, Esc drops the composition, and English mode and password fields get the
- * keys unchanged.
+ * keys unchanged. With the 9-key layout chosen, hidden keys leave librime on the letter schema.
  *
  * Notes: key events are injected like a hardware keyboard's (through the input system, so the
  * input method sees them before the app). The first field of a run may come up before librime has
@@ -52,6 +54,20 @@ class HardKeyboardTest {
         val (text, keys) = typed(Mode.CHINESE, "nihao", listOf(KeyEvent.KEYCODE_SPACE), expected = "你好")
         assertEquals("你好", text)
         assertNull("on-screen keys showed next to the physical keyboard", keys)
+    }
+
+    /** Positive: with the Chinese 9-key layout chosen, physical letters still type pinyin (PLAN §10.9). */
+    @Test
+    fun pinyinFromPhysicalKeysWithNineKeyChosen() {
+        val store = SettingsStore.get(context)
+        val before = store.current
+        runBlocking { store.update { it.copy(chineseNineKey = true) } }
+        try {
+            val (text, _) = typed(Mode.CHINESE, "nihao", listOf(KeyEvent.KEYCODE_SPACE), expected = "你好")
+            assertEquals("你好", text)
+        } finally {
+            runBlocking { store.update { before } }
+        }
     }
 
     /** Positive: a number key picks that candidate; Esc then drops a new composition. */
@@ -88,7 +104,7 @@ class HardKeyboardTest {
     /** Positive: Shift+Space moves from Chinese to the next mode, whose letters then pass (English). */
     @Test
     fun shiftSpaceSwitchesMode() {
-        val settings = com.yuanzhe.kotomo.settings.SettingsStore.get(context).current
+        val settings = SettingsStore.get(context).current
         val modes = settings.modes
         val next = modes[(modes.indexOf(Mode.CHINESE) + 1) % modes.size]
         KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.CHINESE) } }

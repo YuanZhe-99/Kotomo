@@ -1459,9 +1459,16 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         return currentInputEditorInfo?.let { !Fields.direct(it.inputType) || shown } ?: shown
     }
 
-    /** Shows the on-screen keys, or hides them ([shown] false) while a physical keyboard is in use alone. */
+    /**
+     * Shows the on-screen keys, or hides them ([shown] false) while a physical keyboard is in use alone.
+     * Side effects: a change redraws the layout, so the 9-key schema follows the keys on screen.
+     */
     private fun showKeys(shown: Boolean) {
-        if (::keyboard.isInitialized) keyboard.visibility = if (shown) View.VISIBLE else View.GONE
+        if (!::keyboard.isInitialized) return
+        val visibility = if (shown) View.VISIBLE else View.GONE
+        if (keyboard.visibility == visibility) return
+        keyboard.visibility = visibility
+        refresh(0)
     }
 
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
@@ -2146,8 +2153,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.enterStyle = Fields.enter(currentInputEditorInfo?.imeOptions ?: 0)
         // E-mail, web-address and code-like fields take ASCII symbols whatever the mode.
         val symbolMode = if (field == Field.EMAIL || field == Field.URL || field == Field.CODE) Mode.ENGLISH else mode
-        // The 9-key layout needs librime's 9-key schema; it follows the layout (PLAN §10.9).
-        val nine = mode == Mode.CHINESE && s.chineseNineKey && !direct && field == Field.TEXT
+        // The 9-key layout needs librime's 9-key schema; it follows the layout (PLAN §10.9). With
+        // the keys hidden for a physical keyboard, its letters need the letter schema (PLAN §12).
+        val nine = mode == Mode.CHINESE && s.chineseNineKey && !direct && field == Field.TEXT && keyboard.visibility == View.VISIBLE
         if (nine != nineKey) {
             nineKey = nine
             applyEngineSettings()
