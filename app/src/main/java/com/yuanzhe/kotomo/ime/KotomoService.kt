@@ -1132,6 +1132,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             Tool.TRANSLATE -> showTranslate()
             Tool.EDIT -> showEditPanel()
             Tool.EMOJI -> showEmoji()
+            Tool.HANDWRITING -> showHandwriting()
             Tool.FLOATING -> store.set { it.copy(floating = !it.floating) }
             // The field's own undo history (PLAN §10.8); the composition is finished first.
             Tool.UNDO, Tool.REDO -> {
@@ -3044,6 +3045,36 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         panelHost.removeAllViews()
         panelHost.addView(keyboard)
         updateQuickStrip()
+    }
+
+    /**
+     * Opens the handwriting panel in the keys' place (PLAN §12), in Japanese in Japanese mode and
+     * in the Chinese of the person's script otherwise.
+     * Notes: not in direct fields (passwords, addresses), which take typed characters only; the
+     * composition is committed first. Recognized text is committed as written and learns nothing.
+     */
+    private fun showHandwriting() {
+        val info = currentInputEditorInfo ?: return
+        if (Fields.direct(info.inputType)) return showNotice(getString(R.string.hw_off_here))
+        commitComposition()
+        refresh(0)
+        val script = appScript ?: settings.chineseScript
+        val height = keyboard.height
+        val panel = ComposeView(this).apply {
+            setContent {
+                HandwritingPanel(
+                    start = InkLang.forMode(mode, script),
+                    chinese = InkLang.chinese(script),
+                    before = { currentInputConnection?.getTextBeforeCursor(InkRecognizer.PRE_CONTEXT, 0)?.toString().orEmpty() },
+                    onText = { currentInputConnection?.commitText(it, 1) },
+                    onSpace = { currentInputConnection?.commitText(" ", 1) },
+                    onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
+                    onBack = ::showKeyboard,
+                )
+            }
+        }
+        panelHost.removeAllViews()
+        panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
     }
 
     private fun showEmoji() {

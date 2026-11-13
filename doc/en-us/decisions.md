@@ -279,3 +279,25 @@ cannot leave the device, so an export is not encrypted; the page says so.
 
 **Reopens when.** The user wants a password for the learned readings as for the dictionary, or
 the dictionary moves to a Keystore key too.
+
+## ADR-014 Handwriting with ML Kit's digital ink recognition
+
+**Decision.** Chinese and Japanese handwriting (PLAN §12) uses ML Kit's on-device digital ink
+recognition (`digital-ink-recognition`), the same vendor and terms as the translation Kotomo
+already ships (ADR-007). A model per language (mainland, Taiwan and Hong Kong Chinese, Japanese;
+about 20 MB each) is downloaded from Google only when the person taps Download under a notice that
+names Google and the size, and can be deleted in the settings. The strokes stay on the device and
+nothing written is learned.
+
+**Why.** It recognizes whole lines of Chinese and Japanese, takes the text before the cursor as
+context, needs no data in the APK and adds no new license: ML Kit's terms already apply. The
+open-source alternative, Zinnia with the Tegaki or Tomoe models, would ship about 10–20 MB of
+models in the APK under their own licenses, recognizes one character at a time and has had no
+release for years; it was not audited.
+
+**Cost.** Closed source, like the rest of ML Kit; no model until the person downloads one (no
+handwriting offline before that); ML Kit may send its own diagnostics (`upstream.md`).
+
+**Reopens when.** The user wants handwriting without Google's code (for example a build without
+ML Kit, decision 10), or an open recognizer with Chinese and Japanese models of known license is
+found.

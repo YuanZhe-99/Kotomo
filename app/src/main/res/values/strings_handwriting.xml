@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_handwriting">Handwriting</string>
+    <string name="hw_hint">Write here</string>
+    <string name="hw_area">Writing area</string>
+    <string name="hw_space">Space</string>
+    <string name="hw_download_notice">Handwriting needs a recognition model on this device. It comes from Google (ML Kit), about 20 MB per language. What you write is recognized on this device and never sent.</string>
+    <string name="hw_downloading">Downloading the handwriting model…</string>
+    <string name="hw_fail_download">The handwriting model could not be downloaded. Check the connection and try again.</string>
+    <string name="hw_fail">Handwriting is not available right now.</string>
+    <string name="hw_off_here">Handwriting is off in this field</string>
+    <string name="hw_models">Handwriting models</string>
+    <string name="hw_models_none">No handwriting models downloaded</string>
+    <string name="hw_lang_cn">Chinese (mainland)</string>
+    <string name="hw_lang_tw">Chinese (Taiwan)</string>
+    <string name="hw_lang_hk">Chinese (Hong Kong)</string>
+    <string name="hw_lang_ja">Japanese</string>
+</resources>

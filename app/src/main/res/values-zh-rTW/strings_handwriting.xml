@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_handwriting">手寫</string>
+    <string name="hw_hint">在這裡書寫</string>
+    <string name="hw_area">書寫區域</string>
+    <string name="hw_space">空格</string>
+    <string name="hw_download_notice">手寫需要本機上的辨識模型。模型來自 Google（ML Kit），每種語言約 20 MB。你寫的內容在本機辨識，不會傳出。</string>
+    <string name="hw_downloading">正在下載手寫模型…</string>
+    <string name="hw_fail_download">手寫模型無法下載。請檢查網路後重試。</string>
+    <string name="hw_fail">手寫暫時無法使用。</string>
+    <string name="hw_off_here">這個輸入欄位中不能手寫</string>
+    <string name="hw_models">手寫模型</string>
+    <string name="hw_models_none">沒有下載手寫模型</string>
+    <string name="hw_lang_cn">中文（中國大陸）</string>
+    <string name="hw_lang_tw">中文（台灣）</string>
+    <string name="hw_lang_hk">中文（香港）</string>
+    <string name="hw_lang_ja">日語</string>
+</resources>

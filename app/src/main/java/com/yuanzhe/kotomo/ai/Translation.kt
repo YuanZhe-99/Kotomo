@@ -120,8 +120,8 @@ class Translations : AutoCloseable {
     }
 }
 
-/** Awaits a Play services Task, resuming with its result or its exception. */
-private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->
+/** Awaits a Play services Task, resuming with its result or its exception (ML Kit's calls). */
+internal suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->
     addOnCompleteListener { task ->
         if (!cont.isActive) return@addOnCompleteListener
         val e = task.exception

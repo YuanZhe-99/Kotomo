@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_handwriting">手書き</string>
+    <string name="hw_hint">ここに書いてください</string>
+    <string name="hw_area">手書きエリア</string>
+    <string name="hw_space">スペース</string>
+    <string name="hw_download_notice">手書きにはこの端末の認識モデルが必要です。モデルは Google（ML Kit）から取得し、1 言語あたり約 20 MB です。書いた内容はこの端末で認識し、送信しません。</string>
+    <string name="hw_downloading">手書きモデルをダウンロードしています…</string>
+    <string name="hw_fail_download">手書きモデルをダウンロードできませんでした。接続を確認してもう一度お試しください。</string>
+    <string name="hw_fail">現在、手書きは使用できません。</string>
+    <string name="hw_off_here">この入力欄では手書きできません</string>
+    <string name="hw_models">手書きモデル</string>
+    <string name="hw_models_none">ダウンロードした手書きモデルはありません</string>
+    <string name="hw_lang_cn">中国語（中国本土）</string>
+    <string name="hw_lang_tw">中国語（台湾）</string>
+    <string name="hw_lang_hk">中国語（香港）</string>
+    <string name="hw_lang_ja">日本語</string>
+</resources>

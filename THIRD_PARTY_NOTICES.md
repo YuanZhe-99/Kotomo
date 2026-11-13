@@ -21,7 +21,7 @@ each upstream's repository (the submodules under `third_party/` and the pinned s
 | Boost (headers) | Boost Software License 1.0 | BSL-1.0 |
 | Mozc, with japanese-usage-dictionary, Abseil and Protocol Buffers | Copyright 2010-2018, Google Inc.; its dictionary data carries the NAIST IPAdic notice with the ICOT "NO WARRANTY" terms, which ship in full with Mozc's LICENSE | BSD-3-Clause; BSD-2-Clause; Apache-2.0; BSD-3-Clause |
 | AOSP LatinIME suggestion core (through HeliBoard) | Copyright (C) The Android Open Source Project | Apache-2.0 |
-| Google ML Kit (GenAI proofreading and rewriting, on-device translation) | Copyright Google LLC; closed-source libraries used under the ML Kit Terms of Service (https://developers.google.com/ml-kit/terms); not covered by Kotomo's GPL-3.0 | ML Kit Terms of Service |
+| Google ML Kit (GenAI proofreading and rewriting, on-device translation, digital ink recognition) | Copyright Google LLC; closed-source libraries used under the ML Kit Terms of Service (https://developers.google.com/ml-kit/terms); not covered by Kotomo's GPL-3.0 | ML Kit Terms of Service |
 | AndroidX, Jetpack Compose, the Kotlin standard library, kotlinx.coroutines, okio | Copyright The Android Open Source Project, JetBrains s.r.o. and contributors, Square, Inc. | Apache-2.0 |
 
 ## Data in the APK

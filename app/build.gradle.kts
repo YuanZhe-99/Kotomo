@@ -319,6 +319,7 @@ dependencies {
     implementation(libs.mlkit.genai.proofreading)
     implementation(libs.mlkit.genai.rewriting)
     implementation(libs.mlkit.translate)
+    implementation(libs.mlkit.digital.ink)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.savedstate.ktx)

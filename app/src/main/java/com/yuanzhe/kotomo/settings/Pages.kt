@@ -543,7 +543,8 @@ private fun ToolbarSection(settings: Settings, store: SettingsStore) {
 
 /**
  * Draws the Keys and gestures page: long-press symbols, corner hints, vibration and sound, a
- * switch for every gesture (PLAN §8.1) and the smart punctuation switches (PLAN §10.8).
+ * switch for every gesture (PLAN §8.1), the smart punctuation switches (PLAN §10.8) and the
+ * handwriting models on the device (PLAN §12).
  */
 @Composable
 internal fun KeysPage(settings: Settings, store: SettingsStore) {
@@ -567,6 +568,7 @@ internal fun KeysPage(settings: Settings, store: SettingsStore) {
         SwitchRow(R.string.punct_smart_quotes, R.string.punct_smart_quotes_desc, settings.smartQuotes) { on -> store.set { it.copy(smartQuotes = on) } }
         SwitchRow(R.string.punct_auto_pair, R.string.punct_auto_pair_desc, settings.autoPair) { on -> store.set { it.copy(autoPair = on) } }
     }
+    HandwritingModels()
 }
 
 /**

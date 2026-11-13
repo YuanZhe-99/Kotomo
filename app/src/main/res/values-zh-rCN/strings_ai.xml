@@ -64,7 +64,7 @@
     <string name="translate_fail_download">语言模型下载失败。请检查网络后重试。</string>
     <string name="translate_fail">这段文字无法翻译。</string>
     <string name="ai_note_translate">工具栏上的“翻译”用 ML Kit 在本机进行中、英、日互译。语言模型只在你点按“下载”时从 Google 下载；中文输出为简体，中日互译经英语中转。</string>
-    <string name="use_mlkit">在本机进行的写作助手与翻译</string>
+    <string name="use_mlkit">在本机进行的写作助手、翻译与手写</string>
     <string name="translate_models">翻译模型</string>
     <string name="translate_models_none">尚未下载语言模型</string>
     <string name="translate_models_delete">删除</string>

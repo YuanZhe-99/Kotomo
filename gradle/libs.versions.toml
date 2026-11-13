@@ -16,6 +16,7 @@ customview = "1.2.0"
 autofill = "1.3.0"
 mlkitGenai = "1.0.0-beta1"
 mlkitTranslate = "17.0.3"
+mlkitDigitalInk = "19.0.0"
 
 [libraries]
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -39,6 +40,7 @@ androidx-autofill = { module = "androidx.autofill:autofill", version.ref = "auto
 mlkit-genai-proofreading = { module = "com.google.mlkit:genai-proofreading", version.ref = "mlkitGenai" }
 mlkit-genai-rewriting = { module = "com.google.mlkit:genai-rewriting", version.ref = "mlkitGenai" }
 mlkit-translate = { module = "com.google.mlkit:translate", version.ref = "mlkitTranslate" }
+mlkit-digital-ink = { module = "com.google.mlkit:digital-ink-recognition", version.ref = "mlkitDigitalInk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

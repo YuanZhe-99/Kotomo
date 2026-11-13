@@ -67,7 +67,7 @@
     <string name="translate_fail_download">The language models could not be downloaded. Check the connection and try again.</string>
     <string name="translate_fail">This text could not be translated.</string>
     <string name="ai_note_translate">Translate (on the toolbar) translates between Chinese, English and Japanese on this device with ML Kit. Its language models are downloaded from Google only when you tap Download; Chinese comes out in Simplified characters, and Chinese ↔ Japanese goes through English.</string>
-    <string name="use_mlkit">Writing help and translation on the device</string>
+    <string name="use_mlkit">Writing help, translation and handwriting on the device</string>
     <string name="translate_models">Translation models</string>
     <string name="translate_models_none">No language models downloaded</string>
     <string name="translate_models_delete">Delete</string>

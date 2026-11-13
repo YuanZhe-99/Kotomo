@@ -129,6 +129,11 @@ Latin words only where it helps readability. The input modes are 中文, 英文,
 | key correction | 按键纠错 |
 | refine (request of the contract) | 细化 |
 | later stage (of a snapshot) | 后一阶段 |
+| physical (hardware) keyboard | 外接物理键盘 |
+| handwriting; writing area | 手写；书写区域 |
+| stylus handwriting (write in any field) | 手写笔书写（在任意输入框书写） |
+| voice typing | 语音输入 |
+| on-device speech recognition | 设备端语音识别 |
 
 ## 6. Review checklist
 

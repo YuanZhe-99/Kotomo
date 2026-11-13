@@ -64,7 +64,7 @@
     <string name="translate_fail_download">言語モデルをダウンロードできませんでした。接続を確認して再試行してください。</string>
     <string name="translate_fail">この文章は翻訳できませんでした。</string>
     <string name="ai_note_translate">ツールバーの「翻訳」は ML Kit でこの端末上で中国語・英語・日本語を相互に翻訳します。言語モデルは「ダウンロード」をタップしたときだけ Google から取得します。中国語は簡体字で出力され、中国語 ↔ 日本語は英語を経由します。</string>
-    <string name="use_mlkit">この端末で動く文章アシストと翻訳</string>
+    <string name="use_mlkit">この端末で動く文章アシスト、翻訳、手書き</string>
     <string name="translate_models">翻訳モデル</string>
     <string name="translate_models_none">ダウンロードした言語モデルはありません</string>
     <string name="translate_models_delete">削除</string>

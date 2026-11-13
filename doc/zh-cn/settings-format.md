@@ -91,7 +91,7 @@
 | `pc.enabled` | boolean | `false` | 在语言选择中提供 PC 布局（PLAN §10.11）；它就是输入模式页上 PC 一行的显示/隐藏开关，打开之前一直隐藏。`modes.order` 与 `modes.hidden` 像其他模式一样列出 `pc` |
 | `pc.host` | string：`windows`、`macos`、`linux` | `windows` | PC 布局要输入的电脑：修饰键的名称与顺序、Fn 页的快捷键与安全组合键（Ctrl+Alt+Del，macOS 为 ⌥⌘Esc）；发出的键码不变 |
 | `pc.wide` | string：`full`、`split` | `full` | 宽屏上的 PC 布局：功能键带加完整的 PC 键盘，或把手机的几页分成两半放在两侧 |
-| `toolbar.order` | string | `clipboard,ai,translate,settings,edit,emoji,language,dictionaries,themes,floating,undo,redo` | “更多”之后的工具栏工具（PLAN §10.10），工具名以逗号连接；“更多”总在最前面，不列出。缺少的工具排到最后，本版本不认识的名称保留在已知名称之后 |
+| `toolbar.order` | string | `clipboard,ai,translate,settings,edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting` | “更多”之后的工具栏工具（PLAN §10.10），工具名以逗号连接；“更多”总在最前面，不列出。缺少的工具排到最后，本版本不认识的名称保留在已知名称之后 |
 | `toolbar.inline_autofill` | boolean | `true` | 在空闲的工具栏上显示自动填充服务的内联建议（Android 11 起，PLAN §10.10）；关闭时 Kotomo 不请求 |
 | `keys.gap_dp` | int 2–12 | `6` | 按键间距，单位 dp（PLAN §10.9） |
 | `keys.text_percent` | int 80–140 | `100` | 按键文字大小，为设计稿的百分比 |
@@ -110,7 +110,7 @@
 | `emoji.mappings` | string | 空 | 用户为词语指定的 Emoji，每行 `词=Emoji`（词为按键入方式写的小写字母，至多 24 个）；输入正好这些字母时排在 Emoji 候选最前 |
 | `japanese.flick` | boolean | `false` | 日文模式使用 12 键滑动布局 |
 | `chinese.nine_key` | boolean | `false` | 中文模式使用九宫格：2–9 键代表各自的字母，librime 的九宫格方案把数字读作拼音（PLAN §10.9）；模糊音规则与双拼方案像在字母键盘上一样作用于它（打开双拼时，数字拼的是方案的两个键）；用户词库与下载的词库以字母为编码，九宫格查不到 |
-| `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo` | 不放在工具栏上的工具，以逗号连接；它们和工具栏放不下的工具一起在“更多”里。与 `toolbar.order` 一起写入；已存的 `toolbar.order` 中缺少的工具（以后的版本新增的）按默认位置放置 |
+| `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting` | 不放在工具栏上的工具，以逗号连接；它们和工具栏放不下的工具一起在“更多”里。与 `toolbar.order` 一起写入；已存的 `toolbar.order` 中缺少的工具（以后的版本新增的）按默认位置放置 |
 
 ## 主题文件
 
