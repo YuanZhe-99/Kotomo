@@ -127,6 +127,6 @@ nothing on the key path was changed in Q10. Offline: with airplane mode on, `Fie
   opens the segments: choosing one's candidate pins it and converts the rest again, Shorter and
   Longer move its end, and Enter then commits the conversion as shown. A build without Mozc's data
   says so in the candidate bar.
-- P1's gestures, field adaptation, Taiwan and Hong Kong output, candidate details, Direct Boot and the API 37 composition attribute are unit- or host-tested only. The P1 checklist (`tests/device/p1-checklist.md`) is judged from the screen, and no line has been recorded yet, so G1 stays NOT_RUN. Before the first unlock the keyboard types with the defaults and built-in data only: Chinese with nothing learned, English, no Japanese (Mozc needs its data in credential-protected storage), no clipboard, AI or emoji recents.
+- P1's gestures, field adaptation, Taiwan and Hong Kong output, candidate details, Direct Boot and the API 37 composition attribute are unit- or host-tested only. The device checklist (`tests/device/checklist.md`, G0–G5) is judged from the screen, and no line has been recorded yet, so G1 stays NOT_RUN. Before the first unlock the keyboard types with the defaults and built-in data only: Chinese with nothing learned, English, no Japanese (Mozc needs its data in credential-protected storage), no clipboard, AI or emoji recents.
 - No claim about latency, memory, APK size or on-device AI can be made before P0 measures it on a
   device.
