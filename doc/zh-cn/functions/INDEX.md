@@ -79,7 +79,7 @@
 | `core/rime/tools/prebuild.cc`、`scripts/prebuild-rime.sh` | 在 Linux 主机上把 librime 的数据编译进随 APK 分发的共享数据 | `main` |
 | `scripts/fetch-mozc.sh` | 获取 mozc.yml 构建的 Mozc 库与数据，按 build-lock.json 中的运行编号与 SHA-256 锁定；该运行已于 2026-11-04 随 GitHub 仓库删除，CI 重新存在之前它下载不到任何东西；`build-mozc.sh` 在本地构建同样的文件 | — |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/QuickPanel.kt` | 在键盘位置显示的“更多”面板：不在工具栏上的工具，然后是快捷设置（单手方向、分离布局、简繁、为 App 固定模式、无痕、设置应用） | `QuickPanel` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/QuickInput.kt` | 中文模式下 `v` 之后的快捷输入（PLAN §10.4、§10.8）：中文数字、金额大写、日期、时间、星期、按编码输入 Unicode、算式、用户的替换 | `QuickInput` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/QuickInput.kt` | 中文模式下 `v` 之后的快捷输入（PLAN §10.4、§10.8）：中文数字、金额大写、日期、时间、星期、按编码输入 Unicode、算式、用户的替换；数字和运算符也可以来自长按或符号页（服务里的 `quickKey`） | `QuickInput` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Idioms.kt` | 成语补全（PLAN §10.8），取自下载的成语词库的词表：提交的内容开头的成语的后半部分 | `Idioms` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Kana.kt` | 12 键滑动布局的平假名（PLAN §10.9）：哪些字符参与组合，以及゛゜小键的循环（清音、浊音、半浊音、小写） | `Kana` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/InlineAutofill.kt` | 空闲工具栏上的自动填充服务内联建议（PLAN §10.10，Android 11 起）：带 Kotomo 胶囊样式的请求，以及由系统绘制的建议条（Kotomo 看不到其中的文字），条首的按钮把建议暂时收起、显示工具栏，工具栏首位随之出现的钥匙键再把建议调回。只在 debug 构建中的 `fieldtest/FakeAutofillService.kt` 为 `InlineAutofillTest` 提供一条建议 | `InlineAutofill` |

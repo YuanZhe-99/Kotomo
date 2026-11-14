@@ -160,7 +160,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 11.2 Taiwan words by their own pinyin (first few): `huashu` 滑鼠, `wanglu` 網路, `yinbiaoji` 印表機, `jichengche` 計程車, `jieyun` 捷運, `zixun` 資訊. Hong Kong: `dianyou` 電郵. [INFO] `dishi` 的士 may sit around fifth (known gap)
 - [ ] 11.3 Negative: in Simplified, `ruanti` does not offer 軟體; Traditional stays Traditional after switching apps and fields; the More panel's "Characters" choice is remembered per app
 - [ ] 11.4 Double pinyin (Chinese → Double pinyin): Xiaohe `nihc` → 你好; Microsoft `nihk` → 你好; Ziranma `vsgo` → 中国; with one selected, full `nihao` is no longer read as full pinyin; back to "Full pinyin"
-- [ ] 11.5 Quick input: `v1234` → 一千二百三十四 and the capital-money form; `vrq` date, `vsj` time, `vxq` weekday; `vu4f60` → 你; `v1+2*3` → 7; space types the first, Enter types the letters
+- [ ] 11.5 Quick input: `v1234` → 一千二百三十四 and the capital-money form; `vrq` date, `vsj` time, `vxq` weekday; `vu4f60` → 你; `v1+2*3` → 7; space types the first, Enter types the letters. On the letter layout the digits and `+`, `*` come from a long press on a letter (`q`–`p` are 1–0, `j` is +, `z` is *) or from the ?123 page and back; neither ends the query (feedback C1)
 - [ ] 11.6 "Your quick replacements": add `dz=my address`; `vdz` offers it
 - [ ] 11.7 Strokes: with nothing composing type `u` then `hs` → 十 among the candidates
 - [ ] 11.8 9-key layout (Chinese → 9-key layout): keys 2–9 show letters; `64426` → 你好; `94664486` → 中国 (first three); `96`, the 分词 key, then `744` → 我是; the bottom row is Chinese punctuation; off: letter keys return

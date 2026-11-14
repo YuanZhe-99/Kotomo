@@ -252,6 +252,45 @@ class FieldTypingTest {
         }
     }
 
+    /**
+     * T13-quick, C1 (PLAN §10.4): the digits after v come from the symbol page or from a long press
+     * on a letter, and the query survives both: `v1234` → 一千二百三十四, `v1+2*3` → 7. Negative:
+     * a long-pressed digit with no v before it is typed as a digit.
+     */
+    @Test
+    fun quickInputTakesDigitsFromTheSymbolPageAndLongPress() {
+        inMode(Mode.CHINESE) {
+            val viaPage = typeInto(InputType.TYPE_CLASS_TEXT, 0, "v", expected = "一千二百三十四") {
+                key("Symbols")
+                "1234".forEach { key(it.toString()) }
+                key("Letters")
+            }
+            assertEquals("一千二百三十四", viaPage)
+            val sum = typeInto(InputType.TYPE_CLASS_TEXT, 0, "v", expected = "7") {
+                key("Symbols")
+                "1+2".forEach { key(it.toString()) }
+                key("Letters")
+                // The Chinese symbol page has no *: it is z's long press.
+                "ze".forEach { device.findObject(By.desc(it.toString())).longClick() }
+                Thread.sleep(READ_MS)
+            }
+            assertEquals("7", sum)
+            // q w e r carry 1 2 3 4 in their corners.
+            val held = typeInto(InputType.TYPE_CLASS_TEXT, 0, "v", expected = "一千二百三十四") {
+                "qwer".forEach { device.findObject(By.desc(it.toString())).longClick() }
+                Thread.sleep(READ_MS)
+            }
+            assertEquals("一千二百三十四", held)
+            val plain = typeInto(InputType.TYPE_CLASS_TEXT, 0, "n", expected = "你1", space = false) {
+                device.findObject(By.descStartsWith(SPACE)).click()
+                Thread.sleep(READ_MS)
+                device.findObject(By.desc("q")).longClick()
+                Thread.sleep(READ_MS)
+            }
+            assertEquals("你1", plain)
+        }
+    }
+
     /** T13-strokes (PLAN §10.4): u then h s looks up 十 by its strokes. */
     @Test
     fun strokeLookupTypesACharacter() {

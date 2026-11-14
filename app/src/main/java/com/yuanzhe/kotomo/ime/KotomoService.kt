@@ -1933,7 +1933,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /**
      * Handles a key of the quick input (PLAN §10.4, §10.8): `v` at the start of a Chinese
-     * composition opens it; letters, digits and `+ - * / ^ ( ) .` extend the query, Space types the
+     * composition opens it; letters, digits and `+ - * / ^ ( ) .` extend the query (digits and
+     * operators also from a long press or a symbol page: the page keys keep it), Space types the
      * first candidate, Enter the query as typed, backspace deletes (past the `v` it closes).
      * Returns: whether the key was the quick input's; another key first commits the query as typed.
      * Notes: the candidates come from [QuickInput] with the local time and the person's own
@@ -1948,10 +1949,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             return true
         }
         when {
-            action is KeyAction.Text && action.text.length == 1 && (action.text[0] in 'a'..'z' || action.text[0] in "0123456789+-*/^()." ) && !longPress -> {
+            // Digits and operators also come from a long press on a letter or from the symbol pages (C1).
+            action is KeyAction.Text && action.text.length == 1 && ((action.text[0] in 'a'..'z' && !longPress) || action.text[0] in "0123456789+-*/^()." ) -> {
                 q.append(action.text)
                 showQuick(ic)
             }
+            // Changing the page (to reach the digits) or Shift keeps the query.
+            action == KeyAction.Shift || action is KeyAction.Symbols || action == KeyAction.Letters -> return false
             action == KeyAction.Backspace -> if (q.isEmpty()) endQuick(ic, "") else {
                 q.setLength(q.length - 1)
                 showQuick(ic)
