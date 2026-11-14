@@ -17,6 +17,8 @@ internal object Candidates {
     const val EMOJI_SUGGESTIONS = 3
     /** The place emoji take in the list: after the two most likely words. */
     const val EMOJI_POSITION = 2
+    /** The place the best emoji of a word typed in full takes: after the three most likely words (C2). */
+    const val EMOJI_WHOLE = 3
     /** The most Chinese candidates read from librime per update. */
     const val CHINESE_LIMIT = 30
 
@@ -158,6 +160,16 @@ internal object Candidates {
     }
 
     /**
+     * Whether [typed] is a whole emoji word (a key of the index or of the person's own mappings),
+     * not just the start of one (C2): the best emoji of a word typed in full is shown early
+     * ([EMOJI_WHOLE]), where the bar usually shows it without scrolling.
+     */
+    fun emojiWhole(index: EmojiIndex?, typed: String, mine: Map<String, List<String>> = emptyMap()): Boolean {
+        val key = typed.lowercase().filter { it in 'a'..'z' }
+        return key.length >= 2 && (key in mine || index?.has(key) == true)
+    }
+
+    /**
      * Finds emoji for the emoji search's [query] (PLAN §8.6): English words, pinyin or romaji
      * matched against the CLDR keywords, spaces ignored (the keys are stored without them).
      * Returns: up to [EMOJI_SEARCH_RESULTS] emoji, best first; none for an empty query.
@@ -178,19 +190,22 @@ internal object Candidates {
     /**
      * Lists Chinese candidates: librime's two best, then the letters as typed (English typed in
      * Chinese mode, PLAN §8.2), then the emoji after the first [emojiPosition] of librime's
-     * candidates ([emojiPosition], PLAN §10.6), with the rest of librime's around them.
+     * candidates ([emojiPosition], PLAN §10.6), with the rest of librime's around them. With
+     * [whole] ([emojiWhole]) the best emoji comes after the first [EMOJI_WHOLE] of librime's.
      * Inputs: [texts] are librime's candidates, best first; [typed] is librime's raw input.
      * Returns: each entry's text with where it comes from: its index in [texts], [TYPED] or
      * [EMOJI]; no text twice. The typed letters are left out when they are empty or are already
      * one of librime's candidates.
      */
-    fun chinese(texts: List<String>, typed: String, emoji: List<String>, emojiPosition: Int = EMOJI_POSITION): List<Pair<String, Int>> {
+    fun chinese(texts: List<String>, typed: String, emoji: List<String>, emojiPosition: Int = EMOJI_POSITION, whole: Boolean = false): List<Pair<String, Int>> {
         val indexed = texts.withIndex().map { it.value to it.index }
         val at = maxOf(emojiPosition, EMOJI_POSITION)
         val letters = if (typed.isEmpty() || typed in texts) emptyList() else listOf(typed to TYPED)
         val seen = HashSet<String>()
-        return (indexed.take(EMOJI_POSITION) + letters + indexed.drop(EMOJI_POSITION).take(at - EMOJI_POSITION) +
-            emoji.map { it to EMOJI } + indexed.drop(at)).filter { seen.add(it.first) }
+        val first = minOf(EMOJI_WHOLE, at)
+        val early = if (whole) emoji.take(1) else emptyList()
+        return (indexed.take(EMOJI_POSITION) + letters + indexed.subList(minOf(EMOJI_POSITION, indexed.size), minOf(first, indexed.size)) + early.map { it to EMOJI } +
+            indexed.drop(first).take(at - first) + emoji.map { it to EMOJI } + indexed.drop(at)).filter { seen.add(it.first) }
     }
 
     /**
@@ -206,11 +221,16 @@ internal object Candidates {
     fun drawable(entries: List<Pair<String, Int>>, canDraw: (Int) -> Boolean): List<Pair<String, Int>> =
         entries.filter { (text, _) -> text.codePoints().allMatch { !Character.isIdeographic(it) || canDraw(it) } }
 
-    /** Puts [emoji] into [list] after its first [position] entries, without duplicates. */
-    fun withEmoji(list: List<String>, emoji: List<String>, position: Int = EMOJI_POSITION): List<String> {
+    /**
+     * Puts [emoji] into [list] after its first [position] entries, without duplicates; with
+     * [whole] ([emojiWhole]) the best one comes after the first [EMOJI_WHOLE] entries.
+     */
+    fun withEmoji(list: List<String>, emoji: List<String>, position: Int = EMOJI_POSITION, whole: Boolean = false): List<String> {
         if (emoji.isEmpty()) return list
         val at = minOf(position, list.size)
-        return (list.take(at) + emoji + list.drop(at)).distinct()
+        val first = minOf(EMOJI_WHOLE, at)
+        val early = if (whole) emoji.take(1) else emptyList()
+        return (list.take(first) + early + list.subList(first, at) + emoji + list.drop(at)).distinct()
     }
 
     /** Marks an entry of [mixed] that is not one of the snapshot's candidates. */
@@ -221,16 +241,20 @@ internal object Candidates {
      * Lists Mixed-mode candidates from the coordinator's snapshot (PLAN §2.3): its candidates in
      * the engine's order, the emoji after the first [emojiPosition] of them, and last the letters
      * as typed when no candidate is exactly them, so anything typed can always be committed.
+     * With [whole] ([emojiWhole]) the best emoji comes after the first [EMOJI_WHOLE] candidates.
      * Inputs: [texts] are the snapshot's candidate texts, best first; [typed] is its composition.
      * Returns: each entry's text with where it comes from: its index in the snapshot,
      * [MIXED_EMOJI] or [MIXED_TYPED]; no text twice.
      */
-    fun mixed(texts: List<String>, typed: String, emoji: List<String>, emojiPosition: Int): List<Pair<String, Int>> {
+    fun mixed(texts: List<String>, typed: String, emoji: List<String>, emojiPosition: Int, whole: Boolean = false): List<Pair<String, Int>> {
         val indexed = texts.withIndex().map { it.value to it.index }
         val at = minOf(emojiPosition, indexed.size)
         val letters = typed.trim().let { if (it.isEmpty() || it in texts) emptyList() else listOf(it to MIXED_TYPED) }
         val seen = HashSet<String>()
-        return (indexed.take(at) + emoji.map { it to MIXED_EMOJI } + indexed.drop(at) + letters).filter { seen.add(it.first) }
+        val first = minOf(EMOJI_WHOLE, at)
+        val early = if (whole) emoji.take(1) else emptyList()
+        return (indexed.take(first) + early.map { it to MIXED_EMOJI } + indexed.subList(first, at) + emoji.map { it to MIXED_EMOJI } + indexed.drop(at) + letters)
+            .filter { seen.add(it.first) }
     }
 
     /**

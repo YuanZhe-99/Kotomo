@@ -47,6 +47,16 @@ struct Line {
   int rank = 1;                     // 0: anywhere in the list
 };
 
+/// Returns: whether `text` holds an emoji (U+2600–U+27BF or U+1F000 and above), which only the
+///   keyboard's own list has.
+bool HoldsEmoji(const std::string& text) {
+  for (size_t i = 0; i + 2 < text.size(); ++i) {
+    const auto a = static_cast<unsigned char>(text[i]), b = static_cast<unsigned char>(text[i + 1]);
+    if ((a == 0xf0 && b == 0x9f) || (a == 0xe2 && b >= 0x98 && b <= 0x9e)) return true;
+  }
+  return false;
+}
+
 /// Holds one line's result.
 struct Outcome {
   bool pass = false;
@@ -289,7 +299,9 @@ int main(int argc, char** argv) {
     const std::map<std::string, Lang> single = {{"chinese", Lang::kChinese},
                                                 {"japanese", Lang::kJapanese},
                                                 {"english", Lang::kEnglish}};
-    if (line.input.empty() || (!mixed && !single.count(line.mode))) {
+    // Emoji are added to the list by the keyboard (Candidates), not by the coordinator.
+    const bool emoji = std::any_of(line.wanted.begin(), line.wanted.end(), HoldsEmoji);
+    if (line.input.empty() || emoji || (!mixed && !single.count(line.mode))) {
       ++skipped;
       continue;
     }
@@ -329,7 +341,7 @@ int main(int argc, char** argv) {
   std::snprintf(summary, sizeof summary,
                 "Mixed lines through the coordinator: %d/%d pass\n"
                 "Single-language lines through the coordinator, judged among the candidates of "
-                "their language: %d/%d pass (%d lines skipped: fuzzy rules or no input)\n"
+                "their language: %d/%d pass (%d lines skipped: fuzzy rules, emoji or no input)\n"
                 "Host time per line: median %.1f ms, max %.1f ms (host only; never device latency)\n",
                 mixed_pass, mixed_total, single_pass, single_total, skipped,
                 millis.empty() ? 0.0 : millis[millis.size() / 2],

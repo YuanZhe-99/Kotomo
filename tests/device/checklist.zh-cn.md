@@ -167,7 +167,7 @@
 
 ## 13. Emoji（G1、G3、G4）
 
-- [ ] 13.1 候选栏上的联想：`neko` / `mao` / `cat` → 🐱；`apple` / `pingguo` → 🍎；`sakura` / `yinghua` → 🌸；`birthday` / `shengri` → 🎂；`coffee` / `kafei` → ☕；`computer` / `diannao` → 💻（排在文字候选之后）（完整打出后反而没有emoji，打到一半有）
+- [ ] 待复测 ｜ 13.1 候选栏上的联想（反馈 C2）：把词完整打出后，最贴切的 Emoji 排在最好的三个文字候选之后，不用滑动候选栏（文字候选很宽时可能要稍微滑一下）：`neko` / `mao` / `cat` → 🐈（🐱 在后面）；`apple` / `pingguo` → 🍎；`sakura` / `yinghua` → 🌸；`birthday` / `shengri` → 🥳（🎂 在后面）；`coffee` / `kafei` → ☕；`computer` → 💻、`diannao` → 🖥️（💻 在后面）。词只打到一半时 Emoji 仍排在五个文字候选之后（完整打出后反而没有emoji，打到一半有）
 - [ ] 13.2 Emoji 面板有分类、肤色选择、“最近使用”，同一个发送两次后“常用”出现在“最近使用”之上（没有看到肤色选择，应该是长按emoji切换）
 - [x] 13.3 放大镜：字母键在候选栏里输入搜索词（`cat`、`mao`、`neko`），选之前什么都不进入输入框；回车发送第一个结果
 - [ ] 13.4 长按一个 Emoji：肤色和收藏开关；“收藏”里列出它；“组合”标签和“颜文字”标签点哪个就插入哪个（没有肤色，还是OneUI的Emoji没有其他肤色）

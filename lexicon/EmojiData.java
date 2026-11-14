@@ -16,6 +16,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -121,9 +122,9 @@ public final class EmojiData {
             "Food & Drink", "food", "Travel & Places", "travel", "Activities", "activities",
             "Objects", "objects", "Symbols", "symbols", "Flags", "flags");
 
-    /** Key tiers: a whole CLDR keyword, a whole CLDR name, one word of a multi-word keyword or name. */
-    private static final int KEYWORD = 0;
-    private static final int NAME = 1;
+    /** Key tiers, best first: a whole CLDR name, a whole CLDR keyword, one word of a multi-word keyword or name. */
+    private static final int NAME = 0;
+    private static final int KEYWORD = 1;
     private static final int WORD = 2;
 
     /** English words too common to find an emoji by. */
@@ -133,8 +134,8 @@ public final class EmojiData {
     /** Longest CC-CEDICT word or Mozc surface tried while segmenting a keyword. */
     private static final int MAX_WORD = 8;
 
-    /** One base emoji: its sequence, group, the order it appears in, and its tone variants. */
-    private record Emoji(String text, String group, List<String> variants) {}
+    /** One base emoji: its sequence, group, whether it is an animal smiley (emoji-test's cat-face and monkey-face subgroups), and its tone variants. */
+    private record Emoji(String text, String group, boolean face, List<String> variants) {}
 
     private final List<Emoji> emoji = new ArrayList<>();
     /** key → (emoji id → best tier). */
@@ -275,9 +276,16 @@ public final class EmojiData {
      */
     private void readEmojiTest(Path file) throws IOException {
         String group = null;
+        boolean face = false;
         for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
             if (line.startsWith("# group: ")) {
                 group = GROUPS.get(line.substring(9).trim());
+                continue;
+            }
+            if (line.startsWith("# subgroup: ")) {
+                // cat-face, monkey-face: the smileys drawn as an animal (not face-smiling and the like,
+                // which are what a feeling's word means).
+                face = line.substring(12).trim().endsWith("-face");
                 continue;
             }
             if (group == null || line.startsWith("#") || line.isBlank() || !line.contains("; fully-qualified")) {
@@ -291,7 +299,7 @@ public final class EmojiData {
             if (TONE.matcher(text).find()) {
                 emoji.getLast().variants().add(text);
             } else {
-                emoji.add(new Emoji(text, group, new ArrayList<>()));
+                emoji.add(new Emoji(text, group, face, new ArrayList<>()));
             }
         }
     }
@@ -639,7 +647,8 @@ public final class EmojiData {
 
     /**
      * Writes the asset: header, groups with their emoji, then the keys with their emoji sorted by
-     * tier and then by keyboard order.
+     * tier (the emoji named exactly by the key, then keywords, then single words), within a tier
+     * the things before the emoji that only picture them ({@link #pictures}), then by keyboard order.
      */
     private void write(Path out) throws IOException {
         if (out.getParent() != null) {
@@ -658,12 +667,22 @@ public final class EmojiData {
             for (var k : keys.entrySet()) {
                 StringBuilder ids = new StringBuilder();
                 k.getValue().entrySet().stream()
-                        .sorted((a, b) -> a.getValue().equals(b.getValue()) ? Integer.compare(a.getKey(), b.getKey())
-                                : Integer.compare(a.getValue(), b.getValue()))
+                        .sorted(Comparator.<Map.Entry<Integer, Integer>>comparingInt(Map.Entry::getValue)
+                                .thenComparing(x -> pictures(emoji.get(x.getKey())))
+                                .thenComparingInt(Map.Entry::getKey))
                         .forEach(x -> ids.append(ids.isEmpty() ? "" : ",").append(x.getKey()));
                 w.write("k\t" + k.getKey() + "\t" + ids + "\n");
             }
         }
+    }
+
+    /**
+     * Whether an emoji pictures something else than the word that finds it usually means: an
+     * animal smiley or a joined sequence (C2: for "cat" the cat comes before the grinning
+     * cat face, for "computer" the laptop before the technologist).
+     */
+    private static boolean pictures(Emoji e) {
+        return e.face() || e.text().indexOf('\u200d') >= 0;
     }
 
     // ---------------------------------------------------------------- helpers

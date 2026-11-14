@@ -272,3 +272,23 @@ B4-N07	mixed+jfuzzy:voiced		ibbai	!一杯	0	feedback B4: は/ば does not bring 
 B4-N08	mixed+jfuzzy:all		nihao	你好	1	feedback B4: original language first with every rule on
 B4-N09	mixed+jfuzzy:all		the	the	1	feedback B4: an English word stays first with every rule on
 B4-N10	mixed+jfuzzy:all		tokyo	Tokyo	1	feedback B4: the word as typed stays before the fuzzy 東京
+C2-001	mixed		neko	🐈|🐱	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-002	mixed		mao	🐈|🐱	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-003	mixed		cat	🐈|🐱	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-004	mixed		apple	🍎	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-005	mixed		pingguo	🍎	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-006	mixed		sakura	🌸	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-007	mixed		yinghua	🌸	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-008	mixed		birthday	🎂|🥳	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-009	mixed		shengri	🎂|🥳	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-010	mixed		coffee	☕	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-011	mixed		kafei	☕	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-012	mixed		computer	💻|🖥️	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-013	mixed		diannao	💻|🖥️	5	feedback C2: a word typed in full shows its best emoji after the three best words
+C2-014	chinese		pingguo	🍎	5	feedback C2: Chinese mode, after the three best words and the letters as typed
+C2-015	english		apple	🍎	5	feedback C2: English mode
+C2-016	japanese		neko	🐈|🐱	5	feedback C2: Japanese mode
+C2-017	mixed		birthday	🎂	0	feedback C2: the other emoji of the word stay where the emoji weight puts them
+C2-N01	mixed		cat	!🐈|!🐱	3	feedback C2: the emoji never stands among the three best words
+C2-N02	mixed		pingg	!🍎	5	feedback C2: a word still being typed keeps its emoji after the words (the emoji weight)
+C2-N03	mixed		nihao	你好	1	feedback C2: a word with no emoji of its own is unchanged

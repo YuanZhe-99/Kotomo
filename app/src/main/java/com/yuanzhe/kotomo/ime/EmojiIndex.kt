@@ -55,6 +55,9 @@ class EmojiIndex private constructor(
         return out.toList()
     }
 
+    /** Whether [key] (lowercase) is itself a key of the index, not only the start of one. */
+    fun has(key: String): Boolean = keys.binarySearch(key) >= 0
+
     companion object {
         /** The asset name, at the root of the APK's assets. */
         const val ASSET = "emoji.tsv"

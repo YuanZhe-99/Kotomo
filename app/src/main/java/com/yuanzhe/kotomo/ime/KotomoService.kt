@@ -1899,7 +1899,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val emoji = emojiFor(state.preedit)
         emojiShown = emoji.toSet()
         val entries = Regional.promote(
-            Candidates.drawable(Candidates.chinese(state.candidates.map { it.text }, state.input, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)), ::canDraw),
+            Candidates.drawable(Candidates.chinese(state.candidates.map { it.text }, state.input, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji), emojiWhole(state.preedit)), ::canDraw),
             regionalWords,
         ) { it >= 0 }
         chineseCandidates = entries.map { it.first } + idiomRest
@@ -2443,7 +2443,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val emoji = emojiFor(raw)
         emojiShown = emoji.toSet()
         val entries = Regional.promote(
-            Candidates.drawable(Candidates.mixed(snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)), ::canDraw),
+            Candidates.drawable(Candidates.mixed(snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji), emojiWhole(raw)), ::canDraw),
             regionalWords,
         ) { it >= 0 }
         mixedIndexes = entries.map { it.second }
@@ -2701,7 +2701,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val chosen = segments.any { it.pinned }
         val shown = if (chosen) japaneseCandidates.firstOrNull()?.text ?: reading else reading
         setComposition(shown, japaneseCandidates.map { it.text }, chosen)
-        candidates = withEmoji(japaneseCandidates.map { it.text }, emojiFor(typed))
+        candidates = withEmoji(japaneseCandidates.map { it.text }, typed)
         // `japanese.cross.readings`: how a cross-language candidate is read.
         val readings = if (settings.japanese.readings && japaneseCandidates.any { it.cross }) {
             candidates.map { text -> japaneseCandidates.firstOrNull { it.cross && it.text == text && it.reading != text }?.reading.orEmpty() }
@@ -3080,10 +3080,17 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         return mappings.second
     }
 
-    /** Puts [emoji] into [list] at the third place (after the most likely words), marking them. */
-    private fun withEmoji(list: List<String>, emoji: List<String>): List<String> {
+    /** Whether [typed] is a whole emoji word ([Candidates.emojiWhole]); the caller already has its emoji. */
+    private fun emojiWhole(typed: String) = Candidates.emojiWhole(emojiIndex, typed, emojiMappings())
+
+    /**
+     * Puts the emoji for [typed] into [list] where the emoji weight places them (the best one
+     * after the three most likely words when [typed] is a whole emoji word), marking them.
+     */
+    private fun withEmoji(list: List<String>, typed: String): List<String> {
+        val emoji = emojiFor(typed)
         emojiShown = emoji.toSet()
-        return Candidates.withEmoji(list, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji))
+        return Candidates.withEmoji(list, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji), emoji.isNotEmpty() && emojiWhole(typed))
     }
 
     /** Says why Chinese mode cannot convert yet (dictionary being prepared or failed), or null. */
@@ -3112,7 +3119,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             main.post {
                 Probe.engineWork.add(work)
                 if (!takes(gen, 1)) return@post
-                candidates = withEmoji(Candidates.english(typed, words), emojiFor(typed))
+                candidates = withEmoji(Candidates.english(typed, words), typed)
                 candidateBar.show(candidates, 0)
                 shownCandidates.value = candidates
             }

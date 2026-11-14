@@ -8,6 +8,7 @@ import com.yuanzhe.kotomo.engine.Mozc
 import com.yuanzhe.kotomo.engine.Piece
 import com.yuanzhe.kotomo.engine.Snapshot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -107,6 +108,26 @@ class CandidatesTest {
         assertEquals(listOf("a", "b", "c", "d", "e", "🙂", "f"), Candidates.withEmoji(listOf("a", "b", "c", "d", "e", "f"), listOf("🙂"), at))
         // Negative: no emoji, nothing moves.
         assertEquals(texts, Candidates.chinese(texts, "", emptyList(), at).map { it.first })
+    }
+
+    @Test
+    fun aWholeEmojiWordShowsItsBestEmojiEarly() { // feedback C2
+        val texts = listOf("一", "二", "三", "四", "五", "六")
+        val at = Candidates.emojiPosition(30)
+        val emoji = listOf("🙂", "😀")
+        // The best emoji follows the three best words (in Chinese mode the letters stay third); the others keep their place.
+        assertEquals(listOf("一", "二", "三", "🙂", "四", "五", "😀", "六", "yi"), Candidates.mixed(texts, "yi", emoji, at, whole = true).map { it.first })
+        assertEquals(listOf("一", "二", "yi", "三", "🙂", "四", "五", "😀", "六"), Candidates.chinese(texts, "yi", emoji, at, whole = true).map { it.first })
+        assertEquals(listOf("一", "二", "三", "🙂", "四", "五", "😀", "六"), Candidates.withEmoji(texts, emoji, at, whole = true))
+        assertEquals(listOf("一", "yi", "🙂", "😀"), Candidates.chinese(listOf("一"), "yi", emoji, at, whole = true).map { it.first })
+        assertEquals(listOf("一", "🙂", "😀"), Candidates.withEmoji(listOf("一"), emoji, at, whole = true))
+        // Negative: a word still being typed leaves every emoji at the weight's place.
+        assertEquals(listOf("一", "二", "三", "四", "五", "🙂", "😀", "六", "yi"), Candidates.mixed(texts, "yi", emoji, at).map { it.first })
+        // What is whole: a key of the person's own mappings; two letters at least; a prefix is not.
+        val mine = mapOf("cat" to listOf("🐈"))
+        assertTrue(Candidates.emojiWhole(null, "Cat", mine))
+        assertFalse(Candidates.emojiWhole(null, "ca", mine))
+        assertFalse(Candidates.emojiWhole(null, "c", mapOf("c" to listOf("🐈"))))
     }
 
     @Test
