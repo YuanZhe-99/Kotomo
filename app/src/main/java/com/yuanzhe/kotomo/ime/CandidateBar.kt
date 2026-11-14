@@ -79,12 +79,29 @@ class CandidateBar(
             invalidate()
         }
 
-    /** The tools the bar has room for: More, then the person's tools while they fit. */
+    /** The tools the bar has room for: More, then the person's tools while they fit (after the autofill key, if shown). */
     val shownTools: List<Tool>
         get() {
-            val room = if (width == 0) Int.MAX_VALUE else ((width - toolbarPad * 2) / toolButton).toInt().coerceAtLeast(1)
-            return (listOf(Tool.MORE) + tools).take(room)
+            val room = if (width == 0) Int.MAX_VALUE else ((width - toolbarPad * 2) / toolButton).toInt().coerceAtLeast(2)
+            return (listOf(Tool.MORE) + tools).take(room - slotsBefore)
         }
+
+    /**
+     * Whether autofill suggestions the person put aside wait behind a key at the toolbar's start
+     * (A5): a tap on it brings them back ([onAutofill]).
+     */
+    var autofillWaiting = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Receives a tap on the toolbar's autofill key. */
+    var onAutofill: (() -> Unit)? = null
+    private val autofillIcon = icon(R.drawable.ic_tool_autofill)
+
+    /** The toolbar slots before More: the autofill key, or none. */
+    private val slotsBefore get() = if (autofillWaiting) 1 else 0
 
     private var candidates = emptyList<String>()
     /** A short note drawn after a candidate (a Japanese reading), by index; "" or missing for none. */
@@ -270,7 +287,9 @@ class CandidateBar(
 
     private fun drawToolbar(canvas: Canvas) {
         val shown = shownTools
-        toolCenters(shown.size).forEachIndexed { i, x -> drawIcon(canvas, toolIcons.getOrPut(shown[i]) { icon(shown[i].icon) }, x) }
+        val centers = toolCenters(shown.size + slotsBefore)
+        if (autofillWaiting) drawIcon(canvas, autofillIcon, centers[0])
+        shown.forEachIndexed { i, tool -> drawIcon(canvas, toolIcons.getOrPut(tool) { icon(tool.icon) }, centers[i + slotsBefore]) }
     }
 
     private fun drawIcon(canvas: Canvas, icon: android.graphics.drawable.Drawable, centerX: Float) {
@@ -341,9 +360,10 @@ class CandidateBar(
             }
             hint == null -> {
                 val shown = shownTools
-                val centers = toolCenters(shown.size)
+                val centers = toolCenters(shown.size + slotsBefore)
                 val i = centers.indices.minByOrNull { kotlin.math.abs(centers[it] - x) } ?: return
-                if (kotlin.math.abs(centers[i] - x) <= toolButton / 2) onTool(shown[i])
+                if (kotlin.math.abs(centers[i] - x) > toolButton / 2) return
+                if (i < slotsBefore) onAutofill?.invoke() else onTool(shown[i - slotsBefore])
             }
         }
     }

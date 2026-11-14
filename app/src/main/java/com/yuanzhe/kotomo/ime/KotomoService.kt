@@ -702,9 +702,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             // Built once: the system asks for the request before the first input view exists.
             val strip = inlineAutofill ?: InlineAutofill(this).also { inlineAutofill = it }
             (strip.view.parent as? ViewGroup)?.removeView(strip.view)
-            strip.view.setBackgroundColor(KeyboardColors.color(this, R.color.kb_background))
+            strip.paint()
             bar.addView(strip.view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             candidateBar.onIdle = { strip.barIdle = it }
+            // Suggestions put aside wait behind a key at the toolbar's start (A5).
+            strip.onWaiting = { candidateBar.autofillWaiting = it }
+            candidateBar.autofillWaiting = strip.waiting
+            candidateBar.onAutofill = { strip.dismissed = false }
         }
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1336,6 +1340,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         emojiPanel = null
         emojiSearch = null
         if (::candidateBar.isInitialized) candidateBar.search = null
+        if (!restarting && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) inlineAutofill?.newField()
         lastSpaceAt = 0L
         autoSpaced = false
         details = null

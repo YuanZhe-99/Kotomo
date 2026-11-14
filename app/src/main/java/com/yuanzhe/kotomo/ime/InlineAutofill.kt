@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.InlineSuggestion
 import android.view.inputmethod.InlineSuggestionsRequest
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.inline.InlinePresentationSpec
 import androidx.annotation.RequiresApi
@@ -26,9 +27,11 @@ import com.yuanzhe.kotomo.R
  * Notes: main thread. The system draws each suggestion inside an `InlineContentView` on behalf of
  * the autofill service: Kotomo never sees the suggested text, and a tap fills the field without
  * passing through the keyboard. [view] lies over the toolbar and is visible only while there are
- * suggestions and the bar is idle ([barIdle]); the service paints its background with the theme
- * each time it builds the input view. Built before the first input view, since the system asks for
- * the request first.
+ * suggestions, the bar is idle ([barIdle]) and the person has not put them aside: its first button
+ * shows the toolbar instead ([dismissed]), and the toolbar then offers a key that brings them back
+ * ([onWaiting]), so the tools are always one tap away. The service paints it with the theme each
+ * time it builds the input view ([paint]). Built before the first input view, since the system
+ * asks for the request first.
  */
 @RequiresApi(Build.VERSION_CODES.R)
 class InlineAutofill(private val context: Context) {
@@ -41,12 +44,43 @@ class InlineAutofill(private val context: Context) {
         setPadding(res.getDimensionPixelSize(R.dimen.bar_pad_start), 0, 0, 0)
     }
 
-    /** The strip of suggestions, to lie over the candidate bar at its height. */
-    val view = HorizontalScrollView(context).apply {
+    /** The button before the suggestions that puts them aside and shows the toolbar. */
+    private val toolsButton = ImageView(context).apply {
+        setImageResource(R.drawable.ic_tool_more)
+        scaleType = ImageView.ScaleType.CENTER
+        contentDescription = res.getString(R.string.autofill_show_tools)
+        setOnClickListener { dismissed = true }
+    }
+
+    /** The scrolling chips, clipped after [toolsButton] so a scrolled chip never covers it. */
+    private val chips = HorizontalScrollView(context).apply {
         isHorizontalScrollBarEnabled = false
-        visibility = View.GONE
         addView(row, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
+
+    /** The strip: the toolbar button, then the suggestions; it lies over the candidate bar at its height. */
+    val view = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        visibility = View.GONE
+        addView(toolsButton, LinearLayout.LayoutParams(res.getDimensionPixelSize(R.dimen.toolbar_button), ViewGroup.LayoutParams.MATCH_PARENT))
+        addView(chips, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+    }
+
+    /**
+     * Whether the person put the suggestions aside for this field (the toolbar shows instead).
+     * Notes: cleared by [newField] and by the toolbar's key ([CandidateBar.autofillWaiting]).
+     */
+    var dismissed = false
+        set(value) {
+            field = value
+            update()
+        }
+
+    /** Receives whether suggestions wait behind the toolbar's key ([waiting]) each time the strip updates. */
+    var onWaiting: ((Boolean) -> Unit)? = null
+
+    /** Whether there are suggestions the person put aside. */
+    val waiting get() = count > 0 && dismissed
 
     /** Counts the responses, so a late inflation of an older one is dropped. */
     private var generation = 0
@@ -113,9 +147,24 @@ class InlineAutofill(private val context: Context) {
         update()
     }
 
-    /** Shows the strip while there are suggestions and the bar is idle. */
+    /** Brings back suggestions put aside in the previous field: a new field starts with them shown. */
+    fun newField() {
+        dismissed = false
+    }
+
+    /**
+     * Paints the strip with the keyboard's current theme.
+     * Side effects: the background and the toolbar button's tint.
+     */
+    fun paint() {
+        view.setBackgroundColor(KeyboardColors.color(context, R.color.kb_background))
+        toolsButton.setColorFilter(KeyboardColors.color(context, R.color.kb_ink))
+    }
+
+    /** Shows the strip while there are suggestions not put aside and the bar is idle; tells the bar what waits. */
     private fun update() {
-        view.visibility = if (count > 0 && barIdle) View.VISIBLE else View.GONE
+        view.visibility = if (count > 0 && barIdle && !dismissed) View.VISIBLE else View.GONE
+        onWaiting?.invoke(waiting)
     }
 
     private companion object {

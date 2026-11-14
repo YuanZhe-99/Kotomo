@@ -34,6 +34,8 @@
     <string name="app_setting_separator">", "</string>
     <string name="toolbar_autofill">Autofill suggestions</string>
     <string name="toolbar_autofill_desc">Your autofill service’s suggestions (saved passwords, addresses) appear in the bar; Kotomo never sees them</string>
+    <string name="autofill_show_tools">Show the toolbar</string>
+    <string name="autofill_show_suggestions">Show the autofill suggestions</string>
     <string name="tool_floating">Floating keyboard</string>
     <string name="float_grip">Move the keyboard</string>
     <string name="tool_undo">Undo</string>

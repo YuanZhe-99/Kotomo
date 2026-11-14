@@ -39,4 +39,7 @@ In the keyboard's place, at the keyboard's height:
 When an autofill service (a password manager) has suggestions for the field, they replace the idle
 toolbar as a row of pill chips at the candidate pill's height, in the key color; Android draws
 their content. Typing brings the candidates back; the chips return when the bar is idle again.
+The tools stay one tap away: the strip starts with a More-shaped button that puts the suggestions
+aside for this field and shows the toolbar, and while they are aside the toolbar starts with a key
+icon that brings them back. A new field shows them again.
 Settings → Layout and size → Toolbar → Autofill suggestions turns them off.
