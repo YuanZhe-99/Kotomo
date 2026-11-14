@@ -1341,7 +1341,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        direct = Fields.direct(info.inputType)
+        direct = Fields.direct(info.inputType, settings.urlEnglish)
         sensitive = Fields.sensitive(info.inputType, info.imeOptions)
         field = Fields.of(info.inputType, info.hintText ?: info.label)
         punctuation.reset()
@@ -1436,7 +1436,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (currentInputConnection == null || info == null) return super.onKeyDown(keyCode, event)
         // Read from the field itself: a field without the bar (a password field) never starts the
         // input view, so [direct] may still describe the previous one.
-        val decision = HardKeys.map(keyCode, event.unicodeChar, event.metaState, mode, Fields.direct(info.inputType), open, candidates.size)
+        val decision = HardKeys.map(keyCode, event.unicodeChar, event.metaState, mode, Fields.direct(info.inputType, settings.urlEnglish), open, candidates.size)
         if (decision == HardKey.Pass) return super.onKeyDown(keyCode, event)
         hardDown += keyCode
         // The candidates need the bar: bring it back if the person hid the keyboard.
@@ -1481,7 +1481,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     override fun onEvaluateInputViewShown(): Boolean {
         val shown = super.onEvaluateInputViewShown()
         showKeys(shown)
-        return currentInputEditorInfo?.let { !Fields.direct(it.inputType) || shown } ?: shown
+        return currentInputEditorInfo?.let { !Fields.direct(it.inputType, settings.urlEnglish) || shown } ?: shown
     }
 
     /**
@@ -3089,7 +3089,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun showHandwriting() {
         val info = currentInputEditorInfo ?: return
-        if (Fields.direct(info.inputType)) return showNotice(getString(R.string.hw_off_here))
+        if (Fields.direct(info.inputType, settings.urlEnglish)) return showNotice(getString(R.string.hw_off_here))
         commitComposition()
         refresh(0)
         val script = appScript ?: settings.chineseScript
@@ -3122,7 +3122,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun showVoice() {
         val info = currentInputEditorInfo ?: return
-        if (Fields.direct(info.inputType) || sensitive || incognito) return showNotice(getString(R.string.voice_off_here))
+        if (Fields.direct(info.inputType, settings.urlEnglish) || sensitive || incognito) return showNotice(getString(R.string.voice_off_here))
         commitComposition()
         refresh(0)
         val script = appScript ?: settings.chineseScript
@@ -3182,7 +3182,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     override fun onStartStylusHandwriting(): Boolean {
         val info = currentInputEditorInfo ?: return false
-        if (Fields.direct(info.inputType)) return false
+        if (Fields.direct(info.inputType, settings.urlEnglish)) return false
         val models = inkModels
         if (models != null && stylusLang() !in models) return false
         if (models == null && inkCheck == null) {

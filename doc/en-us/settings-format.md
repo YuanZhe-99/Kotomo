@@ -64,6 +64,7 @@ the table lists every key.
 | Key | Type | Default | Setting |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | Mode the keyboard starts in: `mixed`, `chinese`, `japanese`, `english`; a hidden mode falls back to the first one shown |
+| `modes.url_english` | boolean | `false` | Web-address fields (`TYPE_TEXT_VARIATION_URI`) type directly in English; off, they convert like other fields and start in the mode last used in the app, keeping the web-address bottom row, since a browser's address bar also searches. E-mail, password and code fields are not affected |
 | `modes.order` | string | `mixed,chinese,japanese,english,pc` | The language choice's order, mode names joined by commas; a missing mode joins at the end, names this version does not know are kept after the known ones |
 | `modes.hidden` | string | empty | Modes the language choice does not offer, joined by commas; with all of them hidden, all are offered |
 | `mixed.level` | string | `balanced` | Mixed-mode level: `conservative` doubles the cost of a cross-language word, `aggressive` halves it and lets a cross-language candidate come first; `balanced` keeps the original language first |

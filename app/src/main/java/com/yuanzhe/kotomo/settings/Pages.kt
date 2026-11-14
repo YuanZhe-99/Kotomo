@@ -130,6 +130,9 @@ internal fun ModesPage(settings: Settings, store: SettingsStore) {
             if (settings.defaultMode !in settings.modes) Note(stringResource(R.string.modes_default_hidden))
         }
     }
+    Section(null) {
+        SwitchRow(R.string.modes_url_english, R.string.modes_url_english_desc, settings.urlEnglish) { on -> store.set { it.copy(urlEnglish = on) } }
+    }
     Section(stringResource(R.string.modes_order)) {
         val order = settings.modeOrder
         order.forEachIndexed { i, mode ->

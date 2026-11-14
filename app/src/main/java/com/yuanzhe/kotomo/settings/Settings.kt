@@ -149,6 +149,11 @@ data class AiSettings(
  */
 data class Settings(
     val defaultMode: Mode = Mode.MIXED,
+    /**
+     * Web-address fields type directly in English (B5); off, they start in the mode last used in
+     * the app, since a browser's address bar also searches.
+     */
+    val urlEnglish: Boolean = false,
     val modeOrder: List<Mode> = Mode.entries,
     val hiddenModes: Set<Mode> = emptySet(),
     val mixed: Mixed = Mixed(),
@@ -316,6 +321,7 @@ internal object SettingsFormat {
     val version = intPreferencesKey("format_version")
     val updated = longPreferencesKey("updated_utc_ms")
     private val defaultMode = stringPreferencesKey("default_mode")
+    private val urlEnglish = booleanPreferencesKey("modes.url_english")
     private val modeOrder = stringPreferencesKey("modes.order")
     private val hiddenModes = stringPreferencesKey("modes.hidden")
     private val mixedLevel = stringPreferencesKey("mixed.level")
@@ -391,6 +397,7 @@ internal object SettingsFormat {
         val d = Settings()
         return Settings(
             defaultMode = p.enum(defaultMode, Mode.entries, d.defaultMode),
+            urlEnglish = p[urlEnglish] ?: d.urlEnglish,
             // Every mode appears once: unknown names are skipped, missing modes join at the end.
             modeOrder = (p.names(modeOrder, Mode.entries) + Mode.entries).distinct(),
             hiddenModes = p.names(hiddenModes, Mode.entries).toSet(),
@@ -481,6 +488,7 @@ internal object SettingsFormat {
     fun write(p: MutablePreferences, old: Settings, new: Settings, nowUtcMs: Long) {
         if (old == new) return
         p.put(defaultMode, old.defaultMode.key, new.defaultMode.key)
+        p.put(urlEnglish, old.urlEnglish, new.urlEnglish)
         if (old.modeOrder != new.modeOrder) p[modeOrder] = p.joinNames(modeOrder, new.modeOrder, Mode.entries)
         if (old.hiddenModes != new.hiddenModes) p[hiddenModes] = p.joinNames(hiddenModes, new.modeOrder.filter { it in new.hiddenModes }, Mode.entries)
         p.put(mixedLevel, old.mixed.level.key, new.mixed.level.key)

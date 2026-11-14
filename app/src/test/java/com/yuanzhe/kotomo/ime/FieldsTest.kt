@@ -74,15 +74,30 @@ class FieldsTest {
 
     @Test
     fun noLearningFieldsStillConvert() { // T12: the flag stops learning, not Chinese or Japanese
-        assertFalse(Fields.direct(text))
+        assertFalse(Fields.direct(text, false))
         assertTrue(Fields.sensitive(text, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
         // Negative: passwords, raw keys, e-mail and URLs keep direct typing.
-        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_PASSWORD))
-        assertTrue(Fields.direct(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD))
-        assertTrue(Fields.direct(InputType.TYPE_NULL))
-        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS))
-        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_URI))
-        assertFalse(Fields.direct(InputType.TYPE_CLASS_PHONE))
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_PASSWORD, false))
+        assertTrue(Fields.direct(InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD, false))
+        assertTrue(Fields.direct(InputType.TYPE_NULL, false))
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS, false))
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_URI, true))
+        assertFalse(Fields.direct(InputType.TYPE_CLASS_PHONE, false))
+    }
+
+    /**
+     * B5 (device feedback 2026-11-13): a web-address field, which is also a browser's search bar,
+     * converts unless `modes.url_english` is on; its bottom row stays the web-address one.
+     * Negative: e-mail and password fields type directly whatever the switch.
+     */
+    @Test
+    fun webAddressesConvertUnlessUrlEnglish() {
+        val uri = text or InputType.TYPE_TEXT_VARIATION_URI
+        assertFalse(Fields.direct(uri, false))
+        assertTrue(Fields.direct(uri, true))
+        assertEquals(Field.URL, Fields.of(uri, null))
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS, false))
+        assertTrue(Fields.direct(text or InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD, false))
     }
 
     @Test

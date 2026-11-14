@@ -53,6 +53,7 @@
 | 键 | 类型 | 默认值 | 设置 |
 |---|---|---|---|
 | `default_mode` | string | `mixed` | 键盘启动时的模式：`mixed`、`chinese`、`japanese`、`english`；隐藏的模式改用第一个显示的模式 |
+| `modes.url_english` | boolean | `false` | 网址输入框（`TYPE_TEXT_VARIATION_URI`）直接以英文输入；关闭时与其他输入框一样转换，并从该应用上次使用的模式开始，仍保留网址专用的底行，因为浏览器的地址栏同时也是搜索栏。邮箱、密码和代码类输入框不受影响 |
 | `modes.order` | string | `mixed,chinese,japanese,english,pc` | 语言选择的顺序，模式名以逗号连接；缺少的模式排到最后，本版本不认识的名称保留在已知名称之后 |
 | `modes.hidden` | string | 空 | 语言选择中不提供的模式，以逗号连接；全部隐藏时全部提供 |
 | `mixed.level` | string | `balanced` | 混合模式的智能程度：`conservative` 使跨语言词的代价加倍，`aggressive` 使其减半并允许跨语言候选排在首位；`balanced` 保持原语言优先 |

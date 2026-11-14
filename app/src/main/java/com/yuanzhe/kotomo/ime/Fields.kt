@@ -69,18 +69,21 @@ internal object Fields {
     /**
      * Decides whether a field gets direct typing: every key types its character, with no
      * composition and no candidates.
-     * Returns: true for password fields, raw key input (`TYPE_NULL`), e-mail and web addresses;
-     * false for a field that only asks for no personalized learning, which keeps Chinese and
-     * Japanese conversion and learns nothing ([sensitive]).
+     * Inputs: [urlEnglish] is the person's switch `modes.url_english` (B5, device feedback
+     * 2026-11-13): a web-address field (`TYPE_TEXT_VARIATION_URI`, which browsers also give their
+     * address bar, where people search) types directly only with it on.
+     * Returns: true for password fields, raw key input (`TYPE_NULL`), e-mail addresses and, with
+     * [urlEnglish], web addresses; false for a field that only asks for no personalized learning,
+     * which keeps Chinese and Japanese conversion and learns nothing ([sensitive]).
      */
-    fun direct(inputType: Int): Boolean {
+    fun direct(inputType: Int, urlEnglish: Boolean): Boolean {
         if (password(inputType)) return true
         val variation = inputType and InputType.TYPE_MASK_VARIATION
         return when (inputType and InputType.TYPE_MASK_CLASS) {
             InputType.TYPE_NULL -> true
             InputType.TYPE_CLASS_TEXT -> variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
                 variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS ||
-                variation == InputType.TYPE_TEXT_VARIATION_URI
+                (urlEnglish && variation == InputType.TYPE_TEXT_VARIATION_URI)
             else -> false
         }
     }

@@ -116,6 +116,8 @@
     <string name="mode_english_desc">帶有建議與修正的英文輸入</string>
     <string name="modes_default">啟動時的模式</string>
     <string name="modes_default_note">鍵盤第一次開啟時使用的模式。用語言鍵切換。</string>
+    <string name="modes_url_english">網址輸入框從英文開始</string>
+    <string name="modes_url_english_desc">瀏覽器的網址列同時也是搜尋列，所以預設沿用你在該應用程式中上次使用的模式。開啟後，網址輸入框直接以英文輸入。</string>
     <string name="modes_default_hidden">這個模式已隱藏，鍵盤會從下面第一個顯示的模式開始。</string>
     <string name="modes_order">語言選擇</string>
     <string name="modes_order_note">長按 Emoji 鍵或空白鍵切換。這裡顯示的模式依此順序列出。切換時正在輸入的字母會保留。</string>
