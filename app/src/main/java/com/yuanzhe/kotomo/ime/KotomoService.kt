@@ -2850,8 +2850,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Chooses candidate [index] of the Mixed segment panel: for the whole sentence it commits;
      * for a piece it locks the piece to that reading, or to its letters as typed,
      * and the engine converts the rest around it, never rewriting a locked piece (PLAN §5.6).
-     * Side effects: either way the keys come back in the panel's place (A1, device feedback
-     * 2026-11-13); the arrow opens the panel again for the next piece.
+     * Side effects: the whole sentence brings the keys back (A1); a piece's reading keeps the
+     * panel open on the next piece, and the last piece brings the keys back (C6).
      */
     private fun pickMixedPiece(index: Int) {
         val focus = mixedFocus
@@ -2865,13 +2865,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val piece = mixedPieces().getOrNull(focus) ?: return
         val choice = mixedChoices(piece, composing.toString()).getOrNull(index)?.second ?: return
         mixedFocus = null
-        showKeyboard()
-        askMixed({ _, _, _ -> mixed.lock(span, choice) })
+        askMixed({ _, _, _ -> mixed.lock(span, choice) }) { snapshot, raw ->
+            // The next piece starts where the chosen one ended, in the new answer's pieces.
+            val next = snapshot.candidates.firstOrNull()?.pieces.orEmpty().indexOfFirst { it.begin >= piece.end }
+            if (next >= 0) mixedFocus = next else showKeyboard()
+            raw
+        }
     }
 
     /**
      * Commits the best Mixed candidate's pieces up to the chosen one; the rest stays composed
-     * with its locked pieces, and typing goes on after it (PLAN §5.6).
+     * with its locked pieces, and typing goes on after it (PLAN §5.6). The panel stays open on
+     * the rest (checklist 8.8).
      */
     private fun commitMixedPrefix() {
         val piece = mixedPieces().getOrNull(mixedFocus ?: return) ?: return
@@ -2899,14 +2904,15 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /**
      * Chooses candidate [index] in the segment panel: for the whole sentence it commits like the
      * candidate bar; for a segment it pins that segment and converts the rest again around it.
-     * Side effects: either way the keys come back in the panel's place (A1).
+     * Side effects: the whole sentence brings the keys back (A1); a segment keeps the panel open
+     * on the next segment, and the last segment brings the keys back (C6).
      */
     private fun pickSegment(index: Int) {
         if (mode == Mode.MIXED) return pickMixedPiece(index)
         val focus = segmentFocus ?: return run { showKeyboard(); pick(index) }
         val segment = japaneseSegments.getOrNull(focus) ?: return
         val surface = Candidates.segment(segment).getOrNull(index)?.text ?: return
-        showKeyboard()
+        if (focus == japaneseSegments.lastIndex) showKeyboard()
         reconvert(Candidates.pick(japaneseSegments, focus, surface) ?: return, focus + 1)
     }
 

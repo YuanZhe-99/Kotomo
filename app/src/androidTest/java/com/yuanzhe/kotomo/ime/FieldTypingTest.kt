@@ -433,8 +433,9 @@ class FieldTypingTest {
     /**
      * PLAN §8.2, §5.6 (T03): the segment panel. `watashihanihonjin` converts as 私は + 日本人; the
      * expand arrow opens the segments; Shorter splits 私は into 私 + は, Longer joins them again,
-     * Shorter once more and choosing 渡し for 私 returns to the keys (A1) and keeps は and 日本人 (a
-     * chosen segment never rewrites the others); Enter commits the conversion as shown.
+     * Shorter once more and choosing 渡し for 私 keeps the panel open on the next segment, は (C6),
+     * and keeps は and 日本人 (a chosen segment never rewrites the others); choosing the last
+     * segment's candidate brings the keys back, and Enter commits the conversion as shown.
      */
     @Test
     fun japaneseSegmentPanelShortensLengthensAndCommits() {
@@ -461,11 +462,15 @@ class FieldTypingTest {
                 tap(SHORTER)
                 checkNotNull(device.wait(Until.findObject(By.text("私")), WAIT_MS))
                 tap("渡し")
-                assertTrue("the panel stayed open after picking 渡し", device.wait(Until.gone(By.desc(BACK)), WAIT_MS))
-                device.click(arrow, barY)
+                checkNotNull(device.wait(Until.findObject(By.textStartsWith(SEGMENT_2)), WAIT_MS)) { "the panel did not move on to は" }
+                assertTrue("the panel closed after picking 渡し", device.hasObject(By.desc(BACK)))
                 checkNotNull(device.wait(Until.findObject(By.text("渡し")), WAIT_MS)) { "渡し was not kept" }
                 assertTrue("は and 日本人 stay", device.hasObject(By.text("は")) && device.hasObject(By.text("日本人")))
-                device.findObject(By.desc(BACK)).click()
+                tap("日本人")
+                checkNotNull(device.wait(Until.findObject(By.textStartsWith("Segment 3 of")), WAIT_MS)) { "the panel did not move to 日本人" }
+                // The last segment's own first candidate: the keys come back after it.
+                device.findObjects(By.text("日本人")).maxBy { it.visibleBounds.top }.click()
+                assertTrue("the panel stayed open after the last segment", device.wait(Until.gone(By.desc(BACK)), WAIT_MS))
                 checkNotNull(device.wait(Until.findObject(By.descStartsWith(ENTER)), WAIT_MS)).click()
                 assertEquals("渡しは日本人", read(scenario))
             }
@@ -836,6 +841,8 @@ class FieldTypingTest {
         const val SHORTER = "Shorter"
         const val LONGER = "Longer"
         const val BACK = "Back to the keyboard"
+        /** The segment panel's position line for the second segment (R.string.segment_position, English). */
+        const val SEGMENT_2 = "Segment 2 of"
         /** The emoji panel's search tab (R.string.emoji_search, English). */
         const val SEARCH = "Search emoji"
         /** The emoji panel's Favorites and Kaomoji tabs and the card's switch (R.string.emoji_*, English). */

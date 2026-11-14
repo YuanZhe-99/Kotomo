@@ -281,7 +281,7 @@ class MixedTypingTest {
 
     /**
      * T09 on the emulator (PLAN §5.6, §9.5): in the segment panel one piece of the sentence is
-     * changed (池袋 kept as the letters typed), the keys come back (A1) and the rest, に買いに行こう,
+     * changed (池袋 → 地代), the panel moves on to the next piece (C6) and the rest, に買いに行こう,
      * is not rewritten; the sentence commits as shown; with `keys.backspace_restores_commit` on,
      * backspace right after takes the commit back with the choice still in place, and Enter
      * commits it again.
@@ -294,8 +294,8 @@ class MixedTypingTest {
             openSegments()
             checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋" }.click()
             checkNotNull(device.wait(Until.findObject(By.text("地代")), WAIT_MS)) { "the piece's other reading is not offered" }.click()
-            assertTrue("the panel stayed open after the pick", device.wait(Until.gone(By.text(WHOLE)), WAIT_MS))
-            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.textStartsWith(SEGMENT_2)), WAIT_MS)) { "the panel did not move on to the next piece" }
+            device.findObject(By.text(WHOLE)).click()
             val changed = "地代" + SENTENCE.removePrefix("池袋")
             checkNotNull(device.wait(Until.findObject(By.text(changed)), WAIT_MS)) { "the rest of the sentence did not stay" }.click()
             assertEquals(changed, read(scenario))
@@ -338,6 +338,25 @@ class MixedTypingTest {
     }
 
     /**
+     * C6 (device feedback 2026-11-14): choosing the last piece's reading in the segment panel
+     * brings the keys back; the pieces before it stay as they are.
+     */
+    @Test
+    fun theLastPieceReturnsToTheKeys() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys(SENTENCE_KEYS)
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("行こう")), WAIT_MS)) { "no piece 行こう" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("ikou")), WAIT_MS)) { "the piece's letters are not offered" }.click()
+            assertTrue("the panel stayed open after the last piece", device.wait(Until.gone(By.text(WHOLE)), WAIT_MS))
+            checkNotNull(device.wait(Until.findObject(By.desc(BACKSPACE)), WAIT_MS)) { "the keys did not come back" }
+            enter()
+            val text = read(scenario)
+            assertTrue("the last piece is not kept as typed: $text", text.endsWith("ikou") && text.startsWith("池袋"))
+        }
+    }
+
+    /**
      * T09 (PLAN §5.6, §9.5): "Restore input" drops the chosen piece and the sentence converts as
      * before; "Commit up to here" sends the pieces up to the chosen one to the field and the
      * rest stays composed.
@@ -349,8 +368,8 @@ class MixedTypingTest {
             openSegments()
             checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋" }.click()
             checkNotNull(device.wait(Until.findObject(By.text("chidai")), WAIT_MS)) { "the piece's letters are not offered" }.click()
-            assertTrue("the panel stayed open after the pick", device.wait(Until.gone(By.text(WHOLE)), WAIT_MS))
-            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.textStartsWith(SEGMENT_2)), WAIT_MS)) { "the panel did not move on to the next piece" }
+            device.findObject(By.text(WHOLE)).click()
             // The letters stay as typed in every sentence; the rest converts again around them.
             checkNotNull(device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("chidai.+"))), WAIT_MS)) { "the piece did not change" }
             Thread.sleep(READ_MS) // the panel has just been redrawn; tap it where it now is
@@ -549,6 +568,8 @@ class MixedTypingTest {
         const val ENTER = "Enter"
         const val BACKSPACE = "Delete"
         const val WHOLE = "Whole sentence"
+        /** The segment panel's position line for the second piece (R.string.segment_position, English). */
+        const val SEGMENT_2 = "Segment 2 of"
         /** The assets the keyboard maps in place (KotomoService.ENGLISH_DICT, LEXICON). */
         const val ENGLISH_DICT = "main_en_us.dict"
         const val LEXICON = "cross.klx"
