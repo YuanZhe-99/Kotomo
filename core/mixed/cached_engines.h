@@ -63,7 +63,7 @@ class CachedEngines : public Engines {
                                                        bool incognito) override {
     std::string key(1, incognito ? '1' : '0');
     for (const JapaneseSpan& span : spans) {
-      key += '\t' + span.reading + '\n' + span.surface;
+      key += (span.fixed ? "\tB" : "\tF") + span.reading + '\n' + span.surface;
     }
     auto it = japanese_.find(key);
     if (it == japanese_.end()) it = japanese_.emplace(std::move(key), engines_.Japanese(spans, incognito)).first;

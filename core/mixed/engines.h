@@ -28,6 +28,8 @@ struct Spelling {
 struct JapaneseSpan {
   std::string reading;  // hiragana
   std::string surface;  // empty: Mozc converts the span; otherwise pinned to this surface
+  bool fixed = false;   // with an empty surface: the span's ends are boundaries the person
+                        // typed, so Mozc keeps it one segment and converts it in its context
 };
 
 /// Holds one candidate of a Japanese segment.

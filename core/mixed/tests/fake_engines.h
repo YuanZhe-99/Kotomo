@@ -72,6 +72,7 @@ class FakeEngines : public Engines {
   std::optional<std::vector<JapaneseSegment>> Japanese(
       const std::vector<JapaneseSpan>& spans, bool /*incognito*/) override {
     ++japanese_calls;
+    asked.push_back(spans);
     std::vector<JapaneseSegment> out;
     for (const JapaneseSpan& span : spans) {
       JapaneseSegment segment{.reading = span.reading, .pinned = !span.surface.empty()};
@@ -109,6 +110,7 @@ class FakeEngines : public Engines {
 
   int chinese_calls = 0;
   int japanese_calls = 0;
+  std::vector<std::vector<JapaneseSpan>> asked;  // every Japanese question, in order
 
  private:
   std::vector<std::pair<std::string, bool>> syllables_ = {

@@ -159,6 +159,28 @@ int main() {
     const Snapshot e = coordinator.Convert("bookt", 1);
     Check(Place(e, "bookt") == -1 && Place(e, "book t") == -1, "A7-coordinator-pending-not-after-english", Shown(e));
   }
+  // A delimiter the person typed is a boundary Mozc keeps (feedback A3): the spans on both
+  // sides are fixed. Negative: the same letters without it are one free span.
+  {
+    const auto fixed_spans = [&engines](std::string_view typed) {
+      engines.asked.clear();
+      Coordinator(engines, *test::FakeLexicon()).Convert(typed, 1);
+      for (const auto& spans : engines.asked) {
+        if (spans.size() == 2 && spans[0].reading == "ねこ" && spans[1].reading == "よむ") {
+          return spans[0].fixed && spans[1].fixed;
+        }
+      }
+      return false;
+    };
+    Check(fixed_spans("neko yomu"), "A3-finish-japanese-typed-boundary-fixed");
+    engines.asked.clear();
+    const Snapshot s = coordinator.Convert("nekoyomu", 1);
+    bool one_free = false;
+    for (const auto& spans : engines.asked) {
+      one_free |= spans.size() == 1 && spans[0].reading == "ねこよむ" && !spans[0].fixed;
+    }
+    Check(one_free && Place(s, "猫読む") >= 0, "A3-finish-japanese-no-boundary-free", Shown(s));
+  }
   // Every candidate of every snapshot above encodes and decodes unchanged.
   {
     const Snapshot s = coordinator.Convert("tushuguan e iku", 5);

@@ -111,7 +111,7 @@ std::optional<std::vector<JapaneseSegment>> MozcClient::Convert(
     if (!Plain(span.reading) || (!span.surface.empty() && !Plain(span.surface))) {
       return std::nullopt;
     }
-    request += span.surface.empty() ? "\tF:" + span.reading
+    request += span.surface.empty() ? (span.fixed ? "\tB:" : "\tF:") + span.reading
                                     : "\tP:" + span.reading + ":" + span.surface;
   }
   std::string line;

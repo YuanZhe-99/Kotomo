@@ -113,7 +113,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 7.3 `ai` offers 爱 (first three), AI, and 愛 or あい (first five)
 - [ ] 7.4 Ambiguous words keep both readings: `kai` → 开 first, a Japanese reading (回 / 海 / 会 / 貝) still listed; `ni` → 你 first, に or 二 listed; `change` near the top as English, 嫦娥 listed; `hang` → 行 / 航
 - [ ] 7.5 `mianjie` → 面接 (first three); `chidai` → 池袋 (first three) with the reading いけぶくろ; `dongjing` → 东京 first, 東京 in the first three; `computer` → コンピューター (first three)
-- [ ] 7.6 `chidai ni kai ni ikou` → 池袋に買いに行こう as the first whole-sentence candidate; `chidai nikainiikou` and `chidainikainiikou` offer it in the first three
+- [ ] 7.6 `chidai ni kai ni ikou` → 池袋に買いに行こう as the first whole-sentence candidate (at `chidai ni kai` the Japanese candidates read に and かい apart, such as 池袋二回 or 池袋に回, never joined as 二階; the pieces offer the other readings of `kai`); `chidai nikainiikou` and `chidainikainiikou` offer it in the first three
 - [ ] 7.7 `zailiucard` → 在留カード (first three); `chocolateokainiikou` → チョコレートを買いに行こう (first three)
 - [ ] 7.8 English inside a sentence stays English: `wo xihuan ai` offers 我喜欢AI; `aishishenme` offers AI是什么
 - [ ] 7.9 Negative: `nihao` does not put Japanese first; `coffee` does not put a pinyin split first

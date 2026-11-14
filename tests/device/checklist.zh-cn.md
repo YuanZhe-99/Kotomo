@@ -101,7 +101,7 @@
 - [x] PASS ｜ 7.3 `ai` 给出爱（前三）、AI，以及愛或あい（前五）
 - [x] PASS ｜ 7.4 有歧义的词两种读法都保留：`kai` → 开排第一，日文读法（回 / 海 / 会 / 貝）仍在列表里；`ni` → 你排第一，列出に或二；`change` 作为英文排在靠前位置，列出嫦娥；`hang` → 行 / 航
 - [x] PASS ｜ 7.5 `mianjie` → 面接（前三）；`chidai` → 池袋（前三），读音いけぶくろ；`dongjing` → 东京排第一，東京在前三；`computer` → コンピューター（前三）
-- [ ] FAIL：混合模式kai没有日语候选 ｜ 7.6 `chidai ni kai ni ikou` → 池袋に買いに行こう是第一个整句候选；`chidai nikainiikou` 和 `chidainikainiikou` 把它放在前三
+- [ ] 待复测 ｜ 7.6 `chidai ni kai ni ikou` → 池袋に買いに行こう是第一个整句候选（打到 `chidai ni kai` 时日文候选是 池袋二回 / 池袋に回 一类，に 和 かい 不再并成 二階；`kai` 自己的日文读法可在片段里换）；`chidai nikainiikou` 和 `chidainikainiikou` 把它放在前三
 - [x] PASS ｜ 7.7 `zailiucard` → 在留カード（前三）；`chocolateokainiikou` → チョコレートを買いに行こう（前三）
 - [ ] 7.8 句子里的英文仍是英文：`wo xihuan ai` 给出我喜欢AI；`aishishenme` 给出AI是什么
 - [x] PASS ｜ 7.9 反例：`nihao` 不把日文排第一；`coffee` 不把拼音拆分排第一

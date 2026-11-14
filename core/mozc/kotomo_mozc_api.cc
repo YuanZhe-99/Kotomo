@@ -31,7 +31,8 @@ int Convert(void* engine, const KotomoMozcSpan* spans, size_t count,
   for (size_t i = 0; i < count; ++i) {
     request.push_back(
         {.reading = std::string(spans[i].reading, spans[i].reading_size),
-         .surface = std::string(spans[i].surface, spans[i].surface_size)});
+         .surface = std::string(spans[i].surface, spans[i].surface_size),
+         .fixed = spans[i].fixed != 0});
   }
   const auto conversion = static_cast<const MozcEngine*>(engine)->PinnedConvert(
       request, incognito != 0);

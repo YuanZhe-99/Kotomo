@@ -20,7 +20,7 @@ extern "C" {
 
 /** Names the layout of KotomoMozcApi; a caller refuses a table with another
  * version. */
-#define KOTOMO_MOZC_API_VERSION 1u
+#define KOTOMO_MOZC_API_VERSION 2u
 
 /** Describes one span of a reading: UTF-8 hiragana, and the surface it is
  * pinned to (`surface_size` 0: Mozc converts the span). Not terminated. */
@@ -29,6 +29,7 @@ typedef struct KotomoMozcSpan {
   size_t reading_size;
   const char* surface;
   size_t surface_size;
+  int fixed; /* with no surface: non-zero keeps the span one segment */
 } KotomoMozcSpan;
 
 /** Receives a conversion, segment by segment in reading order: `segment` once

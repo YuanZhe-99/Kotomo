@@ -83,6 +83,12 @@ as typed after the converted sentence, as a piece of origin 5 whose reading is t
 3000 units; they never follow an English word and never are the whole composition. Unfinished
 syllables are read only at the end of the composition.
 
+A space or an apostrophe is a boundary in every language. A reading that runs across one costs
+2500 units more, and the Japanese conversion keeps it: the kana on both sides go to Mozc as
+spans with fixed ends, so `ni kai` is に and かい and never 二階, while each span is still
+converted in the context of the whole sentence. Typed boundaries do not make a Japanese
+sentence dearer: it costs what the same letters cost without them when that is less.
+
 ## Output: the snapshot
 
 One snapshot describes what the app shows after one request: text to commit first, the
@@ -151,7 +157,7 @@ nothing and the other languages keep working.
 | which pinyin syllables does the start of these letters spell | librime's spelling table (prism) of the session's schema, mapped when the session opens, so fuzzy rules and corrections apply as in Chinese mode; unfinished syllables (the schema's abbreviations, and the letters as a whole when they only begin a syllable) are listed with a mark | `core/rime/jni/kotomo_rime_api.h`: `spellings` |
 | convert this run of syllables | librime's session with the syllables joined by apostrophes | `kotomo_rime_api.h`: `convert` |
 | map this romaji to hiragana | Mozc's romaji table | `core/mozc/kotomo_mozc_api.h`: `hiragana` |
-| convert this reading with these spans pinned | Mozc's converter (`MozcEngine::PinnedConvert`) | `kotomo_mozc_api.h`: `convert` |
+| convert this reading with these spans pinned, and these spans kept as one segment each | Mozc's converter (`MozcEngine::PinnedConvert`) | `kotomo_mozc_api.h`: `convert` |
 | is this an English word, and how common | the English dictionary, exact lookup | `core/english/jni/english_api.h`: `lookup` |
 
 No answer learns, and none keeps state between calls except librime's: the coordinator converts

@@ -22,7 +22,8 @@ Origin PinnedOrigin(EdgeKind kind) {
 /// Converts the edges [first, last) of a path, none of them English, in one Mozc conversion and
 /// appends one piece per segment.
 /// Returns: Mozc's cost of the free segments, or a negative number when Mozc converts nothing.
-/// Notes: a segment boundary Mozc puts inside a kana edge moves to the end of that edge, and a
+/// Notes: a run of kana is one free span, cut where the person typed a delimiter: the spans on
+///   both sides of it are fixed, so `ni kai` is に and かい and never 二階. A segment boundary Mozc puts inside a kana edge moves to the end of that edge, and a
 ///   segment left without letters joins the piece before it, so pieces always tile the input.
 int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_t last,
                        Engines& engines, bool incognito, std::vector<Piece>* pieces,
@@ -32,16 +33,39 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
   for (size_t i = first; i < last; ++i) {
     const Edge& edge = *path.edges[i];
     if (edge.kind == EdgeKind::kKana) {
-      if (!free_run) spans.push_back({});
+      // A delimiter the person typed ends the span: Mozc keeps the boundary (feedback A3).
+      const bool hinted = edge.begin > 0 && input.hint[edge.begin];
+      if (free_run && hinted) spans.back().fixed = true;
+      if (!free_run || hinted) spans.push_back({.reading = {}, .surface = {}, .fixed = hinted});
       spans.back().reading += edge.reading;
       free_run = true;
     } else {
+      if (free_run && edge.begin > 0 && input.hint[edge.begin]) spans.back().fixed = true;
       spans.push_back({.reading = edge.reading, .surface = edge.text});
       free_run = false;
     }
   }
   const auto segments = engines.Japanese(spans, incognito);
   if (!segments || segments->empty()) return -1;
+  // Mozc's costs are per segment, so more segments cost more for the same sentence. Typed
+  // boundaries must not make a reading dearer: it costs what it does without them, if less.
+  int32_t unhinted = -1;
+  if (std::any_of(spans.begin(), spans.end(), [](const JapaneseSpan& s) { return s.fixed; })) {
+    std::vector<JapaneseSpan> merged;
+    for (const JapaneseSpan& span : spans) {
+      if (span.surface.empty() && !merged.empty() && merged.back().surface.empty()) {
+        merged.back().reading += span.reading;
+      } else {
+        merged.push_back({.reading = span.reading, .surface = span.surface});
+      }
+    }
+    if (const auto free_segments = engines.Japanese(merged, incognito)) {
+      unhinted = 0;
+      for (const JapaneseSegment& segment : *free_segments) {
+        if (!segment.pinned && !segment.words.empty()) unhinted += segment.words.front().cost;
+      }
+    }
+  }
 
   int32_t cost = 0;
   size_t edge_index = first;      // the first edge not yet given to a piece
@@ -79,6 +103,7 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
   if (only != nullptr && segments->size() == 1 && !segments->front().pinned) {
     *only = segments->front().words;
   }
+  if (unhinted >= 0) cost = std::min(cost, unhinted);
   return cost;
 }
 

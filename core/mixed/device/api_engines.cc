@@ -71,7 +71,7 @@ std::optional<std::vector<JapaneseSegment>> ApiEngines::Japanese(
   request.reserve(spans.size());
   for (const JapaneseSpan& span : spans) {
     request.push_back({span.reading.data(), span.reading.size(), span.surface.data(),
-                       span.surface.size()});
+                       span.surface.size(), span.fixed ? 1 : 0});
   }
   std::vector<JapaneseSegment> segments;
   const KotomoMozcSink sink = {

@@ -186,3 +186,7 @@ A7-N01	mixed		shur	!スモールヒル都市再生機構|!スモール・ヒル�
 A7-002	mixed		zhongg	中国	1	feedback A7: an unfinished input keeps its candidates (it had none)
 A7-003	mixed		watashiwagakuseides	私は学生でs|私は学生des	3	feedback A7: Japanese keeps the letters still being typed after the sentence
 A7-N02	mixed		sh	!スモールヒル|!スモール・ヒル	3	feedback A7: an abbreviation's Japanese expansion is not first for two letters
+A3-001	mixed		chidai ni kai	池袋二回|池袋に回|池袋に会|池袋に買い|池袋に階	3	feedback A3: a typed space is a boundary in the Japanese reading too, so kai is read by itself
+A3-N01	mixed		chidai ni kai	!池袋二階	5	feedback A3: ni and kai are not joined across the space the person typed
+A3-002	mixed		chidai nikai	池袋二階	3	feedback A3: without a space between them the same letters still join
+A3-003	mixed		watashi ha gakusei desu	私は学生です	1	feedback A3: typed boundaries do not make the Japanese sentence dearer than without them

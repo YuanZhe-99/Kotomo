@@ -187,6 +187,25 @@ class MixedTypingTest {
         assertEquals("東京", type("dongjing ", expected = "東京", enter = false))
     }
 
+    /**
+     * Feedback A2 positive (PLAN §2.3, T03-021): Japanese mode reads an English word as its
+     * loanword; `coffee` has コーヒー among its first three candidates although Mozc reads the
+     * letters as kana (こっふぇえ). Space walks the candidates and Enter commits the one shown.
+     */
+    @Test
+    fun japaneseModeReadsEnglishAsLoanword() {
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.JAPANESE) } }
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            val firstThree = (1..3).map { presses ->
+                clear(scenario)
+                keys("coffee" + " ".repeat(presses))
+                enter()
+                read(scenario)
+            }
+            assertTrue("コーヒー is not among $firstThree", "コーヒー" in firstThree)
+        }
+    }
+
     /** PLAN §9.10 negative: with `japanese.cross.pinyin_to_kanji` off Japanese mode does not. */
     @Test
     fun japaneseModeCrossSwitchOffStopsTheConversion() {
@@ -243,10 +262,18 @@ class MixedTypingTest {
             // The rest is still composed, now a sentence of its own: the field holds its letters
             // and choosing its conversion commits it after the piece.
             assertEquals("池袋" + SENTENCE_KEYS.removePrefix("chidai "), read(scenario))
-            // The panel has settled by now (the read above waits): what is found is what is tapped.
-            val offered = checkNotNull(device.findObjects(By.clazz("android.widget.TextView")).firstOrNull { it.text.orEmpty().endsWith("に行こう") }) { "the rest is not offered" }
-            val text = offered.text
-            offered.click()
+            // The panel may still be redrawn for the rest's conversion: a view that went away
+            // while the list was read means "look again", a few times at most.
+            var text = ""
+            for (attempt in 1..ATTEMPTS) {
+                val tapped = runCatching {
+                    val offered = device.findObjects(By.clazz("android.widget.TextView")).firstOrNull { it.text.orEmpty().endsWith("に行こう") }
+                    offered?.also { text = it.text; it.click() }
+                }.getOrNull()
+                if (tapped != null) break
+                Thread.sleep(READ_MS)
+            }
+            assertTrue("the rest is not offered", text.isNotEmpty())
             assertEquals("池袋$text", read(scenario))
         }
     }
