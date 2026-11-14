@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -100,9 +104,10 @@ internal fun Dp.asText(): TextUnit = with(LocalDensity.current) { toSp() }
  * app being typed in is one where nothing is kept (null: no app, no toggle); onPaste commits
  * text; onPin pins or unpins; onDelete deletes; onExclude adds or removes that app; onBack
  * returns to the keys; onManage opens the clipboard settings.
- * Notes: tapping a card pastes it (a code card pastes the code); long-pressing it shows Pin or
- * Unpin, Paste the whole text (code cards from a longer message) and Delete in its place. The
- * times are measured from when the panel opened.
+ * Notes: tapping a card pastes it (a code card pastes the code); long-pressing it opens a menu
+ * over the panel with Pin or Unpin, Paste the whole text (code cards from a longer message),
+ * Delete and Cancel, each line at least the panel touch size (A6, device feedback 2026-11-13); a
+ * tap outside the menu closes it. The times are measured from when the panel opened.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -122,54 +127,56 @@ fun ClipboardPanel(
     var actions by remember { mutableStateOf<Long?>(null) }
     val now = remember { System.currentTimeMillis() }
     val items = history.value.filter(tab.shows)
-    Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
-        TopBar(tab, onBack) {
-            tab = it
-            actions = null
-        }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            if (items.isEmpty()) {
-                Text(
-                    stringResource(
-                        when (tab) {
-                            Tab.ALL -> R.string.clip_empty_all
-                            Tab.PINNED -> R.string.clip_empty_pinned
-                            Tab.CODES -> R.string.clip_empty_codes
-                        },
-                    ),
-                    Modifier.align(Alignment.Center).padding(dimensionResource(R.dimen.clip_footer_pad)),
-                    fontSize = dimensionResource(R.dimen.clip_text).asText(),
-                    color = kbColor(R.color.kb_ink_secondary),
-                )
-            } else {
-                val gap = dimensionResource(R.dimen.clip_card_gap)
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(integerResource(R.integer.clip_columns)),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        horizontal = dimensionResource(R.dimen.clip_grid_pad_h),
-                        vertical = dimensionResource(R.dimen.clip_grid_pad_v),
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(gap),
-                    verticalArrangement = Arrangement.spacedBy(gap),
-                ) {
-                    items(items, key = { it.id }) { clip ->
-                        if (actions == clip.id) {
-                            Actions(
-                                clip,
-                                onPin = { actions = null; onPin(clip, !clip.pinned) },
-                                onPasteAll = { actions = null; onPaste(clip.text) },
-                                onDelete = { actions = null; onDelete(clip) },
-                                onCancel = { actions = null },
-                            )
-                        } else {
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
+            TopBar(tab, onBack) {
+                tab = it
+                actions = null
+            }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                if (items.isEmpty()) {
+                    Text(
+                        stringResource(
+                            when (tab) {
+                                Tab.ALL -> R.string.clip_empty_all
+                                Tab.PINNED -> R.string.clip_empty_pinned
+                                Tab.CODES -> R.string.clip_empty_codes
+                            },
+                        ),
+                        Modifier.align(Alignment.Center).padding(dimensionResource(R.dimen.clip_footer_pad)),
+                        fontSize = dimensionResource(R.dimen.clip_text).asText(),
+                        color = kbColor(R.color.kb_ink_secondary),
+                    )
+                } else {
+                    val gap = dimensionResource(R.dimen.clip_card_gap)
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(integerResource(R.integer.clip_columns)),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            horizontal = dimensionResource(R.dimen.clip_grid_pad_h),
+                            vertical = dimensionResource(R.dimen.clip_grid_pad_v),
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(gap),
+                        verticalArrangement = Arrangement.spacedBy(gap),
+                    ) {
+                        items(items, key = { it.id }) { clip ->
                             Card(clip, now, onClick = { onPaste(clip.code?.value ?: clip.text) }, onLongClick = { actions = clip.id })
                         }
                     }
                 }
             }
+            Footer(retentionDays, recording, appExcluded, onExclude, onManage)
         }
-        Footer(retentionDays, recording, appExcluded, onExclude, onManage)
+        // Over the whole panel, so a short keyboard does not squeeze the menu's lines.
+        items.firstOrNull { it.id == actions }?.let { clip ->
+            Actions(
+                clip,
+                onPin = { actions = null; onPin(clip, !clip.pinned) },
+                onPasteAll = { actions = null; onPaste(clip.text) },
+                onDelete = { actions = null; onDelete(clip) },
+                onCancel = { actions = null },
+            )
+        }
     }
 }
 
@@ -331,30 +338,69 @@ private fun Card(clip: Clip, now: Long, onClick: () -> Unit, onLongClick: () -> 
     }
 }
 
-/** Draws a card's long-press actions in its place: Pin or Unpin, Paste the whole text, Delete. */
+/**
+ * Draws a card's long-press menu over the panel: the clip's first line, then Pin or Unpin, Paste
+ * the whole text, Delete and Cancel.
+ * Notes: drawn inside the panel (a popup window would be clipped by the input method window),
+ * at the bottom, no wider than the menu token on wide screens; the dimmed area around it cancels.
+ */
 @Composable
 private fun Actions(clip: Clip, onPin: () -> Unit, onPasteAll: () -> Unit, onDelete: () -> Unit, onCancel: () -> Unit) {
-    CardFrame(Modifier.clickable(onClick = onCancel)) {
-        Action(if (clip.pinned) R.string.clip_unpin else R.string.clip_pin, onPin)
-        if (clip.code != null && clip.code.value != clip.text.trim()) Action(R.string.clip_paste_all, onPasteAll)
-        Action(R.string.clip_delete, onDelete)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(kbColor(R.color.kb_key_shadow))
+            .clickable(onClick = onCancel),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        androidx.compose.material3.Surface(
+            Modifier
+                .padding(dimensionResource(R.dimen.panel_menu_margin))
+                .widthIn(max = dimensionResource(R.dimen.panel_menu_width))
+                .fillMaxWidth()
+                // Taps on the menu's own padding do not fall through to the cancelling area.
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(dimensionResource(R.dimen.panel_menu_radius)),
+            color = kbColor(R.color.kb_key),
+            shadowElevation = dimensionResource(R.dimen.panel_menu_elevation),
+        ) {
+            // Scrolls rather than shrinking a line below the touch size when the keyboard is short.
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = dimensionResource(R.dimen.panel_menu_pad_v))) {
+                Text(
+                    clip.text.lineSequence().first().trim(),
+                    Modifier.padding(horizontal = dimensionResource(R.dimen.panel_menu_pad_h), vertical = dimensionResource(R.dimen.panel_menu_pad_v)),
+                    fontSize = dimensionResource(R.dimen.clip_meta_text).asText(),
+                    color = kbColor(R.color.kb_ink_secondary),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Action(if (clip.pinned) R.string.clip_unpin else R.string.clip_pin, onPin)
+                if (clip.code != null && clip.code.value != clip.text.trim()) Action(R.string.clip_paste_all, onPasteAll)
+                Action(R.string.clip_delete, onDelete)
+                Action(R.string.clip_cancel, onCancel, accent = false)
+            }
+        }
     }
 }
 
-/** Draws one action of a card as a tappable line in the accent color. */
+/** Draws one menu line, at least the panel touch size tall, in the accent color (or the ink color when not [accent]). */
 @Composable
-private fun Action(@StringRes label: Int, onClick: () -> Unit) {
-    Text(
-        stringResource(label),
+private fun Action(@StringRes label: Int, onClick: () -> Unit, accent: Boolean = true) {
+    Box(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_tag_radius)))
+            .heightIn(min = dimensionResource(R.dimen.panel_touch))
             .clickable(onClick = onClick)
-            .padding(vertical = dimensionResource(R.dimen.clip_action_pad_v)),
-        fontSize = dimensionResource(R.dimen.clip_action_text).asText(),
-        color = kbColor(R.color.kb_accent),
-        maxLines = 1,
-    )
+            .padding(horizontal = dimensionResource(R.dimen.panel_menu_pad_h)),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            stringResource(label),
+            fontSize = dimensionResource(R.dimen.panel_menu_text).asText(),
+            color = kbColor(if (accent) R.color.kb_accent else R.color.kb_ink),
+            maxLines = 1,
+        )
+    }
 }
 
 /** Draws the rounded card frame of the grid, at the design's card height. */

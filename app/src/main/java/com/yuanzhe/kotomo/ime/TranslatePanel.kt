@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -125,7 +126,7 @@ fun TranslatePanel(text: String, onReplace: (String) -> Unit, onCopy: (String) -
                 is TranslateState.Failed -> Note(stringResource(if (s.failure == TranslateFailure.DOWNLOAD) R.string.translate_fail_download else R.string.translate_fail))
             }
         }
-        Row(Modifier.fillMaxWidth().height(44.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().height(dimensionResource(R.dimen.panel_touch)), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Button(stringResource(R.string.translate_back), accent = false, Modifier.width(64.dp), onClick = onBack)
             when (val s = state) {
                 TranslateState.NeedsDownload -> Button(stringResource(R.string.ai_download), accent = true, Modifier.weight(1f)) { run(download = true) }
@@ -140,21 +141,30 @@ fun TranslatePanel(text: String, onReplace: (String) -> Unit, onCopy: (String) -
     }
 }
 
-/** One row of language pills: [title], then Chinese, English and Japanese, [current] highlighted. */
+/**
+ * One row of language pills: [title], then Chinese, English and Japanese, [current] highlighted.
+ * Notes: each pill is drawn at the pill height but takes taps over the panel touch size (A6).
+ */
 @Composable
 private fun Langs(title: Int, current: TranslateLang, onPick: (TranslateLang) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(title), Modifier.width(56.dp), fontSize = 13.sp, color = kbColor(R.color.kb_ink_secondary))
         listOf(TranslateLang.CHINESE to R.string.translate_lang_chinese, TranslateLang.ENGLISH to R.string.ai_lang_english, TranslateLang.JAPANESE to R.string.ai_lang_japanese).forEach { (lang, label) ->
             val on = lang == current
+            val pill = dimensionResource(R.dimen.panel_pill_height)
             Box(
-                Modifier.weight(1f).height(34.dp).clip(RoundedCornerShape(17.dp))
-                    .background(kbColor(if (on) R.color.kb_accent_container else R.color.kb_key))
-                    .clickable { onPick(lang) }
+                Modifier.weight(1f).height(dimensionResource(R.dimen.panel_touch))
+                    .clickable(interactionSource = null, indication = null) { onPick(lang) }
                     .semantics { role = Role.RadioButton; selected = on },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(label), fontSize = 14.sp, color = kbColor(if (on) R.color.kb_on_accent_container else R.color.kb_ink))
+                Box(
+                    Modifier.fillMaxWidth().height(pill).clip(RoundedCornerShape(pill / 2))
+                        .background(kbColor(if (on) R.color.kb_accent_container else R.color.kb_key)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(stringResource(label), fontSize = 14.sp, color = kbColor(if (on) R.color.kb_on_accent_container else R.color.kb_ink))
+                }
             }
         }
     }

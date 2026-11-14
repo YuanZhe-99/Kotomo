@@ -162,13 +162,13 @@ private fun <T> Choice(title: String, options: List<Pair<T, Int>>, current: T, o
     }
 }
 
-/** A pill-shaped button in the keyboard's colors. */
+/** A pill-shaped button in the keyboard's colors, the panel touch size tall (A6). */
 @Composable
 private fun Pill(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier
-            .height(40.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .height(androidx.compose.ui.res.dimensionResource(R.dimen.panel_touch))
+            .clip(RoundedCornerShape(androidx.compose.ui.res.dimensionResource(R.dimen.panel_touch) / 2))
             .background(colorResource(if (selected) R.color.kb_accent_container else R.color.kb_key))
             .clickable(onClick = onClick)
             .semantics {

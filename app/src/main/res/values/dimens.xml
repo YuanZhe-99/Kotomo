@@ -84,10 +84,20 @@
     <dimen name="emoji_picker_elevation">6dp</dimen>
     <integer name="emoji_picker_columns">6</integer>
     <!-- Clipboard panel (PhoneClipboard). -->
+    <!-- Shared by every panel in the keyboard's place (A6): the smallest touch target, and the long-press menus. -->
+    <dimen name="panel_touch">48dp</dimen>
+    <dimen name="panel_pill_height">34dp</dimen>
+    <dimen name="panel_menu_text">16sp</dimen>
+    <dimen name="panel_menu_pad_h">16dp</dimen>
+    <dimen name="panel_menu_pad_v">6dp</dimen>
+    <dimen name="panel_menu_margin">10dp</dimen>
+    <dimen name="panel_menu_radius">16dp</dimen>
+    <dimen name="panel_menu_elevation">6dp</dimen>
+    <dimen name="panel_menu_width">400dp</dimen>
     <dimen name="clip_bar_height">52dp</dimen>
     <dimen name="clip_bar_pad_h">8dp</dimen>
     <dimen name="clip_bar_gap">4dp</dimen>
-    <dimen name="clip_icon_button">44dp</dimen>
+    <dimen name="clip_icon_button">@dimen/panel_touch</dimen>
     <dimen name="clip_icon">22dp</dimen>
     <dimen name="clip_tab_height">36dp</dimen>
     <dimen name="clip_tab_pad">14dp</dimen>
@@ -110,8 +120,6 @@
     <dimen name="clip_text">15sp</dimen>
     <integer name="clip_text_lines">3</integer>
     <dimen name="clip_code_text">22sp</dimen>
-    <dimen name="clip_action_text">14sp</dimen>
-    <dimen name="clip_action_pad_v">2dp</dimen>
     <dimen name="clip_footer_height">44dp</dimen>
     <dimen name="clip_footer_pad">14dp</dimen>
     <dimen name="clip_footer_icon">14dp</dimen>

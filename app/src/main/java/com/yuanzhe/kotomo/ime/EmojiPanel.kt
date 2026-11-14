@@ -524,7 +524,7 @@ fun CandidatesPanel(
             candidates.value.forEachIndexed { i, text ->
                 Box(
                     Modifier
-                        .height(44.dp)
+                        .height(androidx.compose.ui.res.dimensionResource(R.dimen.panel_touch))
                         .clip(RoundedCornerShape(12.dp))
                         .background(colorResource(if (i == 0) R.color.kb_accent_container else R.color.kb_key))
                         .clickable { onPick(i) }

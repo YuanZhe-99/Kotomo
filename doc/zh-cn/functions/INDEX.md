@@ -28,7 +28,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardHistory.kt` | 剪贴板历史（[clipboard.md](../clipboard.md)）：只在允许时记录（敏感输入框、敏感剪贴与无痕模式不记录）、去重、固定与快捷短语、保留期与数量上限、以 Keystore 密钥加密的 AES-GCM 文件、内存快照；剪贴分类 | `onPrimaryClip`、`allowedIn`、`items`、`ClipFile`、`ClipKind.of` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/ClipboardPage.kt` | 设置中的剪贴板历史页（[clipboard.md](../clipboard.md)）：搜索、分类、编辑、一次删除多项、快捷短语、不保留剪贴的应用 | `ClipboardPage`、`ClipFilter` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/VerificationCodes.kt` | 从复制的文本中识别验证码：带上下文的排序结果，排除日期、价格、电话与订单号（纯 Kotlin，有单元测试） | `find`、`bare` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardPanel.kt`、`QuickPaste.kt` | 在键盘位置显示的剪贴板面板（分类标签、两列卡片、页脚、长按操作）与键盘上方的快捷输入条及其提供规则（60 秒、每条剪贴一次） | `ClipboardPanel`、`QuickPaste`、`QuickPasteStrip` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardPanel.kt`、`QuickPaste.kt` | 在键盘位置显示的剪贴板面板（分类标签、两列卡片、页脚、浮在面板上的长按菜单，每行至少为共用的 `panel_touch` 高度）与键盘上方的快捷输入条及其提供规则（60 秒、每条剪贴一次） | `ClipboardPanel`、`QuickPaste`、`QuickPasteStrip` |
 | `lexicon/EmojiData.java` | Emoji 数据管线：下载并校验 Unicode Emoji 与 CLDR 数据，生成 `emoji.tsv`（分组、肤色、键；拼音取自 CC-CEDICT 与 Unihan，假名取自 Mozc，罗马字为平文式）；由应用的 `emojiData` 任务调用 | `main`、`SOURCES`、`index` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Probe.kt` | S1 的测量（只有耗时和内存：按下 → 键绘制、按键生效 → 候选绘制、每键的引擎耗时、冷启动、内存）及其保存的摘要 | `Probe`、`LatencyStats` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/MainActivity.kt` | 设置应用的外壳：带设置引导卡片和试打框的首页、页面导航（单栏加返回栈；840 dp 起导航列表与页面并排）、由 Kotomo 令牌生成的 Material 3 主题 | `SettingsApp`、`Page`、`SetupCard` |

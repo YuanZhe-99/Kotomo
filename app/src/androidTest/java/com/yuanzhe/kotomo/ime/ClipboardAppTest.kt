@@ -10,6 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
+import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.fieldtest.FieldTestActivity
 import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
 import com.yuanzhe.kotomo.settings.SettingsStore
@@ -107,6 +108,53 @@ class ClipboardAppTest {
             var typed = ""
             scenario.onActivity { typed = it.findViewById<android.widget.EditText>(FieldTestActivity.FIELD_ID).text.toString() }
             assertEquals(code, typed)
+        }
+    }
+
+    /**
+     * A6 (device feedback 2026-11-13): a long press on a clip opens a menu whose lines are at
+     * least the panel touch size tall; Pin pins the clip. Negative: a plain tap pastes and opens
+     * no menu.
+     */
+    @Test
+    fun longPressMenuIsEasyToTap() {
+        val previous = settings.current
+        val intent = Intent(context, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, 0)
+        try {
+            runBlocking {
+                settings.update {
+                    it.copy(
+                        clipboard = it.clipboard.copy(history = true, quickPaste = false),
+                        toolOrder = listOf(Tool.CLIPBOARD) + (Tool.configurable - Tool.CLIPBOARD),
+                        hiddenTools = Tool.configurable.toSet() - Tool.CLIPBOARD,
+                    )
+                }
+            }
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                val text = "$PREFIX menu ${System.nanoTime()}"
+                assertTrue(copyAndWait(scenario, text))
+                val res = context.resources
+                val barY = q.visibleBounds.top - res.getDimensionPixelSize(R.dimen.kb_pad_top) - res.getDimensionPixelSize(R.dimen.bar_height) / 2
+                // With one tool on the bar, Clipboard sits at its end.
+                device.click(device.displayWidth - res.getDimensionPixelSize(R.dimen.toolbar_pad) - res.getDimensionPixelSize(R.dimen.toolbar_button) / 2, barY)
+                val card = checkNotNull(device.wait(Until.findObject(By.text(text)), WAIT_MS)) { "the clipboard panel does not list the clip" }
+                assertFalse("a menu is open before any long press", device.hasObject(By.text(context.getString(R.string.clip_pin))))
+                card.longClick()
+                val pin = checkNotNull(device.wait(Until.findObject(By.text(context.getString(R.string.clip_pin))), WAIT_MS)) { "the long press opened no menu" }
+                // The label sits inside its clickable line: the line's bounds are the touch target.
+                val line = generateSequence(pin) { it.parent }.firstOrNull { it.isClickable } ?: pin
+                val min = res.getDimensionPixelSize(R.dimen.panel_touch)
+                assertTrue("Pin's line is ${line.visibleBounds.height()} px tall, under $min", line.visibleBounds.height() >= min)
+                pin.click()
+                val until = System.currentTimeMillis() + WAIT_MS
+                while (System.currentTimeMillis() < until && history.items.value.none { it.text == text && it.pinned }) Thread.sleep(POLL_MS)
+                assertTrue("Pin did not pin the clip", history.items.value.any { it.text == text && it.pinned })
+            }
+        } finally {
+            runBlocking { settings.update { it.copy(clipboard = previous.clipboard, toolOrder = previous.toolOrder, hiddenTools = previous.hiddenTools) } }
         }
     }
 
