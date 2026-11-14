@@ -175,7 +175,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 
 ## 13. Emoji (G1, G3, G4)
 
-- [ ] 13.1 Suggestions on the bar (feedback C2): once a word is typed in full, its best emoji stands after the three best text candidates, without scrolling the bar (very wide text candidates may still need a short scroll): `neko` / `mao` / `cat` → 🐈 (🐱 follows); `apple` / `pingguo` → 🍎; `sakura` / `yinghua` → 🌸; `birthday` / `shengri` → 🥳 (🎂 follows); `coffee` / `kafei` → ☕; `computer` → 💻, `diannao` → 🖥️ (💻 follows). While a word is still being typed the emoji stay after five text candidates
+- [ ] 13.1 Suggestions on the bar (feedback C2): once a word is typed in full, its best emoji stands after the three best text candidates, without scrolling the bar (very wide text candidates may still need a short scroll): `neko` / `mao` / `cat` → 🐈 (🐱 follows); `apple` / `pingguo` → 🍎; `sakura` / `yinghua` → 🌸; `birthday` / `shengri` → 🥳 (🎂 follows); `coffee` / `kafei` → ☕; `computer` → 💻, `diannao` → 🖥️ (💻 follows). While a word is still being typed the emoji stay after five text candidates. Settings → Mixed mode → under the candidate weights, turn off "Show a word's emoji early" (on by default): the emoji of a word typed in full go back to after five text candidates too (scroll the bar to see them), still best first; on again restores it
 - [ ] 13.2 The Emoji panel has categories, a skin-tone choice, Recent and, after sending one twice, "Frequently used" above Recent
 - [ ] 13.3 Magnifier: the keys type a search in the bar (`cat`, `mao`, `neko`), nothing reaches the field until you pick; Enter sends the first result
 - [ ] 13.4 Long-press an emoji: skin tone and a favourite switch; Favorites lists it; the Combinations tab and the Kaomoji tab insert what you tap

@@ -270,6 +270,12 @@ C2-017	PASS	8	birthday / お誕生日 / 誕生日 / 🥳 / birth day
 C2-N01	PASS	-	cat / 猫 / 擦他 / 🐈 / かt
 C2-N02	PASS	-	苹果 / 评估 / ピンgg / 日ngg / 平谷
 C2-N03	PASS	1	你好 / 妳好 / 逆号 / 🖖 / 拟好
+C2-N04	PASS	-	苹果 / 平果 / 平锅 / 评估哦 / 平鍋
+C2-018	PASS	6	苹果 / 平果 / 平锅 / 评估哦 / 平鍋
+C2-019	PASS	6	cat / 猫 / 擦他 / かt / ヌコ
+C2-N05	PASS	-	苹果 / 平果 / pingguo / 平锅 / 评过
+C2-N06	PASS	-	birthday / birthdays / birth day / birthday's / birthday-spacings
+C2-N07	PASS	-	猫 / 猫背 / 猫たち / ねこ / ネコ
 C3-001	PASS	1	池袋に買いに行こう / 地第二階に行こう / 痴呆に買いに行こう / 尺代に買いに行こう / 勅答医に買いに行こう
 C3-002	PASS	1	池袋に買いに行こう / 地代に買いに行こう / 痴呆に買いに行こう / 尺代に買いに行こう / 池袋にかinいい光
 C3-003	PASS	1	池袋に買いに行こう / 痴呆に買いに行こう / 地代に買いに行こう / 尺代に買いに行こう / 池袋にかinいい光

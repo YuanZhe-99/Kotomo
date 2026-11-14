@@ -145,6 +145,8 @@
     <string name="weight_english">英語</string>
     <string name="weight_japanese">日本語</string>
     <string name="weight_emoji">絵文字</string>
+    <string name="mixed_emoji_eager">絵文字を積極的に表示</string>
+    <string name="mixed_emoji_eager_desc">単語を最後まで入力すると、最も合う絵文字を上位3候補の次に表示します。オフでは上の重みどおりに並べます</string>
     <string name="mixed_cross">言語をまたぐ変換</string>
     <string name="cross_pinyin_kanji">中国語ピンイン → 日本語の漢字</string>
     <string name="cross_pinyin_kanji_desc">chidai → 池袋、候補に日本語の読みを表示</string>

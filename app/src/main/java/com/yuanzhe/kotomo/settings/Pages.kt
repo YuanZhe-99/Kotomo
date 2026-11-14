@@ -277,6 +277,7 @@ internal fun MixedPage(settings: Settings, store: SettingsStore) {
             Weight(R.string.weight_japanese, mixed.weightJapanese) { v -> update { it.copy(weightJapanese = v) } }
             Weight(R.string.weight_emoji, mixed.weightEmoji) { v -> update { it.copy(weightEmoji = v) } }
         }
+        SwitchRow(R.string.mixed_emoji_eager, R.string.mixed_emoji_eager_desc, mixed.emojiEager) { on -> update { it.copy(emojiEager = on) } }
     }
     Section(stringResource(R.string.mixed_cross)) {
         CrossSwitches(mixed.cross) { cross -> update { it.copy(cross = cross(it.cross)) } }

@@ -145,6 +145,8 @@
     <string name="weight_english">英文</string>
     <string name="weight_japanese">日文</string>
     <string name="weight_emoji">Emoji</string>
+    <string name="mixed_emoji_eager">積極比對 Emoji</string>
+    <string name="mixed_emoji_eager_desc">詞完整打出後，最貼切的 Emoji 排在前三個候選之後；關閉後 Emoji 完全依上面的權重排</string>
     <string name="mixed_cross">跨語言轉換</string>
     <string name="cross_pinyin_kanji">中文拼音 → 日語漢字</string>
     <string name="cross_pinyin_kanji_desc">chidai → 池袋，候選顯示日文讀音</string>

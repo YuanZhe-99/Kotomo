@@ -61,13 +61,14 @@
 | `modes.order` | string | `mixed,chinese,japanese,english,pc` | 语言选择的顺序，模式名以逗号连接；缺少的模式排到最后，本版本不认识的名称保留在已知名称之后 |
 | `modes.hidden` | string | 空 | 语言选择中不提供的模式，以逗号连接；全部隐藏时全部提供 |
 | `mixed.level` | string | `balanced` | 混合模式的智能程度：`conservative` 使跨语言词的代价加倍，`aggressive` 使其减半并允许跨语言候选排在首位；`balanced` 保持原语言优先 |
-| `mixed.weight_chinese`、`mixed.weight_english`、`mixed.weight_japanese`、`mixed.weight_emoji` | int 0–100 | 70、60、60、30 | 混合模式中各语言的候选权重。某种语言的候选按它的权重偏离默认值的多少上移或下移（取默认值时不移动）；Emoji 权重决定各模式中 Emoji 的位置（PLAN §10.6）：100 时排在最好的两个候选之后，每低 20 点后移一位。打出的字母是一个完整的 Emoji 词（`cat`、`pingguo`）而不只是某个词的开头时，它最贴切的那个 Emoji 最晚排在最好的三个候选之后，与权重无关（反馈 C2） |
+| `mixed.weight_chinese`、`mixed.weight_english`、`mixed.weight_japanese`、`mixed.weight_emoji` | int 0–100 | 70、60、60、30 | 混合模式中各语言的候选权重。某种语言的候选按它的权重偏离默认值的多少上移或下移（取默认值时不移动）；Emoji 权重决定各模式中 Emoji 的位置（PLAN §10.6）：100 时排在最好的两个候选之后，每低 20 点后移一位。`mixed.emoji_eager` 可以把完整的词最贴切的 Emoji 提前 |
 | `mixed.space` | string | `separate` | 混合模式组合中的空格（ADR-010）：`separate` 在组合内标出一处边界、不提交任何内容，`commit_first` 提交首选候选，`next` 把首选候选显示在输入框里，再按一次换到下一个（此时回车提交当前显示的那个） |
 | `mixed.enter` | string | `first` | 混合模式组合中的回车：`first` 提交首选候选，`shown` 提交输入框显示的字母 |
 | `japanese.space` | string | `next` | 日文模式组合中的空格：`next` 或 `commit_first`，含义同 `mixed.space`；其他值读作默认值 |
 | `japanese.enter` | string | `shown` | 日文模式组合中的回车：`shown` 提交输入的假名（已选定分段后提交转换结果），`first` 提交首选候选 |
 | `chinese.space` | string | `commit_first` | 中文模式组合中的空格：`commit_first` 或 `next`；其他值读作默认值 |
 | `chinese.enter` | string | `shown` | 中文模式组合中的回车：`shown` 提交输入的字母，`first` 提交首选候选 |
+| `mixed.emoji_eager` | boolean | `true` | 积极匹配 Emoji，各模式都生效（反馈 C2）：打出的字母是一个完整的 Emoji 词（`cat`、`pingguo`）而不只是某个词的开头时，它最贴切的那个 Emoji 最晚排在最好的三个候选之后，与 Emoji 权重无关；这个词的其他 Emoji 仍在权重决定的位置。关闭：所有 Emoji 只按 `mixed.weight_emoji` 放置。两种状态下一个词的 Emoji 都是最贴切的在前 |
 | `mixed.abbreviation` | boolean | `true` | 混合模式的简拼：音节可以只打声母（`tq` → 天气、`woxhni` → 我喜欢你）。关闭时只有完整音节按拼音读取，正在打的最后一个音节除外。中文模式始终读取简拼 |
 | `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`（按中文读音键入的日文汉字词）、`pinyin_to_katakana`、`english_to_kanji`（英文词对应的同义日文词）、`english_to_katakana`（对应的外来语）、`whole_sentence`（关闭时跨语言词只在它就是整个组合时提供）、`readings`、`emoji` |
 | `chinese.script` | string | `simplified` | 中文输出：`simplified`（大陆）、`traditional`（OpenCC 标准）、`taiwan`、`hong_kong`（带地区用词）；快捷面板还会在键盘的记忆（见下文）中按 App 记住选择 |

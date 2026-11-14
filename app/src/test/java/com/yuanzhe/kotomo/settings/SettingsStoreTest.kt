@@ -59,6 +59,7 @@ class SettingsStoreTest {
             level = MixedLevel.AGGRESSIVE,
             cross = CrossLanguage(englishToKatakana = false, emoji = false),
             weightEmoji = 0,
+            emojiEager = false,
             keys = CompositionKeys(SpaceKey.NEXT, EnterKey.SHOWN),
         ),
         japanese = CrossLanguage(readings = false),

@@ -52,6 +52,8 @@ class ConversionCorpusTest {
         val correction: Boolean = true,
         /** The Japanese fuzzy rules the line runs with (`+jfuzzy:voiced,cu`, `japanese.fuzzy.*`). */
         val japaneseFuzzy: Set<JapaneseFuzzyRule> = emptySet(),
+        /** A whole emoji word shows its best emoji early, as by default (`mixed.emoji_eager`); `+noeager` turns it off. */
+        val eager: Boolean = true,
     ) {
         /** Names the librime build the line needs (its rules and scheme), for grouping and the report. */
         val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "") + (if (correction) "" else "+nocorrection")
@@ -124,6 +126,7 @@ class ConversionCorpusTest {
                 require(!nine || mode == Mode.CHINESE) { "corpus line ${n + 1}: the 9-key layout is for chinese lines" }
                 val correction = "nocorrection" !in c[1].split('+').drop(1)
                 require(correction || mode == Mode.CHINESE || mode == Mode.MIXED) { "corpus line ${n + 1}: key correction is for chinese and mixed lines" }
+                val eager = "noeager" !in c[1].split('+').drop(1)
                 val japaneseFuzzy = c[1].split('+').drop(1).firstOrNull { it.startsWith("jfuzzy:") }?.let { option ->
                     require(mode == Mode.JAPANESE || mode == Mode.MIXED) { "corpus line ${n + 1}: Japanese fuzzy rules are for japanese and mixed lines" }
                     val names = option.removePrefix("jfuzzy:")
@@ -135,7 +138,7 @@ class ConversionCorpusTest {
                         }
                     }
                 }.orEmpty()
-                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && !it.startsWith("jfuzzy:") && it != "nine" && it != "nocorrection" }
+                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && !it.startsWith("jfuzzy:") && it != "nine" && it != "nocorrection" && it != "noeager" }
                 val fuzzy = if (fuzzyOption != null) {
                     val option = fuzzyOption
                     require(option.startsWith("fuzzy:") && (mode == Mode.CHINESE || mode == Mode.MIXED)) {
@@ -158,7 +161,7 @@ class ConversionCorpusTest {
                 val negative = alternatives.all { it.startsWith("!") }
                 require(negative || alternatives.none { it.startsWith("!") }) { "corpus line ${n + 1}: mixed ! and plain outputs" }
                 require(alternatives.all { it.removePrefix("!").isNotEmpty() }) { "corpus line ${n + 1}: empty output" }
-                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script, nine, correction, japaneseFuzzy)
+                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script, nine, correction, japaneseFuzzy, eager)
             }
         val duplicates = lines.groupBy { it.id }.filterValues { it.size > 1 }.keys
         require(duplicates.isEmpty()) { "duplicate corpus ids: $duplicates" }
@@ -210,7 +213,7 @@ class ConversionCorpusTest {
                 else -> emptySet()
             }
             Regional.promote(
-                Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition()), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), Candidates.emojiWhole(emoji, Rime.getComposition())),
+                Candidates.chinese(texts, Rime.getInput(), Candidates.emoji(emoji, Rime.getComposition()), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), line.eager && Candidates.emojiWhole(emoji, Rime.getComposition())),
                 regional,
             ) { it >= 0 }.map { it.first }
         }
@@ -233,7 +236,7 @@ class ConversionCorpusTest {
             if (line.japaneseFuzzy.isNotEmpty()) c.options(++generation, Core.Options())
             Candidates.mixed(
                 snapshot.candidates.map { it.text }, snapshot.input, Candidates.emoji(emoji, line.input),
-                Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), Candidates.emojiWhole(emoji, line.input),
+                Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), line.eager && Candidates.emojiWhole(emoji, line.input),
             ).map { it.first }
         }
         Mode.JAPANESE -> {
@@ -248,13 +251,13 @@ class ConversionCorpusTest {
             c.clear(++generation)
             c.options(++generation, Core.Options())
             val own = Candidates.japanese(segments, predicted)
-            Candidates.withEmoji(Candidates.japaneseWithCross(own, crossed, reading).map { it.text }, Candidates.emoji(emoji, line.input), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), Candidates.emojiWhole(emoji, line.input))
+            Candidates.withEmoji(Candidates.japaneseWithCross(own, crossed, reading).map { it.text }, Candidates.emoji(emoji, line.input), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), line.eager && Candidates.emojiWhole(emoji, line.input))
         }
         Mode.ENGLISH -> if (line.input.isEmpty() && line.context.isEmpty()) {
             emptyList()
         } else {
             val words = english.suggestions(line.input, previous = line.context.ifEmpty { null }).map { it.word }
-            Candidates.withEmoji(Candidates.english(line.input, words), Candidates.emoji(emoji, line.input), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), Candidates.emojiWhole(emoji, line.input))
+            Candidates.withEmoji(Candidates.english(line.input, words), Candidates.emoji(emoji, line.input), Candidates.emojiPosition(MIXED_EMOJI_WEIGHT), line.eager && Candidates.emojiWhole(emoji, line.input))
         }
         // The PC layout converts nothing; no corpus line uses it.
         Mode.PC -> emptyList()

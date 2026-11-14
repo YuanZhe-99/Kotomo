@@ -96,6 +96,11 @@ data class Mixed(
     val weightEnglish: Int = 60,
     val weightJapanese: Int = 60,
     val weightEmoji: Int = 30,
+    /**
+     * A word typed in full shows its best emoji after the three best candidates, whatever the
+     * emoji weight (`mixed.emoji_eager`, feedback C2); off: every emoji where the weight puts it.
+     */
+    val emojiEager: Boolean = true,
     /** A pinyin syllable may be typed by its initial alone (`tq` → 天气; `mixed.abbreviation`). */
     val abbreviation: Boolean = true,
     val keys: CompositionKeys = CompositionKeys.MIXED,
@@ -341,6 +346,7 @@ internal object SettingsFormat {
     private val mixedWeightEnglish = intPreferencesKey("mixed.weight_english")
     private val mixedWeightJapanese = intPreferencesKey("mixed.weight_japanese")
     private val mixedWeightEmoji = intPreferencesKey("mixed.weight_emoji")
+    private val mixedEmojiEager = booleanPreferencesKey("mixed.emoji_eager")
     private val mixedAbbreviation = booleanPreferencesKey("mixed.abbreviation")
     private val mixedSpace = stringPreferencesKey("mixed.space")
     private val mixedEnter = stringPreferencesKey("mixed.enter")
@@ -423,6 +429,7 @@ internal object SettingsFormat {
                 weightEnglish = p.int(mixedWeightEnglish, Settings.WEIGHT_RANGE, d.mixed.weightEnglish),
                 weightJapanese = p.int(mixedWeightJapanese, Settings.WEIGHT_RANGE, d.mixed.weightJapanese),
                 weightEmoji = p.int(mixedWeightEmoji, Settings.WEIGHT_RANGE, d.mixed.weightEmoji),
+                emojiEager = p[mixedEmojiEager] ?: d.mixed.emojiEager,
                 abbreviation = p[mixedAbbreviation] ?: d.mixed.abbreviation,
                 keys = readKeys(p, Mode.MIXED, mixedSpace, mixedEnter, d.mixed.keys),
             ),
@@ -516,6 +523,7 @@ internal object SettingsFormat {
         p.put(mixedWeightEnglish, old.mixed.weightEnglish, new.mixed.weightEnglish)
         p.put(mixedWeightJapanese, old.mixed.weightJapanese, new.mixed.weightJapanese)
         p.put(mixedWeightEmoji, old.mixed.weightEmoji, new.mixed.weightEmoji)
+        p.put(mixedEmojiEager, old.mixed.emojiEager, new.mixed.emojiEager)
         p.put(mixedAbbreviation, old.mixed.abbreviation, new.mixed.abbreviation)
         writeKeys(p, mixedSpace, mixedEnter, old.mixed.keys, new.mixed.keys)
         writeKeys(p, japaneseSpace, japaneseEnter, old.japaneseKeys, new.japaneseKeys)

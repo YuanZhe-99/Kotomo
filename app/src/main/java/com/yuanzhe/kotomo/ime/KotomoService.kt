@@ -3080,8 +3080,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         return mappings.second
     }
 
-    /** Whether [typed] is a whole emoji word ([Candidates.emojiWhole]); the caller already has its emoji. */
-    private fun emojiWhole(typed: String) = Candidates.emojiWhole(emojiIndex, typed, emojiMappings())
+    /**
+     * Whether [typed] is a whole emoji word ([Candidates.emojiWhole]) whose best emoji is shown
+     * early (`mixed.emoji_eager`); the caller already has its emoji.
+     */
+    private fun emojiWhole(typed: String) = settings.mixed.emojiEager && Candidates.emojiWhole(emojiIndex, typed, emojiMappings())
 
     /**
      * Puts the emoji for [typed] into [list] where the emoji weight places them (the best one

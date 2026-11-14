@@ -159,6 +159,8 @@
     <string name="weight_english">English</string>
     <string name="weight_japanese">Japanese</string>
     <string name="weight_emoji">Emoji</string>
+    <string name="mixed_emoji_eager">Show a word\'s emoji early</string>
+    <string name="mixed_emoji_eager_desc">Once a word is typed in full, its best emoji follows the three best candidates; off: every emoji is placed by the weight above</string>
     <string name="mixed_cross">Cross-language conversion</string>
     <string name="cross_pinyin_kanji">Pinyin → Japanese kanji</string>
     <string name="cross_pinyin_kanji_desc">chidai → 池袋, with the Japanese reading on the candidate</string>

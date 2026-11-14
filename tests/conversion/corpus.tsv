@@ -8,6 +8,8 @@
 # generates for those switches (chinese.fuzzy.*). Chinese mode's neighbouring-key
 # correction (chinese.key_correction, feedback B2) is on as by default; `+nocorrection` runs the line
 # on a build deployed with it off.
+# A word typed in full shows its best emoji early (mixed.emoji_eager, feedback C2) as by default;
+# `+noeager` (any mode) ranks the line with the switch off: every emoji where the emoji weight puts it.
 # A japanese or mixed mode may carry Japanese fuzzy rules (feedback B4): `japanese+jfuzzy:voiced,cu` or
 # `mixed+jfuzzy:all`; the coordinator then converts with those rules on (japanese.fuzzy.*).
 # T04-002 (mixed, diannao → コンピューター within 5) was removed for now by the user on 2026-11-11:
@@ -292,6 +294,12 @@ C2-017	mixed		birthday	🎂	0	feedback C2: the other emoji of the word stay wher
 C2-N01	mixed		cat	!🐈|!🐱	3	feedback C2: the emoji never stands among the three best words
 C2-N02	mixed		pingg	!🍎	5	feedback C2: a word still being typed keeps its emoji after the words (the emoji weight)
 C2-N03	mixed		nihao	你好	1	feedback C2: a word with no emoji of its own is unchanged
+C2-N04	mixed+noeager		pingguo	!🍎	5	feedback C2, switch off: the emoji comes after five words, as the weight says
+C2-018	mixed+noeager		pingguo	🍎	0	feedback C2, switch off: the emoji is still offered
+C2-019	mixed+noeager		cat	🐈|🐱	0	feedback C2, switch off: the best emoji of the word is still the first of them
+C2-N05	chinese+noeager		pingguo	!🍎	5	feedback C2, switch off, Chinese mode
+C2-N06	english+noeager		birthday	!🥳|!🎂	3	feedback C2, switch off, English mode
+C2-N07	japanese+noeager		neko	!🐈|!🐱	5	feedback C2, switch off, Japanese mode
 C3-001	mixed		chidai'ni'kai'ni'ikou	池袋に買いに行こう	1	feedback C3: an apostrophe (the separator key, B1) is the same boundary as a space (T07-001)
 C3-002	mixed		chidai'ni'kainiikou	池袋に買いに行こう	1	feedback C3: boundaries at some places only
 C3-003	mixed		chidai'nikainiikou	池袋に買いに行こう	1	feedback C3: one boundary
