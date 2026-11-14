@@ -293,6 +293,17 @@ jobs:
         if: always()
         run: rm -f key.properties "$RUNNER_TEMP/kotomo.jks"
 
+      # The log names a failed test and its line only; the reports hold the message and the output.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: android-test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+            app/build/reports/lint-results-*.html
+          if-no-files-found: ignore
+
       # One artifact per ABI, so the phone build downloads without the emulator one.
       - uses: actions/upload-artifact@v7
         with:
