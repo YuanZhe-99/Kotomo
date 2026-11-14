@@ -216,6 +216,10 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 16.5 Key sound off by default, on → clicks; "Vibrate on key press" works; "Key corner hints" shows the long-press symbols; long-press a key types its symbol
 - [ ] 16.6 Smart quotes on: the " and ' keys type curly quotes; "Close brackets and quotes" on: ( adds ) and Backspace right away removes both; neither acts in code, web address or e-mail fields
 - [ ] 16.7 More → "Code in this app": text fields there start in English with plain quotes and no automatic pairs
+- [ ] 16.8 Chinese mode, long-press ，: ， first, then half-width , and the Japanese 、; long-press 。: 。 first, then half-width . and full-width ．; the popup marks full and half width (feedback C5)
+- [ ] 16.9 Japanese mode, long-press 、: 、 first, then half-width , and the Chinese ，; long-press 。: 。 first, then half-width . and full-width ． (feedback C5)
+- [ ] 16.10 Mixed mode, long-press ， and 。: as in Chinese mode, with half-width , and . (feedback C5)
+- [ ] 16.11 English mode, long-press , and .: half-width first, then full-width ，, 、 and 。, ． (feedback C5)
 
 ## 17. Toolbar, layout and key customisation (G3, T14)
 

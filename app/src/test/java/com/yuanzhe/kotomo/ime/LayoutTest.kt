@@ -141,6 +141,26 @@ class LayoutTest {
         assertTrue(bottom.contains(KeyAction.Space))
     }
 
+    /**
+     * C5: in every mode a long press on the bottom row's comma and full stop offers both widths
+     * (，/, and 。/.) and the other language's marks (、 and ．), starting with the key's own mark.
+     */
+    @Test
+    fun commaAndFullStopOfferBothWidthsInEveryMode() {
+        for (mode in listOf(Mode.CHINESE, Mode.MIXED, Mode.JAPANESE, Mode.ENGLISH)) {
+            val (comma, stop) = Layout.punctuation(mode)
+            val keys = Layout.letters(mode, false).rows.last().keys
+            val commaMore = keys.first { it.action == KeyAction.Text(comma) }.more
+            val stopMore = keys.first { it.action == KeyAction.Text(stop) }.more
+            assertEquals(comma, commaMore.first())
+            assertEquals(stop, stopMore.first())
+            assertTrue("$mode comma: $commaMore", commaMore.containsAll(listOf(",", "，", "、")))
+            assertTrue("$mode full stop: $stopMore", stopMore.containsAll(listOf(".", "。", "．")))
+            // Both widths are there, so the popup marks which is which.
+            assertTrue(Layout.widthMarks(commaMore).containsAll(listOf(true, false)) && Layout.widthMarks(stopMore).containsAll(listOf(true, false)))
+        }
+    }
+
     /** T14-keys-1 (PLAN §10.9): the number row, mirrored function keys and the space width. */
     @Test
     fun keyStyleAddsDigitsMirrorsAndWidensSpace() {

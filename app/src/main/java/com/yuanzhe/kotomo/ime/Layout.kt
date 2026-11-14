@@ -380,11 +380,13 @@ data class Layout(val rows: List<Row>) {
                 Field.CODE -> return bottomRow(Mode.ENGLISH, split, page, pageLabel)
                 else -> Unit
             }
+            // Every mode's popup offers its own mark first, then the other width and the other
+            // language's form (C5): full-width ，。 beside half-width , . and Japanese 、．.
             val (comma, stop) = punctuation(mode)
             val (commaMore, stopMore) = when (mode) {
-                Mode.ENGLISH -> listOf(",", ";", ":", "'", "\"") to listOf(".", "…", "?", "!")
-                Mode.JAPANESE -> listOf("、", "，", "；", "：", "・") to listOf("。", "…", "？", "！")
-                else -> listOf("，", "、", "；", "：", "“”") to listOf("。", "…", "？", "！")
+                Mode.ENGLISH -> listOf(",", "，", "、", ";", ":", "'", "\"") to listOf(".", "。", "．", "…", "?", "!")
+                Mode.JAPANESE -> listOf("、", ",", "，", "；", "：", "・") to listOf("。", ".", "．", "…", "？", "！")
+                else -> listOf("，", ",", "、", "；", "：", "“”") to listOf("。", ".", "．", "…", "？", "！")
             }
             return Row(
                 listOf(
