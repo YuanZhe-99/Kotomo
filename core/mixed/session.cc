@@ -247,7 +247,8 @@ Snapshot Session::Handle(const Request& request) {
           if (chosen.target == Lang::kJapanese) {
             // Hiragana for Mozc; an English word kept inside leaves the piece without one.
             for (const Piece& piece : chosen.pieces) {
-              if (piece.origin == Origin::kEnglish) {
+              const bool letters = !piece.reading.empty() && static_cast<unsigned char>(piece.reading.back()) < 0x80;
+              if (piece.origin == Origin::kEnglish || letters) {  // pending letters have no kana either
                 lock.reading.clear();
                 break;
               }

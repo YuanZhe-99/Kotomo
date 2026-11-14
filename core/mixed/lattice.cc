@@ -9,6 +9,7 @@ Lang Typed(EdgeKind kind) {
       return Lang::kChinese;
     case EdgeKind::kKana:
     case EdgeKind::kParticle:
+    case EdgeKind::kPending:
       return Lang::kJapanese;
     case EdgeKind::kEnglish:
     case EdgeKind::kEnJa:
@@ -27,6 +28,7 @@ bool Allowed(EdgeKind kind, Lang target) {
       return true;
     case EdgeKind::kKana:
     case EdgeKind::kParticle:
+    case EdgeKind::kPending:
     case EdgeKind::kPinyinJa:
     case EdgeKind::kEnJa:
       return target == Lang::kJapanese;

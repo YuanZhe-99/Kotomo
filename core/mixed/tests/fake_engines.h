@@ -27,6 +27,14 @@ class FakeEngines : public Engines {
         out->push_back({static_cast<uint8_t>(syllable.size()), fuzzy});
       }
     }
+    // Unfinished syllables, as librime's table lists them: an abbreviation at the start, and
+    // the letters as a whole when they only begin a syllable.
+    for (const std::string_view initial : {"r", "t", "q", "sh"}) {
+      if (letters.substr(0, initial.size()) == initial) {
+        out->push_back({static_cast<uint8_t>(initial.size()), false, true});
+      }
+    }
+    if (letters == "gua") out->push_back({3, false, true});
   }
 
   /// Notes: the fake's entries are dictionary words, except the ones written with a leading `~`,
@@ -112,7 +120,8 @@ class FakeEngines : public Engines {
       {"hen'hao", {"很好"}},              {"xi'an", {"西安"}},
       {"xian", {"先", "线"}},             {"tu'shu'guan", {"图书馆"}},
       {"ai", {"爱", "矮"}},               {"hoa", {"好"}},
-      {"ni", {"你", "泥"}}};
+      {"ni", {"你", "泥"}},               {"shu'r", {"输入", "熟人"}},
+      {"tu'shu'gua", {"图书馆"}}};
   std::map<std::string, std::string> kana_ = {
       {"a", "あ"},   {"i", "い"},   {"u", "う"},   {"e", "え"},   {"o", "お"},   {"ka", "か"},
       {"ki", "き"},  {"ko", "こ"},  {"shi", "し"}, {"si", "し"},  {"su", "す"},  {"ta", "た"},

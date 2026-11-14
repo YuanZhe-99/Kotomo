@@ -28,7 +28,8 @@ void ApiEngines::Spellings(std::string_view letters, std::vector<Spelling>* out)
   const size_t count =
       tables_.rime->spellings(letters.data(), letters.size(), found, kMaxSpellings);
   for (size_t i = 0; i < count; ++i) {
-    out->push_back({.length = found[i].length, .fuzzy = found[i].fuzzy != 0});
+    out->push_back({.length = found[i].length, .fuzzy = found[i].fuzzy != 0,
+                      .partial = found[i].partial != 0});
   }
 }
 

@@ -22,6 +22,8 @@ enum class EdgeKind : uint8_t {
   kPinyinJa,  // a Japanese word typed by its Chinese reading (cross-language lexicon)
   kEnJa,      // a Japanese word typed as its English counterpart (cross-language lexicon)
   kParticle,  // は, を or へ typed wa, o or e (PLAN.md §5.4)
+  kPending,   // the last letters, which begin a kana and do not finish one (`r`, `ky`): kept as
+              // typed at the end of a Japanese sentence
   kLocked,    // a piece the person chose (PLAN.md §5.6): fixed text, in every target language
 };
 
@@ -43,8 +45,8 @@ struct Edge {
 Lang Typed(EdgeKind kind);
 
 /// Decides whether an edge may be part of a sentence in `target` (PLAN.md §5.3): pinyin only in
-/// Chinese; kana, particles and both cross-language kinds only in Japanese; an English word in
-/// any sentence, kept as written.
+/// Chinese; kana, particles, pending letters and both cross-language kinds only in Japanese; an
+/// English word in any sentence, kept as written.
 bool Allowed(EdgeKind kind, Lang target);
 
 /// Returns: true for the edges that enter Mozc as a fixed value (cross-language words, particles).

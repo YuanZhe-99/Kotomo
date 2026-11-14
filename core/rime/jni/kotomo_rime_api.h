@@ -17,12 +17,14 @@ extern "C" {
 #endif
 
 /** Names the layout of KotomoRimeApi; a caller refuses a table with another version. */
-#define KOTOMO_RIME_API_VERSION 1u
+#define KOTOMO_RIME_API_VERSION 2u
 
 /** Holds one pinyin syllable spelled by a prefix of the letters asked about. */
 typedef struct KotomoRimeSpelling {
   uint8_t length; /* letters of the prefix */
   uint8_t fuzzy;  /* 1: only a fuzzy-pinyin rule or a correction of the schema derives it */
+  uint8_t partial; /* 1: not a whole syllable: an abbreviation of the schema, or all the letters
+                    * asked about when they only begin a syllable */
 } KotomoRimeSpelling;
 
 /** Receives one conversion of a pinyin run: UTF-8 `text` of `size` bytes (not terminated);
@@ -34,7 +36,8 @@ typedef struct KotomoRimeApi {
   uint32_t version; /* KOTOMO_RIME_API_VERSION */
 
   /** Lists the syllables the start of `letters` (lower case, `size` bytes) spells in the open
-   * session's schema, fuzzy rules and corrections included.
+   * session's schema, fuzzy rules and corrections included, and its unfinished ones
+   * (`partial`).
    * Returns: how many were written to `out`, at most `capacity`; 0 without a session. */
   size_t (*spellings)(const char* letters, size_t size, KotomoRimeSpelling* out, size_t capacity);
 

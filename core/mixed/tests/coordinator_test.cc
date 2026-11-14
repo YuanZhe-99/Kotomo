@@ -147,6 +147,18 @@ int main() {
     for (const Candidate& c : unknown.candidates) chinese |= c.target == Lang::kChinese;
     Check(!chinese, "S6-finish-chinese-no-conversion-no-candidate", Shown(unknown));
   }
+  // An unfinished last syllable (feedback A7): Chinese completes it as Chinese mode does and
+  // stands before any cross-language reading; Japanese keeps the letters after its sentence.
+  {
+    const Snapshot s = coordinator.Convert("shur", 1);
+    Check(Place(s, "输入") == 0 && Get(s, "输入").target == Lang::kChinese, "A7-coordinator-unfinished-chinese-first", Shown(s));
+    const Snapshot j = coordinator.Convert("shut", 1);
+    Check(Place(j, "しゅt") >= 0 && Tiles(j, Get(j, "しゅt")) && Get(j, "しゅt").pieces.back().text == "t",
+          "A7-coordinator-pending-japanese", Shown(j));
+    // Negative: an English word is not followed by pending letters.
+    const Snapshot e = coordinator.Convert("bookt", 1);
+    Check(Place(e, "bookt") == -1 && Place(e, "book t") == -1, "A7-coordinator-pending-not-after-english", Shown(e));
+  }
   // Every candidate of every snapshot above encodes and decodes unchanged.
   {
     const Snapshot s = coordinator.Convert("tushuguan e iku", 5);

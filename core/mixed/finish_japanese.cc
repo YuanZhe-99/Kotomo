@@ -5,10 +5,11 @@
 namespace kotomo::mixed {
 namespace {
 
-/// Decides whether an edge stands outside Mozc's conversion: an English word, or a locked piece
-/// that is not Japanese (it has no reading), kept as it is between conversions.
+/// Decides whether an edge stands outside Mozc's conversion: an English word, pending letters,
+/// or a locked piece that is not Japanese (it has no reading), kept as it is between conversions.
 bool Outside(const Edge& edge) {
-  return edge.kind == EdgeKind::kEnglish || (edge.locked != nullptr && edge.reading.empty());
+  return edge.kind == EdgeKind::kEnglish || edge.kind == EdgeKind::kPending ||
+         (edge.locked != nullptr && edge.reading.empty());
 }
 
 /// Returns: where a pinned edge's text came from.
@@ -97,6 +98,9 @@ void FinishJapanese(const Input& input, const Path& path, Engines& engines, cons
     if (Outside(edge)) {
       sentence.pieces.push_back(edge.locked != nullptr
                                     ? *edge.locked
+                                : edge.kind == EdgeKind::kPending
+                                    ? MakePiece(input, edge.begin, edge.end, edge.text,
+                                                Lang::kJapanese, Origin::kRule, false)
                                     : MakePiece(input, edge.begin, edge.end, edge.text,
                                                 Lang::kEnglish, Origin::kEnglish, false));
       ++i;

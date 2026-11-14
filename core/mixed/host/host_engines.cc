@@ -34,7 +34,8 @@ class HostEngines : public Engines {
     const size_t count = rime_->spellings(letters.data(), letters.size(), found, kMaxSpellings);
     out->clear();
     for (size_t i = 0; i < count; ++i) {
-      out->push_back({.length = found[i].length, .fuzzy = found[i].fuzzy != 0});
+      out->push_back({.length = found[i].length, .fuzzy = found[i].fuzzy != 0,
+                      .partial = found[i].partial != 0});
     }
   }
 

@@ -19,6 +19,10 @@ int32_t Transition(const Edge* previous, const Edge& next, Lang target, const Co
   if (next.kind == EdgeKind::kParticle) {
     if (previous == nullptr || previous->kind == EdgeKind::kParticle) return -1;
   }
+  if (next.kind == EdgeKind::kPending) {
+    // Letters that begin a kana continue Japanese, not an English word or nothing.
+    if (previous == nullptr || previous->kind == EdgeKind::kEnglish || previous->kind == EdgeKind::kPending) return -1;
+  }
   if (next.kind == EdgeKind::kEnglish) {
     if (target == Lang::kChinese) cost += costs.english_in_chinese;
     if (target == Lang::kJapanese) cost += costs.english_in_japanese;

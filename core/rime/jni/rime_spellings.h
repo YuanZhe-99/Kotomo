@@ -17,6 +17,8 @@ namespace kotomo::rime_bridge {
 struct SpellingMatch {
   std::size_t length = 0;  // letters of the prefix
   bool fuzzy = false;      // no exact spelling: a fuzzy rule or a correction derived it
+  bool partial = false;    // not a whole syllable: an abbreviation of the schema (`zh`, `t`), or
+                           // all the letters asked about when they only begin a syllable (`xio`)
 };
 
 /// Maps a prism file read-only; the bridge calls it whenever it opens a session.
@@ -25,8 +27,9 @@ struct SpellingMatch {
 /// Side effects: replaces the prism opened before.
 bool OpenSpellings(const std::string& prism_file);
 
-/// Lists the syllables the start of `letters` spells in full: abbreviations and completions of the
-/// schema are left out.
+/// Lists the syllables the start of `letters` spells in full, and, marked `partial`, the
+/// abbreviations of the schema it starts with and `letters` as a whole when they are the start of
+/// a syllable and nothing else (what librime's speller completes at the end of the input).
 /// Inputs: `letters` in lower case.
 /// Side effects: replaces the content of `out`; empty before OpenSpellings succeeded.
 /// Notes: one walk down the prism's double-array trie, no scan; engine thread only.

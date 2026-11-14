@@ -34,7 +34,25 @@ bool Splits(std::string_view romaji, std::string_view kana, Engines& engines) {
   return false;
 }
 
+/// The longest run of letters that begins a kana without finishing one (`ssh`, `xts`).
+constexpr size_t kMaxPending = 3;
+
 bool Vowel(char c) { return c == 'a' || c == 'i' || c == 'u' || c == 'e' || c == 'o'; }
+
+/// Returns: true when `letters` are consonants that are no kana yet and become one kana
+///   spelling with a vowel more (`ik` is not: its i is a kana already).
+bool BeginsKana(std::string_view letters, Engines& engines) {
+  for (const char c : letters) {
+    if (Vowel(c)) return false;
+  }
+  if (AllKana(engines.Hiragana(letters))) return false;
+  for (const char vowel : {'a', 'u', 'o', 'i', 'e'}) {
+    std::string longer(letters);
+    longer.push_back(vowel);
+    if (AllKana(engines.Hiragana(longer))) return true;
+  }
+  return false;
+}
 
 }  // namespace
 
@@ -42,6 +60,17 @@ void ProposeJapanese(const Input& input, Engines& engines, const Options& option
                      Lattice* lattice) {
   const Costs& costs = options.costs;
   const std::string_view letters = input.letters;
+  // What is still being typed stays as typed after the sentence before it.
+  for (size_t length = 1; length <= kMaxPending && length < input.size(); ++length) {
+    const size_t begin = input.size() - length;
+    if (input.HintsInside(begin, input.size()) > 0 || !BeginsKana(letters.substr(begin), engines)) continue;
+    lattice->Add({.begin = static_cast<uint16_t>(begin),
+                  .end = static_cast<uint16_t>(input.size()),
+                  .kind = EdgeKind::kPending,
+                  .cost = costs.pending,
+                  .text = std::string(letters.substr(begin)),
+                  .reading = {}});
+  }
   for (size_t begin = 0; begin < input.size(); ++begin) {
     for (size_t length = 1; length <= kMaxRomaji && begin + length <= input.size(); ++length) {
       const size_t end = begin + length;

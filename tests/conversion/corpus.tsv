@@ -181,3 +181,8 @@ T01-031	chinese+nine		94664486	中国	3	9-key: zhong (94664) guo (486)
 T01-032	chinese+nine		96'744	我是	3	9-key: wo (96), the 1 key (') to separate, shi (744)
 T01-033	chinese+nine		2345464	北京|背景	3	9-key: bei (234) jing (5464)
 T01-N30	chinese		64426	!你好	5	negative: on the letter layout digits are not pinyin
+A7-001	mixed		shur	输入|熟人	1	feedback A7: an unfinished last syllable converts as in Chinese mode
+A7-N01	mixed		shur	!スモールヒル都市再生機構|!スモール・ヒル都市再生機構	5	feedback A7: no unrelated long Japanese name near the top of an unfinished input
+A7-002	mixed		zhongg	中国	1	feedback A7: an unfinished input keeps its candidates (it had none)
+A7-003	mixed		watashiwagakuseides	私は学生でs|私は学生des	3	feedback A7: Japanese keeps the letters still being typed after the sentence
+A7-N02	mixed		sh	!スモールヒル|!スモール・ヒル	3	feedback A7: an abbreviation's Japanese expansion is not first for two letters

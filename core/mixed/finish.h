@@ -25,8 +25,8 @@ void FinishChinese(const Input& input, const Path& path, Engines& engines, const
                    std::vector<Candidate>* out);
 
 /// Finishes a Japanese path: runs of kana go to Mozc as free spans, cross-language words and
-/// particles as pinned spans of the same conversion, and English words stay as written between
-/// conversions.
+/// particles as pinned spans of the same conversion, and English words and pending letters stay
+/// as written between conversions.
 /// Side effects: appends the sentence with one piece per Mozc segment; its cost is the path's
 ///   with Mozc's cost of the free segments in place of the decoder's kana estimate. When the
 ///   whole input is one free run that Mozc keeps as one segment, the segment's other words follow

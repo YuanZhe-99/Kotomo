@@ -53,10 +53,28 @@ int main() {
   }
   {
     // Negative: letters that spell no syllable get no edge.
-    const Input input = *ParseInput("kq");
+    const Input input = *ParseInput("kv");
     Lattice lattice(input.size());
     ProposePinyin(input, engines, options, &lattice);
     Check(lattice.size() == 0, "S6-propose-pinyin-none");
+  }
+
+  {
+    // An unfinished syllable is an edge only where typing stopped (feedback A7).
+    const Input input = *ParseInput("shur");
+    Lattice lattice(input.size());
+    ProposePinyin(input, engines, options, &lattice);
+    const Edge* edge = Find(lattice, EdgeKind::kPinyin, 3, 4);
+    Check(edge && edge->cost == costs.pinyin_syllable + costs.unfinished,
+          "A7-propose-pinyin-unfinished-last");
+    const Input inside = *ParseInput("rshu");
+    Lattice other(inside.size());
+    ProposePinyin(inside, engines, options, &other);
+    Check(Find(other, EdgeKind::kPinyin, 0, 1) == nullptr, "A7-propose-pinyin-unfinished-not-inside");
+    const Input whole = *ParseInput("tushugua");
+    Lattice third(whole.size());
+    ProposePinyin(whole, engines, options, &third);
+    Check(Find(third, EdgeKind::kPinyin, 5, 8) != nullptr, "A7-propose-pinyin-unfinished-prefix");
   }
 
   return kotomo::mixed::test::Result();

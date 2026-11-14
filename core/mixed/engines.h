@@ -20,6 +20,8 @@ namespace kotomo::mixed {
 struct Spelling {
   uint8_t length = 0;  // letters the syllable takes
   bool fuzzy = false;  // only through a fuzzy-pinyin rule or a spelling correction of the schema
+  bool partial = false;  // not a whole syllable: an abbreviation (`zh`, `t`) or the unfinished
+                         // start of one (`xio`); librime completes it when it converts the run
 };
 
 /// Holds one span handed to Mozc for the Japanese finish (PLAN.md §5.4).
@@ -64,7 +66,8 @@ class Engines {
 
   /// Lists the pinyin syllables that the start of `letters` spells, from librime's own spelling
   /// table of the deployed schema, so fuzzy-pinyin rules and corrections apply as they do in
-  /// Chinese mode.
+  /// Chinese mode. Unfinished syllables are listed too, marked `partial`: the schema's
+  /// abbreviations, and `letters` as a whole when they only begin a syllable.
   /// Inputs: `letters` in lower case; only its first few letters matter.
   /// Side effects: replaces the content of `out`.
   virtual void Spellings(std::string_view letters, std::vector<Spelling>* out) = 0;

@@ -68,5 +68,24 @@ int main() {
           "S6-propose-kana-shortest-spellings");
   }
 
+  {
+    // Letters that begin a kana and stop there are pending at the end only (feedback A7).
+    const Input input = *ParseInput("hont");
+    Lattice lattice(input.size());
+    ProposeJapanese(input, engines, options, &lattice);
+    const Edge* pending = Find(lattice, EdgeKind::kPending, 3, 4);
+    Check(pending && pending->text == "t" && pending->cost == costs.pending, "A7-propose-pending-last");
+    const Input start = *ParseInput("t");
+    Lattice alone(start.size());
+    ProposeJapanese(start, engines, options, &alone);
+    Check(alone.size() == 0, "A7-propose-pending-not-whole-input");
+    // Negative: a finished kana is not pending, and letters inside are not either.
+    const Input done = *ParseInput("thon");
+    Lattice other(done.size());
+    ProposeJapanese(done, engines, options, &other);
+    Check(!Find(other, EdgeKind::kPending, 0, 1) && !Find(other, EdgeKind::kPending, 3, 4),
+          "A7-propose-pending-only-unfinished");
+  }
+
   return kotomo::mixed::test::Result();
 }

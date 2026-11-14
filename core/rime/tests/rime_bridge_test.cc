@@ -95,8 +95,17 @@ int main(int argc, char** argv) {
     Check(xi && xian, "Q7-rime-api-spellings", "xian starts with xi and xian, through the table");
     Check(table->spellings("xian", 4, spelled, 1) == 1, "Q7-rime-api-capacity",
           "no more spellings than the caller has room for");
-    Check(table->spellings("kq", 2, spelled, 8) == 0, "Q7-rime-api-no-spelling",
-          "kq spells nothing");
+    const size_t initials = table->spellings("kq", 2, spelled, 8);
+    Check(initials == 1 && spelled[0].length == 1 && spelled[0].partial == 1, "Q7-rime-api-no-spelling",
+          "kq spells no syllable: only the initial k, marked unfinished");
+    const size_t begun = table->spellings("xio", 3, spelled, 8);
+    bool whole = false, xi_full = false;
+    for (size_t i = 0; i < begun; ++i) {
+      whole |= spelled[i].length == 3 && spelled[i].partial == 1;
+      xi_full |= spelled[i].length == 2 && spelled[i].partial == 0;
+    }
+    Check(whole && xi_full, "A7-rime-api-unfinished",
+          "xio is the unfinished start of a syllable, after the full syllable xi");
     struct Words {
       std::vector<std::string> texts;
       std::vector<int> composed;
@@ -124,7 +133,13 @@ int main(int argc, char** argv) {
     std::vector<rb::SpellingMatch> found;
     const auto has = [&found](std::size_t length, bool fuzzy) {
       for (const rb::SpellingMatch& m : found) {
-        if (m.length == length && m.fuzzy == fuzzy) return true;
+        if (m.length == length && m.fuzzy == fuzzy && !m.partial) return true;
+      }
+      return false;
+    };
+    const auto full = [&found] {
+      for (const rb::SpellingMatch& m : found) {
+        if (!m.partial) return true;
       }
       return false;
     };
@@ -137,9 +152,12 @@ int main(int argc, char** argv) {
           "hoa is a syllable only through the schema's correction");
     // Negative: abbreviations and non-syllables are not syllables.
     rb::Spellings("zg", &found);
-    Check(found.empty(), "S6-spellings-no-abbreviation", "zg spells no full syllable");
+    Check(!full() && found.size() == 1 && found[0].length == 1 && found[0].partial,
+          "S6-spellings-no-abbreviation", "zg spells no full syllable, only the initial z");
     rb::Spellings("kq", &found);
-    Check(found.empty(), "S6-spellings-none", "kq spells nothing");
+    Check(!full(), "S6-spellings-none", "kq spells no full syllable");
+    rb::Spellings("vq", &found);
+    Check(found.empty(), "S6-spellings-nothing", "vq spells nothing at all");
     Check(!rb::OpenSpellings(prism + ".missing"), "S6-spellings-missing-file",
           "a missing prism is refused");
     rb::CloseSpellings();

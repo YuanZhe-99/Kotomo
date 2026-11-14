@@ -75,6 +75,14 @@ close to a neighbouring key) also gets the composition read with that neighbour:
 candidate of at most two such readings is added, marked fuzzy, at its cost plus 2500 and never
 first. Keys without a position convert exactly as typed.
 
+A last syllable that is still being typed converts too, so the candidates do not vanish between
+two keys. In a Chinese sentence the last letters may be an unfinished pinyin syllable (`shur`,
+`zhongg`): librime completes it as it does in Chinese mode, at 2500 units more. In a Japanese
+sentence the last one to three letters that begin a kana without finishing one (`r`, `ky`) stay
+as typed after the converted sentence, as a piece of origin 5 whose reading is those letters, at
+3000 units; they never follow an English word and never are the whole composition. Unfinished
+syllables are read only at the end of the composition.
+
 ## Output: the snapshot
 
 One snapshot describes what the app shows after one request: text to commit first, the
@@ -104,7 +112,7 @@ what a later edit locks or changes, so the other pieces are never rewritten.
 | piece: text | string | what the piece commits |
 | piece: reading | string | hiragana for a Japanese piece, otherwise the letters typed |
 | piece: typed | u8 | the language the span was typed in (0, 1, 2 as above) |
-| piece: origin | u8 | 0 librime, 1 Mozc, 2 English dictionary, 3 pinyin → Japanese lexicon, 4 English → Japanese lexicon, 5 a coordinator rule (the particles は, を, へ) |
+| piece: origin | u8 | 0 librime, 1 Mozc, 2 English dictionary, 3 pinyin → Japanese lexicon, 4 English → Japanese lexicon, 5 a coordinator rule (the particles は, を, へ; letters still being typed after a Japanese sentence) |
 | piece: marks | u8 | bit 0: the piece entered Mozc as a fixed value; bit 1: the person locked it |
 
 A decoder checks everything: the magic, the version, every length against the buffer, that every
@@ -140,7 +148,7 @@ nothing and the other languages keep working.
 
 | Question | Answered by | Table |
 |---|---|---|
-| which pinyin syllables does the start of these letters spell | librime's spelling table (prism) of the session's schema, mapped when the session opens, so fuzzy rules and corrections apply as in Chinese mode | `core/rime/jni/kotomo_rime_api.h`: `spellings` |
+| which pinyin syllables does the start of these letters spell | librime's spelling table (prism) of the session's schema, mapped when the session opens, so fuzzy rules and corrections apply as in Chinese mode; unfinished syllables (the schema's abbreviations, and the letters as a whole when they only begin a syllable) are listed with a mark | `core/rime/jni/kotomo_rime_api.h`: `spellings` |
 | convert this run of syllables | librime's session with the syllables joined by apostrophes | `kotomo_rime_api.h`: `convert` |
 | map this romaji to hiragana | Mozc's romaji table | `core/mozc/kotomo_mozc_api.h`: `hiragana` |
 | convert this reading with these spans pinned | Mozc's converter (`MozcEngine::PinnedConvert`) | `kotomo_mozc_api.h`: `convert` |

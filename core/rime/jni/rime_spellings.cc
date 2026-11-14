@@ -11,6 +11,9 @@ namespace {
 /// The longest spelling asked about; luna_pinyin's longest syllable has six letters.
 constexpr std::size_t kMaxSpelling = 8;
 
+/// The longest run of letters that can be the unfinished start of a syllable.
+constexpr std::size_t kMaxSyllable = 6;
+
 std::unique_ptr<rime::Prism> prism;
 
 }  // namespace
@@ -30,6 +33,7 @@ void Spellings(std::string_view letters, std::vector<SpellingMatch>* out) {
   for (const rime::Prism::Match& match : matches) {
     bool exact = false;
     bool derived = false;
+    bool abbreviation = false;
     for (rime::SpellingAccessor accessor = prism->QuerySpelling(match.value);
          !accessor.exhausted(); accessor.Next()) {
       const rime::SpellingProperties properties = accessor.properties();
@@ -38,10 +42,24 @@ void Spellings(std::string_view letters, std::vector<SpellingMatch>* out) {
       } else if (properties.type == rime::kNormalSpelling ||
                  properties.type == rime::kFuzzySpelling) {
         derived = true;
+      } else if (properties.type == rime::kAbbreviation) {
+        abbreviation = true;
       }
     }
-    if (exact || derived) out->push_back({.length = match.length, .fuzzy = !exact});
+    if (exact || derived) {
+      out->push_back({.length = match.length, .fuzzy = !exact});
+    } else if (abbreviation) {
+      out->push_back({.length = match.length, .fuzzy = false, .partial = true});
+    }
   }
+  // The letters as a whole, when they only begin a syllable (`xio` of xiong).
+  if (letters.size() > kMaxSyllable) return;
+  for (const SpellingMatch& match : *out) {
+    if (match.length == letters.size()) return;
+  }
+  matches.clear();
+  prism->ExpandSearch(std::string(letters), &matches, 1);
+  if (!matches.empty()) out->push_back({.length = letters.size(), .fuzzy = false, .partial = true});
 }
 
 void CloseSpellings() { prism.reset(); }

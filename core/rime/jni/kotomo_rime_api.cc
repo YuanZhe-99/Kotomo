@@ -27,7 +27,8 @@ size_t Spellings(const char* letters, size_t size, KotomoRimeSpelling* out, size
   const size_t count = std::min(matches.size(), capacity);
   for (size_t i = 0; i < count; ++i) {
     out[i] = {.length = static_cast<uint8_t>(matches[i].length),
-              .fuzzy = static_cast<uint8_t>(matches[i].fuzzy ? 1 : 0)};
+              .fuzzy = static_cast<uint8_t>(matches[i].fuzzy ? 1 : 0),
+              .partial = static_cast<uint8_t>(matches[i].partial ? 1 : 0)};
   }
   return count;
 }

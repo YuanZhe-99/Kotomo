@@ -18,6 +18,9 @@ struct Costs {
   int32_t fuzzy = 3000;             // on top, a syllable reached only through a rule or correction
   int32_t chinese_rank = 2500;      // each place further down librime's list for a run
   int32_t chinese_composed = 4000;  // a run librime has no entry for and composes from words
+  int32_t unfinished = 2500;        // on top, a last syllable still being typed (`shur`)
+  int32_t pending = 3000;           // letters that begin a kana, kept as typed after a Japanese
+                                    // sentence (`shur` → しゅ + r)
   int32_t kana = 2200;              // decoding estimate for one kana edge; Mozc's cost replaces it
   int32_t doubled_n = 200;          // on top, ん typed nn (so n + ni wins over nn + i)
   int32_t japanese_bias = 0;        // added to Mozc's cost of a free run
