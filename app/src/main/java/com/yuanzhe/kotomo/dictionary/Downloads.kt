@@ -154,8 +154,12 @@ class Downloader(
      * Downloads [url] into [dest].
      * Inputs: size and sha256, when the source publishes them, must match; progress receives the
      * bytes so far and the expected total (-1 unknown).
-     * Throws [DownloadException]: SIZE above [MAX_DOWNLOAD] or not the published size, HASH when
-     * the digest differs, NETWORK when the connection breaks, STORAGE when [dest] cannot be written.
+     * Throws [DownloadException]: SIZE above [MAX_DOWNLOAD], above the response's own length or not
+     * the published size, HASH when the digest differs, NETWORK when the connection breaks (a read
+     * fails, or the body ends before the response's own length), STORAGE when [dest] cannot be
+     * written.
+     * Notes: a connection cut short may surface as a failed read or as a clean end of stream,
+     * depending on how the server or the network closes it; both are NETWORK.
      */
     suspend fun fetch(url: String, dest: File, size: Long?, sha256: String?, progress: (Long, Long) -> Unit) {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -189,6 +193,7 @@ class Downloader(
                     }
                     progress(got, total)
                 }
+                if (r.length >= 0 && got < r.length) throw DownloadException(DownloadProblem.NETWORK)
                 if ((size != null && got != size) || (r.length >= 0 && got != r.length)) throw DownloadException(DownloadProblem.SIZE)
             }
         }

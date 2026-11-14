@@ -170,8 +170,16 @@ class DownloadsTest {
         assertEquals("the member is missing", DownloadProblem.UNPACK, problem())
         release(zip("cn/base.dict.yaml", "---\n...\nB站\tB zhan\t1\n"))
         assertEquals("no line survives the checks", DownloadProblem.EMPTY, problem())
+        // The server announces 100 bytes more than it sends and closes. The client sees a failed read
+        // or a clean early end, depending on how the TLS connection closes; both must be NETWORK.
+        // A body that matches its own length but not the published size is SIZE
+        // (aDifferentDigestOrSizeIsRefusedAndTheInstalledVersionStays).
         serve("/raw/short", words.toByteArray(), length = words.toByteArray().size + 100L)
         assertEquals("a connection that ends before the announced length", DownloadProblem.NETWORK, problem(source = source(Input.Plain("$base/raw/short"))))
+        val archive = zip("cn/base.dict.yaml", words)
+        release(archive)
+        serve("/files/cn.zip", archive, length = archive.size + 100L)
+        assertEquals("a release asset cut short is a network failure, not a size mismatch", DownloadProblem.NETWORK, problem())
     }
 
     @Test

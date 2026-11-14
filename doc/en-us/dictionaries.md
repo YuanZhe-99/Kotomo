@@ -184,7 +184,9 @@ Every source PLAN §10.5 approved, checked on 2026-11-11 (the counts are what th
   SHA-256 digest; the download must match both, and an asset without a digest is refused. A plain
   file has no published checksum: the page says so, and only HTTPS protects it.
 - At most 64 MB is downloaded per file and 256 MB unpacked from an archive; the sizes are counted
-  while reading, not trusted.
+  while reading, not trusted. A file that ends before the length its server announced is a network
+  failure, however the connection closed; one that matches that length but not the published size
+  is a size failure.
 - Before the first download the notice names the hosts (`api.github.com`, `github.com`,
   `release-assets.githubusercontent.com`, `raw.githubusercontent.com`), says that only dictionary
   files are downloaded and nothing typed is sent; without accepting it nothing connects. Its
