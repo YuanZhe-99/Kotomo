@@ -7,9 +7,9 @@ The Chinese copy is `checklist.zh-cn.md` (same section and line numbers).
 
 | | |
 |---|---|
-| Commit | `7f6c6f2` (branch `main`) |
+| Commit | `18741a9` (branch `main`) |
 | Package | signed release APK, `arm64-v8a` (R8 on) |
-| SHA-256 | `9cebccd194b3362f999b6d175b6555d376510bc118eddfc3b3dd14da3d37f39a` (compare it with a checksum app if you have one) |
+| SHA-256 | `0bc4bbd7621b9201e11ef87d2f93968bca3f73299dcb83cff9ec7c21156621ff` (compare it with a checksum app if you have one) |
 | Version shown in the app | 0.1.0 |
 
 Install: if an older Kotomo (debug build, or one signed differently) is on the phone, uninstall it
