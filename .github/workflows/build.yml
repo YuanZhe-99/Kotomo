@@ -328,6 +328,9 @@ jobs:
     env:
       # The development host's emulator image and device (medium_phone, 1080x2400 at 420 dpi).
       IMAGE: system-images;android-37.2;google_apis_playstore_ps16k;x86_64
+      # avdmanager and the emulator each pick their own default AVD directory on the runner
+      # (the first run's emulator found no AVD), so both are given this one.
+      ANDROID_AVD_HOME: ${{ github.workspace }}/../avd
     steps:
       - uses: actions/checkout@v7
         with:
@@ -355,7 +358,9 @@ jobs:
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "cmake;3.22.1" "ndk;30.0.16248370" emulator platform-tools "$IMAGE" > /dev/null
+          mkdir -p "$ANDROID_AVD_HOME"
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n kotomo -k "$IMAGE" -d medium_phone
+          "$ANDROID_HOME/emulator/emulator" -list-avds | grep -qx kotomo
 
       - uses: actions/cache/restore@v6
         with:
@@ -395,9 +400,15 @@ jobs:
         run: |
           "$ANDROID_HOME/emulator/emulator" -avd kotomo -no-window -no-snapshot -no-audio -no-boot-anim \
             -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          emulator=$!
           adb="$ANDROID_HOME/platform-tools/adb"
-          timeout 600 "$adb" wait-for-device
-          timeout 600 sh -c "until [ \"\$('$adb' shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 5; done"
+          # Waits up to ten minutes for the boot, and stops at once when the emulator exits.
+          for _ in $(seq 120); do
+            kill -0 "$emulator" 2>/dev/null || { cat "$RUNNER_TEMP/emulator.log"; exit 1; }
+            [ "$("$adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break
+            sleep 5
+          done
+          [ "$("$adb" shell getprop sys.boot_completed | tr -d '\r')" = 1 ] || { tail -50 "$RUNNER_TEMP/emulator.log"; exit 1; }
           "$adb" shell settings put secure show_ime_with_hard_keyboard 1
           "$adb" shell getconf PAGE_SIZE
 
