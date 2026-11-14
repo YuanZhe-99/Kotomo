@@ -3,6 +3,7 @@ package com.yuanzhe.kotomo.ime
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -178,11 +179,11 @@ fun EditPanel(onKey: (keycode: Int, select: Boolean) -> Unit, onAction: (Int) ->
                 }
                 EditRow {
                     EditKey(stringResource(R.string.edit_paste)) { select = false; onAction(android.R.id.paste) }
-                    EditKey(stringResource(R.string.edit_delete), "⌫") { onKey(KeyEvent.KEYCODE_DEL, false) }
+                    EditKey(stringResource(R.string.edit_delete), icon = R.drawable.ic_key_backspace) { onKey(KeyEvent.KEYCODE_DEL, false) }
                 }
                 EditRow {
-                    EditKey(stringResource(R.string.tool_undo), "↶") { select = false; onAction(android.R.id.undo) }
-                    EditKey(stringResource(R.string.tool_redo), "↷") { select = false; onAction(android.R.id.redo) }
+                    EditKey(stringResource(R.string.tool_undo), icon = R.drawable.ic_tool_undo) { select = false; onAction(android.R.id.undo) }
+                    EditKey(stringResource(R.string.tool_redo), icon = R.drawable.ic_tool_redo) { select = false; onAction(android.R.id.redo) }
                 }
             }
         }
@@ -204,11 +205,13 @@ private fun ColumnScope.EditRow(content: @Composable RowScope.() -> Unit) {
 }
 
 /**
- * One edit key: [shown] drawn (the [label] by default), [label] read out; [on] highlights the
- * Select switch while it is on.
+ * One edit key: [icon] or [shown] drawn (the [label] by default), [label] read out; [on]
+ * highlights the Select switch while it is on.
+ * Notes: Delete, Undo and Redo draw the keyboard's and the toolbar's own icons, so the panel and
+ * the keys look alike.
  */
 @Composable
-private fun RowScope.EditKey(label: String, shown: String = label, on: Boolean? = null, onClick: () -> Unit) {
+private fun RowScope.EditKey(label: String, shown: String = label, @DrawableRes icon: Int? = null, on: Boolean? = null, onClick: () -> Unit) {
     Box(
         Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(12.dp))
             .background(kbColor(if (on == true) R.color.kb_accent_container else R.color.kb_key))
@@ -224,7 +227,8 @@ private fun RowScope.EditKey(label: String, shown: String = label, on: Boolean? 
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text(shown, fontSize = if (shown == label) 14.sp else 20.sp, color = kbColor(if (on == true) R.color.kb_on_accent_container else R.color.kb_ink), maxLines = 1)
+        if (icon != null) Image(painterResource(icon), contentDescription = null, colorFilter = ColorFilter.tint(kbColor(R.color.kb_ink)))
+        else Text(shown, fontSize = if (shown == label) 14.sp else 20.sp, color = kbColor(if (on == true) R.color.kb_on_accent_container else R.color.kb_ink), maxLines = 1)
     }
 }
 

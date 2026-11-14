@@ -83,7 +83,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Idioms.kt` | 成语补全（PLAN §10.8），取自下载的成语词库的词表：提交的内容开头的成语的后半部分 | `Idioms` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Kana.kt` | 12 键滑动布局的平假名（PLAN §10.9）：哪些字符参与组合，以及゛゜小键的循环（清音、浊音、半浊音、小写） | `Kana` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/InlineAutofill.kt` | 空闲工具栏上的自动填充服务内联建议（PLAN §10.10，Android 11 起）：带 Kotomo 胶囊样式的请求，以及由系统绘制的建议条（Kotomo 看不到其中的文字），条首的按钮把建议暂时收起、显示工具栏，工具栏首位随之出现的钥匙键再把建议调回。只在 debug 构建中的 `fieldtest/FakeAutofillService.kt` 为 `InlineAutofillTest` 提供一条建议 | `InlineAutofill` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除、撤销、重做）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/Tools.kt` | 工具栏的工具（PLAN §10.10）及其图标与名称，可排序、可隐藏；“更多”面板中不在工具栏上的工具网格；编辑面板（方向键、行首行尾、选择、全选、剪切、复制、粘贴、删除、撤销、重做；删除、撤销、重做与按键和工具栏用同样的图标）与发送这些键和上下文菜单操作的 `TextEditing` | `Tool`、`ToolGrid`、`EditPanel`、`TextEditing` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/GenAi.kt` | 通过 ML Kit GenAI 用 Gemini Nano 校对与改写（[ai.md](../ai.md)）：状态、由用户发起的下载、长文字拆分、错误映射 | `GenAi`、`AiAction`、`AiFailure` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/AiActivity.kt`、`AiHandoff.kt` | 写作助手页面（语言、操作、建议、替换、复制）及其与键盘之间的内存交接 | `AiActivity`、`AiHandoff`、`AiRequest` |
 | `app/src/main/java/com/yuanzhe/kotomo/ai/Translation.kt`、`ime/TranslatePanel.kt`、`settings/TranslationModels.kt` | 用 ML Kit 在本机进行中、英、日互译（[ai.md](../ai.md)）：猜测语言、一个语言对需要的模型、由用户发起的下载、翻译、删除；键盘的翻译面板（语言、预览、替换、复制）与 AI 页上已下载模型的列表 | `TranslateLang.guess`、`Translations`、`TranslatePanel`、`TranslationModels` |

@@ -1,5 +1,9 @@
 package com.yuanzhe.kotomo.ime
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -232,7 +236,7 @@ fun HandwritingPanel(
                 val first = candidates.firstOrNull()
                 if (strokes.isNotEmpty()) first?.let(::commit) else onSpace()
             }
-            Button("⌫", accent = false, Modifier.width(56.dp), description = stringResource(R.string.key_backspace)) {
+            Button("", accent = false, Modifier.width(56.dp), description = stringResource(R.string.key_backspace), icon = R.drawable.ic_key_backspace) {
                 if (strokes.isNotEmpty()) {
                     strokes.removeAt(strokes.lastIndex)
                     recognize()
@@ -250,9 +254,9 @@ private fun Note(text: String) {
     Text(text, fontSize = 13.sp, color = kbColor(R.color.kb_ink_secondary))
 }
 
-/** A button in the keyboard's colors; [accent] for the main action, [description] for a symbol label. */
+/** A button in the keyboard's colors; [accent] for the main action, [icon] drawn in place of [text] (Backspace uses the keys' own icon), [description] read out for an icon. */
 @Composable
-private fun Button(text: String, accent: Boolean, modifier: Modifier, description: String? = null, onClick: () -> Unit) {
+private fun Button(text: String, accent: Boolean, modifier: Modifier, description: String? = null, @DrawableRes icon: Int? = null, onClick: () -> Unit) {
     Box(
         modifier.fillMaxHeight().clip(RoundedCornerShape(12.dp))
             .background(kbColor(if (accent) R.color.kb_accent else R.color.kb_key_function))
@@ -260,7 +264,9 @@ private fun Button(text: String, accent: Boolean, modifier: Modifier, descriptio
             .semantics { role = Role.Button; description?.let { contentDescription = it } },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 15.sp, color = kbColor(if (accent) R.color.kb_on_accent else R.color.kb_ink))
+        val ink = kbColor(if (accent) R.color.kb_on_accent else R.color.kb_ink)
+        if (icon != null) Image(painterResource(icon), contentDescription = null, colorFilter = ColorFilter.tint(ink))
+        else Text(text, fontSize = 15.sp, color = ink)
     }
 }
 

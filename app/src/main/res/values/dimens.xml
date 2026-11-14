@@ -62,6 +62,9 @@
     <dimen name="emoji_header_text">13sp</dimen>
     <dimen name="emoji_header_pad">8dp</dimen>
     <dimen name="emoji_tone_mark">7dp</dimen>
+    <!-- The voice panel's round start / stop button and its microphone. -->
+    <dimen name="voice_button">72dp</dimen>
+    <dimen name="voice_icon">32dp</dimen>
     <dimen name="emoji_bar_height">52dp</dimen>
     <dimen name="emoji_bar_pad_v">6dp</dimen>
     <dimen name="emoji_bar_key">56dp</dimen>

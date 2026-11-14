@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -27,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -89,13 +92,17 @@ fun VoicePanel(start: VoiceLang, chinese: VoiceLang, onAskPermission: () -> Unit
                         val listening = state == VoiceState.LISTENING
                         val label = stringResource(if (listening) R.string.voice_stop else R.string.voice_start)
                         Box(
-                            Modifier.size(72.dp).clip(CircleShape)
+                            Modifier.size(dimensionResource(R.dimen.voice_button)).clip(CircleShape)
                                 .background(kbColor(if (listening) R.color.kb_accent else R.color.kb_accent_container))
                                 .clickable { if (listening) voice.stop() else voice.start(lang) }
                                 .semantics { role = Role.Button; contentDescription = label },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("🎙", fontSize = 30.sp)
+                            // The toolbar's microphone, so the panel and the bar draw the same icon.
+                            Icon(
+                                painterResource(R.drawable.ic_tool_voice), null, Modifier.size(dimensionResource(R.dimen.voice_icon)),
+                                tint = kbColor(if (listening) R.color.kb_on_accent else R.color.kb_on_accent_container),
+                            )
                         }
                     }
                 }
