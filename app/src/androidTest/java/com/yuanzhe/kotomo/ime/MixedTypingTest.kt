@@ -177,6 +177,21 @@ class MixedTypingTest {
         assertNotEquals(SENTENCE, text)
     }
 
+    /** Feedback B6 positive: initials between whole syllables are pinyin (`woxhni` → 我喜欢你). */
+    @Test
+    fun abbreviatedPinyinConverts() {
+        assertEquals("我喜欢你", type("woxhni", expected = "我喜欢你"))
+    }
+
+    /** Feedback B6 negative: with `mixed.abbreviation` off the same keys are not read as pinyin. */
+    @Test
+    fun abbreviatedPinyinOffStopsTheConversion() {
+        change { it.copy(mixed = it.mixed.copy(abbreviation = false)) }
+        val text = type("woxhni", expected = "", attempts = 1)
+        assertTrue("something is committed", text.isNotEmpty())
+        assertNotEquals("我喜欢你", text)
+    }
+
     /**
      * T03-020 positive (PLAN §2.3): Japanese mode reads pinyin as a Japanese word through the
      * coordinator; `dongjing` is not romaji, so 東京 leads and space commits it.

@@ -156,6 +156,9 @@
     <string name="cross_english_katakana_desc">coffee → コーヒー</string>
     <string name="cross_sentence">言語が混ざった文の変換</string>
     <string name="cross_sentence_desc">zailiucard → 在留カード</string>
+    <string name="mixed_pinyin">ピンイン</string>
+    <string name="mixed_abbreviation">ピンインの頭文字入力</string>
+    <string name="mixed_abbreviation_desc">音節を頭文字だけで入力：tq → 天气</string>
     <string name="cross_readings">候補に読みを表示</string>
     <string name="cross_readings_desc">日本語の候補の下に読みを表示します</string>
     <string name="cross_emoji">絵文字の候補</string>

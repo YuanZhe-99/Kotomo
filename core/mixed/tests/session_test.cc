@@ -1,4 +1,4 @@
-// Host test of the session (the engine side of the engine ↔ app contract, version 6) against
+// Host test of the session (the engine side of the engine ↔ app contract, version 7) against
 // the fake engines: keys, deletion, replacing and clearing the composition, options, selection.
 
 #include "check.h"
@@ -222,6 +222,17 @@ int main() {
   // Negative: a list that was not cut asks for nothing more.
   s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
   Check(!s.more, "A9-N-short-list-is-complete");
+
+  // Feedback B6: with abbreviated pinyin allowed, two initials are a Chinese word; with the
+  // switch off they are not read as pinyin.
+  s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "tq"});
+  Check(Place(s, "天气") >= 0, "B6-abbreviated-pinyin");
+  session.Handle({.generation = ++generation, .command = Command::kOptions,
+                  .switches = static_cast<uint8_t>(kSwitchAll & ~kSwitchIncognito & ~kSwitchAbbreviation)});
+  s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "tq"});
+  Check(Place(s, "天气") < 0, "B6-N-abbreviated-pinyin-off");
+  session.Handle({.generation = ++generation, .command = Command::kOptions});
+  session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
 
   // T08 (PLAN.md §9.7, layer 1): `l` touched at the edge towards `k` also offers the reading
   // with `k`, marked as a correction; a touch on the middle of the key offers none.

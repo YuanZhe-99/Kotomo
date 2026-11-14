@@ -219,7 +219,7 @@ class ConversionCorpusTest {
             // As the keyboard does: the coordinator's cross-language candidates, Japanese only.
             Rime.clear()
             val c = core ?: checkNotNull(Core.open(rime = true, mozc, english, lexicon.path)) { "the coordinator did not open" }.also { core = it }
-            c.options(++generation, Core.Options(chinese = false, english = false))
+            c.options(++generation, Core.Options(chinese = false, english = false, abbreviation = false))
             val crossed = Candidates.japaneseCross(c.set(++generation, line.input)?.let { if (it.more) c.refine(generation) else it })
             c.clear(++generation)
             c.options(++generation, Core.Options())

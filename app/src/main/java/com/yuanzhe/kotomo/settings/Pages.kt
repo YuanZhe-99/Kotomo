@@ -280,6 +280,9 @@ internal fun MixedPage(settings: Settings, store: SettingsStore) {
     Section(stringResource(R.string.mixed_cross)) {
         CrossSwitches(mixed.cross) { cross -> update { it.copy(cross = cross(it.cross)) } }
     }
+    Section(stringResource(R.string.mixed_pinyin)) {
+        SwitchRow(R.string.mixed_abbreviation, R.string.mixed_abbreviation_desc, mixed.abbreviation) { on -> update { it.copy(abbreviation = on) } }
+    }
     KeysSections(Mode.MIXED, mixed.keys) { keys -> update { it.copy(keys = keys) } }
 }
 

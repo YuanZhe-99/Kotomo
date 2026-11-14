@@ -1,7 +1,7 @@
 # Engine ↔ app contract
 
 How the app and the native engine talk: what goes in, what comes out, and how the mixed-input
-coordinator (`core/mixed/`) reaches the three engines. This is **contract version 6**
+coordinator (`core/mixed/`) reaches the three engines. This is **contract version 7**
 (`kContractVersion` in `core/mixed/snapshot.h`, `Snapshot.VERSION` in `engine/Snapshot.kt`). Both
 sides exist: the engine side is `libkotomo_core.so` (`core/mixed/session.h`, `jni/core_jni.cc`),
 the app side is the facade `engine/Core.kt` with the decoder `engine/Snapshot.kt`. Mixed mode
@@ -39,7 +39,7 @@ All integers are little-endian. A string is a `u16` byte length followed by UTF-
 | 1 | key | u32 code point; i16 x, i16 y: the touch in the English engine's 1000 × 600 layout space, −1 for none | appends a letter, or a space or apostrophe as a boundary hint; any other character and a key past 256 bytes change nothing |
 | 2 | backspace | — | deletes the last character |
 | 3 | clear | — | drops the composition without committing |
-| 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; u8 targets; i8 × 3 weights for Chinese, Japanese, English | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito). The targets' bits name the languages candidates may be written in: 0 Chinese, 1 Japanese, 2 English; Mixed mode sets all three, Japanese mode only Japanese and takes the cross-language candidates (version 3). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates |
+| 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; u8 targets; i8 × 3 weights for Chinese, Japanese, English | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito), 5 abbreviated pinyin: a syllable may be typed by its initial alone anywhere in the composition (version 7). The targets' bits name the languages candidates may be written in: 0 Chinese, 1 Japanese, 2 English; Mixed mode sets all three, Japanese mode only Japanese and takes the cross-language candidates (version 3). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates |
 | 5 | context | string: the text before the cursor | candidates in the language that text ends in cost 300 units less (kana, or a Han character with kana before it: Japanese; a Han character otherwise: Chinese; a Latin letter: English). Kept in memory only. The app sends it when a composition starts and never for a field that may leave no trace |
 | 6 | select | u64: the generation of the snapshot on screen; u16: a candidate's index in it | commits that candidate: the snapshot's commit field holds its text and the composition is empty. When the engine's last snapshot is another one, or has no such candidate, nothing is committed |
 | 7 | alternatives | u16 begin, u16 end: a byte range of the composition | changes nothing; the snapshot's candidates stand for that span alone, in every language, and its focus fields name the span. A span that is empty, runs past the composition or cuts a locked piece gets the ordinary snapshot |
@@ -88,8 +88,12 @@ two keys. In a Chinese sentence the last letters may be an unfinished pinyin syl
 `zhongg`): librime completes it as it does in Chinese mode, at 2500 units more. In a Japanese
 sentence the last one to three letters that begin a kana without finishing one (`r`, `ky`) stay
 as typed after the converted sentence, as a piece of origin 5 whose reading is those letters, at
-3000 units; they never follow an English word and never are the whole composition. Unfinished
-syllables are read only at the end of the composition.
+3000 units; they never follow an English word and never are the whole composition. An unfinished
+syllable is read only at the end of the composition. Before the end a syllable may be
+abbreviated to its initial (`tq` → 天气, `woxhni` → 我喜欢你) while the abbreviated-pinyin
+switch is on, at the same 2500 units per initial; an initial is not read that way where its
+letters go on to spell a whole syllable (`n` of `nai`), so full pinyin never splits into
+initials.
 
 Inside a longer composition some readings are chance splits far more often than what was meant,
 so only the whole composition may be one: a one-syllable pinyin key read as a Japanese word, and

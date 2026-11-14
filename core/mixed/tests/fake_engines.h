@@ -118,6 +118,7 @@ class FakeEngines : public Engines {
       {"an", false},  {"xian", false}, {"tu", false}, {"guan", false}, {"ai", false},
       {"hoa", true},  {"yu", false}};
   std::map<std::string, std::vector<std::string>> chinese_ = {
+      {"t'q", {"提前", "天气"}},
       {"yu", {"与", "于", "鱼", "雨", "玉", "余", "语", "欲", "遇", "育", "预", "域"}},
       {"shu", {"书", "树", "数"}},        {"ni'hao", {"你好", "~拟好"}},
       {"hen'hao", {"很好"}},              {"xi'an", {"西安"}},

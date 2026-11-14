@@ -38,7 +38,8 @@ inline constexpr uint8_t kSwitchEnglishToKanji = 2;
 inline constexpr uint8_t kSwitchEnglishToKatakana = 4;
 inline constexpr uint8_t kSwitchWholeSentence = 8;
 inline constexpr uint8_t kSwitchIncognito = 16;
-inline constexpr uint8_t kSwitchAll = 31;
+inline constexpr uint8_t kSwitchAbbreviation = 32;  // a syllable by its initial (`tq`)
+inline constexpr uint8_t kSwitchAll = 63;
 
 /// Request::targets bits: the languages candidates may be written in, bit i for Lang i.
 inline constexpr uint8_t kTargetAll = 7;

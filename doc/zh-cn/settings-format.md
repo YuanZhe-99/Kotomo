@@ -67,6 +67,7 @@
 | `japanese.enter` | string | `shown` | 日文模式组合中的回车：`shown` 提交输入的假名（已选定分段后提交转换结果），`first` 提交首选候选 |
 | `chinese.space` | string | `commit_first` | 中文模式组合中的空格：`commit_first` 或 `next`；其他值读作默认值 |
 | `chinese.enter` | string | `shown` | 中文模式组合中的回车：`shown` 提交输入的字母，`first` 提交首选候选 |
+| `mixed.abbreviation` | boolean | `true` | 混合模式的简拼：音节可以只打声母（`tq` → 天气、`woxhni` → 我喜欢你）。关闭时只有完整音节按拼音读取，正在打的最后一个音节除外。中文模式始终读取简拼 |
 | `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`（按中文读音键入的日文汉字词）、`pinyin_to_katakana`、`english_to_kanji`（英文词对应的同义日文词）、`english_to_katakana`（对应的外来语）、`whole_sentence`（关闭时跨语言词只在它就是整个组合时提供）、`readings`、`emoji` |
 | `chinese.script` | string | `simplified` | 中文输出：`simplified`（大陆）、`traditional`（OpenCC 标准）、`taiwan`、`hong_kong`（带地区用词）；快捷面板还会在键盘的记忆（见下文）中按 App 记住选择 |
 | `chinese.fuzzy.<rule>` | boolean | `false` | 每条模糊音规则一个开关（PLAN §9.6）：`z_zh`、`c_ch`、`s_sh`、`n_l`、`f_h`、`l_r`、`an_ang`、`en_eng`、`in_ing`、`ian_iang`、`uan_uang`；开关改动过一次后才写入该键。键盘把开启的规则写成 librime 的 `kotomo_fuzzy.yaml` 并部署（[upstream.md](upstream.md)） |

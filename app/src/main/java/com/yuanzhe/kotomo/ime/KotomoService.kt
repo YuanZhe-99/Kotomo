@@ -2335,6 +2335,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             englishToKatakana = m.cross.englishToKatakana,
             wholeSentence = m.cross.wholeSentence,
             incognito = settings.incognito || sensitive || locked,
+            abbreviation = m.abbreviation,
             chineseWeight = m.weightChinese - d.weightChinese,
             japaneseWeight = m.weightJapanese - d.weightJapanese,
             englishWeight = m.weightEnglish - d.weightEnglish,
@@ -2639,6 +2640,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             englishToKatakana = c.englishToKatakana,
             wholeSentence = c.wholeSentence,
             incognito = settings.incognito || sensitive || locked,
+            abbreviation = false,
             chinese = false,
             english = false,
         )

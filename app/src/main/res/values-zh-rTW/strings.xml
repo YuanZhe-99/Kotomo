@@ -156,6 +156,9 @@
     <string name="cross_english_katakana_desc">coffee → コーヒー</string>
     <string name="cross_sentence">跨語言整句辨識</string>
     <string name="cross_sentence_desc">zailiucard → 在留カード</string>
+    <string name="mixed_pinyin">拼音</string>
+    <string name="mixed_abbreviation">簡拼</string>
+    <string name="mixed_abbreviation_desc">只打音節的聲母：tq → 天氣</string>
     <string name="cross_readings">候選詞注音</string>
     <string name="cross_readings_desc">在日文候選下方顯示讀音</string>
     <string name="cross_emoji">Emoji 聯想</string>

@@ -56,6 +56,7 @@ struct Options {
   bool english_to_katakana = true;  // an English word read as its katakana loanword
   bool transliteration = true;      // with english_to_katakana: made-up katakana spellings too
   bool whole_sentence = true;       // false: a cross-language word only for the whole input
+  bool abbreviation = true;         // a syllable typed by its initial alone (`tq` → 天气)
   bool incognito = false;           // the field must leave no trace: Mozc converts incognito
   // The languages candidates are written in, indexed by Lang. Mixed mode asks for all three;
   // Japanese mode asks for Japanese only and takes the cross-language candidates (PLAN.md §2.3).

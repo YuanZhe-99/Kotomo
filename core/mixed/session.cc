@@ -204,6 +204,7 @@ Snapshot Session::Handle(const Request& request) {
       options_.english_to_katakana = request.switches & kSwitchEnglishToKatakana;
       options_.whole_sentence = request.switches & kSwitchWholeSentence;
       options_.incognito = request.switches & kSwitchIncognito;
+      options_.abbreviation = request.switches & kSwitchAbbreviation;
       for (int i = 0; i < 3; ++i) {
         options_.targets[i] = request.targets & (1 << i);
         options_.bias[i] = -kWeightStep * request.weight[i];

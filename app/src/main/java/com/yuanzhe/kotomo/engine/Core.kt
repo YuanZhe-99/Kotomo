@@ -29,6 +29,8 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         val wholeSentence: Boolean = true,
         /** The field must leave no trace: Mozc converts incognito. */
         val incognito: Boolean = false,
+        /** A pinyin syllable may be typed by its initial alone (`tq` → 天气). */
+        val abbreviation: Boolean = true,
         /** How far each language's weight was moved from its default, −100…100. */
         val chineseWeight: Int = 0,
         val japaneseWeight: Int = 0,
@@ -67,7 +69,8 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
             (if (options.englishToKanji) 2 else 0) or
             (if (options.englishToKatakana) 4 else 0) or
             (if (options.wholeSentence) 8 else 0) or
-            (if (options.incognito) 16 else 0)
+            (if (options.incognito) 16 else 0) or
+            (if (options.abbreviation) 32 else 0)
         val targets = (if (options.chinese) 1 else 0) or (if (options.japanese) 2 else 0) or (if (options.english) 4 else 0)
         it.put(options.level.coerceIn(0, 2).toByte()).put(switches.toByte()).put(targets.toByte())
         for (weight in intArrayOf(options.chineseWeight, options.japaneseWeight, options.englishWeight)) {

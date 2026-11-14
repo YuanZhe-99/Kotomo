@@ -69,8 +69,17 @@ int main() {
           "A7-propose-pinyin-unfinished-last");
     const Input inside = *ParseInput("rshu");
     Lattice other(inside.size());
-    ProposePinyin(inside, engines, options, &other);
+    Options full = options;
+    full.abbreviation = false;
+    ProposePinyin(inside, engines, full, &other);
     Check(Find(other, EdgeKind::kPinyin, 0, 1) == nullptr, "A7-propose-pinyin-unfinished-not-inside");
+    // With abbreviated pinyin allowed, an initial is a syllable anywhere (feedback B6).
+    Lattice abbreviated(inside.size());
+    full.abbreviation = true;
+    ProposePinyin(inside, engines, full, &abbreviated);
+    const Edge* initial = Find(abbreviated, EdgeKind::kPinyin, 0, 1);
+    Check(initial && initial->cost == costs.pinyin_syllable + costs.unfinished,
+          "B6-propose-pinyin-initial-inside");
     const Input whole = *ParseInput("tushugua");
     Lattice third(whole.size());
     ProposePinyin(whole, engines, options, &third);

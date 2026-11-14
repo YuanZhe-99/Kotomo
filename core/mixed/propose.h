@@ -14,7 +14,9 @@ namespace kotomo::mixed {
 
 /// Adds one kPinyin edge for every syllable librime's spelling table finds at every position,
 /// and for an unfinished syllable (`r`, `xio`) at the end of the input, at `Costs::unfinished`
-/// more: what is still being typed converts as it does in Chinese mode.
+/// more: what is still being typed converts as it does in Chinese mode. With
+/// `Options::abbreviation` an initial (`t` of `tq`) is an edge before the end too, at the same
+/// cost, unless its letters go on to spell a whole syllable (feedback B6).
 /// Side effects: one Engines::Spellings call per position.
 void ProposePinyin(const Input& input, Engines& engines, const Options& options, Lattice* lattice);
 

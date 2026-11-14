@@ -223,3 +223,11 @@ A9-003	mixed		shi	逝	0	feedback A9: a rare character, far down the list
 A9-004	mixed		shijian	试件	0	feedback A9: two syllables: the rarer words too
 A9-005	mixed		yu	与	1	feedback A9: the first place is unchanged by the fuller list
 A9-N01	mixed		shijian	!实际|!世纪	0	feedback A9: the full list holds no word for a prefix of the input (shi'ji)
+B6-001	mixed		tq	天气	5	feedback B6: abbreviated pinyin, two initials
+B6-002	mixed		zg	中国	3	feedback B6: as T01-005 in Chinese mode
+B6-003	mixed		woxhni	我喜欢你	1	feedback B6: initials between whole syllables
+B6-004	mixed		jttq	今天天气	1	feedback B6: four initials
+B6-N01	mixed		ok	OK|ok	1	feedback B6: a common English word stays first
+B6-N02	mixed		tv	TV|tv	1	feedback B6: letters that are an English abbreviation stay first
+B6-N03	mixed		the	the	1	feedback B6: t + he is not read before the English word
+B6-N04	mixed		nai	!你爱|!那爱	0	feedback B6: an initial is not split off a whole syllable
