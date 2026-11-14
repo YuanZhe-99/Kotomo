@@ -1,24 +1,25 @@
 name: Mozc
 
-# Builds libkotomo_mozc.so (Mozc plus Kotomo's glue in core/mozc) for Android
-# with Mozc's Bazel build. Mozc's Android build runs only on Linux or macOS
-# hosts, so Windows machines use these hash-locked artifacts (PLAN.md §2.5).
+# Builds libkotomo_mozc.so (Mozc plus Kotomo's glue in core/mozc) with Mozc's Bazel build through
+# scripts/build-mozc.sh: the host build with the glue tests, the line service and the host library
+# that the conversion corpus loads, and the Android libraries for arm64-v8a and x86_64 with the
+# data set. Mozc's Android build runs only on x86_64 Linux or macOS (the NDK has no other host
+# tools), so it runs here rather than inside Gradle.
+#
+# Where the app build gets Mozc: build.yml calls this workflow as its first job and downloads the
+# kotomo-mozc artifact of the same run. A full Bazel build takes an hour or more, so its output
+# (build/mozc/out) is cached under a key made of the Mozc submodule commit and every file that
+# shapes the build; a run whose key is cached builds nothing. The first run on a new repository,
+# and every run after a change to Mozc, the glue, its patches or the build script, builds in full.
+# No downloadable artifact has to exist beforehand, so the first run needs no manual step.
+#
+# build-lock.json pins the hashes of the maintainer's local build (upstreams.mozc.prebuilt). The
+# last step compares this run's Android output with them and warns, without failing, on a
+# difference: a build on another distribution may differ byte for byte. A difference after a change
+# to core/mozc means the lock was not updated in the same commit.
 on:
+  workflow_call:
   workflow_dispatch:
-  push:
-    paths:
-      - third_party/mozc
-      - core/mozc/**
-      - patches/mozc/**
-      - scripts/build-mozc.sh
-      - .github/workflows/mozc.yml
-  pull_request:
-    paths:
-      - third_party/mozc
-      - core/mozc/**
-      - patches/mozc/**
-      - scripts/build-mozc.sh
-      - .github/workflows/mozc.yml
 
 permissions:
   contents: read
@@ -26,30 +27,70 @@ permissions:
 jobs:
   mozc:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7
         with:
-          submodules: true
           persist-credentials: false
 
-      # Bazel's repository cache and Mozc's download cache (the NDK) survive
-      # between runs; both are keyed by the Mozc commit.
+      # The submodule commit is read from the tree, so the key is known before the checkout of
+      # Mozc itself (about 1 GB), which a cached run skips.
+      - name: Cache key
+        id: key
+        run: echo "mozc=$(git rev-parse HEAD:third_party/mozc)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Mozc output
+        id: out
+        uses: actions/cache@v6
+        with:
+          path: build/mozc/out
+          key: mozc-out-${{ runner.os }}-${{ steps.key.outputs.mozc }}-${{ hashFiles('core/mozc/**', 'patches/mozc/**', 'scripts/build-mozc.sh', '.github/workflows/mozc.yml') }}
+
+      - name: Check out Mozc
+        if: steps.out.outputs.cache-hit != 'true'
+        run: git submodule update --init --depth 1 third_party/mozc
+
+      # Mozc's Bazel build (rules_java) needs a full JDK with include/.
+      - uses: actions/setup-java@v6
+        if: steps.out.outputs.cache-hit != 'true'
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Bazel's repository cache and Mozc's download cache (the NDK r29 archive) for builds that
+      # miss the output cache; saved once per Mozc commit.
       - uses: actions/cache@v6
+        if: steps.out.outputs.cache-hit != 'true'
         with:
           path: |
             ~/.cache/bazel/_bazel_*/cache/repos
             build/mozc/mozc/src/third_party_cache
-          key: mozc-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-${{ github.sha }}
+          key: mozc-deps-${{ runner.os }}-${{ steps.key.outputs.mozc }}
           restore-keys: |
-            mozc-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-
+            mozc-deps-${{ runner.os }}-
 
-      - name: Host build and glue tests
-        run: scripts/build-mozc.sh --abi host
+      # One invocation for all three: build-mozc.sh fetches the NDK before its first Bazel command,
+      # and a Bazel server that a host-only call started would never see the Android toolchain.
+      # The output goes to build/mozc/out (the default), which the corpus also reads.
+      - name: Host build with the glue tests, and the Android libraries
+        if: steps.out.outputs.cache-hit != 'true'
+        run: scripts/build-mozc.sh --abi host --abi arm64-v8a --abi x86_64
 
-      - name: Android libraries
-        run: scripts/build-mozc.sh --abi arm64-v8a --abi x86_64 --out build/mozc/out
+      - name: Compare with build-lock.json
+        run: |
+          python3 - <<'EOF'
+          import hashlib, json, pathlib
+          pinned = json.load(open("build-lock.json"))["upstreams"]["mozc"]["prebuilt"]["sha256"]
+          out = pathlib.Path("build/mozc/out")
+          for name, want in pinned.items():
+              got = hashlib.sha256((out / name).read_bytes()).hexdigest()
+              if got == want:
+                  print(f"{name}: matches build-lock.json")
+              else:
+                  print(f"::warning title=Mozc::{name} is {got}; build-lock.json pins {want}")
+          EOF
 
+      # Upload drops the executable bit; the jobs that use the artifact restore it.
       - uses: actions/upload-artifact@v7
         with:
           name: kotomo-mozc

@@ -1,3 +1,6 @@
+# Gradle and the workflow actions only. The upstream engines are submodules pinned to release
+# commits and moved by hand with their patches and the corpus (AGENTS.md, Upstream versions);
+# dependabot's submodule updates follow branch tips, so they are not enabled.
 version: 2
 updates:
   - package-ecosystem: gradle
@@ -8,3 +11,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ['*']

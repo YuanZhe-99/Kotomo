@@ -1,5 +1,16 @@
 name: Build
 
+# The full build from a fresh clone (doc/en-us/development.md), split into jobs:
+#
+#   docs          java tool/CheckDocs.java
+#   mozc          mozc.yml: Mozc's host build and glue tests, the Android libraries (cached)
+#   data          Boost, the prebuilt Chinese data, the English dictionary, the emoji asset, the
+#                 cross-language lexicon and its sample check, the compiled lexicon
+#   host          the librime and English host tests, then the whole conversion corpus
+#                 (tests/conversion/run.sh) against its two baselines: one regressed line fails
+#   android       Gradle check, the debug and release APKs (signed only when the secrets exist)
+#   instrumented  connectedDebugAndroidTest on an emulator; only when started by hand
+#   release       on a v* tag, the signed release APKs on a GitHub release
 on:
   push:
     branches: [main]
@@ -8,24 +19,108 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: read
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  android:
+  docs:
     runs-on: ubuntu-latest
-    env:
-      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check documentation
+        run: java tool/CheckDocs.java
 
-      # Every submodule the app build compiles; Mozc is built by mozc.yml and stays out of this job.
-      - name: Check out engine submodules
-        run: >
-          git submodule update --init --depth 1
-          third_party/heliboard third_party/librime third_party/leveldb third_party/marisa-trie
-          third_party/yaml-cpp third_party/opencc third_party/rime-luna-pinyin third_party/rime-prelude
-          third_party/rime-essay third_party/rime-stroke
+  # The same run's Mozc build is the only source of Mozc on CI; see mozc.yml for why.
+  mozc:
+    uses: ./.github/workflows/mozc.yml
+
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Every submodule except Mozc, which the mozc job checks out on its own.
+      - name: Check out the engine submodules
+        run: |
+          git config -f .gitmodules --get-regexp '\.path$' | awk '$2 != "third_party/mozc" {print $2}' \
+            | xargs git submodule update --init --depth 1
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Ninja
+        run: sudo apt-get install -y ninja-build > /dev/null
+
+      # Pinned, hash-checked downloads (Boost and the data sources build-lock.json names). The
+      # scripts verify what they find, so a stale entry is downloaded again, not trusted.
+      - uses: actions/cache@v6
+        with:
+          path: .deps
+          key: deps-${{ hashFiles('build-lock.json') }}
+          restore-keys: deps-
+
+      - name: Boost headers
+        run: scripts/fetch-boost.sh
+
+      # The app ships compiled Chinese data, so the phone never compiles it on first use.
+      - name: Prebuilt Chinese data
+        run: scripts/prebuild-rime.sh
+
+      - name: English dictionary
+        run: java tool/BuildEnglishDict.java
+
+      - name: Emoji asset
+        run: java lexicon/EmojiData.java
+
+      - name: Cross-language lexicon
+        run: java -Xmx4g lexicon/CrossLexicon.java
+
+      - name: Lexicon sample check
+        run: java lexicon/CheckSamples.java
+
+      - name: Compiled cross-language lexicon
+        run: |
+          cmake -S core/mixed -B build/host/mixed -G Ninja -DCMAKE_BUILD_TYPE=Release > /dev/null
+          cmake --build build/host/mixed --target kotomo_lexicon_compile
+          build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexicon/en-ja.tsv build/lexicon/cross.klx
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kotomo-data
+          path: |
+            build/rime-prebuilt/
+            build/lexicon/
+            build/emoji/
+          if-no-files-found: error
+          retention-days: 7
+
+  host:
+    needs: [mozc, data]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check out the engine submodules
+        run: |
+          git config -f .gitmodules --get-regexp '\.path$' | awk '$2 != "third_party/mozc" {print $2}' \
+            | xargs git submodule update --init --depth 1
 
       - uses: actions/setup-java@v6
         with:
@@ -33,29 +128,109 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Check documentation
-        run: java tool/CheckDocs.java
-
-      - name: Fetch Boost headers (librime)
-        run: scripts/fetch-boost.sh
-
-      # Mozc's Android libraries come from mozc.yml, pinned by run and hash in build-lock.json.
-      - name: Fetch prebuilt Mozc
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: scripts/fetch-mozc.sh
-
-      # The app ships compiled Chinese data, so the phone never compiles it on first use.
-      - name: Prebuild Chinese data (librime on the host)
+      - name: Install Ninja, CMake and the NDK
         run: |
           sudo apt-get install -y ninja-build > /dev/null
-          scripts/prebuild-rime.sh
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "cmake;3.22.1" "ndk;30.0.16248370" > /dev/null
+
+      - uses: actions/cache/restore@v6
+        with:
+          path: .deps
+          key: deps-${{ hashFiles('build-lock.json') }}
+          restore-keys: deps-
+
+      - name: Boost headers
+        run: scripts/fetch-boost.sh
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-data
+          path: build
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-mozc
+          path: build/mozc/out
+
+      - name: Restore the Mozc line service's executable bit
+        run: chmod +x build/mozc/out/host/kotomo_mozc_service
+
+      - name: librime host tests
+        run: |
+          cmake -S core/rime -B build/host/rime -G Ninja -DCMAKE_BUILD_TYPE=Release > /dev/null
+          cmake --build build/host/rime
+          ctest --test-dir build/host/rime --output-on-failure
+
+      - name: English host test
+        run: sh core/english/tests/run-host.sh
+
+      # Also builds the coordinator and runs its unit tests (ctest), then the corpus through the
+      # app's facades and through the coordinator, each against its committed baseline.
+      - name: Conversion corpus
+        run: tests/conversion/run.sh
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: conversion-reports
+          path: build/conversion/
+          if-no-files-found: ignore
+
+  android:
+    needs: [mozc, data]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check out the engine submodules
+        run: |
+          git config -f .gitmodules --get-regexp '\.path$' | awk '$2 != "third_party/mozc" {print $2}' \
+            | xargs git submodule update --init --depth 1
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
 
       # The Rime data staging runs the SDK's CMake before the native build would install it.
       - name: Install CMake and the NDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "cmake;3.22.1" "ndk;30.0.16248370" > /dev/null
 
-      # Pull requests from forks get no secrets; their release APK stays unsigned.
+      # The English dictionary and emoji tasks read the pinned sources in .deps/.
+      - uses: actions/cache/restore@v6
+        with:
+          path: .deps
+          key: deps-${{ hashFiles('build-lock.json') }}
+          restore-keys: deps-
+
+      - name: Boost headers
+        run: scripts/fetch-boost.sh
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-data
+          path: build
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-mozc
+          path: ${{ runner.temp }}/mozc
+
+      # The layout scripts/build-mozc.sh installs for the app build.
+      - name: Install Mozc for the app build
+        run: |
+          for abi in arm64-v8a x86_64; do
+            install -D -m 0755 "$RUNNER_TEMP/mozc/$abi/libkotomo_mozc.so" "build/mozc-prebuilt/jniLibs/$abi/libkotomo_mozc.so"
+          done
+          install -D -m 0644 "$RUNNER_TEMP/mozc/mozc.data" build/mozc-prebuilt/assets/mozc.data
+
+      # Pull requests from forks and repositories without the secrets get an unsigned release APK.
       - name: Setup release signing
         if: ${{ env.HAS_KEYSTORE == 'true' }}
         env:
@@ -73,6 +248,7 @@ jobs:
         env:
           KOTOMO_REQUIRE_RIME_PREBUILT: "1"
           KOTOMO_REQUIRE_MOZC: "1"
+          KOTOMO_REQUIRE_LEXICON: "1"
         run: ./gradlew --no-daemon check assembleDebug assembleRelease
 
       - name: Verify release signature
@@ -83,32 +259,150 @@ jobs:
             "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "$apk"
           done
 
+      - name: Remove the signing files
+        if: always()
+        run: rm -f key.properties "$RUNNER_TEMP/kotomo.jks"
+
       # One artifact per ABI, so the phone build downloads without the emulator one.
       - uses: actions/upload-artifact@v7
         with:
           name: kotomo-arm64-v8a
           path: app/build/outputs/apk/*/app-arm64-v8a-*.apk
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v7
         with:
           name: kotomo-x86_64
           path: app/build/outputs/apk/*/app-x86_64-*.apk
+          if-no-files-found: error
+
+  # The instrumentation tests on the same image as the development host's emulator (Android 17,
+  # x86_64, 16 KB pages). Started by hand only: an emulator run takes long and covers layouts and
+  # logic, never latency or on-device AI.
+  instrumented:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [mozc, data]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # The development host's emulator image and device (medium_phone, 1080x2400 at 420 dpi).
+      IMAGE: system-images;android-37.2;google_apis_playstore_ps16k;x86_64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check out the engine submodules
+        run: |
+          git config -f .gitmodules --get-regexp '\.path$' | awk '$2 != "third_party/mozc" {print $2}' \
+            | xargs git submodule update --init --depth 1
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install CMake, the NDK, the emulator and its image
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "cmake;3.22.1" "ndk;30.0.16248370" emulator platform-tools "$IMAGE" > /dev/null
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n kotomo -k "$IMAGE" -d medium_phone
+
+      - uses: actions/cache/restore@v6
+        with:
+          path: .deps
+          key: deps-${{ hashFiles('build-lock.json') }}
+          restore-keys: deps-
+
+      - name: Boost headers
+        run: scripts/fetch-boost.sh
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-data
+          path: build
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-mozc
+          path: ${{ runner.temp }}/mozc
+
+      - name: Install Mozc for the app build
+        run: |
+          for abi in arm64-v8a x86_64; do
+            install -D -m 0755 "$RUNNER_TEMP/mozc/$abi/libkotomo_mozc.so" "build/mozc-prebuilt/jniLibs/$abi/libkotomo_mozc.so"
+          done
+          install -D -m 0644 "$RUNNER_TEMP/mozc/mozc.data" build/mozc-prebuilt/assets/mozc.data
+
+      # Built before the emulator starts, so the two do not compete for memory.
+      - name: Build the debug and test APKs
+        env:
+          KOTOMO_REQUIRE_RIME_PREBUILT: "1"
+          KOTOMO_REQUIRE_MOZC: "1"
+          KOTOMO_REQUIRE_LEXICON: "1"
+        run: ./gradlew --no-daemon assembleDebug assembleDebugAndroidTest
+
+      - name: Start the emulator
+        run: |
+          "$ANDROID_HOME/emulator/emulator" -avd kotomo -no-window -no-snapshot -no-audio -no-boot-anim \
+            -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          adb="$ANDROID_HOME/platform-tools/adb"
+          timeout 600 "$adb" wait-for-device
+          timeout 600 sh -c "until [ \"\$('$adb' shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 5; done"
+          "$adb" shell settings put secure show_ime_with_hard_keyboard 1
+          "$adb" shell getconf PAGE_SIZE
+
+      - name: Instrumentation tests
+        env:
+          KOTOMO_REQUIRE_RIME_PREBUILT: "1"
+          KOTOMO_REQUIRE_MOZC: "1"
+          KOTOMO_REQUIRE_LEXICON: "1"
+        run: ./gradlew --no-daemon connectedDebugAndroidTest
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: instrumentation-reports
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            ${{ runner.temp }}/emulator.log
+          if-no-files-found: ignore
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [android]
+    needs: [docs, host, android]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: kotomo-*
-          path: artifacts
+          name: kotomo-arm64-v8a
+          path: artifacts/kotomo-arm64-v8a
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: kotomo-x86_64
+          path: artifacts/kotomo-x86_64
+
+      # A release ships only signed APKs; without the secrets the APKs are named *-unsigned.apk
+      # and this step fails.
       - name: Name the release APK
         run: |
           mkdir -p release
           for abi in arm64-v8a x86_64; do
-            cp "artifacts/kotomo-$abi/release/app-$abi-release.apk" "release/Kotomo-${GITHUB_REF_NAME}-$abi.apk"
+            apk="artifacts/kotomo-$abi/release/app-$abi-release.apk"
+            [ -f "$apk" ] || { echo "::error::no signed $abi release APK; set the signing secrets"; exit 1; }
+            cp "$apk" "release/Kotomo-${GITHUB_REF_NAME}-$abi.apk"
           done
 
       - uses: softprops/action-gh-release@v3

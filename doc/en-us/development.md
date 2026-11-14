@@ -48,8 +48,8 @@ A build from a fresh clone runs, in order: `git submodule update --init --recurs
 `kotomo_lexicon_compile`, then Gradle with `KOTOMO_REQUIRE_MOZC=1`, `KOTOMO_REQUIRE_RIME_PREBUILT=1`
 and `KOTOMO_REQUIRE_LEXICON=1`, so an APK never ships without Japanese, without compiled Chinese
 data or without the cross-language lexicon. `scripts/fetch-mozc.sh` downloads the same
-libraries from a GitHub Actions run instead; the run it pins was deleted with the repository and it
-works again only once CI exists.
+libraries from a GitHub Actions run instead; the run it pins was deleted with the repository, and it
+works again only once `build-lock.json` names a run of the new CI whose artifact has not expired.
 
 The conversion corpus (`tests/conversion/corpus.tsv`) runs through the app's own engine facades
 and candidate assembly in a host JVM: `run.sh` builds the host librime and English libraries and
@@ -109,11 +109,31 @@ always signed by the release key. The keystore itself never enters the repositor
 
 ## Continuous integration
 
-`.github/workflows/build.yml` and `.github/workflows/mozc.yml` ran on GitHub until the project was
-archived on 2026-11-04 and its GitHub repository deleted, with the CI artifacts and the secrets.
-They stay for a restart and do nothing until the repository is pushed to a new GitHub repository
-with the secrets `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD`. Until then
-every build and test runs on the development host.
+`.github/workflows/build.yml` runs the build from a fresh clone above on every push to `main`, every
+pull request, every `v*` tag and by hand (`workflow_dispatch`). Its jobs:
+
+| Job | What it runs |
+| --- | --- |
+| `docs` | `java tool/CheckDocs.java` |
+| `mozc` | `.github/workflows/mozc.yml`: `scripts/build-mozc.sh --abi host --abi arm64-v8a --abi x86_64`, the glue tests included; its output is compared with `build-lock.json` and kept as the run's `kotomo-mozc` artifact |
+| `data` | `scripts/fetch-boost.sh`, `scripts/prebuild-rime.sh`, `BuildEnglishDict.java`, `EmojiData.java`, `CrossLexicon.java`, `CheckSamples.java` and `kotomo_lexicon_compile`, kept as the `kotomo-data` artifact |
+| `host` | the librime host tests (`ctest`), the English host test (`run-host.sh`), then `tests/conversion/run.sh` with the coordinator's unit tests; one line that regressed against either baseline fails the job |
+| `android` | `./gradlew check assembleDebug assembleRelease` with `KOTOMO_REQUIRE_MOZC=1`, `KOTOMO_REQUIRE_RIME_PREBUILT=1` and `KOTOMO_REQUIRE_LEXICON=1`; one APK artifact per ABI |
+| `instrumented` | only when started by hand: `connectedDebugAndroidTest` on an API 37.2 x86_64 emulator with 16 KB pages |
+| `release` | on a `v*` tag: the signed release APKs on a GitHub release |
+
+Mozc comes only from the same run: Bazel takes an hour or more, so `mozc.yml` caches its output
+under the Mozc submodule commit and the hashes of `core/mozc/`, `patches/mozc/`,
+`scripts/build-mozc.sh` and the workflow, and a run with the same key builds nothing. The first run
+on a new repository builds in full; no artifact has to exist beforehand. A difference from the
+hashes `build-lock.json` records (those of the development host's build) is a warning, not a
+failure, since another distribution may not build byte for byte the same. The release APK is signed
+when the secrets `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` exist and is
+left unsigned otherwise, with the workflow still passing; only the `release` job requires them.
+
+The GitHub repository the workflows ran in was deleted with its artifacts and secrets when the
+project was archived on 2026-11-04, and none exists now, so the workflows have not run since. Until
+the repository is pushed to a new one, every build and test runs on the development host.
 
 ## Testing principles
 

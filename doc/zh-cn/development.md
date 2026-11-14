@@ -45,7 +45,7 @@ build/host/mixed/kotomo_mixed_corpus . --convert "chidai ni kai ni ikou"   # one
 以及构建并运行 `kotomo_lexicon_compile` 的那两行 `core/mixed` 命令，再在设置 `KOTOMO_REQUIRE_MOZC=1`、
 `KOTOMO_REQUIRE_RIME_PREBUILT=1` 与 `KOTOMO_REQUIRE_LEXICON=1` 的情况下运行 Gradle，使 APK 不会在缺少日文、
 缺少预编译中文数据或缺少跨语言词库时产出。
-`scripts/fetch-mozc.sh` 改为从 GitHub Actions 的运行下载同样的库；它锁定的运行已随仓库删除，只有 CI 重新存在后才能再用。
+`scripts/fetch-mozc.sh` 改为从 GitHub Actions 的运行下载同样的库；它锁定的运行已随仓库删除，只有 `build-lock.json` 记下新 CI 的一次运行、且其产物尚未过期时才能再用。
 
 转换语料（`tests/conversion/corpus.tsv`）在主机的 JVM 中经应用自己的引擎外观与候选组装运行：`run.sh` 先构建主机版
 librime、英文库与协调层的库（`libkotomo_core.so`），编译跨语言词库，再在设置 `KOTOMO_CORPUS=1` 的情况下运行
@@ -89,9 +89,27 @@ debug 密钥，因此安装的 release 版本始终由 release 密钥签名。�
 
 ## 持续集成
 
-`.github/workflows/build.yml` 与 `.github/workflows/mozc.yml` 在 GitHub 上运行，直到项目于 2026-11-04 归档、GitHub
-仓库连同 CI 产物和机密一起删除。它们留作重启之用；把仓库推送到新的 GitHub 仓库并配置机密 `KEYSTORE_BASE64`、
-`STORE_PASSWORD`、`KEY_ALIAS` 和 `KEY_PASSWORD` 之前，它们不做任何事。在此之前，所有构建与测试都在开发主机上运行。
+`.github/workflows/build.yml` 在每次推送到 `main`、每个拉取请求、每个 `v*` 标签以及手动触发（`workflow_dispatch`）时，
+运行上面"从全新克隆构建"的全部步骤。它的作业：
+
+| 作业 | 运行什么 |
+| --- | --- |
+| `docs` | `java tool/CheckDocs.java` |
+| `mozc` | `.github/workflows/mozc.yml`：`scripts/build-mozc.sh --abi host --abi arm64-v8a --abi x86_64`，含胶水层测试；产物与 `build-lock.json` 比较，并作为本次运行的 `kotomo-mozc` 产物保存 |
+| `data` | `scripts/fetch-boost.sh`、`scripts/prebuild-rime.sh`、`BuildEnglishDict.java`、`EmojiData.java`、`CrossLexicon.java`、`CheckSamples.java` 与 `kotomo_lexicon_compile`，作为 `kotomo-data` 产物保存 |
+| `host` | librime 主机测试（`ctest`）、英文主机测试（`run-host.sh`），然后是含协调层单元测试的 `tests/conversion/run.sh`；任一行相对任一基线回退，作业即失败 |
+| `android` | 带 `KOTOMO_REQUIRE_MOZC=1`、`KOTOMO_REQUIRE_RIME_PREBUILT=1` 与 `KOTOMO_REQUIRE_LEXICON=1` 的 `./gradlew check assembleDebug assembleRelease`；每个 ABI 一个 APK 产物 |
+| `instrumented` | 只在手动触发时：在 API 37.2、x86_64、16 KB 页的模拟器上运行 `connectedDebugAndroidTest` |
+| `release` | `v*` 标签时：把签名的 release APK 发布到 GitHub Release |
+
+Mozc 只来自同一次运行：Bazel 要一个小时以上，所以 `mozc.yml` 以 Mozc 子模块的提交和 `core/mozc/`、`patches/mozc/`、
+`scripts/build-mozc.sh` 与工作流本身的哈希为键缓存产物，键相同的运行什么都不构建。新仓库的第一次运行完整构建，
+不需要事先存在任何产物。与 `build-lock.json` 记录的哈希（开发主机构建的哈希）不同时只给出警告、不算失败，因为换一个发行版不一定能逐字节构建出相同的结果。
+机密 `KEYSTORE_BASE64`、`STORE_PASSWORD`、`KEY_ALIAS` 与 `KEY_PASSWORD` 存在时 release APK 签名，否则不签名，工作流照样通过；
+只有 `release` 作业要求它们。
+
+这些工作流原来运行的 GitHub 仓库在项目于 2026-11-04 归档时连同产物和机密一起删除，现在没有可运行它们的仓库，
+所以它们此后没有运行过。在把仓库推送到新的仓库之前，所有构建与测试都在开发主机上运行。
 
 ## 测试原则
 

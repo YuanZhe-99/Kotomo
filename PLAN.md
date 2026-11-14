@@ -1303,9 +1303,9 @@ Next blocking issue:
 | --- | --- | --- |
 | 转换语料运行器（主机）：读 `tests/conversion/`，输出每行的名次，并与上一次运行比较 | 已有（2026-11-10）：`tests/conversion/run.sh`（`development.md`） | — |
 | 一条命令跑完全部主机测试 | 不存在：`core/CMakeLists.txt` 只含 rime 与 english，只有 rime 注册了 ctest；Mozc 走 Bazel，英文走 `run-host.sh` | Q2 |
-| 取得 Mozc 的 Android 库 | 已解决（2026-11-10）：`scripts/build-mozc.sh --abi arm64-v8a --abi x86_64` 在 x86_64 Linux 上构建并放进 `build/mozc-prebuilt/`；`fetch-mozc.sh` 等 CI 重建 | — |
+| 取得 Mozc 的 Android 库 | 已解决（2026-11-10）：`scripts/build-mozc.sh --abi arm64-v8a --abi x86_64` 在 x86_64 Linux 上构建并放进 `build/mozc-prebuilt/`；CI 上由 `build.yml` 调用的 `mozc.yml` 在同一次运行里构建（按 Mozc 提交与胶水层文件的哈希缓存，2026-11-14），不再依赖 `fetch-mozc.sh`；`fetch-mozc.sh` 只在 `build-lock.json` 记下新 CI 的一次运行后才能用 | — |
 | `./gradlew connectedCheck`（插桩测试）与 Macrobenchmark | 没有 `androidTest`；测试机没有 adb | 待定（§2.5 决定 8） |
-| CI 中运行主机测试 | 原 `build.yml` 从不运行 rime ctest、英文主机测试与 `CheckSamples`；CI 暂不重建（决定 2），这些检查在本机运行 | CI 重建时 |
+| CI 中运行主机测试 | 工作流已补上（2026-11-14，`development.md`）：`build.yml` 的 `host` 作业运行 rime ctest、英文主机测试与整套转换语料（含协调层 ctest，对照两份基线，0 回退才通过），`data` 作业运行 `CheckSamples`，插桩测试是只在手动触发时运行的 `instrumented` 作业；没有可运行它的仓库（决定 2），一次都没有在 GitHub 上运行过，这些检查仍在本机运行 | 推送到新仓库后第一次运行时 |
 | 上游补丁目录 `patches/<upstream>/` | 不存在，目前也不需要：对上游的调整全部在 Kotomo 自己的构建文件里（自写的 CMake 目标清单、`stage-data.cmake`、`*.custom.yaml`、Bazel 的 `--nocheck_visibility`）。第一份真正的补丁出现时再建目录 | — |
 
 脚本要求：
