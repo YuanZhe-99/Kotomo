@@ -305,20 +305,23 @@ model that did the work.
 ## Remotes and secrets
 
 - `origin` → `<local_gitea_address>` (private Gitea)
+- `github` → `https://github.com/YuanZhe-99/Kotomo` (public; GitHub Actions)
 
-`origin` is the only copy. The project was archived on 2026-11-04 and resumed on 2026-11-10; the
-public GitHub repository (where CI and GitHub Releases ran) was deleted and is not rebuilt for now.
-`.github/` stays for a restart and does nothing until the repository is pushed to a new public
-remote with the CI secrets (`PLAN.md` §0). Until then every build and test runs on the development
-host (`doc/en-us/development.md`).
+Both remotes carry `main` and stay identical: push the same commits to each, never force-push. CI
+(`.github/workflows/build.yml`, which calls `mozc.yml`) runs on `github`, where the signing secrets
+`KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` are repository secrets; agents
+never read, print or change them. A release pushes the commit first, then the tag, to every remote;
+the tag's `release` job publishes the signed APKs on GitHub. The project was archived on 2026-11-04
+and resumed on 2026-11-10; the public repository was recreated on 2026-11-14 (`PLAN.md` §2.5,
+decision 2). Every build and test also runs on the development host (`doc/en-us/development.md`).
 
 Determine the repository path from the runtime workspace; do not hardcode a machine-specific
 absolute path here.
 
 **Masking rule:** keep the `origin` URL written as `<local_gitea_address>` in every committed file,
-including `.gitmodules`. Never write the underlying host or port anywhere in the repo. Treat the
-repository as public: committed files never name private repositories, machines, servers, accounts
-or where keys are kept.
+including `.gitmodules`; the `github` remote is public and may be named. Never write the underlying
+host or port anywhere in the repo. The repository is public: committed files never name private
+repositories, machines, servers, accounts or where keys are kept.
 
 **Never commit:** secrets, signing keys, `key.properties`, `local.properties`, `.dev/`, build
 output, downloaded toolchains, upstream archives and raw data-source downloads (`.deps/`),

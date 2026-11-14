@@ -135,9 +135,12 @@ fails, because CC-CEDICT is published only as the current file: once MDBG replac
 download no longer matches its pin, the job fails with "Pinned data source changed", and the pin
 has to be moved on purpose (with `CheckSamples` and the whole corpus run again).
 
-The GitHub repository the workflows ran in was deleted with its artifacts and secrets when the
-project was archived on 2026-11-04, and none exists now, so the workflows have not run since. Until
-the repository is pushed to a new one, every build and test runs on the development host.
+The workflows run on the public GitHub repository (the `github` remote), recreated on 2026-11-14
+after the first one was deleted with its runs, artifacts and secrets when the project was archived
+on 2026-11-04. `main` is pushed to both remotes. A run that misses the Mozc cache takes about
+45 minutes (Mozc about 22); with the cache, 15 to 22 (`android` 13 to 19, `host` 7 to 8, `data`
+2 to 4). `platform-notes.md` records what the runs verified. The full build still works on
+the development host alone.
 
 ## Testing principles
 
