@@ -73,10 +73,11 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
   ProposeCross(*input, lexicon_, options_, &lattice);
 
   std::vector<Candidate> found;
+  bool cut = false;  // whether a fuller conversion (Options::Full) would list more
   const auto wanted = [this](Lang lang) { return options_.targets[static_cast<int>(lang)]; };
   if (wanted(Lang::kChinese)) {
     for (const Path& path : Decode(lattice, Lang::kChinese, options_)) {
-      FinishChinese(*input, path, engines_, options_, &found);
+      FinishChinese(*input, path, engines_, options_, &found, &cut);
     }
   }
   if (wanted(Lang::kJapanese)) {
@@ -125,11 +126,15 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
                    [](const Candidate& a, const Candidate& b) { return a.cost < b.cost; });
   std::unordered_set<std::string> seen;
   for (Candidate& candidate : found) {
-    if (snapshot.candidates.size() == options_.candidates) break;
     if (!seen.insert(candidate.text).second) continue;
+    if (snapshot.candidates.size() == options_.candidates) {
+      cut = true;
+      break;
+    }
     snapshot.candidates.push_back(std::move(candidate));
   }
   if (options_.level != Level::kAggressive) OriginalLanguageFirst(&snapshot.candidates);
+  snapshot.more = cut;
   return snapshot;
 }
 

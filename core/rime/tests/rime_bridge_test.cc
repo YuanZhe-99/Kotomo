@@ -4,6 +4,7 @@
 // Usage: kotomo_rime_test <shared data dir> <user data dir>
 // The user data directory is deleted and recreated; CMake passes one inside the build tree.
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
@@ -124,6 +125,20 @@ int main(int argc, char** argv) {
     words = {};
     table->convert("kq", 2, 3, &words, sink);
     Check(words.texts.empty(), "Q7-rime-api-convert-none", "kq converts to nothing");
+    // Feedback A9: a long list holds the run's rarer words and never a word for a prefix of it
+    // (实际 is shi'ji, as long as the run in characters).
+    words = {};
+    table->convert("shi'jian", 8, 1000, &words, sink);
+    const auto listed = [&words](const char* text) {
+      return std::find(words.texts.begin(), words.texts.end(), text) != words.texts.end();
+    };
+    Check(listed("时间") && listed("试件"), "A9-rime-api-convert-all", "shi'jian lists 时间 and the rare 试件");
+    Check(!listed("实际") && !listed("世纪"), "A9-N-rime-api-convert-no-prefix-word",
+          "shi'jian does not list words for shi'ji");
+    words = {};
+    table->convert("yu", 2, 1000, &words, sink);
+    Check(words.texts.size() > 100 && listed("语"),
+          "A9-rime-api-convert-every-character", "yu lists more than a hundred characters, 语 among them");
   }
 
   // S6: the coordinator reads syllables from the deployed schema's spelling table.

@@ -70,6 +70,17 @@ struct Options {
   size_t candidates = 20;   // candidates in a snapshot
   Costs costs;
 
+  /// Returns: these options with the list sizes of the full answer (kRefine, feedback A9): every
+  ///   candidate found, and as many conversions of a whole-input pinyin run as librime has, so
+  ///   Mixed mode reaches every character Chinese mode does.
+  /// Notes: the first answer keeps the small numbers above; the full one is never on the key path.
+  Options Full() const {
+    Options full = *this;
+    full.alternatives = 1500;
+    full.candidates = 2000;
+    return full;
+  }
+
   /// Returns: `cost` scaled by the level: doubled when conservative, halved when aggressive.
   /// Inputs: one of the cross-language penalties.
   int32_t Cross(int32_t cost) const {

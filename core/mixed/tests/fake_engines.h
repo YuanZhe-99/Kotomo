@@ -116,8 +116,9 @@ class FakeEngines : public Engines {
   std::vector<std::pair<std::string, bool>> syllables_ = {
       {"shu", false}, {"hen", false}, {"hao", false}, {"ni", false}, {"xi", false},
       {"an", false},  {"xian", false}, {"tu", false}, {"guan", false}, {"ai", false},
-      {"hoa", true}};
+      {"hoa", true},  {"yu", false}};
   std::map<std::string, std::vector<std::string>> chinese_ = {
+      {"yu", {"与", "于", "鱼", "雨", "玉", "余", "语", "欲", "遇", "育", "预", "域"}},
       {"shu", {"书", "树", "数"}},        {"ni'hao", {"你好", "~拟好"}},
       {"hen'hao", {"很好"}},              {"xi'an", {"西安"}},
       {"xian", {"先", "线"}},             {"tu'shu'guan", {"图书馆"}},

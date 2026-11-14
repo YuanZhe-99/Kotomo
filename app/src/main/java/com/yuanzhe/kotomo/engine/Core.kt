@@ -140,7 +140,8 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
     /**
      * Asks for the later stage of the snapshot of [generation], when that snapshot said
      * [Snapshot.more] (PLAN §5.5): the full list for the same composition, as stage 1 of the
-     * same generation. Nothing changes.
+     * same generation. Nothing changes. A short composition says so when its list was cut short:
+     * the full list then holds every conversion librime has for it (feedback A9).
      */
     fun refine(generation: Long): Snapshot? = call(generation, REFINE) {}
 

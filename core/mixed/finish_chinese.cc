@@ -24,7 +24,7 @@ uint8_t PathFlags(const Path& path) {
 }
 
 void FinishChinese(const Input& input, const Path& path, Engines& engines, const Options& options,
-                   std::vector<Candidate>* out) {
+                   std::vector<Candidate>* out, bool* cut) {
   Candidate sentence{.text = {}, .target = Lang::kChinese, .cost = path.cost,
                      .flags = PathFlags(path), .pieces = {}};
   std::vector<ChineseWord> whole_input_run;  // librime's list when one run is the whole input
@@ -60,6 +60,7 @@ void FinishChinese(const Input& input, const Path& path, Engines& engines, const
     i = end;
   }
   out->push_back(sentence);
+  if (whole_input_run.size() >= options.alternatives) *cut = true;
   const int32_t composed = options.costs.chinese_composed;
   for (size_t rank = 1; rank < whole_input_run.size(); ++rank) {
     Candidate other = sentence;

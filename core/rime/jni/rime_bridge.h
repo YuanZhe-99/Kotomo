@@ -20,6 +20,7 @@ struct Candidate {
   std::string text;
   std::string comment;
   std::string type;
+  bool whole = false;  // whether it converts the input to its end, not only a prefix of it
 };
 
 /// Starts librime on the given data directories and opens the session.

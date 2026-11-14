@@ -6,6 +6,8 @@
 //        kotomo_mixed_corpus <repository root> --convert <composition>
 //          prints the candidates of one composition with target, cost and pieces, and writes
 //          nothing
+//        kotomo_mixed_corpus <repository root> --refine <composition>
+//          the same for the full list a session's kRefine answers with, and the time it took
 // Reads: tests/conversion/corpus.tsv and the build outputs under build/ (prebuilt librime data,
 //   the English dictionary, the host Mozc service and data, the cross-language lexicon).
 // Writes: build/conversion/mixed-results.tsv and build/conversion/mixed-report.txt.
@@ -25,6 +27,7 @@
 
 #include "coordinator.h"
 #include "host_engines.h"
+#include "session.h"
 
 namespace fs = std::filesystem;
 using namespace kotomo::mixed;
@@ -174,9 +177,9 @@ Options CalibratedOptions() {
 
 int main(int argc, char** argv) {
   const std::string option = argc == 4 ? argv[2] : "";
-  if (argc != 2 && option != "--baseline" && option != "--convert") {
+  if (argc != 2 && option != "--baseline" && option != "--convert" && option != "--refine") {
     std::fprintf(stderr,
-                 "usage: %s <repository root> [--baseline <file> | --convert <composition>]\n",
+                 "usage: %s <repository root> [--baseline <file> | --convert <composition> | --refine <composition>]\n",
                  argv[0]);
     return 2;
   }
@@ -216,6 +219,17 @@ int main(int argc, char** argv) {
     Print(coordinator.Convert(argv[3], 1));
     return 0;
   }
+  if (option == "--refine") {
+    // What kRefine lists for the composition, with the time the full conversion took.
+    Session session(*engines, *lexicon);
+    session.Handle({.generation = 1, .command = Command::kSet, .text = argv[3]});
+    const auto start = std::chrono::steady_clock::now();
+    const Snapshot full = session.Handle({.generation = 1, .command = Command::kRefine});
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+    Print(full);
+    std::printf("%zu candidates, %lld ms\n", full.candidates.size(), static_cast<long long>(ms));
+    return 0;
+  }
   const bool compare = option == "--baseline";
   const std::map<std::string, std::string> baseline =
       compare ? ReadBaseline(argv[3]) : std::map<std::string, std::string>();
@@ -238,7 +252,11 @@ int main(int argc, char** argv) {
       continue;
     }
     const auto start = std::chrono::steady_clock::now();
-    const Snapshot snapshot = coordinator.Convert(line.input, ++generation);
+    Snapshot snapshot = coordinator.Convert(line.input, ++generation);
+    // As the app does: a list that was cut short is asked for in full, and that one is ranked.
+    if (snapshot.more) {
+      snapshot = Coordinator(*engines, *lexicon, CalibratedOptions().Full()).Convert(line.input, generation);
+    }
     millis.push_back(std::chrono::duration<double, std::milli>(
                          std::chrono::steady_clock::now() - start).count());
     const Outcome outcome = Judge(line, snapshot, mixed ? nullptr : &single.at(line.mode));

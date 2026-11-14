@@ -46,6 +46,8 @@ class Session {
   ///   A composition of sixteen letters or more is answered in two stages (PLAN.md §5.5): the
   ///   snapshot of any other request holds each target language's best sentence only and sets
   ///   `more`; kRefine then answers with the full list for the same generation, as stage 1.
+  ///   A shorter composition whose list was cut short (Options::candidates, Options::alternatives)
+  ///   sets `more` as well, and kRefine lists everything (Options::Full, feedback A9).
   ///   Shorter compositions get the full list at once. A commit (kSelect, kCommitPrefix) is
   ///   always answered in full.
   ///   kLearn sets, forgets (adjust 0) or clears (both strings empty) what history adds to a

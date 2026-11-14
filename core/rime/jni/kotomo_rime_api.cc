@@ -34,7 +34,9 @@ size_t Spellings(const char* letters, size_t size, KotomoRimeSpelling* out, size
 }
 
 /// Notes: librime lists whole-run sentences and words together with words for a prefix of the
-///   run; the ones with one character per syllable convert the whole run.
+///   run; the ones that end where the run ends, with one character per syllable, convert the
+///   whole run. (A prefix word may have as many characters as the run has syllables: after the
+///   words of `shi'jian` librime lists 实际 for `shi'ji`.)
 void Convert(const char* syllables, size_t size, size_t limit, void* context,
              KotomoRimeWordSink sink) {
   const std::string run(syllables, size);
@@ -44,7 +46,7 @@ void Convert(const char* syllables, size_t size, size_t limit, void* context,
   size_t passed = 0;
   for (const rb::Candidate& candidate : rb::Candidates(limit * 8)) {
     if (passed == limit) break;
-    if (CodePoints(candidate.text) != count) continue;
+    if (!candidate.whole || CodePoints(candidate.text) != count) continue;
     sink(context, candidate.text.data(), candidate.text.size(), candidate.type == "sentence");
     ++passed;
   }

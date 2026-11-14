@@ -202,6 +202,27 @@ int main() {
   Check(!s.more && s.stage == 0 && s.candidates.size() > 3, "Q7E-short-input-one-stage");
   session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
 
+  // Feedback A9: the first answer lists librime's best few conversions and says more follows;
+  // kRefine lists every one, in librime's order, and nothing the first answer held is lost.
+  const Snapshot few = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "yu"});
+  Check(few.more && few.stage == 0 && Place(few, "与") == 0 && Place(few, "语") < 0,
+        "A9-first-answer-is-cut-and-says-so");
+  const Snapshot all = session.Handle({.generation = generation, .command = Command::kRefine});
+  bool every = all.stage == 1 && !all.more;
+  int before = 0;
+  for (const char* text : {"与", "于", "鱼", "雨", "玉", "余", "语", "欲", "遇", "育", "预", "域"}) {
+    const int at = Place(all, text);
+    every = every && at >= before;
+    before = at;
+  }
+  Check(every, "A9-refine-lists-every-chinese-conversion-in-order");
+  for (const Candidate& candidate : few.candidates) {
+    Check(Place(all, candidate.text) >= 0, "A9-refine-keeps-the-first-answer");
+  }
+  // Negative: a list that was not cut asks for nothing more.
+  s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
+  Check(!s.more, "A9-N-short-list-is-complete");
+
   // T08 (PLAN.md §9.7, layer 1): `l` touched at the edge towards `k` also offers the reading
   // with `k`, marked as a correction; a touch on the middle of the key offers none.
   const auto typed = [&session](const char* word, int16_t last_x) {

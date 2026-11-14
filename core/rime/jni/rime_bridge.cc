@@ -206,6 +206,7 @@ std::vector<Candidate> Candidates(std::size_t limit) {
         for (std::size_t i = 0; i < result.size(); ++i) {
           if (auto cand = menu->GetCandidateAt(i)) {
             result[i].type = rime::Candidate::GetGenuineCandidate(cand)->type();
+            result[i].whole = cand->end() == context->input().size();
           }
         }
       }

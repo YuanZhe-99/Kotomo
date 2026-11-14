@@ -217,3 +217,9 @@ A8-028	mixed		konnitiha	こんにちは	1	feedback A8: ん typed nn with ti for 
 A8-030	mixed+fuzzy:z_zh		woaizongguo	我爱中国	3	feedback A8: a fuzzy syllable inside a Mixed sentence
 A8-031	mixed+fuzzy:n_l		lihaoshijie	你好世界	3	feedback A8: a fuzzy syllable at the start of a Mixed sentence
 A8-N03	mixed		fune	!分へ|!楽しいへ	3	feedback A8: a three-letter English word plus a particle is not read into a romaji word
+A9-001	mixed		yu	语	0	feedback A9: the full list (the later stage) holds every character Chinese mode offers
+A9-002	mixed		yu	余	0	feedback A9: a common character beyond the first answer's six
+A9-003	mixed		shi	逝	0	feedback A9: a rare character, far down the list
+A9-004	mixed		shijian	试件	0	feedback A9: two syllables: the rarer words too
+A9-005	mixed		yu	与	1	feedback A9: the first place is unchanged by the fuller list
+A9-N01	mixed		shijian	!实际|!世纪	0	feedback A9: the full list holds no word for a prefix of the input (shi'ji)

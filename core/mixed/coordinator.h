@@ -50,7 +50,9 @@ class Coordinator {
   ///   language, each covering the whole input and no text twice. Below the aggressive level a cross-language candidate is never first while a
   ///   candidate in the language its cross-language pieces were typed in exists, unless the
   ///   person's history put it there. A learned reading of the whole input and of each piece moves a candidate's cost; a blocked one removes the candidate. A composition
-  ///   ParseInput refuses gets no candidates.
+  ///   ParseInput refuses gets no candidates. `more` is set when the list was cut short: more
+  ///   candidates were found than `Options::candidates`, or librime may hold more conversions of
+  ///   a whole-input pinyin run than `Options::alternatives`.
   /// Side effects: asks the engines (librime's spelling table and conversion, Mozc's romaji table
   ///   and converter, the English dictionary); nothing learns.
   ///   `locks` are the pieces the person chose (PLAN.md §5.6), by their byte ranges in

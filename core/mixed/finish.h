@@ -21,8 +21,9 @@ namespace kotomo::mixed {
 ///   `Options::alternatives` conversions of it, each `Costs::chinese_rank` dearer than the one
 ///   before; a run librime composes rather than finds pays `Costs::chinese_composed`. Appends
 ///   nothing when librime converts a run to nothing. One Engines::Chinese call per run.
+///   Sets `*cut` when librime may hold more conversions of the whole input than were asked for.
 void FinishChinese(const Input& input, const Path& path, Engines& engines, const Options& options,
-                   std::vector<Candidate>* out);
+                   std::vector<Candidate>* out, bool* cut);
 
 /// Finishes a Japanese path: runs of kana go to Mozc as free spans, cross-language words and
 /// particles as pinned spans of the same conversion, and English words and pending letters stay

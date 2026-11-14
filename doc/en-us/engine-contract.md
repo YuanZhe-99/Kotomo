@@ -65,8 +65,16 @@ backspace or a set holds only the best sentence of each target language, without
 corrections, and sets `more`; a refine request then returns the full list for the same
 generation as stage 1, which replaces stage 0 by the rule under "Stale updates". The app asks for
 it as a separate job on the engine thread and skips it when a newer key is already waiting, so
-typing never waits for the later stage. Shorter compositions and commits are answered in full
-at once. While one composition is typed the engine remembers the engines' answers, so a key more
+typing never waits for the later stage. A shorter composition is answered with its candidates
+at once, at most twenty of them and the six best conversions librime has for a whole-input
+pinyin run; when that list was cut short the snapshot sets `more` too, and the refine request
+returns every candidate found: all of librime's conversions of the run in librime's order (up
+to 1500, each 2500 units dearer than the one before, so the other languages' candidates stand
+among the first of them), up to 2000 candidates in all. `yu` lists six Chinese characters at
+once and some six hundred after the refine request, the ones Chinese mode pages through. A
+conversion counts for a run only when it reaches the run's end: librime also lists words for a
+prefix of it (实际 after the words of `shi'jian`), which are not candidates for the whole
+input. Commits and the readings of one span are answered at once and never set `more`. While one composition is typed the engine remembers the engines' answers, so a key more
 asks only about the spans that end at the new letter; the memory is dropped when the composition
 is empty.
 

@@ -121,6 +121,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 7.9 Negative: `nihao` does not put Japanese first; `coffee` does not put a pinyin split first
 - [ ] 7.10 Typing 30 or more letters in one go (`chidainikainiikouchidainikainiikou`) never stalls the keys; more candidates arrive a moment later
 - [ ] 7.11 Mixed page → Level: Conservative keeps the language typed first for `coffee` and `nihon`; Aggressive brings Japanese conversions and whole sentences earlier; set it back to Balanced
+- [ ] 7.12 The list is complete (feedback A9): type `yu`, expand the candidates and scroll to the end: 语, 余, 鱼, 雨 and rare characters are there, as many single characters as Chinese mode offers for `yu`; 与 is still first and the Japanese candidates (湯, 油) still stand among the first few; the same for `shi` and `yi`
 
 ## 8. Mixed mode: switches, editing, correction (G2, T08–T10)
 
