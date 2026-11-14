@@ -99,7 +99,6 @@ debug 密钥，因此安装的 release 版本始终由 release 密钥签名。�
 | `data` | `scripts/fetch-boost.sh`、`scripts/prebuild-rime.sh`、`BuildEnglishDict.java`、`EmojiData.java`、`CrossLexicon.java`、`CheckSamples.java` 与 `kotomo_lexicon_compile`，作为 `kotomo-data` 产物保存 |
 | `host` | librime 主机测试（`ctest`）、英文主机测试（`run-host.sh`），然后是含协调层单元测试的 `tests/conversion/run.sh`；任一行相对任一基线回退，作业即失败 |
 | `android` | 带 `KOTOMO_REQUIRE_MOZC=1`、`KOTOMO_REQUIRE_RIME_PREBUILT=1` 与 `KOTOMO_REQUIRE_LEXICON=1` 的 `./gradlew check assembleDebug assembleRelease`；每个 ABI 一个 APK 产物 |
-| `instrumented` | 只在手动触发时：在 API 37.2、x86_64、16 KB 页的模拟器上运行 `connectedDebugAndroidTest` |
 | `release` | `v*` 标签时：把签名的 release APK 发布到 GitHub Release |
 
 Mozc 只来自同一次运行：Bazel 要一个小时以上，所以 `mozc.yml` 以 Mozc 子模块的提交和 `core/mozc/`、`patches/mozc/`、

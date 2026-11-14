@@ -1,6 +1,6 @@
 # Version history
 
-## 0.1.0 (in progress)
+## 0.1.0 (2026-11-14)
 
 - Repository scaffold: working conventions (`AGENTS.md`), the plan (`PLAN.md`, from the user's
   draft 2.0), mirrored documentation and the documentation check (`tool/CheckDocs.java`).
@@ -36,3 +36,15 @@
 - Source audit (S8) on 2026-11-12, `third-party.md`: latest releases read from the feeds: SudachiDict v20261015, Noto Emoji v2026-09-24-unicode18_0, Twemoji v17.0.3, OpenMoji 17.0.0, jmdict-simplified 3.6.2+20261109214828, cldr-json 49.0.0 (all unchanged or newly recorded); THUOCL unchanged.
 - Upstreams checked on 2026-11-13 for translation (Q9): ML Kit `translate` 17.0.3 added at its latest release; ML Kit GenAI proofreading and rewriting 1.0.0-beta1, librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2, HeliBoard 4.2 (newer only 4.3-beta1), AGP 9.5.1 and Kotlin 2.4.21 (2.5.0 is a release candidate) unchanged.
 - Upstreams checked on 2026-11-14: CC-CEDICT moved to the 2026-11-14T02:25:17Z file, because MDBG replaced the current file and the earlier pin can no longer be downloaded (S5 samples 34/34, counter-examples 0/8; three rows of the pinyin → Japanese table changed, `emoji.tsv` is unchanged; the conversion corpus has no regression). Checked, unchanged: librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2, HeliBoard 4.2 (newer only 4.3-beta1), Gradle 9.9.1, Android Gradle Plugin 9.5.1, Kotlin 2.4.21 (2.5.0 is a release candidate), Compose BOM 2026.09.00, jmdict-simplified 3.6.2+20261109214828 and cldr-json 49.0.0.
+- Released on 2026-11-14 (`versionCode` 1), the first release. The upstreams are those of the
+  2026-11-14 check above. Verified on the development host: the documentation check, the Gradle
+  checks, the host engine tests, the whole conversion corpus with no regression (Mixed lines 115
+  of 115 through the coordinator) and the instrumentation suite on the emulator (Android 17,
+  x86_64, 16 KB pages; 107 tests on `e3871fe`: 105 pass, 1 skipped, and 1 failed once and passed
+  three times alone, cause not confirmed);
+  the signed `arm64-v8a` release build (R8 on) was installed and used on the user's phone over four
+  rounds of `tests/device/checklist.md`, the last on the build of `4e60561`; the release differs
+  from that build only in documentation and the CI workflow. Not verified: 115 checklist lines are
+  not recorded, the last round's retest lines among them; gates G0–G5 are not judged; latency and
+  memory were never measured on a device; on-device AI (Gemini Nano) was never run; the five
+  `MixedTypingTest` failures of the CI emulator run (`platform-notes.md`) are not explained.

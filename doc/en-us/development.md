@@ -119,7 +119,6 @@ pull request, every `v*` tag and by hand (`workflow_dispatch`). Its jobs:
 | `data` | `scripts/fetch-boost.sh`, `scripts/prebuild-rime.sh`, `BuildEnglishDict.java`, `EmojiData.java`, `CrossLexicon.java`, `CheckSamples.java` and `kotomo_lexicon_compile`, kept as the `kotomo-data` artifact |
 | `host` | the librime host tests (`ctest`), the English host test (`run-host.sh`), then `tests/conversion/run.sh` with the coordinator's unit tests; one line that regressed against either baseline fails the job |
 | `android` | `./gradlew check assembleDebug assembleRelease` with `KOTOMO_REQUIRE_MOZC=1`, `KOTOMO_REQUIRE_RIME_PREBUILT=1` and `KOTOMO_REQUIRE_LEXICON=1`; one APK artifact per ABI |
-| `instrumented` | only when started by hand: `connectedDebugAndroidTest` on an API 37.2 x86_64 emulator with 16 KB pages |
 | `release` | on a `v*` tag: the signed release APKs on a GitHub release |
 
 Mozc comes only from the same run: Bazel takes an hour or more, so `mozc.yml` caches its output
