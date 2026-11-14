@@ -26,3 +26,4 @@
   加入了给协调层的函数表，因此重新构建了两个 Android 库，并把它们的哈希记入 `build-lock.json`；`mozc.data` 未变。
 - 2026-11-12 的来源审查（S8，`third-party.md`）：从发布源读到的最新版本：SudachiDict v20261015、Noto Emoji v2026-09-24-unicode18_0、Twemoji v17.0.3、OpenMoji 17.0.0、jmdict-simplified 3.6.2+20261109214828、cldr-json 49.0.0（均未变或为新记录）；THUOCL 未变。
 - 2026-11-13 为翻译（Q9）核对上游：新加入 ML Kit `translate` 17.0.3（最新版本）；ML Kit GenAI 校对与改写 1.0.0-beta1、librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2（更新的只有 4.3-beta1）、AGP 9.5.1 与 Kotlin 2.4.21（2.5.0 是候选版本）未变。
+- 2026-11-14 核对上游：CC-CEDICT 移到 2026-11-14T02:25:17Z 的文件，因为 MDBG 替换了当前文件，之前锁定的文件已无法下载（S5 样本 34/34，反例 0/8；拼音 → 日文表有三行变化，`emoji.tsv` 未变；转换语料无回退）。核对后未变：librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2（更新的只有 4.3-beta1）、Gradle 9.9.1、Android Gradle Plugin 9.5.1、Kotlin 2.4.21（2.5.0 是候选版本）、Compose BOM 2026.09.00、jmdict-simplified 3.6.2+20261109214828 与 cldr-json 49.0.0。
