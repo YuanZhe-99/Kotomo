@@ -67,12 +67,13 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 
 - [ ] 2.1 `nihao` + space → 你好; `zhongguo` → 中国 first; `woxiangqubeijing` → 我想去北京 first
 - [ ] 2.2 `jin tian tian qi hen hao` (with spaces) and `jintiantianqihenhao` → 今天天气很好 first
-- [ ] 2.3 `zg` → 中国 among the first three; `shi` → 是 first, 事 / 时 / 十 / 市 follow; `xi'an` → 西安 first
+- [ ] 2.3 `zg` → 中国 among the first three; `shi` → 是 first, 事 / 时 / 十 / 市 follow. On the full keyboard, while pinyin is composed, Shift becomes the 分词 key: `xi` 分词 `an` → 西安 first, and Shift is back once the composition ends; Keys and gestures → "Shift separates syllables while composing" off: Shift stays Shift
 - [ ] 2.4 Spelling slips: `nihoa` still offers 你好, `tain` offers 天
 - [ ] 2.5 The letters as typed (`zhongguo`) appear after the two best candidates, never first; no Japanese kana appears for `nihao`
-- [ ] 2.6 The arrow at the end of the bar shows all candidates; "Back to the keyboard" closes it
+- [ ] 2.6 The arrow at the end of the bar shows all candidates; picking one returns to the keys, a partial pick too (你, then 好 the same way); "Back to the keyboard" closes it without a pick. In Mixed mode the arrow opens the segment panel: picking the sentence, or a reading for one piece, also returns to the keys
 - [ ] 2.7 Long-press a candidate: its reading and source ("Chinese dictionary") appear; tapping elsewhere closes it
 - [ ] 2.8 Pick a lower candidate for the same pinyin a few times: it moves up. Long-press a learned word: "Forget" appears and works
+- [ ] 2.9 A long candidate never fills the whole bar: type a long sentence such as `jintiantianqihenhaowomenqugongyuansanbuba`; the first candidate ends in "…" and the next candidate and the arrow stay visible; tapping it types the whole sentence
 
 ## 3. English mode (G1, T02, S4)
 
@@ -98,7 +99,8 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 5.2 Type `nihon` in Chinese, switch to Japanese: にほん stays uncommitted and converts; switch back: the letters return to pinyin
 - [ ] 5.3 More → "Fix this mode here": that app always opens in the fixed mode, even after using another mode there; Input modes lists it under "Apps with their own settings"; Remove releases it
 - [ ] 5.4 Other apps come back in the mode you last used in them; a code or command field starts in English
-- [ ] 5.5 Settings → Input modes → "Start in": after closing every app and reopening a plain field, the keyboard opens in that mode
+- [ ] 5.5 Settings → Input modes → "Start in": choose Japanese. Then the phone's Settings → Apps → Kotomo → Force stop. Open an app you have not typed in with Kotomo before (for example the Contacts search) and tap its text field: the space bar shows the Japanese mode. (Apps you have typed in keep the mode you last used there, 5.4.) Set "Start in" back afterwards
+- [ ] 5.6 A browser's address bar (a web address field): it starts in the mode you last used in that browser, Chinese and Japanese convert, and the bottom row keeps / and .com. Input modes → "Web addresses start in English" on: the address bar types English directly. E-mail and password fields always type directly
 
 ## 6. Space and Enter per mode (ADR-010)
 
@@ -126,7 +128,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 8.2 "English → Japanese katakana" off: `computer` and `coffee` lose their katakana; "English → Japanese kanji" off: `school` loses 学校
 - [ ] 8.3 "Mixed-language sentences" off: `chidai ni kai ni ikou` is no longer assembled into 池袋に買いに行こう across languages
 - [ ] 8.4 "Readings on candidates" off: no reading under Japanese candidates; "Emoji suggestions" off: `neko` / `mao` / `cat` show no 🐱. Switch both back on. (The "Pinyin → Japanese katakana" switch has no data behind it yet; ignore it)
-- [ ] 8.5 Piece editing: after `chidai ni kai ni ikou` open the arrow; tap the piece 池袋: its other readings (地代) are listed; choose one, and the other pieces stay as they were; commit
+- [ ] 8.5 Piece editing: after `chidai ni kai ni ikou` open the arrow; tap the piece 池袋: its other readings (地代) are listed; choose one: the keys come back; open the arrow again: the other pieces stayed as they were; commit
 - [ ] 8.6 Backspace right after that commit deletes one character, as anywhere else (the default). Keys and gestures → "Backspace restores what was just committed" on: Backspace right after the commit puts the letters back with the chosen piece still chosen; Enter commits it again
 - [ ] 8.7 In the piece list the letters (`chidai`) are offered as a choice (keeps the English); "Restore input" drops the choice and the sentence converts afresh
 - [ ] 8.8 "Commit up to here" on 池袋: it goes into the field, the rest stays composed and can be chosen next
@@ -199,6 +201,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 15.8 Settings → Privacy → Clipboard history off: new copies are not kept and the footer says so; Quick paste off: no strip; the retention choice offers 1, 7 and 30 days
 - [ ] 15.9 History page (See, search and edit the history): search, the categories (Codes, Links, Phone numbers, Addresses, Text), edit an item, "Add a quick phrase" (it appears under Pinned and phrases), select all shown and delete
 - [ ] 15.10 In the clipboard panel tap "Not in this app": the footer says it is not kept while you type there; the app appears under "Apps where nothing is kept"; Remove brings it back
+- [ ] 15.11 Long-press a clip card: a menu over the panel shows the clip and Pin (Unpin when pinned), Delete and Cancel (Paste the whole text for a verification-code message); each line is easy to hit with a finger and its text is as large as the other panel menus; Pin pins the clip
 
 ## 16. Fields, gestures, punctuation (G1, T13)
 
@@ -260,6 +263,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 
 - [ ] 22.1 [AUTOFILL] In a login form the password manager's suggestions appear in the bar; tapping one fills the form
 - [ ] 22.2 [AUTOFILL] Settings → Layout and size → Toolbar → "Autofill suggestions" off: they no longer appear in the bar
+- [ ] 22.3 [AUTOFILL] While suggestions show, the button at the strip's start ("Show the toolbar") brings the toolbar back; a key icon at the bar's start ("Show the autofill suggestions") shows them again; in the next field they show again by themselves
 
 ## 23. Privacy and offline (G1, T12, PLAN §14)
 
@@ -310,7 +314,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 ## 27. Appearance (G1, G5)
 
 - [ ] 27.1 System dark mode: keyboard and every settings page switch to dark and stay legible; back to light
-- [ ] 27.2 Interface language: with the system / app language set to English, 简体中文, 繁體中文 and 日本語 in turn, the keyboard (mode names, tool names, hints) and the settings pages are in that language, with no cut-off text
+- [ ] 27.2 Interface language: Settings → Interface language (Android 13 and later), choose English, 简体中文, 繁體中文 and 日本語 in turn: the settings pages change at once, the keyboard (key descriptions, tool names, hints, the More panel) the next time it opens; no cut-off text. Then "Follow the system" and set the phone to Chinese: both follow it
 - [ ] 27.3 Largest font scale (Android Settings → Display → Font size, and Display size): key labels, candidate bar, the More panel and every settings page stay readable with no overlapping; the PC layout too
 - [ ] 27.4 Rotate to landscape in a text field: the keyboard works and is not taller than needed
 
