@@ -326,3 +326,28 @@ recognizer and where its model comes from is the device's choice, not Kotomo's.
 
 **Reopens when.** The user picks an open recognizer and its models, or wants a network recognizer
 as an option the person enables with a notice.
+
+## ADR-016 Chinese mode corrects neighbouring keys with librime's search, not by touch position
+
+**Decision.** Chinese mode's neighbouring-key correction (feedback B2, `nohao` → 你好) is
+librime's own near-key search (`translator/enable_correction`), not the correction by touch
+position that Mixed mode's coordinator does. The bridge lists a corrected reading after the exact
+readings of the same length. The setting `chinese.key_correction` is on by default, and the on
+state is part of the prebuilt data: the shared data carries a default rule file
+(`kotomo_fuzzy.yaml`) that turns it on, and the file the app writes into the user directory
+replaces it, so a phone deploys only when the person turns the correction off or a fuzzy rule on.
+
+**Why.** Chinese mode sends each key straight to librime; it has no touch points and no
+coordinator, and building both for it would put a second engine path under one mode. By touch
+position the person's own example would not be corrected either: `o` hit in the middle of its key
+is not near `i`, while librime's search tries the neighbouring key whatever the position. The
+search runs inside the call that already fetches the candidates, so the key path gains no call.
+With the correction forced on for every Chinese line the conversion corpus has no regression, so
+it can be the default.
+
+**Cost.** Every input may list up to four corrected candidates after the exact ones. The
+correction knows the QWERTY neighbours only, not the keyboard's real geometry, so it is the same
+on every layout and size. Turning it off takes one deploy on the phone, like a fuzzy rule.
+
+**Reopens when.** The corrected candidates prove noisy on a device, Chinese mode moves behind the
+coordinator, or the correction should follow the touch position.

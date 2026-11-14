@@ -14,6 +14,8 @@ __patch:
   # Its own spelling table: luna_pinyin_simp's prism holds the letter spellings Mixed mode and the
   # letter layout use, and sharing it let the digits replace them.
   translator/prism: kotomo_t9
+  # The near-key search knows the letter layout only; on the keypad it stays off.
+  translator/enable_correction: false
   speller/alphabet: "23456789"
   speller/algebra/+:
     - xlit/abcdefghijklmnopqrstuvwxyz/22233344455566677778889999/

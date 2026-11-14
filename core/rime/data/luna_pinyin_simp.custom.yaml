@@ -9,10 +9,11 @@
 # luna_pinyin_simp_private applies the same patch, so sensitive fields see the same words (these
 # tables are read-only; nothing is learned into them).
 #
-# Fuzzy pinyin (PLAN §9.6): the optional kotomo_fuzzy.yaml in the user directory, which the app
-# writes from the switches chinese.fuzzy.* (app/.../ime/Fuzzy.kt), appends its rules to
-# speller/algebra. Without the file (every switch off, and the data prebuilt for the APK) the schema
-# is unchanged; with it the app deploys in its deploy process.
+# Fuzzy pinyin (PLAN §9.6) and neighbouring-key correction (ADR-016): kotomo_fuzzy.yaml. The one
+# in the shared data (core/rime/data/kotomo_fuzzy.yaml) is the default state, prebuilt for the APK:
+# no rule, correction on. The app writes its own into the user directory from the switches
+# chinese.fuzzy.*, chinese.double_pinyin and chinese.key_correction (app/.../ime/Fuzzy.kt) when
+# they differ from that, and deploys in its deploy process.
 patch:
   __include: kotomo_fuzzy:/patch?
   engine/translators:

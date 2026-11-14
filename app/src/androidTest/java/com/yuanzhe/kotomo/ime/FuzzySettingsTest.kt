@@ -52,7 +52,7 @@ class FuzzySettingsTest {
     @After
     fun rulesOff() = runBlocking {
         KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = null) } }
-        store.update { it.copy(chineseFuzzy = emptySet(), chineseKeyCorrection = false) }
+        store.update { it.copy(chineseFuzzy = emptySet(), chineseKeyCorrection = true) }
     }
 
     /** Positive: with z/zh on, `zongguo` commits 中国 once the deploy is done. */
@@ -90,14 +90,15 @@ class FuzzySettingsTest {
     }
 
     /**
-     * Feedback B2: with `chinese.key_correction` on, `nohao` (o for its neighbour i) offers 你好
-     * after the exact reading, and picking it commits it; `nihao` + space still commits 你好.
+     * Feedback B2: with `chinese.key_correction` on, as it is by default and in the prebuilt data
+     * (ADR-016), `nohao` (o for its neighbour i) offers 你好 after the exact reading, and picking
+     * it commits it; `nihao` + space still commits 你好. Negative: with the switch off, a deploy
+     * later, `nohao` no longer offers 你好.
      */
     @Test
     fun keyCorrectionOffersTheNeighbourReading() {
         withField { scenario ->
-            runBlocking { store.update { it.copy(chineseKeyCorrection = true) } }
-            waitFor("the build with key correction") { files.fuzzy.isFile && files.current }
+            waitFor("the prebuilt data") { !files.fuzzy.isFile && !files.hasBuild }
             var text = ""
             repeat(ATTEMPTS) {
                 if (text == "你好") return@repeat
@@ -113,9 +114,12 @@ class FuzzySettingsTest {
                 device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
                 val offered = device.wait(Until.findObject(By.desc(BACK)), WAIT_MS)?.let { device.wait(Until.findObject(By.text("你好")), WAIT_MS) }
                 if (offered != null) {
-                    val exact = checkNotNull(device.findObject(By.text("弄好"))) { "the exact reading is not listed" }.visibleBounds
-                    val at = offered.visibleBounds
-                    assertTrue("the exact reading stands before the corrected one", exact.top < at.top || (exact.top == at.top && exact.left < at.left))
+                    // 弄好 is the sentence librime makes of the letters as typed; it makes none once
+                    // 你好 was learned (the other tests commit it), and 你好 then leads.
+                    device.findObject(By.text("弄好"))?.visibleBounds?.let { exact ->
+                        val at = offered.visibleBounds
+                        assertTrue("the exact reading stands before the corrected one", exact.top < at.top || (exact.top == at.top && exact.left < at.left))
+                    }
                     offered.click()
                     device.wait(Until.gone(By.desc(BACK)), WAIT_MS)
                     Thread.sleep(SETTLE_MS)
@@ -129,6 +133,28 @@ class FuzzySettingsTest {
             }
             assertEquals("你好", text)
             assertEquals("你好", type(scenario, "nihao"))
+            runBlocking { store.update { it.copy(chineseKeyCorrection = false) } }
+            waitFor("the build without key correction") { files.fuzzy.isFile && files.current }
+            var offered = true
+            repeat(ATTEMPTS) {
+                if (!offered) return@repeat
+                scenario.onActivity { it.findViewById<EditText>(FieldTestActivity.FIELD_ID).setText("") }
+                Thread.sleep(SETTLE_MS)
+                "nohao".forEach { device.findObject(By.desc(it.toString())).click() }
+                Thread.sleep(SETTLE_MS)
+                val q = device.findObject(By.desc("q"))
+                val res = context.resources
+                val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+                    res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+                device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+                checkNotNull(device.wait(Until.findObject(By.desc(BACK)), WAIT_MS)) { "the candidate panel did not open" }
+                device.wait(Until.findObject(By.text("弄好")), WAIT_MS)
+                offered = device.findObject(By.text("你好")) != null
+                device.findObject(By.desc(BACK)).click()
+                device.wait(Until.findObject(By.desc("q")), WAIT_MS)
+                device.findObject(By.descStartsWith(SPACE)).click()
+            }
+            assertFalse("the corrected reading is still offered with the switch off", offered)
         }
     }
 

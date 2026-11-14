@@ -48,13 +48,13 @@ class ConversionCorpusTest {
         val script: String? = null,
         /** Typed on the Chinese 9-key layout: the input is keypad digits (`chinese+nine`, PLAN §10.9). */
         val nine: Boolean = false,
-        /** Runs on a build with Chinese mode's key correction on (`+correction`, `chinese.key_correction`). */
-        val correction: Boolean = false,
+        /** Runs on a build with Chinese mode's key correction on, as by default (`chinese.key_correction`); `+nocorrection` turns it off. */
+        val correction: Boolean = true,
         /** The Japanese fuzzy rules the line runs with (`+jfuzzy:voiced,cu`, `japanese.fuzzy.*`). */
         val japaneseFuzzy: Set<JapaneseFuzzyRule> = emptySet(),
     ) {
         /** Names the librime build the line needs (its rules and scheme), for grouping and the report. */
-        val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "") + (if (correction) "+correction" else "")
+        val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "") + (if (correction) "" else "+nocorrection")
     }
 
     /** One line's outcome: whether it passed, the position that decided it (1-based), the list. */
@@ -73,7 +73,7 @@ class ConversionCorpusTest {
     private var rimeDouble: DoublePinyin? = null
 
     /** Whether the librime build open now has key correction on. */
-    private var rimeCorrection = false
+    private var rimeCorrection = true
 
     @Test
     fun corpusHasNoRegressions() {
@@ -122,8 +122,8 @@ class ConversionCorpusTest {
                 }
                 val nine = "nine" in c[1].split('+').drop(1)
                 require(!nine || mode == Mode.CHINESE) { "corpus line ${n + 1}: the 9-key layout is for chinese lines" }
-                val correction = "correction" in c[1].split('+').drop(1)
-                require(!correction || mode == Mode.CHINESE || mode == Mode.MIXED) { "corpus line ${n + 1}: key correction is for chinese and mixed lines" }
+                val correction = "nocorrection" !in c[1].split('+').drop(1)
+                require(correction || mode == Mode.CHINESE || mode == Mode.MIXED) { "corpus line ${n + 1}: key correction is for chinese and mixed lines" }
                 val japaneseFuzzy = c[1].split('+').drop(1).firstOrNull { it.startsWith("jfuzzy:") }?.let { option ->
                     require(mode == Mode.JAPANESE || mode == Mode.MIXED) { "corpus line ${n + 1}: Japanese fuzzy rules are for japanese and mixed lines" }
                     val names = option.removePrefix("jfuzzy:")
@@ -135,7 +135,7 @@ class ConversionCorpusTest {
                         }
                     }
                 }.orEmpty()
-                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && !it.startsWith("jfuzzy:") && it != "nine" && it != "correction" }
+                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && !it.startsWith("jfuzzy:") && it != "nine" && it != "nocorrection" }
                 val fuzzy = if (fuzzyOption != null) {
                     val option = fuzzyOption
                     require(option.startsWith("fuzzy:") && (mode == Mode.CHINESE || mode == Mode.MIXED)) {
@@ -261,11 +261,11 @@ class ConversionCorpusTest {
     }
 
     /**
-     * Opens librime on a build with the fuzzy-pinyin [rules]: the prebuilt data for none, else a
+     * Opens librime on a build with the fuzzy-pinyin [rules] and the key [correction]: the prebuilt data for the default state, else a
      * user directory holding the app's rule file, deployed on first use (as the deploy process
      * deploys into its staging directory).
      */
-    private fun useRules(rules: Set<FuzzyRule>, double: DoublePinyin? = null, correction: Boolean = false) {
+    private fun useRules(rules: Set<FuzzyRule>, double: DoublePinyin? = null, correction: Boolean = true) {
         if (rules == rimeRules && double == rimeDouble && correction == rimeCorrection) return
         val text = Fuzzy.yaml(rules, double, correction)
         val user = tmp.resolve("rime-" + Fuzzy.hash(text).take(12))

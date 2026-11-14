@@ -1,0 +1,11 @@
+# Kotomo: the default rule file, for a phone on which the app has written none (no fuzzy-pinyin
+# rule on, full pinyin, and neighbouring-key correction on as it is by default).
+#
+# luna_pinyin_simp.custom.yaml includes kotomo_fuzzy:/patch?; librime looks in the user directory
+# first, so the file the app writes there (app/.../ime/Fuzzy.kt) replaces this one as a whole.
+# Being part of the shared data, this state is prebuilt: nothing compiles on the phone for it.
+#
+# translator/enable_correction is librime's near-key search (feedback B2, ADR-016: `nohao` → 你好);
+# the bridge lists a corrected reading after the exact ones.
+patch:
+  translator/enable_correction: true

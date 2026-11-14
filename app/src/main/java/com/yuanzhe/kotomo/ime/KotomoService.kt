@@ -679,7 +679,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Brings librime's build in line with this version's data, the fuzzy-pinyin [rules] (PLAN
      * §9.6), the [double] pinyin scheme (PLAN §10.4; it applies wherever pinyin is typed,
      * Mixed mode included) and Chinese mode's key [correction] (feedback B2): writes or removes the rule file, then deploys in the deploy process
-     * when the build is not current, or, with prebuilt data, no rule on and full pinyin, drops the deployed build so
+     * when the build is not current, or, with prebuilt data and the default state (no rule on, full pinyin, the correction on), drops the deployed build so
      * librime reads the prebuilt data again (nothing compiles on the phone then).
      * Notes: main thread, files on the IO dispatcher; the keyboard keeps typing on the previous
      * build until the new one is swapped in. Never before the first unlock.
@@ -687,8 +687,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private suspend fun syncRimeBuild(rules: Set<FuzzyRule>, double: DoublePinyin?, correction: Boolean) = rimeBuildLock.withLock {
         val files = RimeFiles(this)
         val (drop, deploy) = withContext(Dispatchers.IO) {
-            files.writeFuzzy(Fuzzy.yaml(rules, double, correction))
-            if (files.prebuilt && rules.isEmpty() && double == null && !correction) files.hasBuild to false else false to !files.current
+            val text = Fuzzy.yaml(rules, double, correction)
+            files.writeFuzzy(text)
+            if (files.prebuilt && text == null) files.hasBuild to false else false to !files.current
         }
         if (drop) reopenRime({ it.dropBuild(); true })
         if (deploy) startDeploy()

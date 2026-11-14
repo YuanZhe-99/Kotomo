@@ -168,8 +168,8 @@ data class Settings(
     val chineseScript: ChineseScript = ChineseScript.SIMPLIFIED,
     /** The fuzzy-pinyin rules turned on (PLAN §9.6); none by default. */
     val chineseFuzzy: Set<FuzzyRule> = emptySet(),
-    /** Chinese mode also reads a key as its neighbour (`nohao` → 你好; `chinese.key_correction`). */
-    val chineseKeyCorrection: Boolean = false,
+    /** Chinese mode also reads a key as its neighbour (`nohao` → 你好; `chinese.key_correction`, on by default: ADR-016). */
+    val chineseKeyCorrection: Boolean = true,
     val englishSuggestions: Boolean = true,
     val englishAutoCapitalize: Boolean = true,
     val split: SplitLayout = SplitLayout.AUTO,

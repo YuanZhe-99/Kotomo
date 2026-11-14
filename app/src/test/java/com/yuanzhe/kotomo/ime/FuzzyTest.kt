@@ -63,14 +63,15 @@ class FuzzyTest {
         assertEquals(Fuzzy.NONE, Fuzzy.hash(null))
     }
 
-    /** Feedback B2: key correction alone is one line and no spelling rule; with rules it is added. */
+    /** Feedback B2, ADR-016: the default state needs no file; any other file states the correction, which a double pinyin scheme leaves off. */
     @Test
-    fun keyCorrectionIsOneLine() {
-        assertEquals("# Kotomo: fuzzy and double pinyin, generated from the settings (chinese.fuzzy.*, chinese.double_pinyin); rewritten on every change.\n# Rules: \n# Key correction\npatch:\n  translator/enable_correction: true\n", Fuzzy.yaml(emptySet(), correction = true))
-        val both = checkNotNull(Fuzzy.yaml(setOf(FuzzyRule.N_L), correction = true))
-        assertTrue(both.contains("  translator/enable_correction: true\n  speller/algebra/+:\n"))
-        assertNotEquals(Fuzzy.hash(Fuzzy.yaml(setOf(FuzzyRule.N_L))), Fuzzy.hash(both))
-        assertNull(Fuzzy.yaml(emptySet(), correction = false))
+    fun theFileAlwaysStatesTheCorrection() {
+        assertNull(Fuzzy.yaml(emptySet(), correction = true))
+        assertEquals("# Kotomo: fuzzy and double pinyin, generated from the settings (chinese.fuzzy.*, chinese.double_pinyin); rewritten on every change.\n# Rules: \npatch:\n  translator/enable_correction: false\n", Fuzzy.yaml(emptySet(), correction = false))
+        val on = checkNotNull(Fuzzy.yaml(setOf(FuzzyRule.N_L), correction = true))
+        assertTrue(on.contains("  translator/enable_correction: true\n  speller/algebra/+:\n"))
+        assertNotEquals(Fuzzy.hash(Fuzzy.yaml(setOf(FuzzyRule.N_L), correction = false)), Fuzzy.hash(on))
+        assertTrue(checkNotNull(Fuzzy.yaml(emptySet(), DoublePinyin.MICROSOFT, correction = true)).contains("  translator/enable_correction: false\n"))
     }
 
     @Test
@@ -79,6 +80,7 @@ class FuzzyTest {
             # Kotomo: fuzzy and double pinyin, generated from the settings (chinese.fuzzy.*, chinese.double_pinyin); rewritten on every change.
             # Rules: z_zh an_ang
             patch:
+              translator/enable_correction: true
               speller/algebra/+:
                 - "fuzz/^z(?!h)/ZH/"
                 - "fuzz/^zh/Z/"

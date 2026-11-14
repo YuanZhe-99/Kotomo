@@ -279,7 +279,7 @@ int main(int argc, char** argv) {
   uint64_t generation = 0;
   for (Line& line : lines) {
     // A line with Japanese fuzzy rules runs with them; any other option (fuzzy pinyin, key
-    // correction) needs a deployed librime build and is skipped below.
+    // correction off) needs a deployed librime build and is skipped below.
     const std::string full_mode = line.mode;
     const uint16_t fuzzy = FuzzyRules(&line.mode).value_or(0);
     if (fuzzy == 0) line.mode = full_mode;

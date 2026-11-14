@@ -112,7 +112,7 @@
 | `chinese.quick_input` | boolean | `true` | 中文组合以 `v` 开头时进入快捷输入：数字、金额大写、日期、时间、Unicode、算式、自定义替换（PLAN §10.4） |
 | `chinese.quick_custom` | string | 空 | 用户的快捷替换，每行 `缩写=文字`（小写字母与数字，至多 16 个）；其他行丢弃 |
 | `chinese.stroke_lookup` | boolean | `true` | 中文组合以 `u` 开头时按笔画查字（luna_pinyin 的笔画反查） |
-| `chinese.key_correction` | boolean | `false` | 中文模式的邻近键纠错：按到相邻的键也能找到词（`nohao` → 你好）。纠错读法列在精确读法之后。键盘把它写进 librime 的 `kotomo_fuzzy.yaml` 并部署，与模糊音规则相同。混合模式按触摸位置纠错，不读取此键 |
+| `chinese.key_correction` | boolean | `true` | 中文模式的邻近键纠错：按到相邻的键也能找到词（`nohao` → 你好）。纠错读法列在精确读法之后。打开是预构建数据的状态，所以不需要部署；关掉时写入 librime 的 `kotomo_fuzzy.yaml` 并部署，与模糊音规则相同（ADR-016）。它作用于字母布局上的全拼，不作用于九宫格布局和双拼方案。混合模式按触摸位置纠错，不读取此键 |
 | `chinese.double_pinyin` | string | `none` | 双拼方案：`none`（全拼）、`microsoft`、`sogou`、`xiaohe`、`ziranma`（PLAN §10.4）；不认识的值按全拼处理 |
 | `emoji.favorites` | string | 空 | Emoji 面板的收藏，每行一个，按加入顺序（PLAN §10.6）；至多 64 个，超出时先去掉最早的；在 Emoji 的长按卡片中切换 |
 | `emoji.combos` | string | 空 | 用户自己的 Emoji 组合，每行一个；面板在“组合”中把它们排在 Kotomo 自带的之后 |
