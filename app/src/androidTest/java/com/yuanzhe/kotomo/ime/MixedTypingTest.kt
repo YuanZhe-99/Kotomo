@@ -263,15 +263,12 @@ class MixedTypingTest {
             // and choosing its conversion commits it after the piece.
             assertEquals("池袋" + SENTENCE_KEYS.removePrefix("chidai "), read(scenario))
             // The panel may still be redrawn for the rest's conversion: a view that went away
-            // while the list was read means "look again", a few times at most.
+            // while the list was read means "look again", until the usual wait has passed.
             var text = ""
-            for (attempt in 1..ATTEMPTS) {
-                val tapped = runCatching {
-                    val offered = device.findObjects(By.clazz("android.widget.TextView")).firstOrNull { it.text.orEmpty().endsWith("に行こう") }
-                    offered?.also { text = it.text; it.click() }
-                }.getOrNull()
-                if (tapped != null) break
-                Thread.sleep(READ_MS)
+            val rest = By.text(java.util.regex.Pattern.compile(".*に行こう"))
+            val deadline = android.os.SystemClock.uptimeMillis() + WAIT_MS
+            while (text.isEmpty() && android.os.SystemClock.uptimeMillis() < deadline) {
+                runCatching { device.wait(Until.findObject(rest), READ_MS)?.also { val shown = it.text; it.click(); text = shown } }
             }
             assertTrue("the rest is not offered", text.isNotEmpty())
             assertEquals("池袋$text", read(scenario))
