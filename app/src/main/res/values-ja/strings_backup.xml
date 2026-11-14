@@ -3,7 +3,6 @@
     <!-- Backup and sync (Settings → Backup and sync, PLAN §11.6, §11.7). -->
     <string name="page_backup">バックアップと同期</string>
     <string name="page_backup_desc">ファイルへのバックアップ、復元、端末間の同期</string>
-    <string name="badge_backup">⇅</string>
     <string name="backup_now">今すぐバックアップ</string>
     <string name="backup_now_note">バックアップはチェックした項目を含む 1 つのファイルです。クリップボード履歴は含まれません。</string>
     <string name="backup_dictionary_locked">先にパスワードで保護した辞書のロックを解除してください</string>

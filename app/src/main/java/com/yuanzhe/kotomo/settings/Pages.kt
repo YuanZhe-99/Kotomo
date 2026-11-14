@@ -4,9 +4,11 @@ import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import android.os.Build
 import androidx.annotation.ArrayRes
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -50,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
@@ -807,15 +810,17 @@ private fun Measure(label: String, value: String?) {
 }
 
 /**
- * Draws a home group: its title above a rounded card of rows, as in SettingsHome.
+ * Draws a home group: its title (none for null) above a rounded card of rows, as in SettingsHome.
  */
 @Composable
-internal fun Group(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun Group(title: String?, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_group_gap))) {
-        Text(
-            title, Modifier.padding(horizontal = dimensionResource(R.dimen.settings_group_title_pad)),
-            style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
-        )
+        if (title != null) {
+            Text(
+                title, Modifier.padding(horizontal = dimensionResource(R.dimen.settings_group_title_pad)),
+                style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
+            )
+        }
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(dimensionResource(R.dimen.settings_card_radius))).background(MaterialTheme.colorScheme.surface), content = content)
     }
 }
@@ -852,14 +857,27 @@ internal fun Inset(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-/** Draws a row's round badge with one glyph. */
+/**
+ * Draws a row's round badge: a page icon ([icon]) or a language's short name ([text]), in the
+ * same circle and colour, so icons and language names read as one set. Two-letter names (EN)
+ * are set smaller to sit in the circle like one character.
+ */
 @Composable
-internal fun Badge(text: String) {
-    Row(
+internal fun Badge(@DrawableRes icon: Int? = null, text: String? = null) {
+    Box(
         Modifier.size(dimensionResource(R.dimen.settings_badge)).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
-        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+        contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = dimensionResource(R.dimen.settings_badge_text).value.sp)
+        if (icon != null) {
+            Icon(painterResource(icon), null, Modifier.size(dimensionResource(R.dimen.settings_icon)), tint = MaterialTheme.colorScheme.primary)
+        } else if (text != null) {
+            val size = dimensionResource(if (text.codePointCount(0, text.length) > 1) R.dimen.settings_badge_text_two else R.dimen.settings_badge_text)
+            // The badge is a fixed circle: its name keeps its size at any font scale.
+            Text(
+                text, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, maxLines = 1,
+                fontSize = with(LocalDensity.current) { size.toSp() },
+            )
+        }
     }
 }
 

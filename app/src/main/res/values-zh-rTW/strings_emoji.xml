@@ -9,7 +9,6 @@
     <string name="emoji_favorite_remove">取消收藏</string>
     <string name="page_emoji">Emoji</string>
     <string name="page_emoji_desc">收藏 · 組合 · 自訂詞語 Emoji</string>
-    <string name="badge_emoji">表</string>
     <string name="emoji_combos_field">你的組合</string>
     <string name="emoji_combos_note">每行一個，在 Emoji 面板的「組合」裡排在 Kotomo 內建的之後。</string>
     <string name="emoji_mappings_field">自訂詞語 Emoji</string>

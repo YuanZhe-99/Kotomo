@@ -3,7 +3,6 @@
     <!-- Backup and sync (Settings → Backup and sync, PLAN §11.6, §11.7). -->
     <string name="page_backup">备份与同步</string>
     <string name="page_backup_desc">备份到文件、恢复、在设备间同步</string>
-    <string name="badge_backup">⇅</string>
     <string name="backup_now">立即备份</string>
     <string name="backup_now_note">备份是一个文件，包含你勾选的部分。剪贴板历史从不包含在内。</string>
     <string name="backup_dictionary_locked">请先解锁受密码保护的词库</string>

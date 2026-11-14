@@ -99,13 +99,6 @@
     <string name="page_licenses">開放原始碼授權</string>
     <string name="page_sources">資料來源</string>
     <string name="page_design">設計致謝</string>
-    <string name="badge_modes">模</string>
-    <string name="badge_layout">鍵</string>
-    <string name="badge_keys">勢</string>
-    <string name="badge_themes">色</string>
-    <string name="badge_dictionaries">詞</string>
-    <string name="badge_privacy">隱</string>
-    <string name="badge_diagnostics">診</string>
     <string name="mode_mixed">混合</string>
     <string name="mode_mixed_desc">拼音、英文與羅馬字一起輸入，整句轉換</string>
     <string name="mode_chinese">中文</string>
@@ -270,6 +263,7 @@
     <string name="use_mozc">日文轉換（開發中，尚未進入應用程式）</string>
     <string name="use_mozc_deps">Mozc 的建構使用</string>
     <string name="use_androidx">應用程式的介面與執行環境</string>
+    <string name="use_material_icons">設定頁面的圖示</string>
     <string name="use_myapps">文件檢查與慣例（與 Kotomo 同一作者）</string>
     <string name="use_rime_data">拼音方案、詞典與語言模型</string>
     <string name="use_mozc_dict">跨語言詞庫中的日文詞條</string>

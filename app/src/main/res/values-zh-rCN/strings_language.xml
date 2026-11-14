@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="page_language">界面语言</string>
-    <string name="badge_language">语</string>
     <string name="page_language_desc">键盘和这些设置使用的语言</string>
     <string name="language_system">跟随系统</string>
     <string name="language_system_desc">Kotomo 支持手机的语言时使用它，否则使用英文</string>

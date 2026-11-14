@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,7 +39,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -263,31 +263,33 @@ private fun HomePage(settings: Settings, store: SettingsStore, open: (Page) -> U
     )
     SetupCard()
     Group(stringResource(R.string.section_input)) {
-        LinkRow(stringResource(R.string.badge_modes), Page.MODES, stringResource(R.string.page_modes_desc), open)
+        LinkRow(R.drawable.ic_page_modes, Page.MODES, stringResource(R.string.page_modes_desc), open)
         LinkRow(stringResource(R.string.mode_badge_mixed), Page.MIXED, stringResource(R.string.page_mixed_desc, stringResource(settings.mixed.level.label)), open)
         LinkRow(stringResource(R.string.mode_badge_chinese), Page.CHINESE, stringResource(R.string.page_chinese_desc), open)
         LinkRow(stringResource(R.string.mode_badge_japanese), Page.JAPANESE, stringResource(R.string.page_japanese_desc), open)
         LinkRow(stringResource(R.string.mode_badge_english), Page.ENGLISH, stringResource(R.string.page_english_desc), open, last = true)
     }
     Group(stringResource(R.string.section_keyboard)) {
-        LinkRow(stringResource(R.string.badge_layout), Page.LAYOUT, stringResource(R.string.page_layout_desc), open)
-        LinkRow(stringResource(R.string.badge_keys), Page.KEYS, stringResource(R.string.page_keys_desc), open)
-        LinkRow(stringResource(R.string.badge_emoji), Page.EMOJI, stringResource(R.string.page_emoji_desc), open)
-        LinkRow(stringResource(R.string.badge_themes), Page.THEMES, stringResource(R.string.page_themes_desc), open)
-        LinkRow(stringResource(R.string.badge_language), Page.LANGUAGE, stringResource(R.string.page_language_desc), open, last = true)
+        LinkRow(R.drawable.ic_page_layout, Page.LAYOUT, stringResource(R.string.page_layout_desc), open)
+        LinkRow(R.drawable.ic_page_keys, Page.KEYS, stringResource(R.string.page_keys_desc), open)
+        LinkRow(R.drawable.ic_page_emoji, Page.EMOJI, stringResource(R.string.page_emoji_desc), open)
+        LinkRow(R.drawable.ic_page_themes, Page.THEMES, stringResource(R.string.page_themes_desc), open)
+        LinkRow(R.drawable.ic_page_language, Page.LANGUAGE, stringResource(R.string.page_language_desc), open, last = true)
     }
     Group(stringResource(R.string.section_data)) {
-        LinkRow(stringResource(R.string.badge_dictionaries), Page.DICTIONARIES, stringResource(R.string.page_dictionaries_desc), open)
-        LinkRow(stringResource(R.string.badge_backup), Page.BACKUP, stringResource(R.string.page_backup_desc), open)
-        LinkRow(stringResource(R.string.badge_ai), Page.AI, stringResource(if (settings.ai.enabled) R.string.page_ai_desc_on else R.string.page_ai_desc_off), open)
-        LinkRow(stringResource(R.string.badge_diagnostics), Page.DIAGNOSTICS, stringResource(R.string.page_diagnostics_desc), open, last = true)
+        LinkRow(R.drawable.ic_page_dictionaries, Page.DICTIONARIES, stringResource(R.string.page_dictionaries_desc), open)
+        LinkRow(R.drawable.ic_page_backup, Page.BACKUP, stringResource(R.string.page_backup_desc), open)
+        LinkRow(R.drawable.ic_page_ai, Page.AI, stringResource(if (settings.ai.enabled) R.string.page_ai_desc_on else R.string.page_ai_desc_off), open)
+        LinkRow(R.drawable.ic_page_diagnostics, Page.DIAGNOSTICS, stringResource(R.string.page_diagnostics_desc), open, last = true)
     }
     Group(stringResource(R.string.section_privacy)) {
         SwitchRow(R.string.incognito_title, R.string.incognito_desc, settings.incognito) { on -> store.set { it.copy(incognito = on) } }
         RowDivider()
-        LinkRow(stringResource(R.string.badge_privacy), Page.PRIVACY, stringResource(R.string.page_privacy_desc), open, last = true)
+        LinkRow(R.drawable.ic_page_privacy, Page.PRIVACY, stringResource(R.string.page_privacy_desc), open, last = true)
     }
-    TextButton(onClick = { open(Page.ABOUT) }) { Text(stringResource(R.string.page_about)) }
+    Group(null) {
+        LinkRow(R.drawable.ic_page_about, Page.ABOUT, null, open, last = true)
+    }
 }
 
 /**
@@ -398,22 +400,32 @@ private fun PageHeader(@StringRes title: Int, onBack: (() -> Unit)?) {
     }
 }
 
+/** Draws a home link row whose badge is a page icon (a Material icon, `ic_page_*`). */
+@Composable
+private fun LinkRow(@DrawableRes icon: Int, page: Page, desc: String?, open: (Page) -> Unit, last: Boolean = false) =
+    LinkRow(page, desc, open, last) { Badge(icon = icon) }
+
+/** Draws a home link row whose badge is a language's short name (混, 中, 日, EN). */
+@Composable
+private fun LinkRow(badge: String, page: Page, desc: String, open: (Page) -> Unit, last: Boolean = false) =
+    LinkRow(page, desc, open, last) { Badge(text = badge) }
+
 /**
  * Draws one link row of the home: a badge, the page's title and a description, and a chevron.
- * Inputs: last leaves out the divider under the group's final row.
+ * Inputs: [desc] null for a title alone; last leaves out the divider under the group's final row.
  */
 @Composable
-private fun LinkRow(badge: String, page: Page, desc: String, open: (Page) -> Unit, last: Boolean = false) {
+private fun LinkRow(page: Page, desc: String?, open: (Page) -> Unit, last: Boolean, badge: @Composable () -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_row_min)).clickable { open(page) }
             .padding(horizontal = dimensionResource(R.dimen.settings_card_pad), vertical = dimensionResource(R.dimen.settings_row_pad)),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_row_gap)),
     ) {
-        Badge(badge)
+        badge()
         Column(Modifier.weight(1f)) {
             Text(stringResource(page.title), style = MaterialTheme.typography.bodyLarge)
-            Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (desc != null) Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(
             painterResource(R.drawable.ic_settings_chevron), null, Modifier.size(dimensionResource(R.dimen.settings_chevron)),

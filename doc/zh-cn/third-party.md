@@ -31,6 +31,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | japanese-usage-dictionary、Abseil、Protocol Buffers | 由 Mozc 的 Bazel 构建获取（用法词典 2025-01-25、abseil-cpp 20260107.1、protobuf 34.1） | 编入 `mozc.data` 与 `libkotomo_mozc.so` | BSD-2-Clause；Apache-2.0；BSD-3-Clause | 无 | 声明与许可文本 |
 | Google ML Kit：`genai-proofreading`、`genai-rewriting`、`translate`、`digital-ink-recognition` | Google Maven 1.0.0-beta1、1.0.0-beta1、17.0.3、19.0.0（最新版本，2026-11-13） | 写作助手（经 AICore 用 Gemini Nano 校对、改写）、设备端翻译与手写；翻译的语言模型（每种约 30 MB）与手写模型（每种约 20 MB）只在用户点按“下载”时从 Google 下载 | ML Kit 服务条款（闭源；条款未读） | 无 | 在许可证页致谢；在隐私政策中写明 ML Kit 自身收集的数据（`upstream.md`） |
 | AndroidX（Compose、Material 3、Activity、Lifecycle、Core、SavedState、DataStore、Autofill）、Kotlin 标准库、kotlinx.coroutines、okio | Google Maven 与 Maven Central，版本见 `gradle/libs.versions.toml`（Compose BOM 2026.09.00、DataStore 1.3.0、Autofill 1.3.0、Kotlin 2.4.21） | 设置应用、键盘的 Compose 面板、设置文件、内联自动填充建议的样式 | Apache-2.0 | 无 | 随附 Apache-2.0 许可文本 |
+| Material Icons（Outlined）：`swap_horiz`、`keyboard`、`gesture`、`emoji_emotions`、`palette`、`language`、`menu_book`、`backup`、`auto_awesome`、`query_stats`、`privacy_tip`、`info` | `google/material-design-icons`，取自 Android Studio 的 Vector Asset 工具自带的矢量图（其 `icons_metadata.txt` 中的图标版本 4–20） | 设置首页各页面的图标（`res/drawable/ic_page_*.xml`）；只带这十二个 | Apache-2.0 | 颜色改为黑色并去掉主题着色；每个文件注明图标名与版本 | 随附 Apache-2.0 许可证文本 |
 
 编译后的跨语言词库 `cross.klx`（`lexicon-format.md`）由 `lexicon/CrossLexicon.java` 与
 `kotomo_lexicon_compile` 生成（从不提交），自混合模式接入协调层的那次构建起随 APK 分发。它沿用所派生数据的

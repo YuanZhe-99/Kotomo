@@ -49,7 +49,6 @@
     <string name="page_ai">Writing help</string>
     <string name="page_ai_desc_on">On · proofreading and rewriting on this device</string>
     <string name="page_ai_desc_off">Off · proofreading and rewriting with Gemini Nano</string>
-    <string name="badge_ai">AI</string>
     <string name="ai_enable">Writing help</string>
     <string name="ai_enable_desc">Lets the keyboard\'s AI button proofread and rewrite what you typed</string>
     <string name="ai_note_how">Tap the AI button to work on the selected text, or the whole field. You see the suggestions first; your text changes only when you tap Replace, and Undo restores it.</string>

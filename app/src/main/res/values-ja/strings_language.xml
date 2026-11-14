@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="page_language">表示言語</string>
-    <string name="badge_language">言</string>
     <string name="page_language_desc">キーボードとこの設定の言語</string>
     <string name="language_system">システムに従う</string>
     <string name="language_system_desc">Kotomo が対応していればスマートフォンの言語、そうでなければ英語</string>

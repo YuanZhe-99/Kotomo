@@ -6,7 +6,6 @@
     <string name="language_zh_tw" translatable="false">繁體中文</string>
     <string name="language_ja" translatable="false">日本語</string>
     <string name="page_language">Interface language</string>
-    <string name="badge_language">L</string>
     <string name="page_language_desc">The language of the keyboard and these settings</string>
     <string name="language_system">Follow the system</string>
     <string name="language_system_desc">Your phone’s language when Kotomo has it, otherwise English</string>

@@ -57,6 +57,7 @@ internal val CODE = listOf(
     Credit("Abseil", "20260107.1", "Apache-2.0", R.string.use_mozc_deps, "https://github.com/abseil/abseil-cpp"),
     Credit("Protocol Buffers", "34.1", "BSD-3-Clause", R.string.use_mozc_deps, "https://github.com/protocolbuffers/protobuf"),
     Credit("AndroidX, Jetpack Compose, Kotlin, kotlinx.coroutines, okio", "", "Apache-2.0", R.string.use_androidx, "https://developer.android.com/jetpack/androidx", "https://www.apache.org/licenses/LICENSE-2.0"),
+    Credit("Material Icons", "", "Apache-2.0", R.string.use_material_icons, "https://github.com/google/material-design-icons", "https://www.apache.org/licenses/LICENSE-2.0"),
     Credit("Google ML Kit: GenAI proofreading and rewriting, on-device translation, digital ink recognition", "1.0.0-beta1; translate 17.0.3; digital ink 19.0.0", "ML Kit Terms of Service", R.string.use_mlkit, "https://developers.google.com/ml-kit", "https://developers.google.com/ml-kit/terms"),
     Credit("MyApps conventions (Kyokai, MyApps-AI)", "", "AGPL-3.0, GPL-3.0", R.string.use_myapps, "https://github.com/YuanZhe-99/Kyokai"),
 )

@@ -46,7 +46,6 @@
     <string name="page_ai">文章アシスト</string>
     <string name="page_ai_desc_on">オン · この端末で校正と書き換え</string>
     <string name="page_ai_desc_off">オフ · Gemini Nano で校正と書き換え</string>
-    <string name="badge_ai">AI</string>
     <string name="ai_enable">文章アシスト</string>
     <string name="ai_enable_desc">キーボードの AI ボタンで入力した文章を校正・書き換えできるようにします</string>
     <string name="ai_note_how">AI ボタンをタップすると、選択した文章（選択がなければ入力欄全体）を処理します。先に候補を表示し、「置き換え」をタップしたときだけ文章が変わります。元に戻すこともできます。</string>

@@ -99,13 +99,6 @@
     <string name="page_licenses">オープンソースライセンス</string>
     <string name="page_sources">データの出典</string>
     <string name="page_design">デザインの謝辞</string>
-    <string name="badge_modes">モ</string>
-    <string name="badge_layout">配</string>
-    <string name="badge_keys">キ</string>
-    <string name="badge_themes">色</string>
-    <string name="badge_dictionaries">辞</string>
-    <string name="badge_privacy">秘</string>
-    <string name="badge_diagnostics">診</string>
     <string name="mode_mixed">ミックス</string>
     <string name="mode_mixed_desc">ピンイン、英語、ローマ字をまとめて入力し、文全体を変換</string>
     <string name="mode_chinese">中国語</string>
@@ -270,6 +263,7 @@
     <string name="use_mozc">日本語変換（開発中で、まだアプリには入っていません）</string>
     <string name="use_mozc_deps">Mozc のビルドで使用</string>
     <string name="use_androidx">アプリの画面と実行環境</string>
+    <string name="use_material_icons">設定ページのアイコン</string>
     <string name="use_myapps">ドキュメントのチェックと規約（Kotomo と同じ作者）</string>
     <string name="use_rime_data">ピンインのスキーマ、辞書、言語モデル</string>
     <string name="use_mozc_dict">言語をまたぐ辞書の日本語の語</string>

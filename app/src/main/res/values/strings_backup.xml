@@ -3,7 +3,6 @@
     <!-- Backup and sync (Settings → Backup and sync, PLAN §11.6, §11.7). -->
     <string name="page_backup">Backup and sync</string>
     <string name="page_backup_desc">Back up to a file, restore, sync between devices</string>
-    <string name="badge_backup">⇅</string>
     <string name="backup_now">Back up now</string>
     <string name="backup_now_note">A backup is one file with the parts you tick. The clipboard history is never included.</string>
     <string name="backup_dictionary_locked">Unlock your protected dictionary first</string>

@@ -164,7 +164,9 @@
     <dimen name="settings_row_pad">12dp</dimen>
     <dimen name="settings_row_gap">14dp</dimen>
     <dimen name="settings_badge">40dp</dimen>
-    <dimen name="settings_badge_text">15sp</dimen>
+    <!-- A language badge's name (混, EN): dp, as the badge does not grow with the font. -->
+    <dimen name="settings_badge_text">16dp</dimen>
+    <dimen name="settings_badge_text_two">13dp</dimen>
     <dimen name="settings_icon">22dp</dimen>
     <dimen name="settings_chevron">20dp</dimen>
     <dimen name="settings_touch">48dp</dimen>

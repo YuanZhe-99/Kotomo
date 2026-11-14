@@ -9,7 +9,6 @@
     <string name="emoji_favorite_remove">Remove from favorites</string>
     <string name="page_emoji">Emoji</string>
     <string name="page_emoji_desc">Favorites · combinations · your emoji for words</string>
-    <string name="badge_emoji">E</string>
     <string name="emoji_combos_field">Your combinations</string>
     <string name="emoji_combos_example" translatable="false">🎈🎈</string>
     <string name="emoji_combos_note">One per line. They follow Kotomo\'s under Combinations in the emoji panel.</string>

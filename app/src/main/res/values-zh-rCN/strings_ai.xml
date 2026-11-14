@@ -46,7 +46,6 @@
     <string name="page_ai">写作助手</string>
     <string name="page_ai_desc_on">已开启 · 在本机校对和改写</string>
     <string name="page_ai_desc_off">已关闭 · 用 Gemini Nano 校对和改写</string>
-    <string name="badge_ai">AI</string>
     <string name="ai_enable">写作助手</string>
     <string name="ai_enable_desc">允许键盘的 AI 按钮校对和改写你输入的文字</string>
     <string name="ai_note_how">点按 AI 按钮处理选中的文字，未选中时处理整个输入框。先显示建议；只有点按“替换”才会改动文字，撤销可恢复原文。</string>

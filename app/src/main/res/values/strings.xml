@@ -113,13 +113,6 @@
     <string name="page_sources">Data sources</string>
     <string name="page_design">Design acknowledgements</string>
     <!-- One-glyph badges in front of the settings rows. -->
-    <string name="badge_modes">M</string>
-    <string name="badge_layout">L</string>
-    <string name="badge_keys">K</string>
-    <string name="badge_themes">T</string>
-    <string name="badge_dictionaries">D</string>
-    <string name="badge_privacy">P</string>
-    <string name="badge_diagnostics">✓</string>
     <string name="mode_mixed">Mixed</string>
     <string name="mode_mixed_desc">Pinyin, English and romaji together, converted as one sentence</string>
     <string name="mode_chinese">Chinese</string>
@@ -285,6 +278,7 @@
     <string name="use_mozc">Japanese conversion (in development, not in the app yet)</string>
     <string name="use_mozc_deps">Used by Mozc\'s build</string>
     <string name="use_androidx">The app\'s interface and runtime</string>
+    <string name="use_material_icons">The icons of the settings pages</string>
     <string name="use_myapps">Documentation checks and conventions (same author as Kotomo)</string>
     <string name="use_rime_data">Pinyin schema, dictionary and language model</string>
     <string name="use_mozc_dict">Japanese words for the cross-language dictionary</string>

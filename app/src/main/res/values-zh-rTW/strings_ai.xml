@@ -46,7 +46,6 @@
     <string name="page_ai">寫作助手</string>
     <string name="page_ai_desc_on">已開啟 · 在本機校對和改寫</string>
     <string name="page_ai_desc_off">已關閉 · 用 Gemini Nano 校對和改寫</string>
-    <string name="badge_ai">AI</string>
     <string name="ai_enable">寫作助手</string>
     <string name="ai_enable_desc">允許鍵盤的 AI 按鈕校對和改寫你輸入的文字</string>
     <string name="ai_note_how">點按 AI 按鈕處理選取的文字，未選取時處理整個輸入框。先顯示建議；只有點按「取代」才會改動文字，復原可還原原文。</string>
