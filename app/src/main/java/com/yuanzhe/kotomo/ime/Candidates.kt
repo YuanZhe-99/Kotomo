@@ -38,12 +38,15 @@ internal object Candidates {
      * romaji throughout are marked [Japanese.leads]. Before them comes the coordinator's best
      * sentence typed as romaji throughout when it reads a `wa`, `o` or `e` as the particle は, を
      * or へ ([Japanese.particle]): Mozc's own session reads those letters as わ, お and え
-     * (`watashiwanihonjin`, PLAN §5.4). Empty for null.
+     * (`watashiwanihonjin`, PLAN §5.4); a sentence that ends in letters still being typed is
+     * not one. Empty for null.
      */
     fun japaneseCross(snapshot: Snapshot?): List<Japanese> {
         val all = snapshot?.candidates.orEmpty().filter { it.target == Lang.JAPANESE }
         val plain = all.indexOfFirst { !it.crossLanguage }.let { if (it < 0) all.size else it }
-        val particle = all.getOrNull(plain)?.takeIf { c -> c.pieces.any { it.origin == Origin.RULE } }
+        // A rule piece is a particle unless it is letters still being typed (`shur` → しゅ + r),
+        // which Mozc's own session already shows.
+        val particle = all.getOrNull(plain)?.takeIf { c -> c.pieces.any { it.origin == Origin.RULE } && c.pieces.none { it.pending } }
             ?.let { c -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, particle = true) }
         return listOfNotNull(particle) + all.withIndex().filter { it.value.crossLanguage }
             .map { (i, c) -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, cross = true, leads = i < plain) }

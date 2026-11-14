@@ -176,5 +176,8 @@ class CandidatesTest {
         assertEquals(listOf("本は", "本羽", "ほんわ"), Candidates.japaneseWithCross(own, read, "ほんわ").map { it.text })
         // Negative: the coordinator's best romaji sentence has no particle; nothing is added.
         assertEquals(own, Candidates.japaneseWithCross(own, Candidates.japaneseCross(Snapshot(1, 0, "honwa", 5, "", listOf(plain, particle))), "ほんわ"))
+        // Negative (feedback A7): letters still being typed after the sentence are no particle.
+        val pending = SnapshotCandidate("本r", Lang.JAPANESE, 10, 0, listOf(piece(0, 3, "本", "ほん", Origin.MOZC), piece(3, 4, "r", "r", Origin.RULE)))
+        assertEquals(emptyList<Candidates.Japanese>(), Candidates.japaneseCross(Snapshot(1, 0, "honr", 4, "", listOf(pending))))
     }
 }

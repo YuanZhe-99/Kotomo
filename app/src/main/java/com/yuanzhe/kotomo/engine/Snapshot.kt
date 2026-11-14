@@ -27,7 +27,13 @@ data class Piece(
     val origin: Origin,
     val pinned: Boolean,
     val locked: Boolean = false,
-)
+) {
+    /**
+     * Whether the piece is letters still being typed, kept as typed after a Japanese sentence
+     * (`shur` → しゅ + r, doc/en-us/engine-contract.md): a rule piece that is its own letters.
+     */
+    val pending: Boolean get() = origin == Origin.RULE && text == reading && text.all { it in 'a'..'z' }
+}
 
 /**
  * Holds one candidate: the [text] choosing it commits, the language it is written in, the
