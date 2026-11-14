@@ -11,6 +11,8 @@
     <string name="keys_sound_desc">キーごとにシステムのクリック音を鳴らします</string>
     <string name="keys_shift_separator">入力中は Shift を区切りキーにする</string>
     <string name="keys_shift_separator_desc">中国語モードとミックスモードでピンインを入力している間、Shift キーで \' を入力して音節を区切ります（xi\'an → 西安）。入力が確定すると Shift に戻ります。</string>
+    <string name="keys_backspace_restores">確定直後のバックスペースで入力に戻す</string>
+    <string name="keys_backspace_restores_desc">ミックスモードで確定の直後にバックスペースを押すと、入力した文字と選んだ区切りに戻ります。オフのときは直前の 1 文字を削除します。</string>
     <string name="gestures_section">ジェスチャー</string>
     <string name="gesture_space_cursor">スペースキーのスライド</string>
     <string name="gesture_space_cursor_desc">スペースキーを左右にスライドしてカーソルを移動します</string>

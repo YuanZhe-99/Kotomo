@@ -11,6 +11,8 @@
     <string name="keys_sound_desc">每次按键播放系统按键音</string>
     <string name="keys_shift_separator">组合时 Shift 变为分词键</string>
     <string name="keys_shift_separator_desc">中文和混合模式下正在输入拼音时，Shift 键输入 \' 来分隔音节（xi\'an → 西安）；组合结束后恢复为 Shift。</string>
+    <string name="keys_backspace_restores">退格恢复刚上屏的输入</string>
+    <string name="keys_backspace_restores_desc">混合模式下，上屏后紧接着按退格会恢复刚才输入的字母和选过的片段。关闭时退格只删除前一个字。</string>
     <string name="gestures_section">手势</string>
     <string name="gesture_space_cursor">空格键滑动</string>
     <string name="gesture_space_cursor_desc">沿空格键左右滑动移动光标</string>

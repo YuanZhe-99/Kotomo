@@ -219,11 +219,13 @@ class MixedTypingTest {
     /**
      * T09 on the emulator (PLAN §5.6, §9.5): in the segment panel one piece of the sentence is
      * changed (池袋 kept as the letters typed), the keys come back (A1) and the rest, に買いに行こう,
-     * is not rewritten; the sentence commits as shown; backspace right after takes the commit back with the choice
-     * still in place, and Enter commits it again.
+     * is not rewritten; the sentence commits as shown; with `keys.backspace_restores_commit` on,
+     * backspace right after takes the commit back with the choice still in place, and Enter
+     * commits it again.
      */
     @Test
     fun onePieceChangesAndTheRestStays() {
+        change { it.copy(backspaceRestores = true) }
         launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
             keys(SENTENCE_KEYS)
             openSegments()
@@ -239,6 +241,36 @@ class MixedTypingTest {
             assertEquals(SENTENCE_KEYS, read(scenario))
             enter()
             assertEquals(changed, read(scenario))
+        }
+    }
+
+    /**
+     * B9 (device feedback 2026-11-13): by default Backspace right after a commit deletes one
+     * character (大家 → 大, nothing composed); with `keys.backspace_restores_commit` on, it brings
+     * `dajia` back as a composition.
+     */
+    @Test
+    fun backspaceAfterACommitDeletesUnlessChosen() {
+        change { it.copy(mixed = it.mixed.copy(keys = it.mixed.keys.copy(space = SpaceKey.COMMIT_FIRST))) }
+        assertEquals("大", commitThenBackspace("dajia", "大家", composed = false))
+        change { it.copy(backspaceRestores = true) }
+        assertEquals("dajia", commitThenBackspace("dajia", "大家", composed = true))
+    }
+
+    /**
+     * Types [keys], commits the first candidate (expected to be [word]) with Space, presses
+     * Backspace once and returns the field's text, checking whether it is still [composed].
+     */
+    private fun commitThenBackspace(keys: String, word: String, composed: Boolean): String {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys(keys)
+            Thread.sleep(READ_MS * 3)
+            keys(" ")
+            assertEquals(word, read(scenario))
+            device.findObject(By.desc(BACKSPACE)).click()
+            val text = read(scenario)
+            assertEquals("whether the field is composing after Backspace", composed, composing(scenario))
+            return text
         }
     }
 

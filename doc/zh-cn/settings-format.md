@@ -79,6 +79,7 @@
 | `layout.height_percent` | int 80–120 | 100 | 键盘高度，相对设计高度的百分比 |
 | `keys.long_press_symbols` | boolean | `true` | 长按按键输入符号 |
 | `keys.shift_separator` | boolean | `true` | 中文或混合模式正在组合拼音时，Shift 键输入音节分隔符 `'`（标为“分词”），组合结束后恢复为 Shift；九宫格保留自己的分词键 |
+| `keys.backspace_restores_commit` | boolean | `false` | 混合模式上屏后紧接着按退格，恢复组合以及其中选过的片段（PLAN §5.6）；关闭时和别处一样只删一个字。中文、英文、日文模式始终只删除。与撤销自动替换的退格无关，这个开关不影响它 |
 | `keys.corner_hints` | boolean | `true` | 在按键角上显示长按符号 |
 | `keys.haptics` | boolean | `true` | 按键震动 |
 | `keys.sound` | boolean | `false` | 按键时播放系统按键音 |

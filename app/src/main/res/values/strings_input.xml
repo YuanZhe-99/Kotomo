@@ -12,6 +12,8 @@
     <string name="keys_sound_desc">The system\'s key click with each key</string>
     <string name="keys_shift_separator">Shift separates syllables while composing</string>
     <string name="keys_shift_separator_desc">In Chinese and Mixed mode, while pinyin is being composed, Shift types \' to mark where a syllable ends (xi\'an → 西安). It is Shift again once the composition ends.</string>
+    <string name="keys_backspace_restores">Backspace restores what was just committed</string>
+    <string name="keys_backspace_restores_desc">In Mixed mode, Backspace right after a commit brings back the letters you typed, with the pieces you chose. Off, it deletes the last character.</string>
     <string name="gestures_section">Gestures</string>
     <string name="gesture_space_cursor">Slide on the space bar</string>
     <string name="gesture_space_cursor_desc">Move the cursor by sliding along the space bar</string>

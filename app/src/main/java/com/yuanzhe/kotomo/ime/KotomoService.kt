@@ -1588,10 +1588,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val ic = currentInputConnection ?: return
         aiUndo = null
         details = null
-        // Backspace right after a Mixed commit takes it back (PLAN §5.6); any other key ends that.
+        // With `keys.backspace_restores_commit` on, Backspace right after a Mixed commit takes it
+        // back (PLAN §5.6); off (the default, B9) it deletes as usual. Any other key ends that.
         val undo = mixedUndo
         mixedUndo = null
-        if (undo != null && action == KeyAction.Backspace && composing.isEmpty() && mode == Mode.MIXED && !direct &&
+        if (undo != null && settings.backspaceRestores && action == KeyAction.Backspace && composing.isEmpty() && mode == Mode.MIXED && !direct &&
             ic.getTextBeforeCursor(undo.length, 0)?.toString() == undo
         ) {
             return undoMixed(undo)

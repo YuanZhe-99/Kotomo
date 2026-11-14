@@ -173,6 +173,11 @@ data class Settings(
     val longPressSymbols: Boolean = true,
     /** While Chinese or Mixed mode composes, the Shift key types the syllable separator ' instead (B1). */
     val shiftSeparator: Boolean = true,
+    /**
+     * Backspace right after a Mixed commit brings the composition back (PLAN §5.6); off by
+     * default (B9), when it deletes one character as anywhere else.
+     */
+    val backspaceRestores: Boolean = false,
     val keyHints: Boolean = true,
     val haptics: Boolean = true,
     val keySound: Boolean = false,
@@ -345,6 +350,7 @@ internal object SettingsFormat {
     private val height = intPreferencesKey("layout.height_percent")
     private val longPress = booleanPreferencesKey("keys.long_press_symbols")
     private val shiftSeparator = booleanPreferencesKey("keys.shift_separator")
+    private val backspaceRestores = booleanPreferencesKey("keys.backspace_restores_commit")
     private val keyHints = booleanPreferencesKey("keys.corner_hints")
     private val haptics = booleanPreferencesKey("keys.haptics")
     private val keySound = booleanPreferencesKey("keys.sound")
@@ -424,6 +430,7 @@ internal object SettingsFormat {
             heightPercent = p.int(height, Settings.HEIGHT_RANGE, d.heightPercent),
             longPressSymbols = p[longPress] ?: d.longPressSymbols,
             shiftSeparator = p[shiftSeparator] ?: d.shiftSeparator,
+            backspaceRestores = p[backspaceRestores] ?: d.backspaceRestores,
             keyHints = p[keyHints] ?: d.keyHints,
             haptics = p[haptics] ?: d.haptics,
             keySound = p[keySound] ?: d.keySound,
@@ -512,6 +519,7 @@ internal object SettingsFormat {
         p.put(height, old.heightPercent, new.heightPercent)
         p.put(longPress, old.longPressSymbols, new.longPressSymbols)
         p.put(shiftSeparator, old.shiftSeparator, new.shiftSeparator)
+        p.put(backspaceRestores, old.backspaceRestores, new.backspaceRestores)
         p.put(keyHints, old.keyHints, new.keyHints)
         p.put(haptics, old.haptics, new.haptics)
         p.put(keySound, old.keySound, new.keySound)

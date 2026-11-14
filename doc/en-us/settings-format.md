@@ -91,6 +91,7 @@ the table lists every key.
 | `layout.height_percent` | int 80–120 | 100 | Keyboard height in percent of the designed height |
 | `keys.long_press_symbols` | boolean | `true` | Long-press a key for its symbol |
 | `keys.shift_separator` | boolean | `true` | While Chinese or Mixed mode composes pinyin, the Shift key types the syllable separator `'` (labeled 分词) and is Shift again once the composition ends; the 9-key page keeps its own separator key |
+| `keys.backspace_restores_commit` | boolean | `false` | Backspace right after a Mixed-mode commit brings the composition back, with the pieces chosen in it (PLAN §5.6); off, it deletes one character as anywhere else. Chinese, English and Japanese mode always delete. Not the undo of an automatic replacement, which this switch does not touch |
 | `keys.corner_hints` | boolean | `true` | Show the long-press symbol in the key's corner |
 | `keys.haptics` | boolean | `true` | Vibrate on key press |
 | `keys.sound` | boolean | `false` | The system's key click on key press |

@@ -127,7 +127,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 8.3 "Mixed-language sentences" off: `chidai ni kai ni ikou` is no longer assembled into 池袋に買いに行こう across languages
 - [ ] 8.4 "Readings on candidates" off: no reading under Japanese candidates; "Emoji suggestions" off: `neko` / `mao` / `cat` show no 🐱. Switch both back on. (The "Pinyin → Japanese katakana" switch has no data behind it yet; ignore it)
 - [ ] 8.5 Piece editing: after `chidai ni kai ni ikou` open the arrow; tap the piece 池袋: its other readings (地代) are listed; choose one, and the other pieces stay as they were; commit
-- [ ] 8.6 Backspace right after that commit puts the letters back with the chosen piece still chosen; Enter commits it again
+- [ ] 8.6 Backspace right after that commit deletes one character, as anywhere else (the default). Keys and gestures → "Backspace restores what was just committed" on: Backspace right after the commit puts the letters back with the chosen piece still chosen; Enter commits it again
 - [ ] 8.7 In the piece list the letters (`chidai`) are offered as a choice (keeps the English); "Restore input" drops the choice and the sentence converts afresh
 - [ ] 8.8 "Commit up to here" on 池袋: it goes into the field, the rest stays composed and can be chosen next
 - [ ] 8.9 Key correction: type `boo`, then tap `l` in its left quarter (the side next to `k`, no further from the key's edge than a quarter of its width): `book` is offered, never first. Tap `l` in the middle: `book` is not offered
@@ -144,7 +144,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 
 - [ ] 10.1 In Mixed mode pick a lower candidate for one input (for example 愛 for `ai`) up to three times: it moves up. Settings → Privacy → "See what was learned" lists `ai` → 愛
 - [ ] 10.2 In that list: "Rank lower", "Never offer", "Keep first", "Reset", "Delete" each change what `ai` offers next time as the label says
-- [ ] 10.3 Pick a candidate and press Backspace at once: the pick is undone and nothing new is listed as learned
+- [ ] 10.3 In Mixed mode type `dajia`, pick 大家 and press Backspace at once: 大 is left and nothing is being composed (the default). With "Backspace restores what was just committed" on (Keys and gestures): the same Backspace brings `dajia` and its candidates back, and nothing new is listed as learned
 - [ ] 10.4 Settings → Privacy → "Encrypt what was learned" on: typing is the same and the list still shows the items; off: the items are still there
 - [ ] 10.5 On that list's page: Export saves a file ("Exported"); Clear learning data; Import the file: the items come back; Import a photo or other unrelated file: "That is not a file of learned readings"
 - [ ] 10.6 Settings → Privacy → Clear learning data (confirm): a word you taught Chinese mode is no longer first, Recent emoji is empty, fixed modes stay, typing still works at once
