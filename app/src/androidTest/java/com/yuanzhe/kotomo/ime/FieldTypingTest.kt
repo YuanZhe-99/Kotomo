@@ -812,8 +812,13 @@ class FieldTypingTest {
             var text = ""
             repeat(ATTEMPTS) {
                 checkNotNull(device.wait(Until.findObject(By.desc(letters.first().toString())), WAIT_MS)) { "Kotomo's keys did not appear" }
-                // ' is the syllable separator, in Shift's place while pinyin is composed (B1).
-                letters.forEach { device.findObject(By.desc(if (it == '\'') Layout.SEPARATOR else it.toString())).click() }
+                // ' is the syllable separator, in Shift's place while pinyin is composed (B1). It is
+                // waited for: before librime opens its data nothing composes and the key stays Shift,
+                // so the attempt types wrong and is repeated instead of failing here.
+                letters.forEach {
+                    if (it == '\'') device.wait(Until.findObject(By.desc(Layout.SEPARATOR)), READ_MS)?.click()
+                    else device.findObject(By.desc(it.toString())).click()
+                }
                 Thread.sleep(READ_MS)
                 afterLetters()
                 if (space) device.findObject(By.descStartsWith(SPACE)).click()
