@@ -234,6 +234,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var japaneseUnavailable = false
     /** librime's latest preedit and candidates, as last applied on the main thread. */
     private var chinesePreedit = ""
+    /**
+     * Main thread: whether the letter keys on screen hold the separator in Shift's place (B1,
+     * A10), or null when another layout (9-key, symbols, keypad, flick) is shown.
+     */
+    private var separatorShown: Boolean? = null
     /** Main thread: librime's raw input (the letters typed) as last applied, for switching modes. */
     private var chineseInput = ""
     /** Main thread: the mode fixed for the current app, or null (Compose state for the quick panel). */
@@ -1177,8 +1182,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /**
      * Decides whether the letters put the syllable separator in Shift's place (B1, device
      * feedback 2026-11-13): Chinese or Mixed mode composing pinyin, with `keys.shift_separator` on.
-     * Notes: main thread; the layout is rebuilt on each refresh, so Shift returns when the
-     * composition ends.
+     * Notes: main thread; the layout is rebuilt on each refresh, and Chinese mode, whose
+     * composition is librime's answer, refreshes when that answer changes this (A10).
      */
     private fun separatorOnShift(s: Settings): Boolean = s.shiftSeparator && !direct && when (mode) {
         Mode.CHINESE -> chinesePreedit.isNotEmpty()
@@ -1905,6 +1910,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             candidateBar.show(candidates, downTime)
             shownCandidates.value = candidates
             answeredSpace()
+            // The keys were built before this answer: the separator takes or gives back Shift's
+            // place now, not one key later (A10).
+            if (separatorShown != null && separatorOnShift(settings) != separatorShown) refresh(0)
         }
     }
 
@@ -2240,12 +2248,17 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             nineKey = nine
             applyEngineSettings()
         }
+        separatorShown = null
         keyboard.layout = when {
             pad -> Layout.pad(field)
             symbols -> Layout.symbols(symbolMode, split, symbolPage, hinge = keyboard.hinge != null, style = s.keyStyle)
             mode == Mode.JAPANESE && s.japaneseFlick && !direct && field == Field.TEXT -> Layout.flick(s.keyStyle)
             nine -> Layout.nineKey(s.keyStyle)
-            else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null, style = s.keyStyle, separator = separatorOnShift(s))
+            else -> {
+                val separator = separatorOnShift(s)
+                separatorShown = separator
+                Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null, style = s.keyStyle, separator = separator)
+            }
         }
         keyboard.gap = s.keyStyle.gapDp * resources.displayMetrics.density
         keyboard.textScale = s.keyStyle.textPercent / 100f

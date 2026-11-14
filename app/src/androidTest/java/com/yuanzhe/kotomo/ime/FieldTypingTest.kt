@@ -73,6 +73,41 @@ class FieldTypingTest {
     }
 
     /**
+     * A10 (device feedback 2026-11-13, second round): the separator takes Shift's place from the
+     * first letter on and gives it back as the last letter is deleted, with no further key. Chinese
+     * mode used to follow librime's previous answer, one key late. Chinese and Mixed: after `x`
+     * the key is 分词; after one backspace it is Shift again. 9-key: the separator stays where it is.
+     */
+    @Test
+    fun separatorFollowsTheCompositionAtOnce() {
+        fun keyIs(desc: String, gone: String) {
+            assertTrue("no $desc key", device.wait(Until.hasObject(By.desc(desc)), WAIT_MS))
+            assertFalse("$gone is still shown", device.hasObject(By.desc(gone)))
+        }
+        withSettings({ it.copy(chineseNineKey = false) }) {
+            for (mode in listOf(Mode.CHINESE, Mode.MIXED)) inMode(mode) {
+                typeInto(InputType.TYPE_CLASS_TEXT, 0, "x", expected = "", space = false) {
+                    keyIs(Layout.SEPARATOR, SHIFT)
+                    device.findObject(By.desc(BACKSPACE)).click()
+                    keyIs(SHIFT, Layout.SEPARATOR)
+                }
+            }
+        }
+        withSettings({ it.copy(chineseNineKey = true) }) {
+            inMode(Mode.CHINESE) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                ActivityScenario.launch<FieldTestActivity>(intent).use {
+                    checkNotNull(device.wait(Until.findObject(By.desc("WXYZ")), WAIT_MS)) { "no 9-key layout" }.click()
+                    keyIs(Layout.SEPARATOR, SHIFT)
+                    device.findObject(By.desc(BACKSPACE)).click()
+                    keyIs(Layout.SEPARATOR, SHIFT)
+                }
+            }
+        }
+    }
+
+    /**
      * A1 (device feedback 2026-11-13, checklist 2.6): a pick in the panel the bar's expand arrow
      * opens returns to the keys. Chinese: 你 alone keeps 好's pinyin composed with the keys back,
      * then 好 finishes 你好; Mixed: the whole sentence commits with the keys back.
@@ -693,6 +728,8 @@ class FieldTypingTest {
         /** The symbols and backspace keys' descriptions (R.string.key_symbols, key_backspace; English). */
         const val SYMBOLS = "Symbols"
         const val BACKSPACE = "Delete"
+        /** The Shift key's description (R.string.key_shift, English). */
+        const val SHIFT = "Shift"
         /** Tool labels and edit keys (R.string.tool_*, edit_*; English). */
         const val CLIPBOARD_TOOL = "Clipboard"
         const val EDIT_TOOL = "Edit text"
