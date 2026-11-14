@@ -39,7 +39,8 @@ void ProposeEnglish(const Input& input, Engines& engines, const Options& options
 /// Options::cross_words cheapest words per span and direction. An edge costs Mozc's word cost of
 /// the entry, plus `Costs::japanese_word`, plus the direction's penalty scaled by the level.
 /// Notes: honors the pinyin → Japanese, English → Japanese and transliteration switches; a
-///   one-syllable pinyin key is proposed only as the whole input.
+///   one-syllable pinyin key and an English key of two or three letters are proposed only as
+///   the whole input.
 void ProposeCross(const Input& input, const CrossLexicon& lexicon, const Options& options,
                   Lattice* lattice);
 

@@ -109,6 +109,39 @@ Cold start of the input method to its first keyboard frame: 737 ms. Process PSS 
 arm64-v8a 84.5 MB, x86_64 85.4 MB. Most of the time per key is the emulator's frame wait, as in Q2;
 nothing on the key path was changed in Q10. Offline: with airplane mode on, `FieldTypingTest`, `MixedTypingTest` and `HardKeyboardTest` pass 47 of 47 (Chinese, English, Japanese and Mixed typing).
 
+## Fuzzy pinyin and equivalent romaji in Mixed mode (feedback A8, 2026-11-13)
+
+Host conversion corpus (`tests/conversion/run.sh`, the app's own candidate assembly); the place is that of the wanted text in the candidate list. Never device evidence.
+
+| Rule | Typed | Wanted | Chinese mode | Mixed mode |
+|---|---|---|---|---|
+| z / zh | `zongguo` | 中国 | 1 (T08-001) | 1 (A8-001) |
+| c / ch | `cifan` | 吃饭 | 1 (T08-002) | 1 (A8-002) |
+| s / sh | `sijian` | 时间 | 1 (T08-003) | 1 (A8-003) |
+| n / l | `lihao` | 你好 | 1 (T08-004) | 1 (A8-004) |
+| f / h | `hangjian` | 房间 | 1 (T08-005) | 1 (A8-005) |
+| l / r | `luguo` | 如果 | 1 (T08-006) | 1 (A8-006) |
+| an / ang | `angquan` | 安全 | 1 (T08-007) | 1 (A8-007) |
+| en / eng | `fengxi` | 分析 | 1 (T08-008) | 1 (A8-008) |
+| in / ing | `yingwei` | 因为 | 1 (T08-009) | 1 (A8-009) |
+| ian / iang | `xiangzai` | 现在 | 1 (T08-010) | 1 (A8-010) |
+| uan / uang | `guangli` | 管理 | 1 (T08-011) | 1 (A8-011) |
+
+With every rule on, exact input keeps its first candidate in Mixed mode (`nihao`, `woxiangqubeijing`: A8-012, A8-013); a rule that is off does not apply and rules do not chain (A8-N01, A8-N02); a fuzzy syllable inside a sentence converts (`woaizongguo` → 我爱中国, `lihaoshijie` → 你好世界: A8-030, A8-031). No rule is lost or pushed back in Mixed mode.
+
+| Spelling | Typed | Wanted | Place in Mixed mode |
+|---|---|---|---|
+| si for shi | `susi` | 寿司 | 2 (A8-020) |
+| tu for tsu | `tuki` | 月 | 1 (A8-021) |
+| ti for chi, tu for tsu | `tikatetu` | 地下鉄 | 1 (A8-022) |
+| zi for ji | `zikan` | 時間 | 1 (A8-023) |
+| hu for fu | `hune` | 船 | 3 (A8-024) |
+| fu | `fune` | 船 | 2 (A8-025) |
+| small tsu (doubled consonant) | `kitte` | 切って, 切手 | 1 (A8-026) |
+| ん typed nn | `konnichiha`, `konnitiha` | こんにちは | 1 (A8-027, A8-028) |
+
+One loss was found and fixed: `fune` listed 船 fifth, behind the English word `fun` read as Japanese plus the particle へ (分へ). An English key of two or three letters is now read as Japanese only when it is the whole input (A8-N03).
+
 ## Known limitations
 
 - Mixed mode converts through the mixed-input coordinator since 2026-11-11 (host-verified only,

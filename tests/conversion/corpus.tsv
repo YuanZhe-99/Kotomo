@@ -190,3 +190,30 @@ A3-001	mixed		chidai ni kai	池袋二回|池袋に回|池袋に会|池袋に買�
 A3-N01	mixed		chidai ni kai	!池袋二階	5	feedback A3: ni and kai are not joined across the space the person typed
 A3-002	mixed		chidai nikai	池袋二階	3	feedback A3: without a space between them the same letters still join
 A3-003	mixed		watashi ha gakusei desu	私は学生です	1	feedback A3: typed boundaries do not make the Japanese sentence dearer than without them
+A8-001	mixed+fuzzy:z_zh		zongguo	中国	3	feedback A8: z/zh in Mixed mode as in Chinese mode (T08-001)
+A8-002	mixed+fuzzy:c_ch		cifan	吃饭	3	feedback A8: c/ch in Mixed mode (T08-002)
+A8-003	mixed+fuzzy:s_sh		sijian	时间	3	feedback A8: s/sh in Mixed mode (T08-003)
+A8-004	mixed+fuzzy:n_l		lihao	你好	3	feedback A8: n/l in Mixed mode (T08-004)
+A8-005	mixed+fuzzy:f_h		hangjian	房间	3	feedback A8: f/h in Mixed mode (T08-005)
+A8-006	mixed+fuzzy:l_r		luguo	如果	3	feedback A8: l/r in Mixed mode (T08-006)
+A8-007	mixed+fuzzy:an_ang		angquan	安全	3	feedback A8: an/ang in Mixed mode (T08-007)
+A8-008	mixed+fuzzy:en_eng		fengxi	分析	3	feedback A8: en/eng in Mixed mode (T08-008)
+A8-009	mixed+fuzzy:in_ing		yingwei	因为	3	feedback A8: in/ing in Mixed mode (T08-009)
+A8-010	mixed+fuzzy:ian_iang		xiangzai	现在	3	feedback A8: ian/iang in Mixed mode (T08-010)
+A8-011	mixed+fuzzy:uan_uang		guangli	管理	3	feedback A8: uan/uang in Mixed mode (T08-011)
+A8-012	mixed+fuzzy:all		nihao	你好	1	feedback A8: with every rule on, the exact spelling keeps its first candidate in Mixed mode
+A8-013	mixed+fuzzy:all		woxiangqubeijing	我想去北京	1	feedback A8: with every rule on, an exact sentence stays first in Mixed mode
+A8-N01	mixed+fuzzy:z_zh		cifan	!吃饭	5	feedback A8: only the rules that are on apply in Mixed mode
+A8-N02	mixed+fuzzy:n_l,l_r		rihao	!你好	5	feedback A8: rules do not chain in Mixed mode either
+A8-020	mixed		susi	寿司	3	feedback A8: si for shi in Mixed mode
+A8-021	mixed		tuki	月	3	feedback A8: tu for tsu in Mixed mode
+A8-022	mixed		tikatetu	地下鉄	1	feedback A8: ti for chi and tu for tsu in Mixed mode
+A8-023	mixed		zikan	時間	3	feedback A8: zi for ji in Mixed mode
+A8-024	mixed		hune	船|舟	3	feedback A8: hu for fu in Mixed mode
+A8-025	mixed		fune	船|舟	3	feedback A8: fu spelled fu; the English word fun plus a particle does not push the romaji reading out
+A8-026	mixed		kitte	切手|切って	3	feedback A8: the small tsu (doubled consonant) in Mixed mode
+A8-027	mixed		konnichiha	こんにちは	1	feedback A8: ん typed nn in Mixed mode
+A8-028	mixed		konnitiha	こんにちは	1	feedback A8: ん typed nn with ti for chi
+A8-030	mixed+fuzzy:z_zh		woaizongguo	我爱中国	3	feedback A8: a fuzzy syllable inside a Mixed sentence
+A8-031	mixed+fuzzy:n_l		lihaoshijie	你好世界	3	feedback A8: a fuzzy syllable at the start of a Mixed sentence
+A8-N03	mixed		fune	!分へ|!楽しいへ	3	feedback A8: a three-letter English word plus a particle is not read into a romaji word

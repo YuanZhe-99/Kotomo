@@ -5,6 +5,9 @@
 namespace kotomo::mixed {
 namespace {
 
+/// The longest English key that is read as Japanese only when it is the whole input.
+constexpr size_t kShortKey = 3;
+
 /// Decides whether the switches let an entry in.
 bool Enabled(const CrossEntry& entry, const Options& options) {
   switch (entry.kind) {
@@ -63,7 +66,10 @@ void ProposeCross(const Input& input, const CrossLexicon& lexicon, const Options
         lexicon.PinyinJa(key, &entries);
         AddEntries(entries, EdgeKind::kPinyinJa, begin, end, whole, hint_cost, options, lattice);
       }
-      if (english && length > 1) {
+      // Two or three letters inside a longer input are far more often a chance split than an
+      // English word meant as Japanese (`fune` is not fun + へ): only the whole input may be
+      // one, as for the English proposer's short words and the one-syllable pinyin keys.
+      if (english && length > 1 && (whole || length > kShortKey)) {
         lexicon.EnJa(key, &entries);
         AddEntries(entries, EdgeKind::kEnJa, begin, end, whole, hint_cost, options, lattice);
       }

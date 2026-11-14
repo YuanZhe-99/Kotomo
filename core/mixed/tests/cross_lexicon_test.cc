@@ -157,8 +157,17 @@ int main() {
     Lattice loan(input.size());
     ProposeCross(input, *lexicon, katakana, &loan);
     Check(Count(semantic, EdgeKind::kEnJa, 11, 15) == 1 && Count(semantic, EdgeKind::kEnJa, 9, 11) == 0 &&
-              Count(loan, EdgeKind::kEnJa, 11, 15) == 1 && Count(loan, EdgeKind::kEnJa, 9, 11) == 1,
+              Count(loan, EdgeKind::kEnJa, 11, 15) == 1,
           "Q7-propose-cross-kanji-katakana-switches");
+    // A two-letter English key is read as Japanese only as the whole input (feedback A8).
+    const Input two_letters = *ParseInput("xq");
+    Lattice only(two_letters.size());
+    ProposeCross(two_letters, *lexicon, katakana, &only);
+    Lattice made_up_off(two_letters.size());
+    ProposeCross(two_letters, *lexicon, off, &made_up_off);
+    Check(Count(only, EdgeKind::kEnJa, 0, 2) == 1 && Count(loan, EdgeKind::kEnJa, 9, 11) == 0 &&
+              Count(made_up_off, EdgeKind::kEnJa, 0, 2) == 0,
+          "A8-propose-cross-short-english-key-whole-input");
     off.english_to_kanji = off.english_to_katakana = false;
     Lattice nothing(input.size());
     ProposeCross(input, *lexicon, off, &nothing);

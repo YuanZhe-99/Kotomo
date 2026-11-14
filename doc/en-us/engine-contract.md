@@ -83,6 +83,10 @@ as typed after the converted sentence, as a piece of origin 5 whose reading is t
 3000 units; they never follow an English word and never are the whole composition. Unfinished
 syllables are read only at the end of the composition.
 
+Inside a longer composition some readings are chance splits far more often than what was meant,
+so only the whole composition may be one: a one-syllable pinyin key read as a Japanese word, and
+an English word of two or three letters read as Japanese (`fune` is not `fun` plus へ).
+
 A space or an apostrophe is a boundary in every language. A reading that runs across one costs
 2500 units more, and the Japanese conversion keeps it: the kana on both sides go to Mozc as
 spans with fixed ends, so `ni kai` is に and かい and never 二階, while each span is still
