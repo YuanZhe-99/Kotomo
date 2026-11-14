@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.yuanzhe.kotomo.ime.FuzzyRule
+import com.yuanzhe.kotomo.ime.JapaneseFuzzyRule
 import com.yuanzhe.kotomo.ime.Mode
 import com.yuanzhe.kotomo.ime.Tool
 
@@ -160,6 +161,8 @@ data class Settings(
     val hiddenModes: Set<Mode> = emptySet(),
     val mixed: Mixed = Mixed(),
     val japanese: CrossLanguage = CrossLanguage(),
+    /** The Japanese fuzzy rules turned on (`japanese.fuzzy.*`, feedback B4); none by default. */
+    val japaneseFuzzy: Set<JapaneseFuzzyRule> = emptySet(),
     val japaneseKeys: CompositionKeys = CompositionKeys.JAPANESE,
     val chineseKeys: CompositionKeys = CompositionKeys.CHINESE,
     val chineseScript: ChineseScript = ChineseScript.SIMPLIFIED,
@@ -424,6 +427,7 @@ internal object SettingsFormat {
                 keys = readKeys(p, Mode.MIXED, mixedSpace, mixedEnter, d.mixed.keys),
             ),
             japanese = readCross(p, "japanese"),
+            japaneseFuzzy = JapaneseFuzzyRule.entries.filterTo(mutableSetOf()) { p[japaneseFuzzyKey(it)] ?: (it in d.japaneseFuzzy) },
             japaneseKeys = readKeys(p, Mode.JAPANESE, japaneseSpace, japaneseEnter, d.japaneseKeys),
             chineseKeys = readKeys(p, Mode.CHINESE, chineseSpace, chineseEnter, d.chineseKeys),
             chineseScript = p.enum(chineseScript, ChineseScript.entries, d.chineseScript),
@@ -517,6 +521,7 @@ internal object SettingsFormat {
         writeKeys(p, japaneseSpace, japaneseEnter, old.japaneseKeys, new.japaneseKeys)
         writeKeys(p, chineseSpace, chineseEnter, old.chineseKeys, new.chineseKeys)
         writeCross(p, "japanese", old.japanese, new.japanese)
+        JapaneseFuzzyRule.entries.forEach { p.put(japaneseFuzzyKey(it), it in old.japaneseFuzzy, it in new.japaneseFuzzy) }
         p.put(chineseScript, old.chineseScript.key, new.chineseScript.key)
         FuzzyRule.entries.forEach { p.put(fuzzyKey(it), it in old.chineseFuzzy, it in new.chineseFuzzy) }
         p.put(chineseKeyCorrection, old.chineseKeyCorrection, new.chineseKeyCorrection)
@@ -619,6 +624,8 @@ internal object SettingsFormat {
 
     /** Names the key of one fuzzy-pinyin rule's switch, `chinese.fuzzy.<rule>`. */
     private fun fuzzyKey(rule: FuzzyRule) = booleanPreferencesKey("chinese.fuzzy.${rule.key}")
+
+    private fun japaneseFuzzyKey(rule: JapaneseFuzzyRule) = booleanPreferencesKey("japanese.fuzzy.${rule.key}")
 
     /** Names an enum value as stored: its lowercase constant name. */
     private val Enum<*>.key get() = name.lowercase()

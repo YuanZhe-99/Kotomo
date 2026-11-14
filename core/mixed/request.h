@@ -66,6 +66,7 @@ struct Request {
   uint8_t targets = kTargetAll;  // kOptions: the target languages to convert into
   int8_t weight[3] = {0, 0, 0};  // kOptions: how far each language's weight was moved from its
                                  // default, −100…100, indexed by Lang
+  uint16_t fuzzy = 0;       // kOptions: the Japanese fuzzy rules in force, JapaneseFuzzy bits
   uint64_t shown = 0;       // kSelect, kLock, kCommitPrefix: the generation of the snapshot the
                             // index counts in
   uint16_t index = 0;       // kSelect, kCommitPrefix: the candidate; kLock: the candidate or kAsTyped
@@ -81,7 +82,7 @@ struct Request {
 std::string Encode(const Request& request);
 
 /// Decodes a request from the app.
-/// Returns: nullopt for another contract version, an unknown command, level or switch bit, a
+/// Returns: nullopt for another contract version, an unknown command, level, switch or rule bit, a
 ///   weight outside −100…100, a truncated or overlong buffer.
 /// Notes: a JNI entry point's input, so everything is checked.
 std::optional<Request> DecodeRequest(std::string_view bytes);

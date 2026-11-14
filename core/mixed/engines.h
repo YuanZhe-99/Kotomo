@@ -84,6 +84,11 @@ class Engines {
   /// Returns: hiragana, with the letters the table cannot map left as ASCII.
   virtual std::string Hiragana(std::string_view romaji) = 0;
 
+  /// Looks a hiragana reading up as a key of Mozc's dictionary (feedback B4).
+  /// Returns: the lowest word cost among the entries read exactly so, or -1 when there is none
+  ///   (or no Mozc): a fuzzy variant of what was typed is proposed only when it is a word.
+  virtual int32_t Known(std::string_view reading) = 0;
+
   /// Converts a reading in which some spans are pinned, with Mozc's converter.
   /// Inputs: `incognito` for a field that must leave no trace (Mozc then switches every mutable
   ///   operation off; nothing is committed in either case).

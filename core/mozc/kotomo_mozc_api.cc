@@ -48,10 +48,17 @@ int Convert(void* engine, const KotomoMozcSpan* spans, size_t count,
   return 1;
 }
 
+int32_t Known(void* engine, const char* reading, size_t size) {
+  if (engine == nullptr) return -1;
+  return static_cast<const MozcEngine*>(engine)->WordCost(
+      std::string_view(reading, size));
+}
+
 const KotomoMozcApi kApi = {
     .version = KOTOMO_MOZC_API_VERSION,
     .hiragana = Hiragana,
     .convert = Convert,
+    .known = Known,
 };
 
 }  // namespace

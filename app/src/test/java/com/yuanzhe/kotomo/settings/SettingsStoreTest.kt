@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.yuanzhe.kotomo.ime.FuzzyRule
+import com.yuanzhe.kotomo.ime.JapaneseFuzzyRule
 import com.yuanzhe.kotomo.ime.Mode
 import com.yuanzhe.kotomo.ime.Tool
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +66,7 @@ class SettingsStoreTest {
         chineseKeys = CompositionKeys(SpaceKey.NEXT, EnterKey.FIRST),
         chineseScript = ChineseScript.TAIWAN,
         chineseFuzzy = setOf(FuzzyRule.Z_ZH, FuzzyRule.AN_ANG),
+        japaneseFuzzy = setOf(JapaneseFuzzyRule.LONG_VOWEL, JapaneseFuzzyRule.CU),
         englishAutoCapitalize = false,
         split = SplitLayout.NEVER,
         thumbZoneDp = 300,
@@ -179,6 +181,27 @@ class SettingsStoreTest {
         withData { data, _ ->
             data.edit { it[stringPreferencesKey("clipboard.excluded_apps")] = "com.example.bank, not a package,,org.x" }
             assertEquals(setOf("com.example.bank", "org.x"), SettingsFormat.read(data.data.first()).clipboard.excludedApps)
+        }
+    }
+
+    /** Feedback B4: each Japanese fuzzy rule is its own switch, `japanese.fuzzy.<rule>`, all off by default. */
+    @Test
+    fun japaneseFuzzyRulesAreOneKeyEach() {
+        assertEquals(emptySet<JapaneseFuzzyRule>(), Settings().japaneseFuzzy)
+        assertEquals(0, JapaneseFuzzyRule.mask(emptySet()))
+        // The bits are the contract's: every rule its own, together the engine's whole list.
+        assertEquals(com.yuanzhe.kotomo.engine.Core.FUZZY_ALL, JapaneseFuzzyRule.mask(JapaneseFuzzyRule.entries.toSet()))
+        withData { data, scope ->
+            val store = SettingsStore(data, scope)
+            store.update { it.copy(japaneseFuzzy = setOf(JapaneseFuzzyRule.VOICED)) }
+            val prefs = data.data.first()
+            assertEquals(true, prefs[booleanPreferencesKey("japanese.fuzzy.voiced")])
+            // Negative: a rule that shares a kana is not turned on with it, and is not written.
+            assertEquals(null, prefs[booleanPreferencesKey("japanese.fuzzy.semi_voiced")])
+            assertEquals(setOf(JapaneseFuzzyRule.VOICED), SettingsFormat.read(prefs).japaneseFuzzy)
+            store.update { it.copy(japaneseFuzzy = emptySet()) }
+            assertEquals(false, data.data.first()[booleanPreferencesKey("japanese.fuzzy.voiced")])
+            assertEquals(emptySet<JapaneseFuzzyRule>(), SettingsFormat.read(data.data.first()).japaneseFuzzy)
         }
     }
 

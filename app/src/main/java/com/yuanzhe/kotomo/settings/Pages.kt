@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.focus.onFocusChanged
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.FuzzyRule
+import com.yuanzhe.kotomo.ime.JapaneseFuzzyRule
 import com.yuanzhe.kotomo.ime.KeyboardMemory
 import com.yuanzhe.kotomo.ime.OneHandedMemory
 import com.yuanzhe.kotomo.ime.Posture
@@ -447,7 +448,32 @@ internal fun JapanesePage(settings: Settings, store: SettingsStore) {
         Inset { Note(stringResource(R.string.japanese_cross_note)) }
         CrossSwitches(settings.japanese) { change -> store.set { it.copy(japanese = change(it.japanese)) } }
     }
+    Section(stringResource(R.string.japanese_fuzzy)) {
+        Inset { Note(stringResource(R.string.japanese_fuzzy_note)) }
+        JapaneseFuzzyRule.entries.forEach { rule ->
+            val (title, desc) = rule.labels
+            SwitchRow(title, desc, rule in settings.japaneseFuzzy) { on ->
+                store.set { it.copy(japaneseFuzzy = if (on) it.japaneseFuzzy + rule else it.japaneseFuzzy - rule) }
+            }
+        }
+    }
     KeysSections(Mode.JAPANESE, settings.japaneseKeys) { keys -> store.set { it.copy(japaneseKeys = keys) } }
+}
+
+/** The title and the example of each Japanese fuzzy rule's switch. */
+private val JapaneseFuzzyRule.labels get() = when (this) {
+    JapaneseFuzzyRule.LONG_VOWEL -> R.string.japanese_fuzzy_long_vowel to R.string.japanese_fuzzy_long_vowel_desc
+    JapaneseFuzzyRule.SOKUON -> R.string.japanese_fuzzy_sokuon to R.string.japanese_fuzzy_sokuon_desc
+    JapaneseFuzzyRule.MORAIC_N -> R.string.japanese_fuzzy_moraic_n to R.string.japanese_fuzzy_moraic_n_desc
+    JapaneseFuzzyRule.VOICED -> R.string.japanese_fuzzy_voiced to R.string.japanese_fuzzy_voiced_desc
+    JapaneseFuzzyRule.SEMI_VOICED -> R.string.japanese_fuzzy_semi_voiced to R.string.japanese_fuzzy_semi_voiced_desc
+    JapaneseFuzzyRule.YOON -> R.string.japanese_fuzzy_yoon to R.string.japanese_fuzzy_yoon_desc
+    JapaneseFuzzyRule.YOTSUGANA -> R.string.japanese_fuzzy_yotsugana to R.string.japanese_fuzzy_yotsugana_desc
+    JapaneseFuzzyRule.RA_NA_DA -> R.string.japanese_fuzzy_ra_na_da to R.string.japanese_fuzzy_ra_na_da_desc
+    JapaneseFuzzyRule.HI_SHI -> R.string.japanese_fuzzy_hi_shi to R.string.japanese_fuzzy_hi_shi_desc
+    JapaneseFuzzyRule.LOANWORD -> R.string.japanese_fuzzy_loanword to R.string.japanese_fuzzy_loanword_desc
+    JapaneseFuzzyRule.L_AS_R -> R.string.japanese_fuzzy_l_as_r to R.string.japanese_fuzzy_l_as_r_desc
+    JapaneseFuzzyRule.CU -> R.string.japanese_fuzzy_cu to R.string.japanese_fuzzy_cu_desc
 }
 
 /** Draws the English page: suggestions and auto-capitalization. */

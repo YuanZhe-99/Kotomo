@@ -192,6 +192,41 @@ class MixedTypingTest {
         assertNotEquals("我喜欢你", text)
     }
 
+    /** Feedback B4 positive: with `japanese.fuzzy.voiced` on, Mixed mode reads `wadashi` as 私. */
+    @Test
+    fun japaneseFuzzyRuleFindsTheWordInMixedMode() {
+        change { it.copy(japaneseFuzzy = setOf(JapaneseFuzzyRule.VOICED)) }
+        assertEquals("私", type("wadashi", expected = "私"))
+    }
+
+    /** Feedback B4 negative: the rules are off by default, and then `wadashi` is not 私. */
+    @Test
+    fun japaneseFuzzyRuleOffLeavesTheReadingAsTyped() {
+        val text = type("wadashi", expected = "", attempts = 1)
+        assertTrue("something is committed", text.isNotEmpty())
+        assertNotEquals("私", text)
+    }
+
+    /**
+     * Feedback B4 (B3) positive: with `japanese.fuzzy.cu` on, Japanese mode offers 月 for `cuki`
+     * among its first three candidates; Mozc's own reading (くき) stays first.
+     */
+    @Test
+    fun japaneseFuzzyRuleFindsTheWordInJapaneseMode() {
+        KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = Mode.JAPANESE) } }
+        change { it.copy(japaneseFuzzy = setOf(JapaneseFuzzyRule.CU)) }
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            val firstThree = (1..3).map { presses ->
+                clear(scenario)
+                keys("cuki" + " ".repeat(presses))
+                enter()
+                read(scenario)
+            }
+            assertTrue("月 is not among $firstThree", "月" in firstThree)
+            assertNotEquals("the reading as typed stays first", "月", firstThree.first())
+        }
+    }
+
     /**
      * T03-020 positive (PLAN §2.3): Japanese mode reads pinyin as a Japanese word through the
      * coordinator; `dongjing` is not romaji, so 東京 leads and space commits it.

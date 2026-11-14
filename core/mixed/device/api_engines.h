@@ -41,6 +41,7 @@ class ApiEngines : public Engines {
   /// Notes: remembers its answers (the proposer asks about the same short spellings with every
   ///   key); the memory is dropped whole when it holds kKanaMemory spellings.
   std::string Hiragana(std::string_view romaji) override;
+  int32_t Known(std::string_view reading) override;
   std::optional<std::vector<JapaneseSegment>> Japanese(const std::vector<JapaneseSpan>& spans,
                                                        bool incognito) override;
   std::vector<EnglishForm> English(std::string_view word) override;

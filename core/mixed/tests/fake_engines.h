@@ -69,6 +69,12 @@ class FakeEngines : public Engines {
     return out;
   }
 
+  /// Notes: the fake's dictionary keys are the readings of its Japanese words.
+  int32_t Known(std::string_view reading) override {
+    const auto found = japanese_.find(std::string(reading));
+    return found == japanese_.end() ? -1 : found->second.front().cost;
+  }
+
   std::optional<std::vector<JapaneseSegment>> Japanese(
       const std::vector<JapaneseSpan>& spans, bool /*incognito*/) override {
     ++japanese_calls;

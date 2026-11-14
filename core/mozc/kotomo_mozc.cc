@@ -100,6 +100,22 @@ class ExactValueCallback final
   std::optional<::mozc::dictionary::Token> best_;
 };
 
+/// Keeps the lowest cost among a key's dictionary tokens.
+class LowestCostCallback final
+    : public ::mozc::dictionary::DictionaryInterface::Callback {
+ public:
+  ResultType OnToken(absl::string_view, absl::string_view,
+                     ::mozc::dictionary::Token token) override {
+    if (cost_ < 0 || token.cost < cost_) cost_ = token.cost;
+    return TRAVERSE_CONTINUE;
+  }
+
+  int32_t cost() const { return cost_; }
+
+ private:
+  int32_t cost_ = -1;
+};
+
 }  // namespace
 
 std::string Conversion::Sentence() const {
@@ -311,6 +327,19 @@ std::vector<Candidate> MozcEngine::Predict(std::string_view reading,
            .cost = c.cost});
   }
   return out;
+}
+
+int32_t MozcEngine::WordCost(std::string_view reading) const {
+  const auto converter =
+      std::dynamic_pointer_cast<const ::mozc::converter::Converter>(
+          engine_->GetConverter());
+  if (reading.empty() || !converter) {
+    return -1;
+  }
+  LowestCostCallback callback;
+  converter->modules().GetDictionary().LookupExact(
+      reading, ConversionRequest::Options(), &callback);
+  return callback.cost();
 }
 
 PosIds MozcEngine::LookupPosIds(std::string_view reading,

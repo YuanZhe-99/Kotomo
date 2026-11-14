@@ -34,6 +34,8 @@ struct Edge {
   EdgeKind kind = EdgeKind::kPinyin;
   int32_t cost = 0;    // the proposer's cost of this reading; lower is likelier
   bool fuzzy = false;  // reached through fuzzy pinyin or a spelling correction
+  uint8_t units = 1;   // kKana only: the kana edges the span takes when read as typed (a fuzzy
+                       // word edge stands for several), so the decoder's estimate matches theirs
   bool transliteration = false;  // kEnJa only: a made-up katakana spelling, not a dictionary word
   std::string text;     // the syllable or romaji as spelled, the English word as the dictionary
                         // writes it, or the Japanese surface

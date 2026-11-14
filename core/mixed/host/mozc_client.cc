@@ -104,6 +104,12 @@ std::string MozcClient::Hiragana(const std::string& romaji) {
   return line.rfind("ok\t", 0) == 0 ? line.substr(3) : std::string();
 }
 
+int32_t MozcClient::Known(const std::string& reading) {
+  std::string line;
+  if (!Plain(reading) || !Send("known\t" + reading) || !Receive(&line)) return -1;
+  return line.rfind("ok\t", 0) == 0 ? std::atoi(line.c_str() + 3) : -1;
+}
+
 std::optional<std::vector<JapaneseSegment>> MozcClient::Convert(
     const std::vector<JapaneseSpan>& spans) {
   std::string request = "convert";

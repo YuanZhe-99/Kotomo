@@ -166,6 +166,27 @@ class CandidatesTest {
     }
 
     @Test
+    fun japaneseModePlacesFuzzyRuleCandidatesByTheCoordinatorsOrder() { // feedback B4
+        fun word(text: String, reading: String, cost: Int, flags: Int) =
+            SnapshotCandidate(text, Lang.JAPANESE, cost, flags, listOf(Piece(0, 5, text, reading, Lang.JAPANESE, Origin.MOZC, pinned = false)))
+        val tokyo = word("東京", "とうきょう", 10, SnapshotCandidate.FLAG_FUZZY)
+        val typed = word("ときょ", "ときょ", 20, 0)
+        val late = word("特許", "とっきょ", 30, SnapshotCandidate.FLAG_FUZZY)
+        val snapshot = Snapshot(1, 0, "tokyo", 5, "", listOf(tokyo, typed, late))
+        val own = listOf("と居", "ときょ", "トキョ", "時よ").map { Candidates.Japanese(it, "ときょ") }
+        // The rule's word the coordinator ranks first comes right after Mozc's best; the one it
+        // ranks below the reading as typed comes after two of Mozc's own.
+        val fuzzy = Candidates.japaneseCross(snapshot, fuzzy = true)
+        assertEquals(listOf(true, true), fuzzy.map { it.fuzzy && !it.cross })
+        assertEquals(listOf("と居", "東京", "ときょ", "特許", "トキョ", "時よ"), Candidates.japaneseWithCross(own, fuzzy, "ときょ").map { it.text })
+        // Negative: with no rule on, a fuzzy reading is not taken.
+        assertEquals(emptyList<Candidates.Japanese>(), Candidates.japaneseCross(snapshot))
+        // Negative: at most three are added, and never a text Mozc already lists.
+        val many = (1..5).map { Candidates.Japanese("語$it", "ご", fuzzy = true) } + Candidates.Japanese("ときょ", "ときょ", fuzzy = true)
+        assertEquals(own.size + Candidates.JAPANESE_FUZZY, Candidates.japaneseWithCross(own, many, "ときょ").size)
+    }
+
+    @Test
     fun japaneseModeTakesTheParticleReadingFirst() { // T03-001, PLAN §5.4
         fun piece(begin: Int, end: Int, text: String, reading: String, origin: Origin) =
             Piece(begin, end, text, reading, Lang.JAPANESE, origin, pinned = false)

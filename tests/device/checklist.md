@@ -92,6 +92,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 4.5 Japanese mode reads other languages: `dongjing` offers 東京, `coffee` offers コーヒー, `chidai` offers 池袋 (first three); `nihon` keeps 日本 first
 - [ ] 4.6 Negative: Settings → Japanese → switch off Pinyin → Japanese kanji, English → Japanese kanji and English → Japanese katakana: `dongjing` and `coffee` are no longer converted; `nihon` still is. Switch them back on
 - [ ] 4.7 A Japanese candidate shows its reading; long-press it: reading, source, dictionary form and part of speech. "Readings on candidates" off → no reading under candidates
+- [ ] 4.8 Fuzzy readings (feedback B3, B4; every switch is off by default): `cuki` and `wadashi` do not offer 月 and 私. Settings → Japanese → Fuzzy readings → turn on "cu for つ" and "か/が, さ/ざ, た/だ, は/ば": `cuki` offers 月 and `wadashi` offers 私 among the first three, in Japanese mode and in Mixed mode; `sakura` still has 桜 first; in Mixed mode `cu` still has 粗 first. Turn on "Long vowels": `tokyo` offers 東京, `gakko` offers 学校. Turn them off again: `cuki` no longer offers 月
 
 ## 5. Modes and switching (G1, PLAN §8.2)
 

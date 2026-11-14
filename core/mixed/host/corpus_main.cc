@@ -21,11 +21,13 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include "coordinator.h"
+#include "fuzzy_kana.h"
 #include "host_engines.h"
 #include "session.h"
 
@@ -175,6 +177,32 @@ Options CalibratedOptions() {
   return options;
 }
 
+/// Reads the Japanese fuzzy rules of a line's mode (`japanese+jfuzzy:voiced,cu`, feedback B4).
+/// Inputs: `mode` is cut back to the mode itself.
+/// Returns: the rules' bits, 0 without any; nullopt for an option or a rule it does not know.
+std::optional<uint16_t> FuzzyRules(std::string* mode) {
+  const size_t plus = mode->find('+');
+  if (plus == std::string::npos) return 0;
+  const std::string option = mode->substr(plus + 1);
+  if (option.rfind("jfuzzy:", 0) != 0) return std::nullopt;
+  mode->resize(plus);
+  const std::pair<std::string_view, uint16_t> names[] = {
+      {"long_vowel", kFuzzyLongVowel}, {"sokuon", kFuzzySokuon}, {"moraic_n", kFuzzyMoraicN},
+      {"voiced", kFuzzyVoiced}, {"semi_voiced", kFuzzySemiVoiced}, {"yoon", kFuzzyYoon},
+      {"yotsugana", kFuzzyYotsugana}, {"ra_na_da", kFuzzyRaNaDa}, {"hi_shi", kFuzzyHiShi},
+      {"loanword", kFuzzyLoanword}, {"l_as_r", kFuzzyLAsR}, {"cu", kFuzzyCu}, {"all", kFuzzyAll}};
+  uint16_t rules = 0;
+  std::string_view rest = std::string_view(option).substr(7);
+  while (!rest.empty()) {
+    const std::string_view item = rest.substr(0, rest.find(','));
+    rest.remove_prefix(std::min(rest.size(), item.size() + 1));
+    const auto name = std::find_if(std::begin(names), std::end(names), [&](const auto& n) { return n.first == item; });
+    if (name == std::end(names)) return std::nullopt;
+    rules |= name->second;
+  }
+  return rules;
+}
+
 int main(int argc, char** argv) {
   const std::string option = argc == 4 ? argv[2] : "";
   if (argc != 2 && option != "--baseline" && option != "--convert" && option != "--refine") {
@@ -216,7 +244,16 @@ int main(int argc, char** argv) {
   }
   Coordinator coordinator(*engines, *lexicon, CalibratedOptions());
   if (option == "--convert") {
-    Print(coordinator.Convert(argv[3], 1));
+    // `--convert "jfuzzy:voiced,cu wadashi"` converts with Japanese fuzzy rules on.
+    std::string composition = argv[3], rules = "x+" + composition.substr(0, composition.find(' '));
+    Options options = CalibratedOptions();
+    if (const auto fuzzy = FuzzyRules(&rules); fuzzy && *fuzzy != 0) {
+      options.japanese_fuzzy = *fuzzy;
+      composition.erase(0, composition.find(' ') + 1);
+    }
+    const auto start = std::chrono::steady_clock::now();
+    Print(Coordinator(*engines, *lexicon, options).Convert(composition, 1));
+    std::printf("%.1f ms\n", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
     return 0;
   }
   if (option == "--refine") {
@@ -240,7 +277,12 @@ int main(int argc, char** argv) {
   std::vector<double> millis;
   int mixed_pass = 0, mixed_total = 0, single_pass = 0, single_total = 0, skipped = 0;
   uint64_t generation = 0;
-  for (const Line& line : lines) {
+  for (Line& line : lines) {
+    // A line with Japanese fuzzy rules runs with them; any other option (fuzzy pinyin, key
+    // correction) needs a deployed librime build and is skipped below.
+    const std::string full_mode = line.mode;
+    const uint16_t fuzzy = FuzzyRules(&line.mode).value_or(0);
+    if (fuzzy == 0) line.mode = full_mode;
     const bool mixed = line.mode == "mixed";
     // Fuzzy-pinyin lines need a deployed rule file and lines without input are predictions:
     // neither is part of the prototype.
@@ -252,17 +294,20 @@ int main(int argc, char** argv) {
       continue;
     }
     const auto start = std::chrono::steady_clock::now();
-    Snapshot snapshot = coordinator.Convert(line.input, ++generation);
+    Options with_rules = CalibratedOptions();
+    with_rules.japanese_fuzzy = fuzzy;
+    Snapshot snapshot = fuzzy != 0 ? Coordinator(*engines, *lexicon, with_rules).Convert(line.input, ++generation)
+                                   : coordinator.Convert(line.input, ++generation);
     // As the app does: a list that was cut short is asked for in full, and that one is ranked.
     if (snapshot.more) {
-      snapshot = Coordinator(*engines, *lexicon, CalibratedOptions().Full()).Convert(line.input, generation);
+      snapshot = Coordinator(*engines, *lexicon, with_rules.Full()).Convert(line.input, generation);
     }
     millis.push_back(std::chrono::duration<double, std::milli>(
                          std::chrono::steady_clock::now() - start).count());
     const Outcome outcome = Judge(line, snapshot, mixed ? nullptr : &single.at(line.mode));
     char row[1024];
     std::snprintf(row, sizeof row, "%s %s %s '%s' want %s%s within %d: at %s [%s]%s%s\n",
-                  outcome.pass ? "PASS" : "FAIL", line.id.c_str(), line.mode.c_str(),
+                  outcome.pass ? "PASS" : "FAIL", line.id.c_str(), full_mode.c_str(),
                   line.input.c_str(), line.negative ? "!" : "", line.wanted.front().c_str(),
                   line.rank, outcome.position ? std::to_string(outcome.position).c_str() : "-",
                   outcome.shown.c_str(), outcome.gap.empty() ? "" : " -- gap: ",

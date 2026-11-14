@@ -64,6 +64,11 @@ std::string ApiEngines::Hiragana(std::string_view romaji) {
   return kana;
 }
 
+int32_t ApiEngines::Known(std::string_view reading) {
+  if (tables_.mozc == nullptr) return -1;
+  return tables_.mozc->known(tables_.mozc_engine, reading.data(), reading.size());
+}
+
 std::optional<std::vector<JapaneseSegment>> ApiEngines::Japanese(
     const std::vector<JapaneseSpan>& spans, bool incognito) {
   if (tables_.mozc == nullptr) return std::nullopt;

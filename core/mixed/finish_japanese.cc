@@ -12,6 +12,10 @@ bool Outside(const Edge& edge) {
          (edge.locked != nullptr && edge.reading.empty());
 }
 
+/// The most Mozc reports for a segment it has no word for and only echoes in kana (0 for the
+/// hiragana, 1 for the katakana).
+constexpr int32_t kEchoCost = 1;
+
 /// Returns: where a pinned edge's text came from.
 Origin PinnedOrigin(EdgeKind kind) {
   return kind == EdgeKind::kPinyinJa ? Origin::kPinyinJa
@@ -25,13 +29,18 @@ Origin PinnedOrigin(EdgeKind kind) {
 /// Notes: a run of kana is one free span, cut where the person typed a delimiter: the spans on
 ///   both sides of it are fixed, so `ni kai` is に and かい and never 二階. A segment boundary Mozc puts inside a kana edge moves to the end of that edge, and a
 ///   segment left without letters joins the piece before it, so pieces always tile the input.
+///   A stretch read through a Japanese fuzzy rule must be words Mozc knows: where Mozc only
+///   echoes the kana (it reports such a segment at no cost) the reading is dropped, or every
+///   fuzzy reading that is no word would rank first (feedback B4).
 int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_t last,
                        Engines& engines, bool incognito, std::vector<Piece>* pieces,
                        std::vector<JapaneseWord>* only) {
   std::vector<JapaneseSpan> spans;
   bool free_run = false;
+  bool fuzzy = false;
   for (size_t i = first; i < last; ++i) {
     const Edge& edge = *path.edges[i];
+    fuzzy = fuzzy || (edge.kind == EdgeKind::kKana && edge.fuzzy);
     if (edge.kind == EdgeKind::kKana) {
       // A delimiter the person typed ends the span: Mozc keeps the boundary (feedback A3).
       const bool hinted = edge.begin > 0 && input.hint[edge.begin];
@@ -75,6 +84,7 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
   for (size_t s = 0; s < segments->size(); ++s) {
     const JapaneseSegment& segment = (*segments)[s];
     if (segment.words.empty()) return -1;
+    if (fuzzy && !segment.pinned && segment.words.front().cost <= kEchoCost) return -1;
     reading_wanted += segment.reading.size();
     const size_t begin_edge = edge_index;
     while (edge_index < last &&
@@ -135,7 +145,8 @@ void FinishJapanese(const Input& input, const Path& path, Engines& engines, cons
     bool has_free = false;
     for (; end < path.edges.size() && !Outside(*path.edges[end]); ++end) {
       if (path.edges[end]->kind == EdgeKind::kKana) {
-        sentence.cost -= costs.kana;  // Mozc's cost replaces the decoder's estimate
+        // Mozc's cost replaces the decoder's estimate.
+        sentence.cost -= costs.kana * path.edges[end]->units;
         has_free = true;
       }
     }

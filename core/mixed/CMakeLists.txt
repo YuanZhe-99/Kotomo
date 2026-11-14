@@ -16,6 +16,7 @@ add_library(kotomo_mixed STATIC
   decode.cc
   finish_chinese.cc
   finish_japanese.cc
+  fuzzy_kana.cc
   input.cc
   lattice.cc
   propose_chinese.cc
@@ -61,7 +62,7 @@ target_link_libraries(kotomo_lexicon_compile PRIVATE kotomo_mixed_build)
 
 # One executable per test file; each prints PASS/FAIL lines named after the spike or test ID.
 foreach(name snapshot request session lattice cross_lexicon propose_chinese propose_japanese
-    propose_english decode coordinator)
+    propose_english decode coordinator fuzzy_kana)
   add_executable(kotomo_mixed_${name}_test tests/${name}_test.cc)
   target_link_libraries(kotomo_mixed_${name}_test PRIVATE kotomo_mixed_build)
   add_test(NAME kotomo_mixed_${name}_test COMMAND kotomo_mixed_${name}_test)

@@ -35,7 +35,8 @@
 
 混合模式在每次按键时读取它的各个键（混合输入协调层把它们作为选项接收，见 `engine-contract.md`）。日文模式以
 同样的方式读取 `japanese.cross.*`：它只向协调层要日文候选，把其中的跨语言候选加到 Mozc 自己的候选里；
-`pinyin_to_kanji`、`english_to_kanji` 与 `english_to_katakana` 全部关闭时不询问协调层。`readings` 让候选栏在
+`pinyin_to_kanji`、`english_to_kanji` 与 `english_to_katakana` 全部关闭、且没有打开任何 `japanese.fuzzy.*`
+规则时不询问协调层。`readings` 让候选栏在
 跨语言的日文候选旁显示它的读音。尚未读取的有：两种模式的 `pinyin_to_katakana`（没有把拼音对应到片假名词的数据）。
 
 | 键 | 类型 | 含义 |
@@ -117,6 +118,7 @@
 | `emoji.combos` | string | 空 | 用户自己的 Emoji 组合，每行一个；面板在“组合”中把它们排在 Kotomo 自带的之后 |
 | `emoji.mappings` | string | 空 | 用户为词语指定的 Emoji，每行 `词=Emoji`（词为按键入方式写的小写字母，至多 24 个）；输入正好这些字母时排在 Emoji 候选最前 |
 | `japanese.flick` | boolean | `false` | 日文模式使用 12 键滑动布局 |
+| `japanese.fuzzy.<rule>` | boolean | `false` | 一条日语模糊音规则（反馈 B4），日文模式与混合模式都读取：`long_vowel`（长音省略或多打，`tokyo` → 東京）、`sokuon`（促音小っ，`zashi` → 雑誌）、`moraic_n`（元音、や行、な行之前的 ん，`konichiha` → こんにちは）、`voiced`（か/が、さ/ざ、た/だ、は/ば，`wadashi` → 私）、`semi_voiced`（は/ぱ、ば/ぱ）、`yoon`（大小 ゃ ゅ ょ，`kiyou` → 今日）、`yotsugana`（じ/ぢ、ず/づ）、`ra_na_da`（ら行与な行或だ で ど）、`hi_shi`（ひ/し）、`loanword`（ヴァ/バ、ティ/チ、ファ/ハ）、`l_as_r`（罗马字用 l 代替 r）、`cu`（罗马字用 `cu` 输入 つ；混合模式下 `cu` 同时仍按拼音读）。每条规则一个开关，互不连带；从未打开过的规则不写入。规则只增加日文词典里确实是词的读音，按原样输入的结果仍会列出 |
 | `chinese.nine_key` | boolean | `false` | 中文模式使用九宫格：2–9 键代表各自的字母，librime 的九宫格方案把数字读作拼音（PLAN §10.9）；模糊音规则与双拼方案像在字母键盘上一样作用于它（打开双拼时，数字拼的是方案的两个键）；用户词库与下载的词库以字母为编码，九宫格查不到 |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting,voice` | 不放在工具栏上的工具，以逗号连接；它们和工具栏放不下的工具一起在“更多”里。与 `toolbar.order` 一起写入；已存的 `toolbar.order` 中缺少的工具（以后的版本新增的）按默认位置放置 |
 

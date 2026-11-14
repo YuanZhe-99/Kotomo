@@ -20,7 +20,7 @@ extern "C" {
 
 /** Names the layout of KotomoMozcApi; a caller refuses a table with another
  * version. */
-#define KOTOMO_MOZC_API_VERSION 2u
+#define KOTOMO_MOZC_API_VERSION 3u
 
 /** Describes one span of a reading: UTF-8 hiragana, and the surface it is
  * pinned to (`surface_size` 0: Mozc converts the span). Not terminated. */
@@ -62,6 +62,12 @@ typedef struct KotomoMozcApi {
    * called). Nothing is committed, so nothing is learned either way. */
   int (*convert)(void* engine, const KotomoMozcSpan* spans, size_t count,
                  int incognito, const KotomoMozcSink* sink);
+
+  /** Looks a hiragana reading (`size` bytes) up as a key of Mozc's dictionary
+   * (MozcEngine::WordCost), for the fuzzy kana rules.
+   * Returns: the lowest word cost among the entries read exactly so, or -1
+   * when there is none. */
+  int32_t (*known)(void* engine, const char* reading, size_t size);
 } KotomoMozcApi;
 
 /** Returns: the library's table; it lives as long as the library. */

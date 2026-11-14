@@ -22,6 +22,8 @@ import org.junit.Test
  * baseline too are known gaps, reported but not failing. Host results never stand in for device
  * results.
  *
+ * A Japanese or Mixed line may name Japanese fuzzy rules (`japanese+jfuzzy:voiced,cu`, or
+ * `+jfuzzy:all`; `japanese.fuzzy.*`, feedback B4): the coordinator then converts with them.
  * A Chinese or Mixed line may name fuzzy-pinyin rules after its mode (`chinese+fuzzy:z_zh,n_l`, or
  * `+fuzzy:all`): the line then runs on a librime build deployed with the rule file the app itself
  * generates ([Fuzzy.yaml]), as the keyboard's deploy process does (T08). A Chinese line may also
@@ -48,6 +50,8 @@ class ConversionCorpusTest {
         val nine: Boolean = false,
         /** Runs on a build with Chinese mode's key correction on (`+correction`, `chinese.key_correction`). */
         val correction: Boolean = false,
+        /** The Japanese fuzzy rules the line runs with (`+jfuzzy:voiced,cu`, `japanese.fuzzy.*`). */
+        val japaneseFuzzy: Set<JapaneseFuzzyRule> = emptySet(),
     ) {
         /** Names the librime build the line needs (its rules and scheme), for grouping and the report. */
         val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "") + (if (correction) "+correction" else "")
@@ -120,7 +124,18 @@ class ConversionCorpusTest {
                 require(!nine || mode == Mode.CHINESE) { "corpus line ${n + 1}: the 9-key layout is for chinese lines" }
                 val correction = "correction" in c[1].split('+').drop(1)
                 require(!correction || mode == Mode.CHINESE || mode == Mode.MIXED) { "corpus line ${n + 1}: key correction is for chinese and mixed lines" }
-                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && it != "nine" && it != "correction" }
+                val japaneseFuzzy = c[1].split('+').drop(1).firstOrNull { it.startsWith("jfuzzy:") }?.let { option ->
+                    require(mode == Mode.JAPANESE || mode == Mode.MIXED) { "corpus line ${n + 1}: Japanese fuzzy rules are for japanese and mixed lines" }
+                    val names = option.removePrefix("jfuzzy:")
+                    if (names == "all") {
+                        JapaneseFuzzyRule.entries.toSet()
+                    } else {
+                        names.split(',').mapTo(mutableSetOf()) { name ->
+                            JapaneseFuzzyRule.entries.firstOrNull { it.key == name } ?: error("corpus line ${n + 1}: unknown Japanese fuzzy rule $name")
+                        }
+                    }
+                }.orEmpty()
+                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && !it.startsWith("jfuzzy:") && it != "nine" && it != "correction" }
                 val fuzzy = if (fuzzyOption != null) {
                     val option = fuzzyOption
                     require(option.startsWith("fuzzy:") && (mode == Mode.CHINESE || mode == Mode.MIXED)) {
@@ -143,7 +158,7 @@ class ConversionCorpusTest {
                 val negative = alternatives.all { it.startsWith("!") }
                 require(negative || alternatives.none { it.startsWith("!") }) { "corpus line ${n + 1}: mixed ! and plain outputs" }
                 require(alternatives.all { it.removePrefix("!").isNotEmpty() }) { "corpus line ${n + 1}: empty output" }
-                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script, nine, correction)
+                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script, nine, correction, japaneseFuzzy)
             }
         val duplicates = lines.groupBy { it.id }.filterValues { it.size > 1 }.keys
         require(duplicates.isEmpty()) { "duplicate corpus ids: $duplicates" }
@@ -209,11 +224,13 @@ class ConversionCorpusTest {
                 check(it.lexiconEntries > 0) { "the cross-language lexicon did not map" }
             }
             c.clear(++generation)
+            if (line.japaneseFuzzy.isNotEmpty()) c.options(++generation, Core.Options(japaneseFuzzy = JapaneseFuzzyRule.mask(line.japaneseFuzzy)))
             var snapshot = checkNotNull(c.clear(++generation))
             for (key in line.input) snapshot = checkNotNull(c.key(++generation, key)) { "no snapshot for a key of ${line.id}" }
             // A long line's first answer is the quick stage; the corpus ranks the full list.
             if (snapshot?.more == true) snapshot = checkNotNull(c.refine(generation)) { "no later stage for ${line.id}" }
             check(snapshot.generation == generation && snapshot.input == line.input) { "${line.id}: the snapshot answers another request" }
+            if (line.japaneseFuzzy.isNotEmpty()) c.options(++generation, Core.Options())
             Candidates.mixed(
                 snapshot.candidates.map { it.text }, snapshot.input, Candidates.emoji(emoji, line.input),
                 Candidates.emojiPosition(MIXED_EMOJI_WEIGHT),
@@ -226,8 +243,8 @@ class ConversionCorpusTest {
             // As the keyboard does: the coordinator's cross-language candidates, Japanese only.
             Rime.clear()
             val c = core ?: checkNotNull(Core.open(rime = true, mozc, english, lexicon.path)) { "the coordinator did not open" }.also { core = it }
-            c.options(++generation, Core.Options(chinese = false, english = false, abbreviation = false))
-            val crossed = Candidates.japaneseCross(c.set(++generation, line.input)?.let { if (it.more) c.refine(generation) else it })
+            c.options(++generation, Core.Options(chinese = false, english = false, abbreviation = false, japaneseFuzzy = JapaneseFuzzyRule.mask(line.japaneseFuzzy)))
+            val crossed = Candidates.japaneseCross(c.set(++generation, line.input)?.let { if (it.more) c.refine(generation) else it }, fuzzy = line.japaneseFuzzy.isNotEmpty())
             c.clear(++generation)
             c.options(++generation, Core.Options())
             val own = Candidates.japanese(segments, predicted)

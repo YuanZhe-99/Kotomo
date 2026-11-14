@@ -37,6 +37,7 @@ struct Costs {
   int32_t transliteration = 3000;        // on top, a made-up katakana spelling
   int32_t english_in_chinese = 1500;     // an English word kept in a Chinese sentence
   int32_t english_in_japanese = 4000;    // an English word kept in a Japanese sentence
+  int32_t japanese_fuzzy = 1500;         // on top, a reading reached through a Japanese fuzzy rule
   int32_t particle = 1200;               // は, を or へ typed wa, o or e
   int32_t language_switch = 500;         // between spans typed in different languages
   int32_t crossed_hint = 2500;           // a span that runs across a delimiter the person typed
@@ -57,6 +58,8 @@ struct Options {
   bool transliteration = true;      // with english_to_katakana: made-up katakana spellings too
   bool whole_sentence = true;       // false: a cross-language word only for the whole input
   bool abbreviation = true;         // a syllable typed by its initial alone (`tq` → 天气)
+  uint16_t japanese_fuzzy = 0;      // the Japanese fuzzy rules in force, JapaneseFuzzy bits
+                                    // (fuzzy_kana.h); none by default
   bool incognito = false;           // the field must leave no trace: Mozc converts incognito
   // The languages candidates are written in, indexed by Lang. Mixed mode asks for all three;
   // Japanese mode asks for Japanese only and takes the cross-language candidates (PLAN.md §2.3).

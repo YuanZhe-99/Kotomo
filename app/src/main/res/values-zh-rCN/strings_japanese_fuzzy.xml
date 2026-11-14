@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Japanese fuzzy rules on the Japanese settings page (feedback B4); one switch per rule. -->
+<resources>
+    <string name="japanese_fuzzy">模糊音</string>
+    <string name="japanese_fuzzy_note">每个开关让一种容易打错的拼法仍然能找到词，日文模式和混合模式都生效。按原样输入的结果仍会列出。默认全部关闭。</string>
+    <string name="japanese_fuzzy_long_vowel">长音</string>
+    <string name="japanese_fuzzy_long_vowel_desc">输入 tokyo 可得到 東京；sense 可得到 先生</string>
+    <string name="japanese_fuzzy_sokuon">促音（小っ）</string>
+    <string name="japanese_fuzzy_sokuon_desc">输入 kite 可得到 切手；zashi 可得到 雑誌</string>
+    <string name="japanese_fuzzy_moraic_n">拨音 ん（后接元音、や行、な行）</string>
+    <string name="japanese_fuzzy_moraic_n_desc">输入 konichiha 可得到 こんにちは；kinen 可得到 禁煙</string>
+    <string name="japanese_fuzzy_voiced">清浊音（か/が、さ/ざ、た/だ、は/ば）</string>
+    <string name="japanese_fuzzy_voiced_desc">输入 wadashi 可得到 私；arikato 可得到 ありがと</string>
+    <string name="japanese_fuzzy_semi_voiced">半浊音（は/ぱ、ば/ぱ）</string>
+    <string name="japanese_fuzzy_semi_voiced_desc">输入 ibbai 可得到 一杯</string>
+    <string name="japanese_fuzzy_yoon">拗音（小ゃ、ゅ、ょ）</string>
+    <string name="japanese_fuzzy_yoon_desc">输入 kiyou 可得到 今日；byouin 可得到 美容院</string>
+    <string name="japanese_fuzzy_yotsugana">じ/ぢ、ず/づ</string>
+    <string name="japanese_fuzzy_yotsugana_desc">输入 dikan 可得到 時間</string>
+    <string name="japanese_fuzzy_ra_na_da">ら行与な行、だ・で・ど</string>
+    <string name="japanese_fuzzy_ra_na_da_desc">输入 kanada 可得到 体</string>
+    <string name="japanese_fuzzy_hi_shi">ひ/し</string>
+    <string name="japanese_fuzzy_hi_shi_desc">输入 shito 可得到 人</string>
+    <string name="japanese_fuzzy_loanword">外来语写法（ヴァ/バ、ティ/チ、ファ/ハ）</string>
+    <string name="japanese_fuzzy_loanword_desc">输入 baiorin 可得到 ヴァイオリン</string>
+    <string name="japanese_fuzzy_l_as_r">用 l 代替 r</string>
+    <string name="japanese_fuzzy_l_as_r_desc">输入 sakula 可得到 桜</string>
+    <string name="japanese_fuzzy_cu">用 cu 输入 つ</string>
+    <string name="japanese_fuzzy_cu_desc">输入 cuki 可得到 月。混合模式下 cu 仍然同时按拼音读</string>
+</resources>

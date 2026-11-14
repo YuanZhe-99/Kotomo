@@ -58,6 +58,8 @@ class HostEngines : public Engines {
     return kana_[key] = mozc_->Hiragana(key);
   }
 
+  int32_t Known(std::string_view reading) override { return mozc_->Known(std::string(reading)); }
+
   std::optional<std::vector<JapaneseSegment>> Japanese(
       const std::vector<JapaneseSpan>& spans, bool /*incognito*/) override {
     return mozc_->Convert(spans);

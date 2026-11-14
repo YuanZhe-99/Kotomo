@@ -25,10 +25,22 @@ internal object Candidates {
      * [cross]-language (typed as pinyin or English, from the coordinator) and, for those, whether
      * the coordinator ranked it before its own reading of the letters as romaji ([leads]).
      */
-    data class Japanese(val text: String, val reading: String, val cross: Boolean = false, val leads: Boolean = false, val particle: Boolean = false)
+    data class Japanese(
+        val text: String,
+        val reading: String,
+        val cross: Boolean = false,
+        val leads: Boolean = false,
+        val particle: Boolean = false,
+        /** Reached through a Japanese fuzzy rule (`japanese.fuzzy.*`, feedback B4). */
+        val fuzzy: Boolean = false,
+    )
 
     /** The most cross-language candidates Japanese mode adds to Mozc's own. */
     const val JAPANESE_CROSS = 3
+
+    /** The most fuzzy-rule candidates Japanese mode adds, and how many of Mozc's stand before the later ones. */
+    const val JAPANESE_FUZZY = 3
+    const val JAPANESE_FUZZY_AFTER = 2
 
     /**
      * Picks Japanese mode's cross-language candidates out of the coordinator's [snapshot] of the
@@ -39,17 +51,18 @@ internal object Candidates {
      * sentence typed as romaji throughout when it reads a `wa`, `o` or `e` as the particle は, を
      * or へ ([Japanese.particle]): Mozc's own session reads those letters as わ, お and え
      * (`watashiwanihonjin`, PLAN §5.4); a sentence that ends in letters still being typed is
-     * not one. Empty for null.
+     * not one. With [fuzzy] (a `japanese.fuzzy.*` rule is on), the candidates the coordinator
+     * reached through a fuzzy reading come too, marked [Japanese.fuzzy]. Empty for null.
      */
-    fun japaneseCross(snapshot: Snapshot?): List<Japanese> {
+    fun japaneseCross(snapshot: Snapshot?, fuzzy: Boolean = false): List<Japanese> {
         val all = snapshot?.candidates.orEmpty().filter { it.target == Lang.JAPANESE }
-        val plain = all.indexOfFirst { !it.crossLanguage }.let { if (it < 0) all.size else it }
+        val plain = all.indexOfFirst { !it.crossLanguage && !it.fuzzy }.let { if (it < 0) all.size else it }
         // A rule piece is a particle unless it is letters still being typed (`shur` → しゅ + r),
         // which Mozc's own session already shows.
         val particle = all.getOrNull(plain)?.takeIf { c -> c.pieces.any { it.origin == Origin.RULE } && c.pieces.none { it.pending } }
             ?.let { c -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, particle = true) }
-        return listOfNotNull(particle) + all.withIndex().filter { it.value.crossLanguage }
-            .map { (i, c) -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, cross = true, leads = i < plain) }
+        return listOfNotNull(particle) + all.withIndex().filter { it.value.crossLanguage || (fuzzy && it.value.fuzzy) }
+            .map { (i, c) -> Japanese(c.text, c.pieces.joinToString("") { it.reading }, cross = c.crossLanguage, leads = i < plain, fuzzy = !c.crossLanguage) }
     }
 
     /**
@@ -61,15 +74,22 @@ internal object Candidates {
      * letters (`dongjing` is not Japanese as typed, so Mozc's reading of it is a guess); the
      * others, which the coordinator itself ranks below the romaji reading, go last. A sentence
      * read with a particle goes first: it is the romaji reading itself, read correctly.
+     * Up to [JAPANESE_FUZZY] fuzzy-rule candidates come as well: those the coordinator ranks
+     * before the reading as typed right after Mozc's best (never in its place: what was typed
+     * comes first), the others after [JAPANESE_FUZZY_AFTER] of Mozc's own.
      */
     fun japaneseWithCross(own: List<Japanese>, cross: List<Japanese>, reading: String): List<Japanese> {
         val texts = own.mapTo(HashSet()) { it.text }
-        val added = cross.filter { texts.add(it.text) }.take(JAPANESE_CROSS)
-        if (added.isEmpty()) return own
+        val fresh = cross.filter { texts.add(it.text) }
+        val added = fresh.filter { !it.fuzzy }.take(JAPANESE_CROSS)
+        val (fuzzyLeading, fuzzyTrailing) = fresh.filter { it.fuzzy }.take(JAPANESE_FUZZY).partition { it.leads }
+        if (added.isEmpty() && fuzzyLeading.isEmpty() && fuzzyTrailing.isEmpty()) return own
         val first = added.filter { it.particle }
         val (leading, trailing) = added.filter { !it.particle }.partition { it.leads }
         val at = if (reading.any { it in 'a'..'z' || it in 'A'..'Z' }) 0 else minOf(1, own.size)
-        return first + own.take(at) + leading + own.drop(at) + trailing
+        val rest = own.drop(at)
+        val early = (JAPANESE_FUZZY_AFTER - at).coerceIn(0, rest.size)
+        return first + own.take(at) + leading + fuzzyLeading + rest.take(early) + fuzzyTrailing + rest.drop(early) + trailing
     }
 
     /** The most predicted words placed right after the best sentence. */

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Japanese fuzzy rules on the Japanese settings page (feedback B4); one switch per rule. -->
+<resources>
+    <string name="japanese_fuzzy">Fuzzy readings</string>
+    <string name="japanese_fuzzy_note">Each switch lets a spelling that is easy to get wrong still find the word, in Japanese mode and in Mixed mode. What you typed is still offered. All are off until you turn them on.</string>
+    <string name="japanese_fuzzy_long_vowel">Long vowels</string>
+    <string name="japanese_fuzzy_long_vowel_desc">Typing tokyo offers 東京; sense offers 先生</string>
+    <string name="japanese_fuzzy_sokuon">Small っ</string>
+    <string name="japanese_fuzzy_sokuon_desc">Typing kite offers 切手; zashi offers 雑誌</string>
+    <string name="japanese_fuzzy_moraic_n">ん before a vowel, や or な</string>
+    <string name="japanese_fuzzy_moraic_n_desc">Typing konichiha offers こんにちは; kinen offers 禁煙</string>
+    <string name="japanese_fuzzy_voiced">か/が, さ/ざ, た/だ, は/ば</string>
+    <string name="japanese_fuzzy_voiced_desc">Typing wadashi offers 私; arikato offers ありがと</string>
+    <string name="japanese_fuzzy_semi_voiced">は/ぱ, ば/ぱ</string>
+    <string name="japanese_fuzzy_semi_voiced_desc">Typing ibbai offers 一杯</string>
+    <string name="japanese_fuzzy_yoon">Small ゃ, ゅ, ょ</string>
+    <string name="japanese_fuzzy_yoon_desc">Typing kiyou offers 今日; byouin offers 美容院</string>
+    <string name="japanese_fuzzy_yotsugana">じ/ぢ, ず/づ</string>
+    <string name="japanese_fuzzy_yotsugana_desc">Typing dikan offers 時間</string>
+    <string name="japanese_fuzzy_ra_na_da">ら行 for な行 or だ, で, ど</string>
+    <string name="japanese_fuzzy_ra_na_da_desc">Typing kanada offers 体</string>
+    <string name="japanese_fuzzy_hi_shi">ひ/し</string>
+    <string name="japanese_fuzzy_hi_shi_desc">Typing shito offers 人</string>
+    <string name="japanese_fuzzy_loanword">Loanword spellings (ヴァ/バ, ティ/チ, ファ/ハ)</string>
+    <string name="japanese_fuzzy_loanword_desc">Typing baiorin offers ヴァイオリン</string>
+    <string name="japanese_fuzzy_l_as_r">l for r</string>
+    <string name="japanese_fuzzy_l_as_r_desc">Typing sakula offers 桜</string>
+    <string name="japanese_fuzzy_cu">cu for つ</string>
+    <string name="japanese_fuzzy_cu_desc">Typing cuki offers 月. In Mixed mode cu is still read as pinyin too</string>
+</resources>

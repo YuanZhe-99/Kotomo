@@ -24,7 +24,11 @@ void ProposePinyin(const Input& input, Engines& engines, const Options& options,
 /// letters; `kai` is ka + i, not an edge of its own), and kParticle edges for wa, o and e after
 /// the first position. The last one to three letters that begin a kana without finishing one
 /// (`r`, `ky`, `sh`) get a kPending edge, unless the input starts with them.
-/// Side effects: Engines::Hiragana calls, a bounded number per position.
+/// With Options::japanese_fuzzy, also the fuzzy readings of feedback B4: a kana edge for a
+/// respelled romaji (`cu` → つ) and one kKana edge per word a kana rule finds in Mozc's
+/// dictionary (`tokyo` → とうきょう), marked fuzzy.
+/// Side effects: Engines::Hiragana calls, a bounded number per position; with fuzzy rules,
+///   Engines::Known calls, at most 48 per span and rule.
 void ProposeJapanese(const Input& input, Engines& engines, const Options& options,
                      Lattice* lattice);
 

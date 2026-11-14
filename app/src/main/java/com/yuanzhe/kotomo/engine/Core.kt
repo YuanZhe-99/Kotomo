@@ -31,6 +31,8 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         val incognito: Boolean = false,
         /** A pinyin syllable may be typed by its initial alone (`tq` → 天气). */
         val abbreviation: Boolean = true,
+        /** The Japanese fuzzy rules in force (bits of the contract's rule list, feedback B4); none by default. */
+        val japaneseFuzzy: Int = 0,
         /** How far each language's weight was moved from its default, −100…100. */
         val chineseWeight: Int = 0,
         val japaneseWeight: Int = 0,
@@ -76,6 +78,7 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         for (weight in intArrayOf(options.chineseWeight, options.japaneseWeight, options.englishWeight)) {
             it.put(weight.coerceIn(-100, 100).toByte())
         }
+        it.putShort((options.japaneseFuzzy and FUZZY_ALL).toShort())
     }
 
     /**
@@ -166,6 +169,9 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
     private fun checkOpen(): Long = handle.also { check(it != 0L) { "Core is closed" } }
 
     companion object {
+        /** Every Japanese fuzzy rule the contract names ([Options.japaneseFuzzy]). */
+        const val FUZZY_ALL = 0xfff
+
         /** Marks a key without a touch position. */
         const val NO_COORDINATE = -1
 

@@ -1,7 +1,7 @@
 # Engine ↔ app contract
 
 How the app and the native engine talk: what goes in, what comes out, and how the mixed-input
-coordinator (`core/mixed/`) reaches the three engines. This is **contract version 7**
+coordinator (`core/mixed/`) reaches the three engines. This is **contract version 8**
 (`kContractVersion` in `core/mixed/snapshot.h`, `Snapshot.VERSION` in `engine/Snapshot.kt`). Both
 sides exist: the engine side is `libkotomo_core.so` (`core/mixed/session.h`, `jni/core_jni.cc`),
 the app side is the facade `engine/Core.kt` with the decoder `engine/Snapshot.kt`. Mixed mode
@@ -39,7 +39,7 @@ All integers are little-endian. A string is a `u16` byte length followed by UTF-
 | 1 | key | u32 code point; i16 x, i16 y: the touch in the English engine's 1000 × 600 layout space, −1 for none | appends a letter, or a space or apostrophe as a boundary hint; any other character and a key past 256 bytes change nothing |
 | 2 | backspace | — | deletes the last character |
 | 3 | clear | — | drops the composition without committing |
-| 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; u8 targets; i8 × 3 weights for Chinese, Japanese, English | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito), 5 abbreviated pinyin: a syllable may be typed by its initial alone anywhere in the composition (version 7). The targets' bits name the languages candidates may be written in: 0 Chinese, 1 Japanese, 2 English; Mixed mode sets all three, Japanese mode only Japanese and takes the cross-language candidates (version 3). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates |
+| 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; u8 targets; i8 × 3 weights for Chinese, Japanese, English; u16 Japanese fuzzy rules | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito), 5 abbreviated pinyin: a syllable may be typed by its initial alone anywhere in the composition (version 7). The targets' bits name the languages candidates may be written in: 0 Chinese, 1 Japanese, 2 English; Mixed mode sets all three, Japanese mode only Japanese and takes the cross-language candidates (version 3). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates. The Japanese fuzzy rules' bits (version 8, all clear by default; an unknown bit is refused): 0 long vowel, 1 small っ, 2 ん, 3 voiced (か/が, さ/ざ, た/だ, は/ば), 4 semi-voiced (は/ぱ, ば/ぱ), 5 small ゃ ゅ ょ, 6 じ/ぢ and ず/づ, 7 ら行 for な行 or だ で ど, 8 ひ/し, 9 loanword spellings, 10 romaji l for r, 11 romaji cu for つ |
 | 5 | context | string: the text before the cursor | candidates in the language that text ends in cost 300 units less (kana, or a Han character with kana before it: Japanese; a Han character otherwise: Chinese; a Latin letter: English). Kept in memory only. The app sends it when a composition starts and never for a field that may leave no trace |
 | 6 | select | u64: the generation of the snapshot on screen; u16: a candidate's index in it | commits that candidate: the snapshot's commit field holds its text and the composition is empty. When the engine's last snapshot is another one, or has no such candidate, nothing is committed |
 | 7 | alternatives | u16 begin, u16 end: a byte range of the composition | changes nothing; the snapshot's candidates stand for that span alone, in every language, and its focus fields name the span. A span that is empty, runs past the composition or cuts a locked piece gets the ordinary snapshot |
@@ -94,6 +94,22 @@ abbreviated to its initial (`tq` → 天气, `woxhni` → 我喜欢你) while th
 switch is on, at the same 2500 units per initial; an initial is not read that way where its
 letters go on to spell a whole syllable (`n` of `nai`), so full pinyin never splits into
 initials.
+
+The Japanese fuzzy rules of the options request add readings a person who mistypes or mishears
+a word may have meant (`core/mixed/fuzzy_kana.h`). A romaji rule respells one kana (`cu` → つ,
+`la` → ら). A kana rule rewrites the reading of a span of two to six kana at one or two places
+(`ときょ` → `とうきょう`, `わだし` → `わたし`) and the span becomes one more edge for every such
+reading that is a key of Mozc's dictionary, so a rule never proposes what is no word. One rule
+makes one reading: rules that share a kana do not chain (は/ば does not bring は/ぱ), though a
+respelled romaji may be what a kana rule starts from (`lamen` → らめん → らーめん). A fuzzy
+edge costs what the span costs as typed plus 1500 units, and Mozc's cost of the sentence
+replaces the estimate as for any kana, so a fuzzy reading ranks among the exact ones by how
+common it is; its candidate carries the fuzzy flag. A sentence read through a rule is dropped
+where Mozc has no word for a segment and only echoes its kana. Particles typed as they sound
+(`wa`, `o`, `e`) are always read and are not one of these rules. Japanese mode takes the
+candidates with the fuzzy flag from the same snapshot it takes the cross-language ones from: up
+to three, those ranked before the reading as typed right after Mozc's best candidate, the others
+after two of Mozc's own.
 
 Inside a longer composition some readings are chance splits far more often than what was meant,
 so only the whole composition may be one: a one-syllable pinyin key read as a Japanese word, and
@@ -158,7 +174,7 @@ alike. A selection names the generation it was made on for the same reason.
 
 ## The engines behind the coordinator
 
-The coordinator links no engine and resolves no symbol of another library. It asks five
+The coordinator links no engine and resolves no symbol of another library. It asks six
 questions (`core/mixed/engines.h`). Each engine library holds a static table of plain C functions
 that answer its questions and returns the table's address through a JNI getter (`Rime.api()`,
 `Mozc.api()`, `English.api()`); `Core.open` passes the addresses, with Mozc's and the English
@@ -174,6 +190,7 @@ nothing and the other languages keep working.
 | convert this run of syllables | librime's session with the syllables joined by apostrophes | `kotomo_rime_api.h`: `convert` |
 | map this romaji to hiragana | Mozc's romaji table | `core/mozc/kotomo_mozc_api.h`: `hiragana` |
 | convert this reading with these spans pinned, and these spans kept as one segment each | Mozc's converter (`MozcEngine::PinnedConvert`) | `kotomo_mozc_api.h`: `convert` |
+| is this reading a word, and how common | Mozc's dictionary, exact lookup of the key (`MozcEngine::WordCost`); asked only for the readings of the Japanese fuzzy rules (table version 3) | `kotomo_mozc_api.h`: `known` |
 | is this an English word, and how common | the English dictionary, exact lookup | `core/english/jni/english_api.h`: `lookup` |
 
 No answer learns, and none keeps state between calls except librime's: the coordinator converts

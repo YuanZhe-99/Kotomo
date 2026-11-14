@@ -1,5 +1,7 @@
 #include "request.h"
 
+#include "fuzzy_kana.h"
+
 #include "snapshot.h"
 #include "wire.h"
 
@@ -26,6 +28,7 @@ std::string Encode(const Request& request) {
       w.Int(request.switches);
       w.Int(request.targets);
       for (const int8_t weight : request.weight) w.Int(weight);
+      w.Int(request.fuzzy);
       break;
     case Command::kSelect:
     case Command::kLock:
@@ -83,6 +86,7 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
       for (int8_t& weight : request.weight) {
         ok = ok && r.Int(&weight) && weight >= -100 && weight <= 100;
       }
+      ok = ok && r.Int(&request.fuzzy) && (request.fuzzy & ~kFuzzyAll) == 0;
       break;
     case Command::kSelect:
     case Command::kLock:

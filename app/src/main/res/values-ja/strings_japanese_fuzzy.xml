@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Japanese fuzzy rules on the Japanese settings page (feedback B4); one switch per rule. -->
+<resources>
+    <string name="japanese_fuzzy">あいまい入力</string>
+    <string name="japanese_fuzzy_note">まちがえやすいつづりでも目的の語が出るようにします。日本語モードとミックスモードの両方で働きます。入力したとおりの候補も引き続き表示されます。初期状態ではすべてオフです。</string>
+    <string name="japanese_fuzzy_long_vowel">長音</string>
+    <string name="japanese_fuzzy_long_vowel_desc">tokyo で 東京、sense で 先生</string>
+    <string name="japanese_fuzzy_sokuon">促音（小さい っ）</string>
+    <string name="japanese_fuzzy_sokuon_desc">kite で 切手、zashi で 雑誌</string>
+    <string name="japanese_fuzzy_moraic_n">撥音 ん（母音・や行・な行の前）</string>
+    <string name="japanese_fuzzy_moraic_n_desc">konichiha で こんにちは、kinen で 禁煙</string>
+    <string name="japanese_fuzzy_voiced">清音と濁音（か/が、さ/ざ、た/だ、は/ば）</string>
+    <string name="japanese_fuzzy_voiced_desc">wadashi で 私、arikato で ありがと</string>
+    <string name="japanese_fuzzy_semi_voiced">半濁音（は/ぱ、ば/ぱ）</string>
+    <string name="japanese_fuzzy_semi_voiced_desc">ibbai で 一杯</string>
+    <string name="japanese_fuzzy_yoon">拗音（小さい ゃ、ゅ、ょ）</string>
+    <string name="japanese_fuzzy_yoon_desc">kiyou で 今日、byouin で 美容院</string>
+    <string name="japanese_fuzzy_yotsugana">じ/ぢ、ず/づ</string>
+    <string name="japanese_fuzzy_yotsugana_desc">dikan で 時間</string>
+    <string name="japanese_fuzzy_ra_na_da">ら行と な行、だ・で・ど</string>
+    <string name="japanese_fuzzy_ra_na_da_desc">kanada で 体</string>
+    <string name="japanese_fuzzy_hi_shi">ひ/し</string>
+    <string name="japanese_fuzzy_hi_shi_desc">shito で 人</string>
+    <string name="japanese_fuzzy_loanword">外来語の表記（ヴァ/バ、ティ/チ、ファ/ハ）</string>
+    <string name="japanese_fuzzy_loanword_desc">baiorin で ヴァイオリン</string>
+    <string name="japanese_fuzzy_l_as_r">r の代わりに l</string>
+    <string name="japanese_fuzzy_l_as_r_desc">sakula で 桜</string>
+    <string name="japanese_fuzzy_cu">cu で つ</string>
+    <string name="japanese_fuzzy_cu_desc">cuki で 月。ミックスモードでは cu はピンインとしても読まれます</string>
+</resources>

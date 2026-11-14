@@ -1,5 +1,9 @@
 #include "propose.h"
 
+#include <algorithm>
+
+#include "fuzzy_kana.h"
+
 namespace kotomo::mixed {
 namespace {
 
@@ -54,6 +58,89 @@ bool BeginsKana(std::string_view letters, Engines& engines) {
   return false;
 }
 
+/// The most letters and kana of one word a fuzzy rule is tried on, and the most readings of it
+/// looked up per rule: longer words are rare, and each reading is one dictionary question.
+constexpr size_t kMaxFuzzyLetters = 16;
+constexpr size_t kMaxFuzzyKana = 6;
+constexpr size_t kMaxFuzzyReadings = 48;
+
+/// Returns: how many kana edges a reading takes when typed: its kana without the small ones
+///   and っ, which share an edge with their neighbour; at least 1.
+uint8_t KanaUnits(std::string_view reading) {
+  size_t units = 0;
+  for (size_t i = 0; i + 3 <= reading.size(); i += 3) {
+    const std::string_view kana = reading.substr(i, 3);
+    const bool joined = kana == "ゃ" || kana == "ゅ" || kana == "ょ" || kana == "っ" || kana == "ぁ" ||
+                        kana == "ぃ" || kana == "ぅ" || kana == "ぇ" || kana == "ぉ";
+    if (!joined) ++units;
+  }
+  return static_cast<uint8_t>(std::max<size_t>(units, 1));
+}
+
+/// Adds the fuzzy readings of the spans that begin at `begin` (feedback B4): a kana edge for a
+/// romaji spelling a romaji rule respells (`cu` → つ), and a word edge for every reading a kana
+/// rule makes of a span that Mozc's dictionary has (`tokyo` → とうきょう).
+/// Notes: one rule per reading, so rules that share a kana never chain; a romaji rule's
+///   respelling may be what a kana rule starts from (`lamen` → らめん → らーめん). Each edge
+///   costs what the span costs as typed plus Costs::japanese_fuzzy; Mozc's cost of the sentence
+///   replaces the estimate, so a fuzzy word ranks by how common it is.
+void ProposeFuzzy(const Input& input, size_t begin, Engines& engines, const Options& options,
+                  Lattice* lattice) {
+  const Costs& costs = options.costs;
+  const std::string_view letters = input.letters;
+  const uint16_t rules = options.japanese_fuzzy;
+  for (size_t length = 1; length <= kMaxFuzzyLetters && begin + length <= input.size(); ++length) {
+    const size_t end = begin + length;
+    const std::string_view romaji = letters.substr(begin, length);
+    // As for the exact edges: a lone n before a vowel or y starts the next kana.
+    const bool open_n = romaji.back() == 'n' && (length < 2 || romaji[length - 2] != 'n') &&
+                        end < input.size() && (Vowel(letters[end]) || letters[end] == 'y');
+    if (open_n) continue;
+    std::vector<std::string> typed;  // the span's readings as typed, respelled ones included
+    if (std::string kana = engines.Hiragana(romaji); AllKana(kana)) typed.push_back(std::move(kana));
+    for (const uint16_t rule : {kFuzzyLAsR, kFuzzyCu}) {
+      if (!(rules & rule)) continue;
+      const std::string respelled = FuzzyRomaji(romaji, rule);
+      if (respelled.empty()) continue;
+      std::string kana = engines.Hiragana(respelled);
+      if (!AllKana(kana)) continue;
+      if (length <= kMaxRomaji && !Splits(respelled, kana, engines)) {
+        lattice->Add({.begin = static_cast<uint16_t>(begin),
+                      .end = static_cast<uint16_t>(end),
+                      .kind = EdgeKind::kKana,
+                      .cost = costs.kana + costs.japanese_fuzzy +
+                              costs.crossed_hint * input.HintsInside(begin, end),
+                      .fuzzy = true,
+                      .text = std::string(romaji),
+                      .reading = kana});
+      }
+      typed.push_back(std::move(kana));
+    }
+    if (!(rules & kFuzzyKanaRules) || length < 2 || input.HintsInside(begin, end) > 0) continue;
+    std::vector<std::string> seen = typed;
+    for (const std::string& reading : typed) {
+      if (reading.size() < 2 * 3 || reading.size() > kMaxFuzzyKana * 3) continue;
+      for (uint16_t rule = 1; rule & kFuzzyKanaRules; rule <<= 1) {
+        if (!(rules & rule)) continue;
+        for (std::string& variant : FuzzyReadings(reading, rule, kMaxFuzzyReadings)) {
+          if (std::find(seen.begin(), seen.end(), variant) != seen.end()) continue;
+          seen.push_back(variant);
+          if (engines.Known(variant) < 0) continue;
+          const uint8_t units = KanaUnits(reading);
+          lattice->Add({.begin = static_cast<uint16_t>(begin),
+                        .end = static_cast<uint16_t>(end),
+                        .kind = EdgeKind::kKana,
+                        .cost = costs.kana * units + costs.japanese_fuzzy,
+                        .fuzzy = true,
+                        .units = units,
+                        .text = std::string(romaji),
+                        .reading = std::move(variant)});
+        }
+      }
+    }
+  }
+}
+
 }  // namespace
 
 void ProposeJapanese(const Input& input, Engines& engines, const Options& options,
@@ -88,6 +175,9 @@ void ProposeJapanese(const Input& input, Engines& engines, const Options& option
                             costs.crossed_hint * input.HintsInside(begin, end),
                     .text = std::string(romaji),
                     .reading = std::move(kana)});
+    }
+    if (options.japanese_fuzzy != 0) {
+      ProposeFuzzy(input, begin, engines, options, lattice);
     }
     if (begin == 0) continue;  // a particle follows something
     for (const Particle& particle : kParticles) {

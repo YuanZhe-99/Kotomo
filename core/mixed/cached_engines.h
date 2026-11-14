@@ -31,6 +31,7 @@ class CachedEngines : public Engines {
     spellings_.clear();
     chinese_.clear();
     hiragana_.clear();
+    known_.clear();
     japanese_.clear();
     english_.clear();
   }
@@ -59,6 +60,12 @@ class CachedEngines : public Engines {
     return it->second;
   }
 
+  int32_t Known(std::string_view reading) override {
+    auto it = known_.find(reading);
+    if (it == known_.end()) it = known_.emplace(std::string(reading), engines_.Known(reading)).first;
+    return it->second;
+  }
+
   std::optional<std::vector<JapaneseSegment>> Japanese(const std::vector<JapaneseSpan>& spans,
                                                        bool incognito) override {
     std::string key(1, incognito ? '1' : '0');
@@ -84,6 +91,7 @@ class CachedEngines : public Engines {
   std::map<std::string, std::vector<Spelling>, std::less<>> spellings_;
   std::map<std::string, std::vector<ChineseWord>, std::less<>> chinese_;
   std::map<std::string, std::string, std::less<>> hiragana_;
+  std::map<std::string, int32_t, std::less<>> known_;
   std::map<std::string, std::optional<std::vector<JapaneseSegment>>, std::less<>> japanese_;
   std::map<std::string, std::vector<EnglishForm>, std::less<>> english_;
 };

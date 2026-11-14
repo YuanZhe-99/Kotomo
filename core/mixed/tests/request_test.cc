@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "check.h"
+#include "fuzzy_kana.h"
 #include "request.h"
 #include "snapshot.h"
 
@@ -17,7 +18,8 @@ int main() {
   samples[2] = {.generation = 3, .command = Command::kBackspace};
   samples[3] = {.generation = 4, .command = Command::kClear};
   samples[4] = {.generation = 5, .command = Command::kOptions, .level = 2,
-                .switches = kSwitchEnglishToKanji | kSwitchIncognito | kSwitchAbbreviation, .targets = 2, .weight = {-100, 0, 100}};
+                .switches = kSwitchEnglishToKanji | kSwitchIncognito | kSwitchAbbreviation, .targets = 2, .weight = {-100, 0, 100},
+                .fuzzy = kFuzzyVoiced | kFuzzyCu};
   samples[5] = {.generation = 6, .command = Command::kContext, .text = "前文"};
   samples[6] = {.generation = 1ull << 40, .command = Command::kSelect, .shown = 9, .index = 3};
   samples[7] = {.generation = 8, .command = Command::kAlternatives, .begin = 3, .end = 9};
@@ -60,5 +62,9 @@ int main() {
   Check(!DecodeRequest(damaged(body + 3, 101)) && !DecodeRequest(damaged(body + 5, -101)),
         "Q7-request-weight-refused");
   Check(DecodeRequest(damaged(body + 3, 100)).has_value(), "Q7-request-weight-limit-accepted");
+  // Feedback B4: a Japanese fuzzy rule this version does not know is refused.
+  Request rules = samples[4];
+  rules.fuzzy = kFuzzyAll + 1;
+  Check(!DecodeRequest(Encode(rules)), "B4-N-request-fuzzy-bit-refused");
   return kotomo::mixed::test::Result();
 }

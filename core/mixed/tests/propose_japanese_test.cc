@@ -2,6 +2,7 @@
 
 #include "check.h"
 #include "fake_engines.h"
+#include "fuzzy_kana.h"
 #include "propose.h"
 
 using namespace kotomo::mixed;
@@ -85,6 +86,47 @@ int main() {
     ProposeJapanese(done, engines, options, &other);
     Check(!Find(other, EdgeKind::kPending, 0, 1) && !Find(other, EdgeKind::kPending, 3, 4),
           "A7-propose-pending-only-unfinished");
+  }
+
+  {
+    // Japanese fuzzy rules (feedback B4): a word a rule finds in the dictionary is one edge.
+    Options fuzzy;
+    fuzzy.japanese_fuzzy = kFuzzyVoiced | kFuzzyLongVowel;
+    const Input input = *ParseInput("igukauu");
+    Lattice lattice(input.size());
+    ProposeJapanese(input, engines, fuzzy, &lattice);
+    const Edge* voiced = Find(lattice, EdgeKind::kKana, 0, 3);
+    Check(voiced && voiced->reading == "いく" && voiced->fuzzy && voiced->units == 2 &&
+              voiced->cost == 2 * costs.kana + costs.japanese_fuzzy,
+          "B4-propose-voiced-word");
+    const Edge* long_vowel = Find(lattice, EdgeKind::kKana, 3, 7);
+    Check(long_vowel && long_vowel->reading == "かう" && long_vowel->fuzzy && long_vowel->units == 3,
+          "B4-propose-long-vowel-word");
+    // Negative: without the rule there is no such edge; a reading the dictionary lacks gets
+    // none either (いぐか → いくか is no word), and one kana alone is never rewritten.
+    Lattice exact(input.size());
+    ProposeJapanese(input, engines, options, &exact);
+    Options other;
+    other.japanese_fuzzy = kFuzzySokuon;
+    Lattice unrelated(input.size());
+    ProposeJapanese(input, engines, other, &unrelated);
+    Check(!Find(exact, EdgeKind::kKana, 0, 3) && !Find(unrelated, EdgeKind::kKana, 0, 3) &&
+              !Find(lattice, EdgeKind::kKana, 0, 5) && lattice.size() == exact.size() + 2,
+          "B4-N-propose-fuzzy-only-known-words");
+  }
+  {
+    // A romaji rule respells one kana: cu is つ, with the rule only.
+    Options fuzzy;
+    fuzzy.japanese_fuzzy = kFuzzyCu;
+    const Input input = *ParseInput("cuki");
+    Lattice lattice(input.size());
+    ProposeJapanese(input, engines, fuzzy, &lattice);
+    const Edge* tsu = Find(lattice, EdgeKind::kKana, 0, 2);
+    Check(tsu && tsu->reading == "つ" && tsu->fuzzy && tsu->cost == costs.kana + costs.japanese_fuzzy,
+          "B4-propose-cu");
+    Lattice exact(input.size());
+    ProposeJapanese(input, engines, options, &exact);
+    Check(!Find(exact, EdgeKind::kKana, 0, 2), "B4-N-propose-cu-off");
   }
 
   return kotomo::mixed::test::Result();

@@ -42,7 +42,8 @@ app and the keyboard run in the same process and share one `SettingsStore`
 Mixed mode reads its keys on every key typed (the mixed-input coordinator gets them as options,
 `engine-contract.md`). Japanese mode reads `japanese.cross.*` the same way: it asks the
 coordinator for Japanese candidates only and adds the cross-language ones to Mozc's own, and with
-`pinyin_to_kanji`, `english_to_kanji` and `english_to_katakana` all off it does not ask at all.
+`pinyin_to_kanji`, `english_to_kanji` and `english_to_katakana` all off, and no
+`japanese.fuzzy.*` rule on, it does not ask at all.
 `readings` shows a cross-language Japanese candidate's reading next to it in the candidate bar.
 Not read yet: `pinyin_to_katakana` in either mode (no data maps pinyin to katakana words).
 
@@ -129,6 +130,7 @@ the table lists every key.
 | `emoji.combos` | string | empty | The person's own emoji combinations, one per line; the panel shows them after Kotomo's under Combinations |
 | `emoji.mappings` | string | empty | The person's emoji for words, `word=emoji` per line (the word in lowercase letters as typed, at most 24); they come first among the emoji suggestions for exactly those letters |
 | `japanese.flick` | boolean | `false` | Japanese mode uses the 12-key flick layout |
+| `japanese.fuzzy.<rule>` | boolean | `false` | One Japanese fuzzy rule (feedback B4), read by Japanese mode and by Mixed mode: `long_vowel` (a long vowel left out or typed too much, `tokyo` → 東京), `sokuon` (the small っ, `zashi` → 雑誌), `moraic_n` (ん before a vowel, や行 or な行, `konichiha` → こんにちは), `voiced` (か/が, さ/ざ, た/だ, は/ば, `wadashi` → 私), `semi_voiced` (は/ぱ, ば/ぱ), `yoon` (a small or a full ゃ ゅ ょ, `kiyou` → 今日), `yotsugana` (じ/ぢ, ず/づ), `ra_na_da` (ら行 for な行 or だ で ど), `hi_shi` (ひ/し), `loanword` (ヴァ/バ, ティ/チ, ファ/ハ), `l_as_r` (romaji l for r), `cu` (romaji `cu` for つ; in Mixed mode `cu` is read as pinyin as well). Each rule is its own switch and none turns another on; a rule that was never switched on is not written. A rule only adds readings that are words of the Japanese dictionary, and what was typed is still offered |
 | `chinese.nine_key` | boolean | `false` | Chinese mode uses the 9-key layout: keys 2–9 stand for their letters and librime's 9-key schema reads the digits as pinyin (PLAN §10.9); the fuzzy-pinyin rules and a double-pinyin scheme apply to it as to the letter layout (with double pinyin on, the digits spell the scheme's two keys); the person's and the downloaded dictionaries, whose codes are letters, are not reached |
 | `toolbar.hidden` | string | `edit,emoji,language,dictionaries,themes,floating,undo,redo,handwriting,voice` | Tools kept off the bar, joined by commas; they wait under More with the tools the bar has no room for. Written together with `toolbar.order`; a tool missing from a stored `toolbar.order` (one a later version adds) takes its default place |
 

@@ -214,6 +214,15 @@ TEST_F(MozcEngineTest, PredictsNothingFromNothing) {
 
 // S6, PLAN.md §5.2: romaji goes through Mozc's own romaji table, so the
 // coordinator proposes romaji spans with Mozc's spellings (si/shi, sokuon, ん).
+// B4: a reading is a dictionary key or it is not.
+TEST_F(MozcEngineTest, KnowsDictionaryReadings) {
+  EXPECT_GE(engine_->WordCost("とうきょう"), 0);
+  EXPECT_GE(engine_->WordCost("わたし"), 0);
+  EXPECT_EQ(engine_->WordCost("ときょ"), -1);
+  EXPECT_EQ(engine_->WordCost(""), -1);
+  EXPECT_EQ(engine_->WordCost("nihao"), -1);
+}
+
 TEST_F(MozcEngineTest, MapsRomajiToHiragana) {
   EXPECT_EQ(engine_->ToHiragana("sakura"), "さくら");
   EXPECT_EQ(engine_->ToHiragana("nihon"), "にほん");

@@ -37,6 +37,10 @@ class MozcClient {
   ///   the service fails.
   std::string Hiragana(const std::string& romaji);
 
+  /// Returns: the lowest word cost of Mozc's dictionary entries read exactly `reading`, or -1
+  ///   when there is none or the service fails.
+  int32_t Known(const std::string& reading);
+
   /// Returns: Mozc's segments for the spans, or nullopt when it converts nothing or the service
   ///   fails. Inputs: readings and surfaces without tabs, colons or newlines.
   std::optional<std::vector<JapaneseSegment>> Convert(const std::vector<JapaneseSpan>& spans);

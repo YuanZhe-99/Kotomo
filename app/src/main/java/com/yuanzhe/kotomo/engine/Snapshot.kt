@@ -88,7 +88,7 @@ data class Snapshot(
 
     companion object {
         /** The contract version this decoder reads (`kContractVersion` in core/mixed/snapshot.h). */
-        const val VERSION = 7
+        const val VERSION = 8
 
         /**
          * Decodes the bytes the engine returned.

@@ -2336,6 +2336,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             wholeSentence = m.cross.wholeSentence,
             incognito = settings.incognito || sensitive || locked,
             abbreviation = m.abbreviation,
+            japaneseFuzzy = JapaneseFuzzyRule.mask(settings.japaneseFuzzy),
             chineseWeight = m.weightChinese - d.weightChinese,
             japaneseWeight = m.weightJapanese - d.weightJapanese,
             englishWeight = m.weightEnglish - d.weightEnglish,
@@ -2606,7 +2607,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val crossed = if (cross != null && m != null) {
                 attachMixed()
                 // Japanese mode shows one list: the full answer at once.
-                Candidates.japaneseCross(mixed.type(typed, touches, cross).let { mixed.refine() ?: it })
+                Candidates.japaneseCross(mixed.type(typed, touches, cross).let { mixed.refine() ?: it }, fuzzy = cross.japaneseFuzzy != 0)
             } else {
                 emptyList()
             }
@@ -2628,12 +2629,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /**
      * Japanese mode's options for the coordinator (PLAN §9.10): Japanese candidates only, with
-     * each `japanese.cross.*` conversion switch; null when all three conversions are off, so the
-     * coordinator is not asked at all.
+     * each `japanese.cross.*` conversion switch and the `japanese.fuzzy.*` rules; null when all
+     * three conversions and every rule are off, so the coordinator is not asked at all.
      */
     private fun japaneseOptions(): Core.Options? {
         val c = settings.japanese
-        if (!c.pinyinToKanji && !c.englishToKanji && !c.englishToKatakana) return null
+        val fuzzy = JapaneseFuzzyRule.mask(settings.japaneseFuzzy)
+        if (!c.pinyinToKanji && !c.englishToKanji && !c.englishToKatakana && fuzzy == 0) return null
         return Core.Options(
             pinyinToJapanese = c.pinyinToKanji,
             englishToKanji = c.englishToKanji,
@@ -2641,6 +2643,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             wholeSentence = c.wholeSentence,
             incognito = settings.incognito || sensitive || locked,
             abbreviation = false,
+            japaneseFuzzy = fuzzy,
             chinese = false,
             english = false,
         )

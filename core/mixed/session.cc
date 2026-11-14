@@ -205,6 +205,7 @@ Snapshot Session::Handle(const Request& request) {
       options_.whole_sentence = request.switches & kSwitchWholeSentence;
       options_.incognito = request.switches & kSwitchIncognito;
       options_.abbreviation = request.switches & kSwitchAbbreviation;
+      options_.japanese_fuzzy = request.fuzzy;
       for (int i = 0; i < 3; ++i) {
         options_.targets[i] = request.targets & (1 << i);
         options_.bias[i] = -kWeightStep * request.weight[i];

@@ -133,6 +133,13 @@ class MozcEngine {
   /// `from_dictionary == false` when Mozc has no such entry.
   PosIds LookupPosIds(std::string_view reading, std::string_view surface) const;
 
+  /// Looks a hiragana reading up as a dictionary key (feedback B4): the
+  /// coordinator asks whether a fuzzy variant of what was typed is a word.
+  /// Returns: the lowest word cost among Mozc's entries read exactly
+  /// `reading`, or -1 when it has none (or the engine has no dictionary).
+  /// Side effects: none; nothing is learned.
+  int32_t WordCost(std::string_view reading) const;
+
   /// Describes `surface` read as `reading` from Mozc's dictionary: its part of
   /// speech and, for a verb or adjective, its conjugation type and form.
   /// Inputs: a candidate's surface and reading (`行きます`, `いきます`).

@@ -12,6 +12,8 @@
 //             P:<reading>:<surface> (pinned), readings in hiragana
 //                                  → ok <TAB> n, then n segment lines:
 //       <key> <TAB> 0|1 (pinned) [<TAB> value <TAB> reading <TAB> cost]…
+//   known <TAB> reading            → ok <TAB> the lowest word cost of the
+//       dictionary entries read exactly so, or -1 (MozcEngine::WordCost)
 //   quit                           → ends the service (so does end of input)
 // Anything else answers `err <TAB> reason`. Every conversion is incognito and
 // nothing is committed, so the service learns nothing.
@@ -63,6 +65,9 @@ std::vector<std::string> Answer(const MozcEngine& engine, std::string_view line)
   const std::vector<std::string_view> fields = absl::StrSplit(line, '\t');
   if (fields[0] == "kana" && fields.size() == 2) {
     return {"ok\t" + engine.ToHiragana(fields[1])};
+  }
+  if (fields[0] == "known" && fields.size() == 2) {
+    return {"ok\t" + std::to_string(engine.WordCost(fields[1]))};
   }
   if (fields[0] == "convert" && fields.size() >= 2) {
     std::vector<Span> spans(fields.size() - 1);

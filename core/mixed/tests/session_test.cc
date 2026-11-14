@@ -3,6 +3,7 @@
 
 #include "check.h"
 #include "fake_engines.h"
+#include "fuzzy_kana.h"
 #include "input.h"
 #include "session.h"
 
@@ -231,6 +232,18 @@ int main() {
                   .switches = static_cast<uint8_t>(kSwitchAll & ~kSwitchIncognito & ~kSwitchAbbreviation)});
   s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "tq"});
   Check(Place(s, "天气") < 0, "B6-N-abbreviated-pinyin-off");
+
+  // Feedback B4: a Japanese fuzzy rule adds the word it finds, marked fuzzy, after the kOptions
+  // request that turns it on and never before.
+  s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "igu"});
+  Check(Place(s, "行く") < 0, "B4-N-fuzzy-off-by-default");
+  session.Handle({.generation = ++generation, .command = Command::kOptions, .fuzzy = kFuzzyVoiced});
+  s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "igu"});
+  Check(Place(s, "行く") >= 0 && (s.candidates[Place(s, "行く")].flags & kFuzzy), "B4-fuzzy-voiced-word");
+  // Negative: the exact reading keeps its place before the rule's reading of the same letters.
+  s = session.Handle({.generation = ++generation, .command = Command::kSet, .text = "iku"});
+  Check(Place(s, "行く") >= 0 && !(s.candidates[Place(s, "行く")].flags & kFuzzy), "B4-N-exact-word-not-fuzzy");
+  session.Handle({.generation = ++generation, .command = Command::kOptions});
   session.Handle({.generation = ++generation, .command = Command::kOptions});
   session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});
 

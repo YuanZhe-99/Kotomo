@@ -142,6 +142,29 @@ With every rule on, exact input keeps its first candidate in Mixed mode (`nihao`
 
 One loss was found and fixed: `fune` listed 船 fifth, behind the English word `fun` read as Japanese plus the particle へ (分へ). An English key of two or three letters is now read as Japanese only when it is the whole input (A8-N03).
 
+## Japanese fuzzy readings, rule by rule (feedback B3 and B4, 2026-11-13)
+
+Twelve rules, one switch each (`japanese.fuzzy.<rule>`), all off by default; they do not chain and one rule never brings another along (B4-N07). A rule's reading is offered only when it is a key of Mozc's dictionary, so a reading that is no word adds nothing (B4-N06), and the candidate is ranked by Mozc's own cost plus a fixed fuzzy cost: the word as typed stays first (B4-N05, B4-N08, B4-N09, B4-N10). Host only; never device evidence.
+
+"Lists changed" is how many of the 155 host corpus inputs of that day had a different first five with that one rule forced on. It was measured before Mozc's own key lookup was built, with the keys of Mozc's dictionary source files standing in for it, and not measured again with the shipped lookup; with each rule forced on, no corpus line regressed and the Mixed lines stayed 80 of 80. The host time per line stayed between 5.7 and 7.2 ms (6.3 ms with every rule off).
+
+| Rule | What it accepts | Typed | Wanted | Corpus lines | Lists changed |
+|---|---|---|---|---|---|
+| `long_vowel` | Long vowels left out or added | `koko`, `gakko`, `tokyo` | 高校, 学校, 東京 | B4-001, B4-002, B4-018 | 17 |
+| `sokuon` | Small っ left out or added | `zashi` | 雑誌 | B4-003 | 16 |
+| `moraic_n` | ん before a vowel, や行 or な行 typed with one n | `konichiha`, `kinen` | こんにちは, 禁煙 | B4-004, B4-005 | 3 |
+| `voiced` | か/が, さ/ざ, た/だ, は/ば | `wadashi` | 私 | B4-006, B4-017 | 30 |
+| `semi_voiced` | は/ぱ, ば/ぱ | `ibbai` | 一杯 | B4-007 | 5 |
+| `yoon` | Small ゃ, ゅ, ょ typed large or the reverse | `kiyou` | 今日 | B4-008 | 1 |
+| `yotsugana` | じ/ぢ, ず/づ | `dikan` | 時間 | B4-020 | 1 |
+| `ra_na_da` | ら行 for な行 or だ, で, ど | `kanada` | 体 | B4-009 | 14 |
+| `hi_shi` | ひ/し | `shito` | 人 | B4-010 | 3 |
+| `loanword` | Loanword spellings (ヴァ/バ, ティ/チ, ファ/ハ) | `hairu` | ファイル | B4-011 | 3 |
+| `l_as_r` | l typed for r | `sakula`, `lamen` | 桜, ラーメン | B4-012, B4-016 | 0 |
+| `cu` | cu typed for つ (feedback B3) | `cuki` | 月 | B4-013, B4-019 | 0 |
+
+With every rule on, the first candidate changed for two inputs of the corpus: `arigato` (ありがとう, the long vowel added) and, in Japanese mode's cross-language view, `nihao` (ニーハオ). Particles typed as they sound (`watashiwa`) needed no rule: both modes already read them. One thing was found and left as it is: in Mixed mode an exactly typed kana string that Mozc has no word for (`zagura`) is listed first, with or without the rules.
+
 ## Known limitations
 
 - Mixed mode converts through the mixed-input coordinator since 2026-11-11 (host-verified only,
