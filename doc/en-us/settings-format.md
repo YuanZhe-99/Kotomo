@@ -16,6 +16,10 @@ app and the keyboard run in the same process and share one `SettingsStore`
 - `SettingsStore.set` (fire and forget, kept in call order) and `SettingsStore.update` (suspends
   until durable) apply a `copy` of `Settings` and write only the keys whose value changed.
 - A corrupt file is replaced by an empty one, which reads as the defaults.
+- The interface language (Settings → Interface language, Android 13 and later) is not in this
+  file: it is Android's per-app language (`LocaleManager`, the languages listed in
+  `res/xml/locales_config.xml`), which Android keeps and which the system's own app-language
+  setting changes too; Kotomo's backups do not carry it. The keyboard reads it each time it opens.
 
 ## Versioning and compatibility
 

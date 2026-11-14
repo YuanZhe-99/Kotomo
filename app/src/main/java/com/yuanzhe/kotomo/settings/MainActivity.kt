@@ -111,6 +111,7 @@ internal enum class Page(@StringRes val title: Int) {
     KEYS(R.string.page_keys),
     EMOJI(R.string.page_emoji),
     THEMES(R.string.page_themes),
+    LANGUAGE(R.string.page_language),
     DICTIONARIES(R.string.page_dictionaries),
     BACKUP(R.string.page_backup),
     AI(R.string.page_ai),
@@ -198,6 +199,7 @@ private fun PageContent(page: Page, settings: Settings, store: SettingsStore, op
         Page.KEYS -> KeysPage(settings, store)
         Page.EMOJI -> EmojiPage(settings, store)
         Page.THEMES -> ThemesPage(settings, store)
+        Page.LANGUAGE -> LanguagePage()
         Page.DICTIONARIES -> DictionariesPage()
         Page.BACKUP -> BackupPage()
         Page.AI -> AiPage(settings, store)
@@ -271,7 +273,8 @@ private fun HomePage(settings: Settings, store: SettingsStore, open: (Page) -> U
         LinkRow(stringResource(R.string.badge_layout), Page.LAYOUT, stringResource(R.string.page_layout_desc), open)
         LinkRow(stringResource(R.string.badge_keys), Page.KEYS, stringResource(R.string.page_keys_desc), open)
         LinkRow(stringResource(R.string.badge_emoji), Page.EMOJI, stringResource(R.string.page_emoji_desc), open)
-        LinkRow(stringResource(R.string.badge_themes), Page.THEMES, stringResource(R.string.page_themes_desc), open, last = true)
+        LinkRow(stringResource(R.string.badge_themes), Page.THEMES, stringResource(R.string.page_themes_desc), open)
+        LinkRow(stringResource(R.string.badge_language), Page.LANGUAGE, stringResource(R.string.page_language_desc), open, last = true)
     }
     Group(stringResource(R.string.section_data)) {
         LinkRow(stringResource(R.string.badge_dictionaries), Page.DICTIONARIES, stringResource(R.string.page_dictionaries_desc), open)

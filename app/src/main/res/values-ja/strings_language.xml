@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="page_language">表示言語</string>
+    <string name="badge_language">言</string>
+    <string name="page_language_desc">キーボードとこの設定の言語</string>
+    <string name="language_system">システムに従う</string>
+    <string name="language_system_desc">Kotomo が対応していればスマートフォンの言語、そうでなければ英語</string>
+    <string name="language_note">キーボードは次に開いたときに新しい言語になります。</string>
+    <string name="language_old_android">この Android のバージョンでは、Kotomo はシステムの言語に従います。</string>
+</resources>

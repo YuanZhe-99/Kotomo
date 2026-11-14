@@ -1,14 +1,18 @@
 package com.yuanzhe.kotomo.ime
 
+import android.app.LocaleManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Rect
 import android.inputmethodservice.InputMethodService
 import android.os.Bundle
+import android.os.LocaleList
 import android.os.IBinder
 import android.os.Build
 import android.os.Debug
@@ -364,6 +368,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun checkLook() {
         if (appliedLook == null || appliedLook == lookFor(mode)) return
+        rebuildViews()
+    }
+
+    /** Drops the cached panels and sets a new input view, built with the current theme and language. */
+    private fun rebuildViews() {
         emojiPanel = null
         candidatesPanel = null
         segmentPanel = null
@@ -374,6 +383,46 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
     /** Main thread: the settings in force (the store's latest value; no I/O to read). */
     private val settings: Settings get() = store.current
+
+    /** The interface language chosen on Kotomo's Interface language page (B8), or null to follow the system. */
+    private var appLocales: LocaleList? = null
+    /** The resources in [appLocales] for the window's current configuration; made when first needed. */
+    private var localized: Resources? = null
+
+    /**
+     * Returns the service's resources in the interface language chosen in Kotomo (B8, device
+     * feedback 2026-11-13). Android gives a per-app language to activities, but an input method's
+     * window takes the display's configuration, so the keyboard looks its strings up here.
+     * Notes: main thread; cached until the configuration or the chosen language changes, so the
+     * key path pays nothing for it.
+     */
+    override fun getResources(): Resources {
+        val base = super.getResources()
+        val locales = appLocales ?: return base
+        return localized ?: createConfigurationContext(Configuration(base.configuration).apply { setLocales(locales) })
+            .resources.also { localized = it }
+    }
+
+    /** Drops the resources in the chosen language when the window's configuration changes (B8). */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        localized = null
+        super.onConfigurationChanged(newConfig)
+    }
+
+    /**
+     * Reads the interface language chosen in Kotomo (B8) and, when it changed since the views were
+     * built, builds them again in it.
+     * Side effects: may set a new input view. Notes: main thread, when the keyboard opens (one
+     * binder call, not on the key path); per-app languages exist from Android 13.
+     */
+    private fun checkLanguage() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val chosen = getSystemService(LocaleManager::class.java).applicationLocales.takeUnless { it.isEmpty }
+        if (chosen == appLocales) return
+        appLocales = chosen
+        localized = null
+        if (appliedLook != null) rebuildViews()
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -401,6 +450,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         settingsWatch = watchSettings()
         mode = settings.usable(memory()?.current?.lastMode)
+        checkLanguage()
         ContextCompat.registerReceiver(
             this, deployDone, IntentFilter(RimeDeployService.ACTION_DONE), ContextCompat.RECEIVER_NOT_EXPORTED,
         )
@@ -1376,7 +1426,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         pinnedHere.value = remembered?.pinned
         appScript = remembered?.script
         applyEngineSettings()
-        // The mode this field starts in may have its own theme (PLAN §11.4).
+        // The mode this field starts in may have its own theme (PLAN §11.4); the interface
+        // language may have changed since the keyboard was last open (B8).
+        checkLanguage()
         checkLook()
         showKeyboard()
         showKeys(super.onEvaluateInputViewShown())

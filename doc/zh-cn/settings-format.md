@@ -14,6 +14,9 @@
 - `SettingsStore.set`（不等待，按调用顺序排队）和 `SettingsStore.update`（挂起直到写入完成）应用
   `Settings` 的一个 `copy`，只写入值发生变化的键。
 - 损坏的文件被替换为空文件，读出的就是默认值。
+- 界面语言（设置 → 界面语言，Android 13 及以上）不在这个文件里：它是 Android 的应用语言
+  （`LocaleManager`，可选语言列在 `res/xml/locales_config.xml`），由 Android 保存，系统自己的应用
+  语言设置也能修改它；Kotomo 的备份不包含它。键盘每次打开时读取它。
 
 ## 版本与兼容
 

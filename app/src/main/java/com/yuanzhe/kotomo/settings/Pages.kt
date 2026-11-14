@@ -853,9 +853,9 @@ internal fun SwitchRow(@StringRes title: Int, @StringRes desc: Int, checked: Boo
     }
 }
 
-/** Draws a radio row: a radio button, title and description; the whole row selects. */
+/** Draws a radio row: a radio button, title and description (none for null); the whole row selects. */
 @Composable
-private fun RadioRow(@StringRes title: Int, @StringRes desc: Int, selected: Boolean, select: () -> Unit) {
+private fun RadioRow(@StringRes title: Int, @StringRes desc: Int?, selected: Boolean, select: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_row_min_small))
             .selectable(selected, role = Role.RadioButton, onClick = select)
@@ -866,8 +866,38 @@ private fun RadioRow(@StringRes title: Int, @StringRes desc: Int, selected: Bool
         RadioButton(selected, onClick = null)
         Column(Modifier.weight(1f)) {
             Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
-            Text(stringResource(desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (desc != null) Text(stringResource(desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** The interface languages of `locales_config.xml` (B8): language tag and the language's own name. */
+private val LANGUAGES = listOf("en" to R.string.language_en, "zh-CN" to R.string.language_zh_cn, "zh-TW" to R.string.language_zh_tw, "ja" to R.string.language_ja)
+
+/**
+ * Draws the Interface language page (B8, device feedback 2026-11-13): Follow the system, then
+ * each language Kotomo has, through Android's per-app language ([android.app.LocaleManager]).
+ * Side effects: choosing one sets the app's language; Android recreates this screen in it, and
+ * the keyboard takes it the next time it opens. Android keeps the choice, outside Kotomo's
+ * settings file.
+ * Notes: per-app languages exist from Android 13; before that the page says Kotomo follows the
+ * system.
+ */
+@Composable
+internal fun LanguagePage() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        Section(null) { Inset { Note(stringResource(R.string.language_old_android)) } }
+        return
+    }
+    val manager = LocalContext.current.getSystemService(android.app.LocaleManager::class.java)
+    val current = manager.applicationLocales.get(0)?.toLanguageTag()
+    fun choose(tag: String?) {
+        manager.applicationLocales = if (tag == null) android.os.LocaleList.getEmptyLocaleList() else android.os.LocaleList.forLanguageTags(tag)
+    }
+    Section(null) {
+        RadioRow(R.string.language_system, R.string.language_system_desc, current == null) { choose(null) }
+        LANGUAGES.forEach { (tag, name) -> RadioRow(name, null, current == tag) { choose(tag) } }
+        Inset { Note(stringResource(R.string.language_note)) }
     }
 }
 

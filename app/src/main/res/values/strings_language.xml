@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Each language's own name, the same in every interface language. -->
+    <string name="language_en" translatable="false">English</string>
+    <string name="language_zh_cn" translatable="false">简体中文</string>
+    <string name="language_zh_tw" translatable="false">繁體中文</string>
+    <string name="language_ja" translatable="false">日本語</string>
+    <string name="page_language">Interface language</string>
+    <string name="badge_language">L</string>
+    <string name="page_language_desc">The language of the keyboard and these settings</string>
+    <string name="language_system">Follow the system</string>
+    <string name="language_system_desc">Your phone’s language when Kotomo has it, otherwise English</string>
+    <string name="language_note">The keyboard changes language the next time it opens.</string>
+    <string name="language_old_android">On this version of Android, Kotomo follows the system language.</string>
+</resources>

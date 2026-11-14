@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="page_language">介面語言</string>
+    <string name="badge_language">語</string>
+    <string name="page_language_desc">鍵盤和這些設定使用的語言</string>
+    <string name="language_system">跟隨系統</string>
+    <string name="language_system_desc">Kotomo 支援手機的語言時使用它，否則使用英文</string>
+    <string name="language_note">鍵盤在下次彈出時換成新的語言。</string>
+    <string name="language_old_android">在這個 Android 版本上，Kotomo 跟隨系統語言。</string>
+</resources>

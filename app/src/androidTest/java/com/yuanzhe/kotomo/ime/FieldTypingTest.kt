@@ -97,6 +97,33 @@ class FieldTypingTest {
         }
     }
 
+    /**
+     * B8 (device feedback 2026-11-13, checklist 27.2): with 日本語 chosen as Kotomo's interface
+     * language the keyboard opens in Japanese (削除 for backspace) on an English system; following
+     * the system again, it opens in English.
+     */
+    @Test
+    @androidx.test.filters.SdkSuppress(minSdkVersion = 33)
+    fun keyboardFollowsTheChosenInterfaceLanguage() {
+        val manager = instrumentation.targetContext.getSystemService(android.app.LocaleManager::class.java)
+        val before = manager.applicationLocales
+        fun opened(locales: android.os.LocaleList, delete: String) {
+            instrumentation.runOnMainSync { manager.applicationLocales = locales }
+            val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, 0)
+            ActivityScenario.launch<FieldTestActivity>(intent).use {
+                checkNotNull(device.wait(Until.findObject(By.desc(delete)), WAIT_MS)) { "the keyboard is not in ${locales.toLanguageTags()}" }
+            }
+        }
+        try {
+            opened(android.os.LocaleList.forLanguageTags("ja"), "削除")
+            opened(android.os.LocaleList.getEmptyLocaleList(), BACKSPACE)
+        } finally {
+            instrumentation.runOnMainSync { manager.applicationLocales = before }
+        }
+    }
+
     /** Opens a plain text field, taps [letters] and runs [block] with the field. */
     private fun expanded(letters: String, block: (ActivityScenario<FieldTestActivity>) -> Unit) {
         val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
