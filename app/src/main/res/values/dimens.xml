@@ -167,6 +167,8 @@
     <!-- A language badge's name (混, EN): dp, as the badge does not grow with the font. -->
     <dimen name="settings_badge_text">16dp</dimen>
     <dimen name="settings_badge_text_two">13dp</dimen>
+    <!-- What a segment of a segmented choice takes besides its label: padding and the check mark. -->
+    <dimen name="settings_choice_segment_inner">30dp</dimen>
     <dimen name="settings_icon">22dp</dimen>
     <dimen name="settings_chevron">20dp</dimen>
     <dimen name="settings_touch">48dp</dimen>

@@ -39,6 +39,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.rememberTextMeasurer
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.FuzzyRule
 import com.yuanzhe.kotomo.ime.JapaneseFuzzyRule
@@ -954,19 +957,38 @@ internal fun LanguagePage() {
 }
 
 /**
- * Draws a single-choice segmented control over [labels].
- * Notes: four or more choices use the smaller label style, so a word such as "Traditional" fits
- * its segment instead of breaking inside the word.
+ * Draws a single-choice control over [labels]: a segmented row when every label fits its segment
+ * on one line, otherwise chips that wrap as whole words (Microsoft, Ziranma, larger fonts).
+ * Notes: the fit is measured with the label style at the current font scale, leaving room in
+ * each segment for the selected one's check mark; more than three labels use the smaller style.
  */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun Choice(labels: List<String>, selected: Int, select: (Int) -> Unit) {
     val style = if (labels.size > 3) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        labels.forEachIndexed { i, label ->
-            SegmentedButton(
-                selected = i == selected, onClick = { select(i) },
-                shape = SegmentedButtonDefaults.itemShape(i, labels.size), label = { Text(label, maxLines = 2, style = style) },
-            )
+    val measurer = rememberTextMeasurer()
+    val inner = dimensionResource(R.dimen.settings_choice_segment_inner)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val room = with(LocalDensity.current) { (maxWidth / labels.size - inner).roundToPx() }
+        val fits = room > 0 && labels.all { measurer.measure(it, style, maxLines = 1, softWrap = false).size.width <= room }
+        if (fits) {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                labels.forEachIndexed { i, label ->
+                    SegmentedButton(
+                        selected = i == selected, onClick = { select(i) },
+                        shape = SegmentedButtonDefaults.itemShape(i, labels.size), label = { Text(label, maxLines = 1, style = style) },
+                    )
+                }
+            }
+        } else {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_group_gap)),
+                modifier = Modifier.selectableGroup(),
+            ) {
+                labels.forEachIndexed { i, label ->
+                    FilterChip(i == selected, { select(i) }, label = { Text(label, style = style) })
+                }
+            }
         }
     }
 }
