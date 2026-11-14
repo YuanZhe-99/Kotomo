@@ -118,6 +118,19 @@ class MixedTypingTest {
         assertEquals("你好", type("nihao", expected = "你好"))
     }
 
+    /**
+     * Feedback C3: the separator key's apostrophe is the same boundary as a space for the Japanese
+     * reading (corpus C3-001…003), at every word or at some only. Negative: に and かい are not
+     * joined into 二階 across it (C3-N01).
+     */
+    @Test
+    fun separatorKeyIsABoundaryLikeSpace() {
+        assertEquals(SENTENCE, type(SENTENCE_KEYS.replace(' ', '\''), expected = SENTENCE))
+        assertEquals(SENTENCE, type("chidai'ni'kainiikou", expected = SENTENCE))
+        val part = type("chidai'ni'kai", expected = "", attempts = 1)
+        assertTrue("got $part", part.startsWith("池袋") && part != "池袋二階")
+    }
+
     /** ADR-010 negative: space only marks a boundary; the letters stay uncommitted in the field. */
     @Test
     fun spaceSeparatesAndDoesNotCommit() {
@@ -493,7 +506,8 @@ class MixedTypingTest {
     private fun keys(keys: String) {
         checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
         for (key in keys) {
-            val target = if (key == ' ') By.descStartsWith(SPACE) else By.desc(key.toString())
+            // ' is the separator key, in Shift's place while a composition is open (B1).
+            val target = if (key == ' ') By.descStartsWith(SPACE) else By.desc(if (key == '\'') Layout.SEPARATOR else key.toString())
             device.findObject(target).click()
         }
     }

@@ -123,6 +123,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 7.10 Typing 30 or more letters in one go (`chidainikainiikouchidainikainiikou`) never stalls the keys; more candidates arrive a moment later
 - [ ] 7.11 Mixed page → Level: Conservative keeps the language typed first for `coffee` and `nihon`; Aggressive brings Japanese conversions and whole sentences earlier; set it back to Balanced
 - [ ] 7.12 The list is complete (feedback A9): type `yu`, expand the candidates and scroll to the end: 语, 余, 鱼, 雨 and the rare characters the phone's font can show are there; down to the last one, no candidate shows as an empty box (feedback A11); 与 is still first and the Japanese candidates (湯, 油) still stand among the first few; the same for `shi` and `yi`
+- [ ] 7.13 The separator key is a boundary like the space (feedback C3): in Mixed mode type `chidai`, the separator key (in Shift's place), `ni`, separator, `kai`, separator, `ni`, separator, `ikou`: the field shows `chidai'ni'kai'ni'ikou` and the first candidate is 池袋に買いに行こう, as with spaces. With the separator at some places only (`chidai'ni'kainiikou`) the first is still 池袋に買いに行こう and `chidai` is never left as typed in the first candidate. Start from an empty composition: a `chidai` chosen "as typed" in the segment panel stays as typed for that composition
 
 ## 8. Mixed mode: switches, editing, correction (G2, T08–T10)
 

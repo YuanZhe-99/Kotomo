@@ -292,3 +292,10 @@ C2-017	mixed		birthday	🎂	0	feedback C2: the other emoji of the word stay wher
 C2-N01	mixed		cat	!🐈|!🐱	3	feedback C2: the emoji never stands among the three best words
 C2-N02	mixed		pingg	!🍎	5	feedback C2: a word still being typed keeps its emoji after the words (the emoji weight)
 C2-N03	mixed		nihao	你好	1	feedback C2: a word with no emoji of its own is unchanged
+C3-001	mixed		chidai'ni'kai'ni'ikou	池袋に買いに行こう	1	feedback C3: an apostrophe (the separator key, B1) is the same boundary as a space (T07-001)
+C3-002	mixed		chidai'ni'kainiikou	池袋に買いに行こう	1	feedback C3: boundaries at some places only
+C3-003	mixed		chidai'nikainiikou	池袋に買いに行こう	1	feedback C3: one boundary
+C3-004	mixed		chidai'ni'kai	池袋二回|池袋に回|池袋に会|池袋に買い|池袋に階	3	feedback C3: as A3-001 with apostrophes
+C3-N01	mixed		chidai'ni'kai	!池袋二階	5	feedback C3: as A3-N01, ni and kai are not joined across the apostrophe
+C3-N02	mixed		chidai'ni'kainiikou	!chidai二階に行こう|!chidaiに買いに行こう	0	feedback C3: the pinyin is never left as typed inside the Japanese sentence
+C3-N03	mixed		xi'an	西安	1	feedback C3: the apostrophe still separates pinyin syllables
