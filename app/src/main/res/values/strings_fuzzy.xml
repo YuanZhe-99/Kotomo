@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Fuzzy pinyin on the Chinese settings page (PLAN §9.6). Rule titles are pinyin and the same in every language. -->
 <resources>
+    <string name="chinese_correction">Typing slips</string>
+    <string name="chinese_key_correction">Neighbouring-key correction</string>
+    <string name="chinese_key_correction_desc">A key hit next to the one you meant still finds the word (nohao → 你好). Exact matches always come first</string>
     <string name="fuzzy_initials">Fuzzy pinyin: initials</string>
     <string name="fuzzy_finals">Fuzzy pinyin: finals</string>
     <string name="fuzzy_note">Each switch lets two similar sounds stand for each other. Exact spellings still come first. Turning a switch on or off prepares the Chinese dictionary again in the background; typing goes on meanwhile.</string>

@@ -68,7 +68,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 2.1 `nihao` + space → 你好; `zhongguo` → 中国 first; `woxiangqubeijing` → 我想去北京 first
 - [ ] 2.2 `jin tian tian qi hen hao` (with spaces) and `jintiantianqihenhao` → 今天天气很好 first
 - [ ] 2.3 `zg` → 中国 among the first three; `shi` → 是 first, 事 / 时 / 十 / 市 follow. On the full keyboard, while pinyin is composed, Shift becomes the 分词 key: `xi` 分词 `an` → 西安 first, and Shift is back once the composition ends; Keys and gestures → "Shift separates syllables while composing" off: Shift stays Shift
-- [ ] 2.4 Spelling slips: `nihoa` still offers 你好, `tain` offers 天
+- [ ] 2.4 Spelling slips: `nihoa` still offers 你好 and `tain` offers 天 (swapped letters, always on). A key hit next to the one meant (feedback B2): `nohao` offers no 你好 by default; Settings → Chinese → turn on "Neighbouring-key correction"; a few seconds later `nohao` offers 你好 among the first candidates but not first, and `nihao` still has 你好 first; turn it off again
 - [ ] 2.5 The letters as typed (`zhongguo`) appear after the two best candidates, never first; no Japanese kana appears for `nihao`
 - [ ] 2.6 The arrow at the end of the bar shows all candidates; picking one returns to the keys, a partial pick too (你, then 好 the same way); "Back to the keyboard" closes it without a pick. In Mixed mode the arrow opens the segment panel: picking the sentence, or a reading for one piece, also returns to the keys
 - [ ] 2.7 Long-press a candidate: its reading and source ("Chinese dictionary") appear; tapping elsewhere closes it

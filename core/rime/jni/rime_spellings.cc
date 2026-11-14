@@ -62,6 +62,16 @@ void Spellings(std::string_view letters, std::vector<SpellingMatch>* out) {
   if (!matches.empty()) out->push_back({.length = letters.size(), .fuzzy = false, .partial = true});
 }
 
+bool Spells(std::string_view letters, int id) {
+  int value = 0;
+  if (!prism || !prism->GetValue(std::string(letters), &value)) return false;
+  for (rime::SpellingAccessor accessor = prism->QuerySpelling(value); !accessor.exhausted();
+       accessor.Next()) {
+    if (accessor.syllable_id() == id) return true;
+  }
+  return false;
+}
+
 void CloseSpellings() { prism.reset(); }
 
 }  // namespace kotomo::rime_bridge

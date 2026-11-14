@@ -572,8 +572,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         // The fuzzy-pinyin rules and the double-pinyin scheme decide which librime build the keyboard needs; act only on the
         // stored values (not the defaults before the first read) and never before the first unlock.
         launch {
-            combine(rimeChecked, store.loaded.filterNotNull().map { it.chineseFuzzy to it.doublePinyin }.distinctUntilChanged(), ::Pair)
-                .collect { (checked, rules) -> if (checked && !locked) syncRimeBuild(rules.first, rules.second) }
+            combine(rimeChecked, store.loaded.filterNotNull().map { Triple(it.chineseFuzzy, it.doublePinyin, it.chineseKeyCorrection) }.distinctUntilChanged(), ::Pair)
+                .collect { (checked, rules) -> if (checked && !locked) syncRimeBuild(rules.first, rules.second, rules.third) }
         }
         // The person's dictionaries rewrote librime's tables: re-selecting the schema reloads them
         // (doc/en-us/dictionaries.md). Their files are personal data, never read before the first unlock.
@@ -647,7 +647,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             // swapped in ([RimeFiles.promote]), and the files are compared with the rules again
             // only after the swap, so a deploy that just finished is never started twice.
             reopenRime({ it.promote() || it.hasBuild || it.prebuilt }) {
-                lifecycleScope.launch { store.loaded.value?.let { syncRimeBuild(it.chineseFuzzy, it.doublePinyin) } }
+                lifecycleScope.launch { store.loaded.value?.let { syncRimeBuild(it.chineseFuzzy, it.doublePinyin, it.chineseKeyCorrection) } }
             }
         }
     }
@@ -677,18 +677,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /**
      * Brings librime's build in line with this version's data, the fuzzy-pinyin [rules] (PLAN
-     * §9.6) and the [double] pinyin scheme (PLAN §10.4; it applies wherever pinyin is typed,
-     * Mixed mode included): writes or removes the rule file, then deploys in the deploy process
+     * §9.6), the [double] pinyin scheme (PLAN §10.4; it applies wherever pinyin is typed,
+     * Mixed mode included) and Chinese mode's key [correction] (feedback B2): writes or removes the rule file, then deploys in the deploy process
      * when the build is not current, or, with prebuilt data, no rule on and full pinyin, drops the deployed build so
      * librime reads the prebuilt data again (nothing compiles on the phone then).
      * Notes: main thread, files on the IO dispatcher; the keyboard keeps typing on the previous
      * build until the new one is swapped in. Never before the first unlock.
      */
-    private suspend fun syncRimeBuild(rules: Set<FuzzyRule>, double: DoublePinyin?) = rimeBuildLock.withLock {
+    private suspend fun syncRimeBuild(rules: Set<FuzzyRule>, double: DoublePinyin?, correction: Boolean) = rimeBuildLock.withLock {
         val files = RimeFiles(this)
         val (drop, deploy) = withContext(Dispatchers.IO) {
-            files.writeFuzzy(Fuzzy.yaml(rules, double))
-            if (files.prebuilt && rules.isEmpty() && double == null) files.hasBuild to false else false to !files.current
+            files.writeFuzzy(Fuzzy.yaml(rules, double, correction))
+            if (files.prebuilt && rules.isEmpty() && double == null && !correction) files.hasBuild to false else false to !files.current
         }
         if (drop) reopenRime({ it.dropBuild(); true })
         if (deploy) startDeploy()

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Fuzzy pinyin on the Chinese settings page (PLAN §9.6). Rule titles are pinyin and the same in every language. -->
 <resources>
+    <string name="chinese_correction">入力ミスの補正</string>
+    <string name="chinese_key_correction">隣のキーの補正</string>
+    <string name="chinese_key_correction_desc">隣のキーを押しても候補が見つかります（nohao → 你好）。正確な一致が常に先に並びます</string>
     <string name="fuzzy_initials">あいまい音（ピンイン）：声母</string>
     <string name="fuzzy_finals">あいまい音（ピンイン）：韻母</string>
     <string name="fuzzy_note">スイッチごとに、似た二つの音を同じものとして扱います。正確なつづりが引き続き先に並びます。切り替えると中国語の辞書をバックグラウンドで準備し直します。その間も入力できます。</string>

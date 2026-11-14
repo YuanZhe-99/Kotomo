@@ -5,7 +5,8 @@
 # within the rank), rank (1, 3, 5; 0 means anywhere), notes.
 # A chinese or mixed mode may carry fuzzy-pinyin rules (PLAN §9.6): `chinese+fuzzy:z_zh,n_l` or
 # `chinese+fuzzy:all`; the line then runs on a librime build deployed with the rule file the app
-# generates for those switches (chinese.fuzzy.*).
+# generates for those switches (chinese.fuzzy.*). `+correction` runs the line on a build with
+# Chinese mode's neighbouring-key correction on (chinese.key_correction, feedback B2).
 # T04-002 (mixed, diannao → コンピューター within 5) was removed for now by the user on 2026-11-11:
 # no reliable data maps a Chinese word to the Japanese word that means the same (PLAN.md §5). The
 # id is not reused; the line returns when such data exists.
@@ -231,3 +232,10 @@ B6-N01	mixed		ok	OK|ok	1	feedback B6: a common English word stays first
 B6-N02	mixed		tv	TV|tv	1	feedback B6: letters that are an English abbreviation stay first
 B6-N03	mixed		the	the	1	feedback B6: t + he is not read before the English word
 B6-N04	mixed		nai	!你爱|!那爱	0	feedback B6: an initial is not split off a whole syllable
+B2-001	chinese+correction		nohao	你好	3	feedback B2: o for its neighbour i, with chinese.key_correction on
+B2-002	chinese+correction		xihuab	喜欢	3	feedback B2: b for its neighbour n
+B2-003	chinese+correction		nihao	你好	1	feedback B2: an exact reading stays first with the correction on
+B2-N01	chinese+correction		nohao	!你好	1	feedback B2: a corrected reading is never first while an exact one exists
+B2-N02	chinese+correction		nu	!你|!不	5	feedback B2: exact readings (怒, 奴) come before the corrected ones
+B2-N03	chinese		nohao	!你好	5	feedback B2: off by default
+B2-N04	mixed+correction		nohao	!你好	5	feedback B2: Mixed mode corrects by touch position, not through librime's correction

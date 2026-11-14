@@ -9,7 +9,7 @@ Kotomo 依赖上游的哪些行为，以及每一点核实到什么程度。上�
 |---|---|---|
 | BSD-3-Clause；CMake 与 C++17；需要 Boost ≥ 1.74、LevelDB、marisa、OpenCC ≥ 1.0.2 和 yaml-cpp ≥ 0.5（glog 可选） | 作为子模块用 NDK 从源码构建 | 已阅读 |
 | 嵌入接口 `rime_api.h`：会话、`process_key`、`set_input`、`get_context`（预编辑、光标、候选页）、`get_commit`、候选选择与迭代、`set_option`、`register_module` | 拼音片段可以经 `set_input` 与 `get_context` 转换；更深的接入走插件模块 | 已阅读 |
-| luna_pinyin 的拼写运算已经应用 `pinyin:/spelling_correction` 与 `pinyin:/key_correction`（`hoa` → hao，`tain` → tian）；`translator/enable_correction` 会加载 `.correction.bin`，而 1.17 的词典编译器从不写出它（那段代码在 `#if 0` 中），会话因找不到文件而中止 | 中文拼写纠错来自方案的规则；`enable_correction` 保持关闭 | 主机测试，语料 T01-012、T01-015 |
+| luna_pinyin 的拼写运算已经应用 `pinyin:/spelling_correction` 与 `pinyin:/key_correction`（`hoa` → hao，`tain` → tian）；`translator/enable_correction` 在运行时加入 librime 的邻键搜索（把一个键读成 QWERTY 键盘上相邻的键，一个音节最多五个键；编辑距离部分及其 `.correction.bin` 在所固定的提交中处于 `#if 0`，不加载任何文件）。librime 按词频加固定惩罚给纠错读法排序，所以高频词可能排在精确读法之前（`nu` → 你 排在 怒 前），每次翻译最多列出四个纠错读法，并且只在翻译器内部标记它们 | 拼写失误由方案的规则处理。邻近键纠错是开关 `chinese.key_correction`（默认关）：应用的规则文件设置 `enable_correction`，桥接层逐音节对照拼写表重新找出纠错读法，并把它们列在精确读法之后；协调层的转换不包含它们 | 主机测试，语料 T01-012、T01-015、B2-001…N04；`rime_bridge_test` 的 B2 |
 | 模糊音和双拼都是方案中的 `speller/algebra` 规则 | 修改模糊音开关会改写方案并重新部署，所以部署耗时很重要 | 已阅读 |
 | 以 `?` 结尾的引用是可选的（`__include: kotomo_fuzzy:/patch?`）：文件不存在时该节点不变；配置文件先在用户目录、再在共享目录中查找；`speller/algebra/+` 追加到 luna_pinyin 由 `pinyin.yaml` 拼成的列表之后 | Kotomo 的方案补丁从用户目录引入应用生成的 `kotomo_fuzzy.yaml`；预编译数据（没有该文件）不变；不学习的方案通过同一个补丁得到同样的规则 | 主机测试（`FuzzyRimeTest`）、语料 T08 |
 | `fuzz/…/…/` 派生出标为模糊的拼写，权重减半（`log 0.5`）；简拼规则只作用于它运行时已存在的拼写 | 模糊音规则使用 `fuzz`，并在其后再追加一次 luna_pinyin 的两条简拼规则；词频相近时精确拼写优先，但频率高得多的模糊匹配仍可能排在前面（开启 z/zh 时 `zi`：之 在 子 之前） | 语料 T08-020–T08-023 |

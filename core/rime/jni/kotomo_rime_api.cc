@@ -46,7 +46,8 @@ void Convert(const char* syllables, size_t size, size_t limit, void* context,
   size_t passed = 0;
   for (const rb::Candidate& candidate : rb::Candidates(limit * 8)) {
     if (passed == limit) break;
-    if (!candidate.whole || CodePoints(candidate.text) != count) continue;
+    // Corrected readings stay out: the coordinator has its own key correction, placed by cost.
+    if (!candidate.whole || candidate.corrected || CodePoints(candidate.text) != count) continue;
     sink(context, candidate.text.data(), candidate.text.size(), candidate.type == "sentence");
     ++passed;
   }

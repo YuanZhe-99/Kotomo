@@ -100,19 +100,24 @@ object Fuzzy {
     const val FILE = "kotomo_fuzzy.yaml"
 
     /**
-     * Writes the rule file for [rules] and the [double] pinyin scheme (null: full pinyin).
-     * Returns: the file's text, or null when no rule is on and no scheme chosen (the file is then
-     * removed and the prebuilt data applies unchanged).
+     * Writes the rule file for [rules], the [double] pinyin scheme (null: full pinyin) and
+     * [correction], librime's key correction (`chinese.key_correction`, feedback B2: a key
+     * taken for its neighbour, `nohao` → 你好; the bridge lists such readings after the exact ones).
+     * Returns: the file's text, or null when no rule is on, no scheme chosen and the correction
+     * off (the file is then removed and the prebuilt data applies unchanged).
      * Notes: deterministic (the enum's order, not the set's), so its [hash] identifies a rule set.
      */
-    fun yaml(rules: Set<FuzzyRule>, double: DoublePinyin? = null): String? {
-        if (rules.isEmpty() && double == null) return null
+    fun yaml(rules: Set<FuzzyRule>, double: DoublePinyin? = null, correction: Boolean = false): String? {
+        if (rules.isEmpty() && double == null && !correction) return null
         val ordered = FuzzyRule.entries.filter { it in rules }
         return buildString {
             append("# Kotomo: fuzzy and double pinyin, generated from the settings (chinese.fuzzy.*, chinese.double_pinyin); rewritten on every change.\n")
             append("# Rules: ").append(ordered.joinToString(" ") { it.key }).append('\n')
             if (double != null) append("# Double pinyin: ").append(double.key).append('\n')
+            if (correction) append("# Key correction\n")
             append("patch:\n")
+            if (correction) append("  translator/enable_correction: true\n")
+            if (ordered.isEmpty() && double == null) return@buildString
             // The semicolon is a final key in two schemes, so the speller takes it.
             if (double?.semicolon == true) append("  speller/alphabet: ").append(quote("zyxwvutsrqponmlkjihgfedcba;")).append('\n')
             append("  speller/algebra/+:\n")

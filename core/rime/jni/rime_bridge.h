@@ -21,6 +21,8 @@ struct Candidate {
   std::string comment;
   std::string type;
   bool whole = false;  // whether it converts the input to its end, not only a prefix of it
+  bool corrected = false;  // whether it takes a key for its neighbour (`no` read as ni); only
+                           // with the schema's key correction on
 };
 
 /// Starts librime on the given data directories and opens the session.
@@ -76,6 +78,10 @@ std::string Input();
 
 /// Returns: up to `limit` candidates of the current segment, best first, across pages, each with
 ///   its comment and the type of its translation.
+/// Notes: with the schema's key correction on (feedback B2) the list is librime's reordered so
+///   that no corrected reading stands before an exact one: exact conversions of the whole input,
+///   corrected ones of the whole input, exact ones of a prefix, corrected ones of a prefix.
+///   SelectCandidate and DeleteCandidate count in the list this call returned.
 std::vector<Candidate> Candidates(std::size_t limit);
 
 /// Selects the candidate at `index` (counted from the first candidate, not the page).

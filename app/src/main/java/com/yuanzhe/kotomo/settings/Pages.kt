@@ -397,6 +397,9 @@ internal fun ChinesePage(settings: Settings, store: SettingsStore) {
             Note(stringResource(R.string.chinese_quick_note))
         }
     }
+    Section(stringResource(R.string.chinese_correction)) {
+        SwitchRow(R.string.chinese_key_correction, R.string.chinese_key_correction_desc, settings.chineseKeyCorrection) { on -> store.set { it.copy(chineseKeyCorrection = on) } }
+    }
     val (initials, finals) = FuzzyRule.entries.partition { it.ordinal <= FuzzyRule.L_R.ordinal }
     Section(stringResource(R.string.fuzzy_initials)) {
         Inset { Note(stringResource(R.string.fuzzy_note)) }

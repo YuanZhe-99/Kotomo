@@ -340,6 +340,55 @@ int main(int argc, char** argv) {
   Check(RankOf("kaotuomo", "考拓莫") == -1, "T17-rime-removed", "an entry removed from the file is gone after a reload");
   rb::Shutdown();
 
+  // Feedback B2: Chinese mode's key correction, as the app turns it on: the rule file names
+  // librime's `enable_correction`, the schema is deployed, and the bridge lists a reading that
+  // takes a key for its neighbour after the exact ones.
+  const std::filesystem::path correcting = user_dir.string() + "-correction";
+  std::filesystem::remove_all(correcting);
+  std::filesystem::create_directories(correcting);
+  {
+    std::FILE* f = std::fopen((correcting / "kotomo_fuzzy.yaml").string().c_str(), "wb");
+    std::fputs("patch:\n  translator/enable_correction: true\n", f);
+    std::fclose(f);
+  }
+  rb::Initialize(argv[1], correcting.string());
+  const bool corrected_build = rb::Deploy();
+  rb::Shutdown();
+  Check(corrected_build && rb::Initialize(argv[1], correcting.string()), "B2-rime-deploy",
+        "the schema deploys with key correction on");
+  rb::SetOption("zh_hans", true);
+  const int slip = RankOf("nohao", "你好");
+  Check(slip > 0 && slip < 5, "B2-rime-neighbour-key",
+        "nohao offers 你好 (o for i), not first: rank " + std::to_string(slip));
+  {
+    rb::Clear();
+    rb::SetInput("nu");
+    const auto listed = rb::Candidates(50);
+    bool exact_first = !listed.empty() && listed[0].text == "怒", seen = false, ordered = true;
+    for (const auto& candidate : listed) {
+      if (candidate.corrected) seen = true;
+      else if (seen && candidate.whole) ordered = false;
+    }
+    Check(exact_first && seen && ordered, "B2-N-rime-exact-first",
+          "nu: 怒 stays first and every corrected reading (你) follows the exact ones");
+    Check(RankOf("nihao", "你好") == 0, "B2-N-rime-exact-unchanged", "nihao -> 你好 still first");
+  }
+  {
+    // The list is reordered, so a pick counts in the list the bridge returned.
+    const int at = RankOf("nohao", "你好");
+    Check(at >= 0 && rb::SelectCandidate(static_cast<size_t>(at)) && rb::TakeCommit() == "你好",
+          "B2-rime-select", "picking the corrected candidate commits it");
+    // The coordinator's Chinese conversions leave corrected readings out (it corrects by touch).
+    struct Texts { std::vector<std::string> texts; } words;
+    KotomoRimeGetApi()->convert("no'hao", 6, 50, &words,
+                               [](void* context, const char* text, size_t size, int) {
+                                 static_cast<Texts*>(context)->texts.emplace_back(text, size);
+                               });
+    Check(std::find(words.texts.begin(), words.texts.end(), "你好") == words.texts.end(),
+          "B2-N-rime-api-no-correction", "the coordinator's conversion of no'hao has no 你好");
+  }
+  rb::Shutdown();
+
   std::printf("%s: %d failure(s)\n", failures == 0 ? "PASS" : "FAIL", failures);
   return failures == 0 ? 0 : 1;
 }

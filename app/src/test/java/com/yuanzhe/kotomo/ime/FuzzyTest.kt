@@ -63,6 +63,16 @@ class FuzzyTest {
         assertEquals(Fuzzy.NONE, Fuzzy.hash(null))
     }
 
+    /** Feedback B2: key correction alone is one line and no spelling rule; with rules it is added. */
+    @Test
+    fun keyCorrectionIsOneLine() {
+        assertEquals("# Kotomo: fuzzy and double pinyin, generated from the settings (chinese.fuzzy.*, chinese.double_pinyin); rewritten on every change.\n# Rules: \n# Key correction\npatch:\n  translator/enable_correction: true\n", Fuzzy.yaml(emptySet(), correction = true))
+        val both = checkNotNull(Fuzzy.yaml(setOf(FuzzyRule.N_L), correction = true))
+        assertTrue(both.contains("  translator/enable_correction: true\n  speller/algebra/+:\n"))
+        assertNotEquals(Fuzzy.hash(Fuzzy.yaml(setOf(FuzzyRule.N_L))), Fuzzy.hash(both))
+        assertNull(Fuzzy.yaml(emptySet(), correction = false))
+    }
+
     @Test
     fun fileTextIsExact() {
         val expected = """

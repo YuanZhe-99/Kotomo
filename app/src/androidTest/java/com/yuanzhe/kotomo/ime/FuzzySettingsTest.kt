@@ -52,7 +52,7 @@ class FuzzySettingsTest {
     @After
     fun rulesOff() = runBlocking {
         KeyboardMemory.get(context).update { m -> m.withApp(context.packageName) { it.copy(pinned = null) } }
-        store.update { it.copy(chineseFuzzy = emptySet()) }
+        store.update { it.copy(chineseFuzzy = emptySet(), chineseKeyCorrection = false) }
     }
 
     /** Positive: with z/zh on, `zongguo` commits 中国 once the deploy is done. */
@@ -86,6 +86,49 @@ class FuzzySettingsTest {
             assertEquals("你好", type(scenario, "nihao"))
             // A deploy that finishes after the switches went off must not bring its build back.
             assertFalse(files.hasBuild)
+        }
+    }
+
+    /**
+     * Feedback B2: with `chinese.key_correction` on, `nohao` (o for its neighbour i) offers 你好
+     * after the exact reading, and picking it commits it; `nihao` + space still commits 你好.
+     */
+    @Test
+    fun keyCorrectionOffersTheNeighbourReading() {
+        withField { scenario ->
+            runBlocking { store.update { it.copy(chineseKeyCorrection = true) } }
+            waitFor("the build with key correction") { files.fuzzy.isFile && files.current }
+            var text = ""
+            repeat(ATTEMPTS) {
+                if (text == "你好") return@repeat
+                scenario.onActivity { it.findViewById<EditText>(FieldTestActivity.FIELD_ID).setText("") }
+                Thread.sleep(SETTLE_MS)
+                "nohao".forEach { device.findObject(By.desc(it.toString())).click() }
+                Thread.sleep(SETTLE_MS)
+                // The bar draws its candidates; the expanded panel lists them as text.
+                val q = device.findObject(By.desc("q"))
+                val res = context.resources
+                val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+                    res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+                device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+                val offered = device.wait(Until.findObject(By.desc(BACK)), WAIT_MS)?.let { device.wait(Until.findObject(By.text("你好")), WAIT_MS) }
+                if (offered != null) {
+                    val exact = checkNotNull(device.findObject(By.text("弄好"))) { "the exact reading is not listed" }.visibleBounds
+                    val at = offered.visibleBounds
+                    assertTrue("the exact reading stands before the corrected one", exact.top < at.top || (exact.top == at.top && exact.left < at.left))
+                    offered.click()
+                    device.wait(Until.gone(By.desc(BACK)), WAIT_MS)
+                    Thread.sleep(SETTLE_MS)
+                    scenario.onActivity { text = it.findViewById<EditText>(FieldTestActivity.FIELD_ID).text.toString() }
+                } else {
+                    // The deployed build was not loaded yet: leave the panel and the composition.
+                    device.findObject(By.desc(BACK))?.click()
+                    device.wait(Until.findObject(By.desc("q")), WAIT_MS)
+                    device.findObject(By.descStartsWith(SPACE)).click()
+                }
+            }
+            assertEquals("你好", text)
+            assertEquals("你好", type(scenario, "nihao"))
         }
     }
 
@@ -142,6 +185,8 @@ class FuzzySettingsTest {
         const val IME = "com.yuanzhe.kotomo/.ime.KotomoService"
         /** The space key's description starts with this (R.string.key_space, English). */
         const val SPACE = "Space"
+        /** The expanded candidate panel's way back (R.string.candidates_collapse, English). */
+        const val BACK = "Back to the keyboard"
         const val WAIT_MS = 5000L
         /** A deploy on a phone takes seconds; an emulator can be slower. */
         const val DEPLOY_MS = 120_000L

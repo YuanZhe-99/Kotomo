@@ -46,9 +46,11 @@ class ConversionCorpusTest {
         val script: String? = null,
         /** Typed on the Chinese 9-key layout: the input is keypad digits (`chinese+nine`, PLAN §10.9). */
         val nine: Boolean = false,
+        /** Runs on a build with Chinese mode's key correction on (`+correction`, `chinese.key_correction`). */
+        val correction: Boolean = false,
     ) {
         /** Names the librime build the line needs (its rules and scheme), for grouping and the report. */
-        val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "")
+        val build get() = (if (fuzzy.isEmpty()) "" else "+fuzzy:" + fuzzy.joinToString(",") { it.key }) + (double?.let { "+double:${it.key}" } ?: "") + (if (correction) "+correction" else "")
     }
 
     /** One line's outcome: whether it passed, the position that decided it (1-based), the list. */
@@ -65,6 +67,9 @@ class ConversionCorpusTest {
     /** The fuzzy-pinyin rules of the librime build open now. */
     private var rimeRules = emptySet<FuzzyRule>()
     private var rimeDouble: DoublePinyin? = null
+
+    /** Whether the librime build open now has key correction on. */
+    private var rimeCorrection = false
 
     @Test
     fun corpusHasNoRegressions() {
@@ -113,7 +118,9 @@ class ConversionCorpusTest {
                 }
                 val nine = "nine" in c[1].split('+').drop(1)
                 require(!nine || mode == Mode.CHINESE) { "corpus line ${n + 1}: the 9-key layout is for chinese lines" }
-                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && it != "nine" }
+                val correction = "correction" in c[1].split('+').drop(1)
+                require(!correction || mode == Mode.CHINESE || mode == Mode.MIXED) { "corpus line ${n + 1}: key correction is for chinese and mixed lines" }
+                val fuzzyOption = c[1].split('+').drop(1).firstOrNull { !it.startsWith("double:") && !it.startsWith("script:") && it != "nine" && it != "correction" }
                 val fuzzy = if (fuzzyOption != null) {
                     val option = fuzzyOption
                     require(option.startsWith("fuzzy:") && (mode == Mode.CHINESE || mode == Mode.MIXED)) {
@@ -136,7 +143,7 @@ class ConversionCorpusTest {
                 val negative = alternatives.all { it.startsWith("!") }
                 require(negative || alternatives.none { it.startsWith("!") }) { "corpus line ${n + 1}: mixed ! and plain outputs" }
                 require(alternatives.all { it.removePrefix("!").isNotEmpty() }) { "corpus line ${n + 1}: empty output" }
-                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script, nine)
+                Line(c[0], mode, c[2], c[3], alternatives.map { it.removePrefix("!") }, negative, rank!!, fuzzy, double, script, nine, correction)
             }
         val duplicates = lines.groupBy { it.id }.filterValues { it.size > 1 }.keys
         require(duplicates.isEmpty()) { "duplicate corpus ids: $duplicates" }
@@ -171,7 +178,7 @@ class ConversionCorpusTest {
      */
     private fun candidates(line: Line): List<String> = when (line.mode) {
         Mode.CHINESE -> {
-            useRules(line.fuzzy, line.double)
+            useRules(line.fuzzy, line.double, line.correction)
             Rime.clear()
             // Selecting a schema resets its options: the 9-key one first, then the script options
             // as KotomoService.applyEngineSettings sets them.
@@ -193,7 +200,7 @@ class ConversionCorpusTest {
             ) { it >= 0 }.map { it.first }
         }
         Mode.MIXED -> {
-            useRules(line.fuzzy)
+            useRules(line.fuzzy, correction = line.correction)
             Rime.clear()
             Rime.setNineKey(false)
             Rime.setOption("zh_hans", true)
@@ -241,18 +248,19 @@ class ConversionCorpusTest {
      * user directory holding the app's rule file, deployed on first use (as the deploy process
      * deploys into its staging directory).
      */
-    private fun useRules(rules: Set<FuzzyRule>, double: DoublePinyin? = null) {
-        if (rules == rimeRules && double == rimeDouble) return
-        val text = Fuzzy.yaml(rules, double)
+    private fun useRules(rules: Set<FuzzyRule>, double: DoublePinyin? = null, correction: Boolean = false) {
+        if (rules == rimeRules && double == rimeDouble && correction == rimeCorrection) return
+        val text = Fuzzy.yaml(rules, double, correction)
         val user = tmp.resolve("rime-" + Fuzzy.hash(text).take(12))
         val fresh = !user.isDirectory
         user.mkdirs()
         if (text != null) user.resolve(Fuzzy.FILE).writeText(text)
         Rime.initialize(rimeShared.path, user.path)
-        if (fresh && text != null) check(Rime.deploy()) { "librime did not deploy the fuzzy rules ${rules.map { it.key }}: ${Rime.deployFailures()}" }
+        if (fresh && text != null) check(Rime.deploy()) { "librime did not deploy the rules ${rules.map { it.key }}: ${Rime.deployFailures()}" }
         Rime.setOption("zh_hans", true)
         rimeRules = rules
         rimeDouble = double
+        rimeCorrection = correction
     }
 
     /**

@@ -35,6 +35,12 @@ bool OpenSpellings(const std::string& prism_file);
 /// Notes: one walk down the prism's double-array trie, no scan; engine thread only.
 void Spellings(std::string_view letters, std::vector<SpellingMatch>* out);
 
+/// Returns: whether `letters` are a spelling of the syllable `id` in the schema's table: the
+///   syllable itself, or what a rule of the schema derives from it (fuzzy, abbreviated).
+/// Notes: librime's key correction reads letters as a syllable they do not spell; this tells
+///   such a reading from an exact one. False before OpenSpellings succeeded.
+bool Spells(std::string_view letters, int id);
+
 /// Unmaps the prism.
 void CloseSpellings();
 

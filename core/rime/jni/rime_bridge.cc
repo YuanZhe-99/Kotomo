@@ -8,7 +8,9 @@
 #include <rime/candidate.h>
 #include <rime/composition.h>
 #include <rime/context.h>
+#include <rime/gear/translator_commons.h>
 #include <rime/menu.h>
+#include <rime/schema.h>
 #include <rime/service.h>
 
 #include <sys/stat.h>
@@ -19,6 +21,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <numeric>
+#include <algorithm>
 
 namespace kotomo::rime_bridge {
 namespace {
@@ -187,9 +191,58 @@ std::string Composition() {
   return preedit;
 }
 
+namespace {
+
+/// Where each candidate of the last Candidates() answer stands in librime's own list.
+std::vector<std::size_t> order;
+
+/// Returns: librime's index of the candidate listed at `index` by the last Candidates() call.
+std::size_t Listed(std::size_t index) { return index < order.size() ? order[index] : index; }
+
+/// Returns: whether the schema the session runs has librime's key correction on
+///   (`translator/enable_correction`, written by the app's rule file).
+bool Correcting() {
+  bool on = false;
+  if (auto s = rime::Service::instance().GetSession(session)) {
+    if (s->schema() != nullptr && s->schema()->config() != nullptr) {
+      s->schema()->config()->GetBool("translator/enable_correction", &on);
+    }
+  }
+  return on;
+}
+
+/// Returns: whether a candidate reads some letters as a syllable they do not spell, that is,
+///   whether librime's key correction produced it (`no` read as ni).
+/// Inputs: the candidate behind any filter's wrapper; the session's raw input.
+/// Notes: librime marks corrections only inside its translator, so the reading is checked
+///   against the spelling table syllable by syllable. Anything that is not a syllabified phrase
+///   (punctuation, the run-time tables) counts as exact.
+bool Corrected(const rime::an<rime::Candidate>& candidate, const std::string& input) {
+  const auto phrase = rime::As<rime::Phrase>(candidate);
+  if (!phrase) return false;
+  const rime::Spans spans = phrase->spans();
+  const rime::Code code = phrase->matching_code();
+  if (spans.Count() != code.size()) return false;
+  std::size_t begin = spans.start();
+  for (const rime::SyllableId id : code) {
+    const std::size_t end = spans.NextStop(begin);
+    if (end <= begin || end > input.size()) return false;
+    std::size_t first = begin, last = end;
+    while (first < last && (input[first] == '\'' || input[first] == ' ')) ++first;
+    while (last > first && (input[last - 1] == '\'' || input[last - 1] == ' ')) --last;
+    if (!Spells(std::string_view(input).substr(first, last - first), id)) return true;
+    begin = end;
+  }
+  return false;
+}
+
+}  // namespace
+
 std::vector<Candidate> Candidates(std::size_t limit) {
   std::vector<Candidate> result;
+  order.clear();
   if (session == 0 || limit == 0) return result;
+  const bool correcting = Correcting();
   RimeCandidateListIterator iterator = {};
   if (!api->candidate_list_begin(session, &iterator)) return result;
   while (result.size() < limit && api->candidate_list_next(&iterator)) {
@@ -205,22 +258,39 @@ std::vector<Candidate> Candidates(std::size_t limit) {
       if (auto menu = context->composition().back().menu) {
         for (std::size_t i = 0; i < result.size(); ++i) {
           if (auto cand = menu->GetCandidateAt(i)) {
-            result[i].type = rime::Candidate::GetGenuineCandidate(cand)->type();
+            const auto genuine = rime::Candidate::GetGenuineCandidate(cand);
+            result[i].type = genuine->type();
             result[i].whole = cand->end() == context->input().size();
+            result[i].corrected = correcting && Corrected(genuine, context->input());
           }
         }
       }
     }
   }
+  // Exact readings first (feedback B2): librime ranks a corrected reading by its word's
+  // frequency, which would put 你 before 怒 for `nu`. Within each group librime's order stays.
+  order.resize(result.size());
+  std::iota(order.begin(), order.end(), std::size_t{0});
+  if (correcting) {
+    const auto tier = [&result](std::size_t i) {
+      return (result[i].whole ? 0 : 2) + (result[i].corrected ? 1 : 0);
+    };
+    std::stable_sort(order.begin(), order.end(),
+                     [&tier](std::size_t a, std::size_t b) { return tier(a) < tier(b); });
+    std::vector<Candidate> sorted;
+    sorted.reserve(result.size());
+    for (const std::size_t i : order) sorted.push_back(std::move(result[i]));
+    result = std::move(sorted);
+  }
   return result;
 }
 
 bool DeleteCandidate(std::size_t index) {
-  return session != 0 && api->delete_candidate(session, index);
+  return session != 0 && api->delete_candidate(session, Listed(index));
 }
 
 bool SelectCandidate(std::size_t index) {
-  return session != 0 && api->select_candidate(session, index);
+  return session != 0 && api->select_candidate(session, Listed(index));
 }
 
 std::string TakeCommit() {

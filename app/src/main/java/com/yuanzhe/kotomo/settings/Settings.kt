@@ -165,6 +165,8 @@ data class Settings(
     val chineseScript: ChineseScript = ChineseScript.SIMPLIFIED,
     /** The fuzzy-pinyin rules turned on (PLAN §9.6); none by default. */
     val chineseFuzzy: Set<FuzzyRule> = emptySet(),
+    /** Chinese mode also reads a key as its neighbour (`nohao` → 你好; `chinese.key_correction`). */
+    val chineseKeyCorrection: Boolean = false,
     val englishSuggestions: Boolean = true,
     val englishAutoCapitalize: Boolean = true,
     val split: SplitLayout = SplitLayout.AUTO,
@@ -396,6 +398,7 @@ internal object SettingsFormat {
     private val quickCustom = stringPreferencesKey("chinese.quick_custom")
     private val strokeLookup = booleanPreferencesKey("chinese.stroke_lookup")
     private val doublePinyin = stringPreferencesKey("chinese.double_pinyin")
+    private val chineseKeyCorrection = booleanPreferencesKey("chinese.key_correction")
 
     /**
      * Reads the settings from a Preferences file.
@@ -425,6 +428,7 @@ internal object SettingsFormat {
             chineseKeys = readKeys(p, Mode.CHINESE, chineseSpace, chineseEnter, d.chineseKeys),
             chineseScript = p.enum(chineseScript, ChineseScript.entries, d.chineseScript),
             chineseFuzzy = FuzzyRule.entries.filterTo(mutableSetOf()) { p[fuzzyKey(it)] ?: (it in d.chineseFuzzy) },
+            chineseKeyCorrection = p[chineseKeyCorrection] ?: d.chineseKeyCorrection,
             englishSuggestions = p[englishSuggestions] ?: d.englishSuggestions,
             englishAutoCapitalize = p[englishAutoCapitalize] ?: d.englishAutoCapitalize,
             split = p.enum(split, SplitLayout.entries, d.split),
@@ -515,6 +519,7 @@ internal object SettingsFormat {
         writeCross(p, "japanese", old.japanese, new.japanese)
         p.put(chineseScript, old.chineseScript.key, new.chineseScript.key)
         FuzzyRule.entries.forEach { p.put(fuzzyKey(it), it in old.chineseFuzzy, it in new.chineseFuzzy) }
+        p.put(chineseKeyCorrection, old.chineseKeyCorrection, new.chineseKeyCorrection)
         p.put(englishSuggestions, old.englishSuggestions, new.englishSuggestions)
         p.put(englishAutoCapitalize, old.englishAutoCapitalize, new.englishAutoCapitalize)
         p.put(split, old.split.key, new.split.key)

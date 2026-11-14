@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Fuzzy pinyin on the Chinese settings page (PLAN §9.6). Rule titles are pinyin and the same in every language. -->
 <resources>
+    <string name="chinese_correction">纠错</string>
+    <string name="chinese_key_correction">邻近键纠错</string>
+    <string name="chinese_key_correction_desc">按到相邻的键也能找到词（nohao → 你好），精确匹配始终排在前面</string>
     <string name="fuzzy_initials">模糊音：声母</string>
     <string name="fuzzy_finals">模糊音：韵母</string>
     <string name="fuzzy_note">每个开关让两个相近的音互相通用，精确的拼写仍然排在前面。开关变化后会在后台重新准备中文词库，期间可以照常输入。</string>
