@@ -130,7 +130,7 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 - [ ] 8.6 Backspace right after that commit puts the letters back with the chosen piece still chosen; Enter commits it again
 - [ ] 8.7 In the piece list the letters (`chidai`) are offered as a choice (keeps the English); "Restore input" drops the choice and the sentence converts afresh
 - [ ] 8.8 "Commit up to here" on 池袋: it goes into the field, the rest stays composed and can be chosen next
-- [ ] 8.9 Key correction: type `boo`, then tap `l` at its left edge (next to `k`): `book` is offered, never first. Tap `l` in the middle: `book` is not offered
+- [ ] 8.9 Key correction: type `boo`, then tap `l` in its left quarter (the side next to `k`, no further from the key's edge than a quarter of its width): `book` is offered, never first. Tap `l` in the middle: `book` is not offered
 
 ## 9. Fuzzy pinyin (G2, T08)
 

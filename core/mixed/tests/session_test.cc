@@ -219,6 +219,12 @@ int main() {
         "T08-key-correction");
   s = typed("bool", 900);
   Check(Place(s, "book") < 0, "T08-key-correction-negative-touch-on-the-key");
+  // Feedback A4: the outer quarter of the key counts (x 875 is a quarter key from the border
+  // at 850), a touch nearer the middle than that does not.
+  s = typed("bool", 872);
+  Check(Place(s, "book") >= 0 && (s.candidates[Place(s, "book")].flags & kFuzzy), "A4-key-correction-outer-quarter");
+  s = typed("bool", 880);
+  Check(Place(s, "book") < 0, "A4-key-correction-negative-inner-half");
   s = typed("book", 745);  // `k` touched at its edge towards `j`: the word as typed stays first
   Check(Place(s, "book") == 0, "T08-key-correction-never-first");
   session.Handle({.generation = ++generation, .command = Command::kSet, .text = "shu"});

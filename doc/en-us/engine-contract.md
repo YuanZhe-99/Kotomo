@@ -70,8 +70,8 @@ at once. While one composition is typed the engine remembers the engines' answer
 asks only about the spans that end at the new letter; the memory is dropped when the composition
 is empty.
 
-A key that arrives with a touch position near the edge of its key (within 35 units of being as
-close to a neighbouring key) also gets the composition read with that neighbour: the best
+A key that arrives with a touch position near the edge of its key (within 50 units of being as
+close to a neighbouring key: the outer quarter of the key on that side) also gets the composition read with that neighbour: the best
 candidate of at most two such readings is added, marked fuzzy, at its cost plus 2500 and never
 first. Keys without a position convert exactly as typed.
 

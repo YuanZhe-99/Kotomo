@@ -23,8 +23,11 @@ constexpr std::pair<std::string_view, int> kRows[] = {{"qwertyuiop", 0}, {"asdfg
 constexpr int kKeyWidth = 100, kKeyHeight = 150;
 
 /// How much nearer its own key's centre than a neighbour's a touch may be and still count as
-/// possibly meant for the neighbour (a touch 17 units from the border between two keys).
-constexpr int kNearKey = 35;
+/// possibly meant for the neighbour: a touch up to 25 units from the border between two keys,
+/// the outer quarter of the key on that side.
+/// Notes: 35 before the first device round (feedback A4): the outer sixth of a key is about a
+///   millimetre on a phone, narrower than a touch meant for the neighbour usually lands.
+constexpr int kNearKey = 50;
 
 /// From this many letters on, a composition is answered in two stages (PLAN.md §5.5).
 constexpr size_t kStagedLetters = 16;
