@@ -44,6 +44,15 @@ class EmojiIndexTest {
         assertTrue(index.variants("😄").isEmpty())
     }
 
+    /** C7: tone variants follow their own check, so a font without a glyph for them can keep them. */
+    @Test
+    fun tonesHaveTheirOwnCheck() {
+        val bases = EmojiIndex.parse(fixture) { it.codePointCount(0, it.length) == 1 }
+        assertTrue("the default drops what renderable drops", bases.variants("👋").isEmpty())
+        val kept = EmojiIndex.parse(fixture, { base, _ -> base == "👋" }) { it.codePointCount(0, it.length) == 1 }
+        assertEquals(5, kept.variants("👋").size)
+    }
+
     @Test
     fun findsEmojiInEachLanguage() {
         val index = EmojiIndex.parse(fixture)

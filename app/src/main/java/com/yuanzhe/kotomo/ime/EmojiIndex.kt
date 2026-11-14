@@ -69,14 +69,20 @@ class EmojiIndex private constructor(
         /**
          * Parses the asset's lines.
          *
-         * Inputs: [lines] of the asset; [renderable] keeps an emoji or variant only when it
-         * returns true (the panel passes the system font's glyph check).
+         * Inputs: [lines] of the asset; [renderable] keeps an emoji only when it returns true (the
+         * panel passes the system font's glyph check); [toneRenderable] keeps a skin-tone variant
+         * of a kept base (base, variant); null keeps one when [renderable] keeps the variant.
          * Returns: the index; emoji dropped by [renderable] are absent from groups, variants and
          * lookups.
          * Notes: the asset is read from the APK, so a wrong format version fails here and
          * malformed lines are skipped.
          */
-        fun parse(lines: Sequence<String>, renderable: (String) -> Boolean = { true }): EmojiIndex {
+        fun parse(
+            lines: Sequence<String>,
+            toneRenderable: ((String, String) -> Boolean)? = null,
+            renderable: (String) -> Boolean = { true },
+        ): EmojiIndex {
+            val toneOk = toneRenderable ?: { _, variant -> renderable(variant) }
             val groups = mutableListOf<Group>()
             val tones = HashMap<String, List<String>>()
             val emoji = ArrayList<String?>()
@@ -101,7 +107,7 @@ class EmojiIndex private constructor(
                         if (!ok) continue
                         current?.add(f[1])
                         if (f.size >= 3) {
-                            val v = f[2].split(' ').filter { it.isNotEmpty() && renderable(it) }
+                            val v = f[2].split(' ').filter { it.isNotEmpty() && toneOk(f[1], it) }
                             if (v.isNotEmpty()) tones[f[1]] = v
                         }
                     }
@@ -120,12 +126,22 @@ class EmojiIndex private constructor(
          *
          * Returns: the shared index.
          * Notes: runs on an I/O thread; keeps only what the system emoji font can draw (Apple's
-         * images never ship, PLAN.md §4.1). Two first callers may both parse; either result is
-         * equal.
+         * images never ship, PLAN.md §4.1). A skin-tone variant is kept when the font has a glyph
+         * for it, or when it draws it about as wide as its base: some vendor emoji fonts (One UI)
+         * draw tone sequences without a single glyph for [Paint.hasGlyph], while a font without the
+         * tone draws the base and a colour swatch side by side (C7). Two first callers may both
+         * parse; either result is equal.
          */
         suspend fun load(context: Context): EmojiIndex = cached ?: withContext(Dispatchers.IO) {
             val paint = Paint()
-            context.assets.open(ASSET).bufferedReader().useLines { lines -> parse(lines) { paint.hasGlyph(it) } }
+            context.assets.open(ASSET).bufferedReader().useLines { lines ->
+                parse(lines, { base, variant -> paint.hasGlyph(variant) || paint.measureText(variant) < paint.measureText(base) * TONE_WIDTH }) {
+                    paint.hasGlyph(it)
+                }
+            }
         }.also { cached = it }
+
+        /** How much wider than its base a tone variant may draw and still count as one emoji. */
+        private const val TONE_WIDTH = 1.5f
     }
 }

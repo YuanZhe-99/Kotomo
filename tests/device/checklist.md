@@ -176,9 +176,9 @@ typing in lines 4.2, 4.4 and 8.5 (S3) and 3.1 and 3.2 (S4).
 ## 13. Emoji (G1, G3, G4)
 
 - [ ] 13.1 Suggestions on the bar (feedback C2): once a word is typed in full, its best emoji stands after the three best text candidates, without scrolling the bar (very wide text candidates may still need a short scroll): `neko` / `mao` / `cat` → 🐈 (🐱 follows); `apple` / `pingguo` → 🍎; `sakura` / `yinghua` → 🌸; `birthday` / `shengri` → 🥳 (🎂 follows); `coffee` / `kafei` → ☕; `computer` → 💻, `diannao` → 🖥️ (💻 follows). While a word is still being typed the emoji stay after five text candidates. Settings → Mixed mode → under the candidate weights, turn off "Show a word's emoji early" (on by default): the emoji of a word typed in full go back to after five text candidates too (scroll the bar to see them), still best first; on again restores it
-- [ ] 13.2 The Emoji panel has categories, a skin-tone choice, Recent and, after sending one twice, "Frequently used" above Recent
+- [ ] 13.2 The Emoji panel has categories and Recent; an emoji with skin tones (👍, 👋 and the like, under People and body) has a small triangle at its bottom right, and a long press on it chooses the tone; after sending one twice, "Frequently used" shows above Recent
 - [ ] 13.3 Magnifier: the keys type a search in the bar (`cat`, `mao`, `neko`), nothing reaches the field until you pick; Enter sends the first result
-- [ ] 13.4 Long-press an emoji: skin tone and a favourite switch; Favorites lists it; the Combinations tab and the Kaomoji tab insert what you tap
+- [ ] 13.4 Long-press an emoji: one with skin tones (such as 👋) opens a card with the five tones and a favourite switch, and tapping a tone types it; one without has the favourite switch only; Favorites lists it; the Combinations tab and the Kaomoji tab insert what you tap
 - [ ] 13.5 Settings → Emoji: "Your emoji for words" `neko=🐈`: typing `neko` shows 🐈 first among the emoji; "Your combinations" adds a line to the Combinations tab; "Clear favorites" empties Favorites
 - [ ] 13.6 Mixed page → Candidate weights → Emoji: raising it moves emoji suggestions up, lowering it moves them down; back to the default 30
 

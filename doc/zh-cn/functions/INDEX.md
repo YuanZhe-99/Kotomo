@@ -24,7 +24,7 @@
 | `app/src/main/java/com/yuanzhe/kotomo/ime/FormsPanel.kt` | 在键盘位置显示的变形面板（日文候选详情里的“变形”按钮）：每种形式及其名称；选一个就替换当前组合提交 | `FormsPanel`、`formLabel` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/Regional.kt` | 台湾、香港用词参与排序（PLAN §10.3）：OpenCC 的 `TWPhrases.txt`、`HKPhrases.txt` 写出的词，按字形读取一次，在前八个候选之中时移到最前，用于中文与混合模式（有单元测试，语料 T11） | `Regional.words`、`Regional.promote` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/EmojiPage.kt` | 设置中的 Emoji 页（PLAN §10.6）：收藏与清空、用户的组合、用户为词语指定的 Emoji | `EmojiPage` |
-| `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体，以及按英文、中文、拼音、日文、假名与罗马字查找、判断字母是否正好是一个完整的键（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`has`、`load` |
+| `app/src/main/java/com/yuanzhe/kotomo/ime/EmojiIndex.kt` | 内存中的 Emoji 数据，在主线程之外加载一次：分组、肤色变体（字体能把它画成一个 Emoji 时才保留，按字形或按宽度判断），以及按英文、中文、拼音、日文、假名与罗马字查找、判断字母是否正好是一个完整的键（纯 Kotlin 解析，有单元测试） | `parse`、`lookup`、`has`、`load` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/ClipboardHistory.kt` | 剪贴板历史（[clipboard.md](../clipboard.md)）：只在允许时记录（敏感输入框、敏感剪贴与无痕模式不记录）、去重、固定与快捷短语、保留期与数量上限、以 Keystore 密钥加密的 AES-GCM 文件、内存快照；剪贴分类 | `onPrimaryClip`、`allowedIn`、`items`、`ClipFile`、`ClipKind.of` |
 | `app/src/main/java/com/yuanzhe/kotomo/settings/ClipboardPage.kt` | 设置中的剪贴板历史页（[clipboard.md](../clipboard.md)）：搜索、分类、编辑、一次删除多项、快捷短语、不保留剪贴的应用 | `ClipboardPage`、`ClipFilter` |
 | `app/src/main/java/com/yuanzhe/kotomo/ime/clipboard/VerificationCodes.kt` | 从复制的文本中识别验证码：带上下文的排序结果，排除日期、价格、电话与订单号（纯 Kotlin，有单元测试） | `find`、`bare` |

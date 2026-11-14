@@ -739,6 +739,28 @@ class FieldTypingTest {
     }
 
     /**
+     * C7 (checklist 13.2, 13.4): a long press on an emoji with skin tones (👋, from Favorites)
+     * opens the tone card with its five tones; choosing one sends that tone.
+     */
+    @Test
+    fun emojiLongPressOffersSkinTones() {
+        val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+        withSettings({ it.copy(emojiFavorites = "👋") }) {
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                checkNotNull(device.wait(Until.findObject(By.descStartsWith(EMOJI)), WAIT_MS)) { "Kotomo's keys did not appear" }.click()
+                checkNotNull(device.wait(Until.findObject(By.desc(FAVORITES)), WAIT_MS)) { "no Favorites tab" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text("👋")), WAIT_MS)) { "the favorite is not shown" }.longClick()
+                checkNotNull(device.wait(Until.findObject(By.desc(TONES)), WAIT_MS)) { "no tone card" }
+                assertTrue("not every tone is offered", listOf("👋🏻", "👋🏼", "👋🏽", "👋🏾", "👋🏿").all { device.hasObject(By.text(it)) })
+                device.findObject(By.text("👋🏽")).click()
+                assertEquals("👋🏽", read(scenario))
+            }
+        }
+    }
+
+    /**
      * Runs [block] with the current app fixed to [mode] in Kotomo's memory (the quick panel's
      * "Fix this mode here"), and releases it afterwards.
      */
@@ -849,6 +871,8 @@ class FieldTypingTest {
         const val FAVORITES = "Favorites"
         const val KAOMOJI = "Kaomoji"
         const val FAVORITE_REMOVE = "Remove from favorites"
+        /** The tone card's description (R.string.emoji_tones, English). */
+        const val TONES = "Choose a skin tone"
         /** The symbols and backspace keys' descriptions (R.string.key_symbols, key_backspace; English). */
         const val SYMBOLS = "Symbols"
         const val BACKSPACE = "Delete"
