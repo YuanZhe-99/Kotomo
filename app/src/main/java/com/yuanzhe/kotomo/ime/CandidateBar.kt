@@ -19,7 +19,9 @@ import com.yuanzhe.kotomo.R
  *
  * Notes: main thread. As in the design, the first candidate is a highlighted pill (what space
  * commits), the others plain; the row scrolls sideways when dragged, and the arrow at the end
- * opens every candidate ([onExpand]). When [show] carries a touch time, the next onDraw records
+ * opens every candidate ([onExpand]). No candidate takes more than `bar_candidate_max_percent` of
+ * the row (A7, device feedback 2026-11-13): a longer one loses its reading first, then the end of
+ * its text, so the next candidate always shows beside it. When [show] carries a touch time, the next onDraw records
  * press → candidates drawn in [Probe.candidateDraw].
  */
 @SuppressLint("ViewConstructor")
@@ -48,7 +50,7 @@ class CandidateBar(
     private val iconSize = res.getDimensionPixelSize(R.dimen.kb_icon)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val textPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = res.getDimension(R.dimen.bar_text)
         color = KeyboardColors.color(context, R.color.kb_ink)
     }
@@ -106,6 +108,10 @@ class CandidateBar(
     private var candidates = emptyList<String>()
     /** A short note drawn after a candidate (a Japanese reading), by index; "" or missing for none. */
     private var notes = emptyList<String>()
+    /** What is drawn of each candidate and its note, shortened to the widest a candidate may be. */
+    private var shownText = emptyList<CharSequence>()
+    private var shownNote = emptyList<CharSequence>()
+    private val maxPercent = res.getInteger(R.integer.bar_candidate_max_percent)
     /** Left edges of the candidates in content coordinates, plus the end of the last one. */
     private var bounds = FloatArray(1)
     private var scroll = 0f
@@ -177,18 +183,43 @@ class CandidateBar(
         invalidate()
     }
 
-    /** Computes the candidates' left edges after the search query, if any. */
+    /**
+     * Shortens each candidate to the widest one may be and computes their left edges after the
+     * search query, if any.
+     * Notes: before the first layout (no width) nothing is shortened; [onSizeChanged] measures again.
+     */
     private fun measure() {
+        val widest = if (width == 0) Float.MAX_VALUE else (listEnd - padStart) * maxPercent / 100f
+        val texts = ArrayList<CharSequence>(candidates.size)
+        val shownNotes = ArrayList<CharSequence>(candidates.size)
         bounds = FloatArray(candidates.size + 1)
         bounds[0] = padStart + searchWidth()
         candidates.forEachIndexed { i, text ->
-            bounds[i + 1] = bounds[i] + textPaint.measureText(text) + noteWidth(i) + (if (i == 0) padFirst else pad) * 2
+            val room = widest - (if (i == 0) padFirst else pad) * 2
+            val textWidth = textPaint.measureText(text)
+            val note = notes.getOrNull(i).orEmpty()
+            // The reading gives way first, then the end of the text.
+            val noteRoom = room - textWidth - pad / 2
+            val shownNote: CharSequence = when {
+                note.isEmpty() -> ""
+                hintPaint.measureText(note) <= noteRoom -> note
+                noteRoom >= hintPaint.measureText(MIN_NOTE) -> android.text.TextUtils.ellipsize(note, hintPaint, noteRoom, android.text.TextUtils.TruncateAt.END)
+                else -> ""
+            }
+            val shown: CharSequence = if (textWidth <= room) text else android.text.TextUtils.ellipsize(text, textPaint, room, android.text.TextUtils.TruncateAt.END)
+            texts += shown
+            shownNotes += shownNote
+            val noteWidth = if (shownNote.isEmpty()) 0f else pad / 2 + hintPaint.measureText(shownNote, 0, shownNote.length)
+            bounds[i + 1] = bounds[i] + textPaint.measureText(shown, 0, shown.length) + noteWidth + (if (i == 0) padFirst else pad) * 2
         }
+        shownText = texts
+        shownNote = shownNotes
     }
 
-    /** The width candidate [i]'s reading takes after its text, with the gap before it; 0 without one. */
-    private fun noteWidth(i: Int): Float =
-        notes.getOrNull(i).orEmpty().let { if (it.isEmpty()) 0f else pad / 2 + hintPaint.measureText(it) }
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w != oldw) measure()
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), barHeight)
@@ -257,7 +288,7 @@ class CandidateBar(
         val baseline = height / 2 - (textPaint.descent() + textPaint.ascent()) / 2
         // While searching, scrolled results stay clear of the query.
         canvas.withClip(if (search != null) bounds[0] - pad else 0f, 0f, listEnd, height.toFloat()) {
-            candidates.forEachIndexed { i, text ->
+            shownText.forEachIndexed { i, text ->
                 val x = bounds[i] - scroll
                 if (x > listEnd || bounds[i + 1] - scroll < 0) return@forEachIndexed
                 val inset = if (i == 0) padFirst else pad
@@ -265,13 +296,13 @@ class CandidateBar(
                     val top = (height - pillHeight) / 2
                     box.set(x, top, bounds[i + 1] - scroll, top + pillHeight)
                     drawRoundRect(box, pillHeight / 2, pillHeight / 2, pillPaint)
-                    drawText(text, x + inset, baseline, firstPaint)
+                    drawText(text, 0, text.length, x + inset, baseline, firstPaint)
                 } else {
-                    drawText(text, x + inset, baseline, textPaint)
+                    drawText(text, 0, text.length, x + inset, baseline, textPaint)
                 }
-                val note = notes.getOrNull(i).orEmpty()
+                val note = shownNote.getOrNull(i) ?: ""
                 if (note.isNotEmpty()) {
-                    drawText(note, x + (if (i == 0) padFirst else pad) + textPaint.measureText(text) + pad / 2, baseline, hintPaint)
+                    drawText(note, 0, note.length, x + inset + textPaint.measureText(text, 0, text.length) + pad / 2, baseline, hintPaint)
                 }
             }
         }
@@ -368,6 +399,9 @@ class CandidateBar(
         }
     }
 }
+
+/** The shortest part of a reading worth drawing; a reading with less room is left out. */
+private const val MIN_NOTE = "あい…"
 
 /**
  * Holds what the candidate bar shows after a long press on candidate [index]: [text] (its reading

@@ -49,6 +49,8 @@
     <dimen name="bar_text">18sp</dimen>
     <dimen name="bar_hint_text">14sp</dimen>
     <dimen name="bar_expand">44dp</dimen>
+    <!-- The most of the candidate row one candidate may take (A7), so the next one shows beside it. -->
+    <integer name="bar_candidate_max_percent">60</integer>
     <dimen name="toolbar_pad">28dp</dimen>
     <dimen name="toolbar_button">48dp</dimen>
     <!-- Emoji panel: the grid adds columns while a cell stays at least emoji_cell wide. -->
