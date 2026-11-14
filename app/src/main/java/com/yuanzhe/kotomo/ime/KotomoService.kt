@@ -337,8 +337,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var lastSpaceAt = 0L
     /** Main thread: a space was typed after a picked English word, which smart space may move. */
     private var autoSpaced = false
-    /** Main thread: the details shown after a long press on a candidate, or null. */
-    private var details: CandidateDetails? = null
     /** Main thread: librime's latest candidates with their spelling and type. */
     private var rimeCandidates = emptyList<Rime.Candidate>()
     /** Main thread: the window's fold (hinge position and state), or null on devices without one. */
@@ -1069,8 +1067,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             },
         )
         val forget = if (rime?.type == "user_phrase") getString(R.string.candidate_forget) else null
-        details = CandidateDetails(index, if (reading.isEmpty()) source else getString(R.string.candidate_details, reading, source), forget)
-        candidateBar.details = details
+        candidateBar.details = CandidateDetails(index, if (reading.isEmpty()) source else getString(R.string.candidate_details, reading, source), forget)
         detailsForms = emptyList()
         // A Japanese word also shows its dictionary form and part of speech, and its forms when it
         // conjugates (PLAN §10.1, §10.2); one segment only, as a form replaces the whole composition.
@@ -1086,18 +1083,17 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         engine.post {
             val d = mozc?.describe(text, reading)
             main.post {
-                val shown = details?.takeIf { it.index == index } ?: return@post
+                val shown = candidateBar.details?.takeIf { it.index == index } ?: return@post
                 if (d == null) return@post
                 val word = Inflection.word(d.entry, d.reading, d.pos)
                 val forms = word?.let { w -> listOf(Inflection.Inflected(Inflection.Form.PLAIN, w.text, w.reading)) + Inflection.forms(w) }
                     .orEmpty().filter { it.text != text }
                 val extra = listOfNotNull((word?.text ?: d.entry).takeIf { it != text }, posLabel(d.pos)?.let(::getString)).joinToString(" · ")
                 detailsForms = forms
-                details = shown.copy(
+                candidateBar.details = shown.copy(
                     text = if (extra.isEmpty()) shown.text else getString(R.string.candidate_word, shown.text, extra),
                     forget = if (forms.isEmpty()) shown.forget else getString(R.string.candidate_forms),
                 )
-                candidateBar.details = details
             }
         }
     }
@@ -1144,7 +1140,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** Closes the details, or acts on their button: forgets the learned word, or shows a word's forms. */
     private fun onDetails(forget: Int?) {
-        details = null
         candidateBar.details = null
         // The button is Forms for a Japanese word that conjugates, Forget for a learned Chinese one.
         if (forget != null) if (detailsForms.isNotEmpty()) showForms() else forget(forget)
@@ -1411,7 +1406,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (!restarting && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) inlineAutofill?.newField()
         lastSpaceAt = 0L
         autoSpaced = false
-        details = null
+        if (::candidateBar.isInitialized) candidateBar.details = null
         shift = Shift.OFF
         composing.clear()
         taps.clear()
@@ -1593,7 +1588,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         val ic = currentInputConnection ?: return
         aiUndo = null
-        details = null
+        // Any key closes a candidate's details (C4); a new list closes them too (CandidateBar.show).
+        if (::candidateBar.isInitialized) candidateBar.details = null
         // With `keys.backspace_restores_commit` on, Backspace right after a Mixed commit takes it
         // back (PLAN §5.6); off (the default, B9) it deletes as usual. Any other key ends that.
         val undo = mixedUndo
@@ -2317,7 +2313,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         // previous key's, so the probe waits for that answer.
         candidateBar.show(candidates, if ((usesRime || mode == Mode.MIXED) && !direct) 0 else downTime)
         shownCandidates.value = candidates
-        candidateBar.details = details
         candidateBar.hint = notice ?: chineseHint() ?: japaneseHint(raw)
         updateQuickStrip()
         if (raw.isEmpty()) {

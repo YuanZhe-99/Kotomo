@@ -127,11 +127,14 @@ class CandidateBar(
 
     /**
      * The details of one candidate (its reading and where it comes from), shown in place of the
-     * row after a long press, or null; [CandidateDetails.forget] labels the Forget button.
+     * row after a long press, or null; [CandidateDetails.forget] labels the Forget button. They
+     * belong to the list they were opened on: a new list closes them ([show]). Their text is also
+     * the bar's description, for screen readers.
      */
     var details: CandidateDetails? = null
         set(value) {
             field = value
+            contentDescription = value?.text
             invalidate()
         }
 
@@ -175,6 +178,7 @@ class CandidateBar(
         if (list != candidates) {
             scroll = 0f
             chosen = null
+            details = null
         }
         candidates = list
         notes = readings

@@ -673,6 +673,37 @@ class FieldTypingTest {
     }
 
     /**
+     * C4: a candidate's details (a long press) close on the next key and after a commit; they
+     * stayed in the bar after Space converted or committed in Japanese mode.
+     */
+    @Test
+    fun candidateDetailsCloseOnTheNextKey() {
+        inMode(Mode.JAPANESE) {
+            val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }.visibleBounds
+                val dp = instrumentation.targetContext.resources.displayMetrics.density
+                val x = (q.left + 40 * dp).toInt()
+                val y = (q.top - 32 * dp).toInt()
+                fun detailsAfter(key: String) {
+                    device.swipe(x, y, x, y, 120)
+                    checkNotNull(device.wait(Until.findObject(By.descStartsWith("とうきょうは")), WAIT_MS)) { "no details" }
+                    device.findObject(By.descStartsWith(key)).click()
+                    assertTrue("the details stayed after $key", device.wait(Until.gone(By.descStartsWith("とうきょうは")), WAIT_MS))
+                }
+                "toukyouha".forEach { device.findObject(By.desc(it.toString())).click() }
+                Thread.sleep(READ_MS * 3)
+                detailsAfter(SPACE)
+                detailsAfter(ENTER)
+                assertFalse("Enter left the candidate uncommitted", composing(scenario))
+                assertTrue(read(scenario).isNotEmpty())
+            }
+        }
+    }
+
+    /**
      * T14-emoji-panel (PLAN §10.6): a favorite is sent from Favorites, the long-press card removes
      * it, and a kaomoji is sent from Kaomoji.
      */
