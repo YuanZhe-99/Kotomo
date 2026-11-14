@@ -176,4 +176,18 @@ class LayoutTest {
         // Negative: a letter without its own symbols keeps the design's hint.
         assertEquals("#", keys.first { it.label == "s" }.hint)
     }
+
+    /** B1: the separator takes Shift's place and width while composing; without it the key is Shift. */
+    @Test
+    fun separatorTakesShiftsPlace() {
+        for (split in listOf(false, true)) {
+            val shift = Layout.letters(Mode.CHINESE, false, split).rows[2].keys.first()
+            val separator = Layout.letters(Mode.CHINESE, false, split, separator = true).rows[2].keys.first()
+            assertEquals(KeyAction.Shift, shift.action)
+            assertEquals(KeyAction.Text("'"), separator.action)
+            assertEquals(Layout.SEPARATOR, separator.label)
+            assertEquals(shift.width, separator.width)
+        }
+    }
+
 }

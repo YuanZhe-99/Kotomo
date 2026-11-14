@@ -118,6 +118,9 @@ data class Layout(val rows: List<Row>) {
     }
 
     companion object {
+        /** The syllable separator key's label, on the 9-key page and in Shift's place (B1). */
+        const val SEPARATOR = "分词"
+
         /**
          * Finds the key a touch at ([x], [y]) means.
          *
@@ -178,6 +181,8 @@ data class Layout(val rows: List<Row>) {
         }
 
         private fun shift() = Key("⇧", KeyAction.Shift, 1.5f, function = true)
+        /** The syllable separator in Shift's place while pinyin is composed (B1), labeled as on the 9-key page. */
+        private fun separator() = Key(SEPARATOR, KeyAction.Text("'"), 1.5f, function = true)
         private fun backspace() = Key("⌫", KeyAction.Backspace, 1.5f, function = true)
 
         /**
@@ -187,22 +192,26 @@ data class Layout(val rows: List<Row>) {
          * .com key in place of Emoji; both, and code-like fields, use ASCII punctuation. [hinge]
          * (split only) gives the bottom row a space bar on each side of a vertical hinge. [style]
          * adds the number row, custom long-press symbols, the space width and mirroring (PLAN §10.9).
+         * [separator] puts the syllable separator `'` in Shift's place (B1: Chinese or Mixed mode
+         * composing pinyin, `keys.shift_separator` on).
          */
         fun letters(
             mode: Mode, shifted: Boolean, split: Boolean = false, field: Field = Field.TEXT, hinge: Boolean = false, style: KeyStyle = KeyStyle(),
+            separator: Boolean = false,
         ): Layout {
+            val first = if (separator) separator() else shift()
             val custom = style.longPress
             val rows = if (split) {
                 listOf(
                     Row(letters("qwertyuiop", shifted, custom), splitAt = 5),
                     Row(letters("asdfgghjkl", shifted, custom), lead = 0.35f, trail = 0.35f, splitAt = 5),
-                    Row(listOf(shift()) + letters("zxcvvbnm", shifted, custom) + backspace(), splitAt = 5),
+                    Row(listOf(first) + letters("zxcvvbnm", shifted, custom) + backspace(), splitAt = 5),
                 )
             } else {
                 listOf(
                     Row(letters("qwertyuiop", shifted, custom)),
                     Row(letters("asdfghjkl", shifted, custom), lead = 0.5f, trail = 0.5f),
-                    Row(listOf(shift()) + letters("zxcvbnm", shifted, custom) + backspace()),
+                    Row(listOf(first) + letters("zxcvbnm", shifted, custom) + backspace()),
                 )
             }
             val digits = if (style.numberRow) listOf(numberRow(split)) else emptyList()
@@ -271,7 +280,7 @@ data class Layout(val rows: List<Row>) {
             fun digit(d: String, letters: String) = Key(letters, KeyAction.Text(d), hint = d)
             fun mark(label: String, flick: List<String>) = Key(label, KeyAction.Text(flick[0]), flick = flick)
             val rows = listOf(
-                Row(listOf(Key("?123", KeyAction.Symbols(0), function = true), Key("分词", KeyAction.Text("'"), hint = "1"), digit("2", "ABC"), digit("3", "DEF"), backspace().copy(width = 1f))),
+                Row(listOf(Key("?123", KeyAction.Symbols(0), function = true), Key(SEPARATOR, KeyAction.Text("'"), hint = "1"), digit("2", "ABC"), digit("3", "DEF"), backspace().copy(width = 1f))),
                 Row(listOf(Key("☺", KeyAction.Emoji, function = true), digit("4", "GHI"), digit("5", "JKL"), digit("6", "MNO"), Key("", KeyAction.Space, function = true))),
                 Row(listOf(Key("ABC", KeyAction.SetMode(Mode.ENGLISH), function = true), digit("7", "PQRS"), digit("8", "TUV"), digit("9", "WXYZ"), Key("⏎", KeyAction.Enter, function = true))),
                 Row(listOf(

@@ -166,6 +166,8 @@ data class Settings(
     val oneHanded: OneHanded = OneHanded.OFF,
     val heightPercent: Int = 100,
     val longPressSymbols: Boolean = true,
+    /** While Chinese or Mixed mode composes, the Shift key types the syllable separator ' instead (B1). */
+    val shiftSeparator: Boolean = true,
     val keyHints: Boolean = true,
     val haptics: Boolean = true,
     val keySound: Boolean = false,
@@ -336,6 +338,7 @@ internal object SettingsFormat {
     private val oneHanded = stringPreferencesKey("layout.one_handed")
     private val height = intPreferencesKey("layout.height_percent")
     private val longPress = booleanPreferencesKey("keys.long_press_symbols")
+    private val shiftSeparator = booleanPreferencesKey("keys.shift_separator")
     private val keyHints = booleanPreferencesKey("keys.corner_hints")
     private val haptics = booleanPreferencesKey("keys.haptics")
     private val keySound = booleanPreferencesKey("keys.sound")
@@ -413,6 +416,7 @@ internal object SettingsFormat {
             oneHanded = p.enum(oneHanded, OneHanded.entries, d.oneHanded),
             heightPercent = p.int(height, Settings.HEIGHT_RANGE, d.heightPercent),
             longPressSymbols = p[longPress] ?: d.longPressSymbols,
+            shiftSeparator = p[shiftSeparator] ?: d.shiftSeparator,
             keyHints = p[keyHints] ?: d.keyHints,
             haptics = p[haptics] ?: d.haptics,
             keySound = p[keySound] ?: d.keySound,
@@ -499,6 +503,7 @@ internal object SettingsFormat {
         p.put(oneHanded, old.oneHanded.key, new.oneHanded.key)
         p.put(height, old.heightPercent, new.heightPercent)
         p.put(longPress, old.longPressSymbols, new.longPressSymbols)
+        p.put(shiftSeparator, old.shiftSeparator, new.shiftSeparator)
         p.put(keyHints, old.keyHints, new.keyHints)
         p.put(haptics, old.haptics, new.haptics)
         p.put(keySound, old.keySound, new.keySound)

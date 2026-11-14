@@ -9,6 +9,8 @@
 
     <string name="keys_sound">按鍵音</string>
     <string name="keys_sound_desc">每次按鍵播放系統按鍵音</string>
+    <string name="keys_shift_separator">組字時 Shift 變為分詞鍵</string>
+    <string name="keys_shift_separator_desc">中文和混合模式下正在輸入拼音時，Shift 鍵輸入 \' 來分隔音節（xi\'an → 西安）；組字結束後恢復為 Shift。</string>
     <string name="gestures_section">手勢</string>
     <string name="gesture_space_cursor">空白鍵滑動</string>
     <string name="gesture_space_cursor_desc">沿空白鍵左右滑動移動游標</string>

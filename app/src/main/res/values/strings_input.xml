@@ -10,6 +10,8 @@
 
     <string name="keys_sound">Sound on key press</string>
     <string name="keys_sound_desc">The system\'s key click with each key</string>
+    <string name="keys_shift_separator">Shift separates syllables while composing</string>
+    <string name="keys_shift_separator_desc">In Chinese and Mixed mode, while pinyin is being composed, Shift types \' to mark where a syllable ends (xi\'an → 西安). It is Shift again once the composition ends.</string>
     <string name="gestures_section">Gestures</string>
     <string name="gesture_space_cursor">Slide on the space bar</string>
     <string name="gesture_space_cursor_desc">Move the cursor by sliding along the space bar</string>

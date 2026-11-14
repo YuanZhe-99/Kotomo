@@ -74,6 +74,7 @@
 | `layout.one_handed` | string | `off` | 2026-11-11 之前的版本保存的单手模式，对所有屏幕生效：`off`、`left`、`right`。现在只在键盘记忆中没有该屏幕与方向的 `one_handed` 条目时读取（见下文），从不写入 |
 | `layout.height_percent` | int 80–120 | 100 | 键盘高度，相对设计高度的百分比 |
 | `keys.long_press_symbols` | boolean | `true` | 长按按键输入符号 |
+| `keys.shift_separator` | boolean | `true` | 中文或混合模式正在组合拼音时，Shift 键输入音节分隔符 `'`（标为“分词”），组合结束后恢复为 Shift；九宫格保留自己的分词键 |
 | `keys.corner_hints` | boolean | `true` | 在按键角上显示长按符号 |
 | `keys.haptics` | boolean | `true` | 按键震动 |
 | `keys.sound` | boolean | `false` | 按键时播放系统按键音 |

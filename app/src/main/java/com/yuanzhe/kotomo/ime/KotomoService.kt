@@ -1124,6 +1124,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     /**
+     * Decides whether the letters put the syllable separator in Shift's place (B1, device
+     * feedback 2026-11-13): Chinese or Mixed mode composing pinyin, with `keys.shift_separator` on.
+     * Notes: main thread; the layout is rebuilt on each refresh, so Shift returns when the
+     * composition ends.
+     */
+    private fun separatorOnShift(s: Settings): Boolean = s.shiftSeparator && !direct && when (mode) {
+        Mode.CHINESE -> chinesePreedit.isNotEmpty()
+        Mode.MIXED -> composing.isNotEmpty()
+        else -> false
+    }
+
+    /**
      * Runs a toolbar tool, from the bar or from the More panel's grid (PLAN §10.10).
      * Notes: Settings, Dictionaries and Themes open the settings app (at that page).
      */
@@ -1735,8 +1747,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     rimeKey('`'.code, downTime) { ic.commitText(action.text, 1) }
                 } else if (c != null && c in 'a'..'z' && !longPress) {
                     rimeKey(c.code, downTime) { ic.commitText(action.text, 1) }
-                } else if (c != null && nineKey && (c in '2'..'9' || (c == '\'' && chinesePreedit.isNotEmpty()))) {
-                    // 9-key layout: digits are pinyin keys, ' separates syllables (PLAN §10.9).
+                } else if (c != null && ((nineKey && c in '2'..'9') || (c == '\'' && chinesePreedit.isNotEmpty()))) {
+                    // 9-key layout: digits are pinyin keys; ' separates syllables, from the 9-key
+                    // page or from Shift's place on the letters (PLAN §10.9, B1).
                     rimeKey(c.code, downTime) { ic.commitText(action.text, 1) }
                 } else if (c == ';' && settings.doublePinyin?.semicolon == true && chinesePreedit.isNotEmpty()) {
                     // Microsoft and Sogou double pinyin type ing with ; (b's long press) (PLAN §10.4).
@@ -2178,7 +2191,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             symbols -> Layout.symbols(symbolMode, split, symbolPage, hinge = keyboard.hinge != null, style = s.keyStyle)
             mode == Mode.JAPANESE && s.japaneseFlick && !direct && field == Field.TEXT -> Layout.flick(s.keyStyle)
             nine -> Layout.nineKey(s.keyStyle)
-            else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null, style = s.keyStyle)
+            else -> Layout.letters(mode, shift != Shift.OFF, split, field, hinge = keyboard.hinge != null, style = s.keyStyle, separator = separatorOnShift(s))
         }
         keyboard.gap = s.keyStyle.gapDp * resources.displayMetrics.density
         keyboard.textScale = s.keyStyle.textPercent / 100f

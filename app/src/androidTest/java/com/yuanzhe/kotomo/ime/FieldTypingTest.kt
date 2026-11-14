@@ -54,6 +54,25 @@ class FieldTypingTest {
     }
 
     /**
+     * B1 (device feedback 2026-11-13): while pinyin is composed in Chinese and Mixed mode, Shift
+     * becomes the syllable separator, so `xi'an` gives 西安 on the full keyboard. Negative: with
+     * `keys.shift_separator` off, the key stays Shift and no separator is offered.
+     */
+    @Test
+    fun shiftSeparatesSyllablesWhileComposing() {
+        inMode(Mode.CHINESE) { assertEquals("西安", typeInto(InputType.TYPE_CLASS_TEXT, 0, "xi'an", expected = "西安")) }
+        // Mixed mode's space is a boundary mark: Enter commits the best candidate there.
+        inMode(Mode.MIXED) { assertEquals("西安", typeInto(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION, "xi'an", expected = "西安", space = false, enter = true)) }
+        inMode(Mode.CHINESE) {
+            withSettings({ it.copy(shiftSeparator = false) }) {
+                typeInto(InputType.TYPE_CLASS_TEXT, 0, "xi", expected = "xi", space = false) {
+                    assertFalse("the separator replaced Shift with the switch off", device.hasObject(By.desc(Layout.SEPARATOR)))
+                }
+            }
+        }
+    }
+
+    /**
      * T13-quick (PLAN §10.4, §10.8): v then rq offers today's date first (Space types it); with the
      * quick input off, vrq goes to librime and the date is not typed.
      */
@@ -528,7 +547,8 @@ class FieldTypingTest {
             var text = ""
             repeat(ATTEMPTS) {
                 checkNotNull(device.wait(Until.findObject(By.desc(letters.first().toString())), WAIT_MS)) { "Kotomo's keys did not appear" }
-                letters.forEach { device.findObject(By.desc(it.toString())).click() }
+                // ' is the syllable separator, in Shift's place while pinyin is composed (B1).
+                letters.forEach { device.findObject(By.desc(if (it == '\'') Layout.SEPARATOR else it.toString())).click() }
                 Thread.sleep(READ_MS)
                 afterLetters()
                 if (space) device.findObject(By.descStartsWith(SPACE)).click()

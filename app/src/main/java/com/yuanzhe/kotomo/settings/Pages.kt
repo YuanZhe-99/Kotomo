@@ -553,6 +553,7 @@ internal fun KeysPage(settings: Settings, store: SettingsStore) {
         SwitchRow(R.string.keys_hints, R.string.keys_hints_desc, settings.keyHints) { on -> store.set { it.copy(keyHints = on) } }
         SwitchRow(R.string.keys_haptics, R.string.keys_haptics_desc, settings.haptics) { on -> store.set { it.copy(haptics = on) } }
         SwitchRow(R.string.keys_sound, R.string.keys_sound_desc, settings.keySound) { on -> store.set { it.copy(keySound = on) } }
+        SwitchRow(R.string.keys_shift_separator, R.string.keys_shift_separator_desc, settings.shiftSeparator) { on -> store.set { it.copy(shiftSeparator = on) } }
     }
     val g = settings.gestures
     fun gesture(change: (Gestures) -> Gestures) = store.set { it.copy(gestures = change(it.gestures)) }
