@@ -218,8 +218,8 @@ class MixedTypingTest {
 
     /**
      * T09 on the emulator (PLAN §5.6, §9.5): in the segment panel one piece of the sentence is
-     * changed (池袋 kept as the letters typed) and the rest, に買いに行こう, is not rewritten; the
-     * sentence commits as shown; backspace right after takes the commit back with the choice
+     * changed (池袋 kept as the letters typed), the keys come back (A1) and the rest, に買いに行こう,
+     * is not rewritten; the sentence commits as shown; backspace right after takes the commit back with the choice
      * still in place, and Enter commits it again.
      */
     @Test
@@ -229,6 +229,8 @@ class MixedTypingTest {
             openSegments()
             checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋" }.click()
             checkNotNull(device.wait(Until.findObject(By.text("地代")), WAIT_MS)) { "the piece's other reading is not offered" }.click()
+            assertTrue("the panel stayed open after the pick", device.wait(Until.gone(By.text(WHOLE)), WAIT_MS))
+            openSegments()
             val changed = "地代" + SENTENCE.removePrefix("池袋")
             checkNotNull(device.wait(Until.findObject(By.text(changed)), WAIT_MS)) { "the rest of the sentence did not stay" }.click()
             assertEquals(changed, read(scenario))
@@ -252,6 +254,8 @@ class MixedTypingTest {
             openSegments()
             checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋" }.click()
             checkNotNull(device.wait(Until.findObject(By.text("chidai")), WAIT_MS)) { "the piece's letters are not offered" }.click()
+            assertTrue("the panel stayed open after the pick", device.wait(Until.gone(By.text(WHOLE)), WAIT_MS))
+            openSegments()
             // The letters stay as typed in every sentence; the rest converts again around them.
             checkNotNull(device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("chidai.+"))), WAIT_MS)) { "the piece did not change" }
             Thread.sleep(READ_MS) // the panel has just been redrawn; tap it where it now is

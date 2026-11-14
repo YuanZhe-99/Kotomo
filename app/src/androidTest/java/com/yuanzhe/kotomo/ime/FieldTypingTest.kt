@@ -73,6 +73,62 @@ class FieldTypingTest {
     }
 
     /**
+     * A1 (device feedback 2026-11-13, checklist 2.6): a pick in the panel the bar's expand arrow
+     * opens returns to the keys. Chinese: 你 alone keeps 好's pinyin composed with the keys back,
+     * then 好 finishes 你好; Mixed: the whole sentence commits with the keys back.
+     */
+    @Test
+    fun expandedCandidatesReturnToTheKeysAfterAPick() {
+        withSettings({ it.copy(chineseNineKey = false) }) {
+            inMode(Mode.CHINESE) {
+                expanded("nihao") { scenario ->
+                    pickExpanded("你")
+                    assertTrue("the composition ended after 你", composing(scenario))
+                    pickExpanded("好")
+                    assertEquals("你好", read(scenario))
+                }
+            }
+            inMode(Mode.MIXED) {
+                expanded("nihao") { scenario ->
+                    pickExpanded("你好")
+                    assertEquals("你好", read(scenario))
+                }
+            }
+        }
+    }
+
+    /** Opens a plain text field, taps [letters] and runs [block] with the field. */
+    private fun expanded(letters: String, block: (ActivityScenario<FieldTestActivity>) -> Unit) {
+        val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+        ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+            checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+            letters.forEach { device.findObject(By.desc(it.toString())).click() }
+            block(scenario)
+        }
+    }
+
+    /**
+     * Opens the expand arrow's panel once the candidates are shown, picks [text] there and checks
+     * that the keys came back in the panel's place.
+     */
+    private fun pickExpanded(text: String) {
+        Thread.sleep(READ_MS * 3)
+        val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "the keys are not shown" }
+        val res = instrumentation.targetContext.resources
+        val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+            res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+        device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+        checkNotNull(device.wait(Until.findObject(By.desc(BACK)), WAIT_MS)) { "the expanded panel did not open" }
+        checkNotNull(device.wait(Until.findObject(By.text(text)), WAIT_MS)) { "no $text" }
+        // The segment panel lists the sentence's pieces above its candidates: take the lowest.
+        device.findObjects(By.text(text)).maxBy { it.visibleBounds.top }.click()
+        assertTrue("the panel stayed open after picking $text", device.wait(Until.gone(By.desc(BACK)), WAIT_MS))
+        checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "the keys did not come back after picking $text" }
+    }
+
+    /**
      * T13-quick (PLAN §10.4, §10.8): v then rq offers today's date first (Space types it); with the
      * quick input off, vrq goes to librime and the date is not typed.
      */
@@ -229,8 +285,8 @@ class FieldTypingTest {
     /**
      * PLAN §8.2, §5.6 (T03): the segment panel. `watashihanihonjin` converts as 私は + 日本人; the
      * expand arrow opens the segments; Shorter splits 私は into 私 + は, Longer joins them again,
-     * Shorter once more and choosing 渡し for 私 keeps は and 日本人 (a chosen segment never rewrites
-     * the others); back on the keys Enter commits the conversion as shown.
+     * Shorter once more and choosing 渡し for 私 returns to the keys (A1) and keeps は and 日本人 (a
+     * chosen segment never rewrites the others); Enter commits the conversion as shown.
      */
     @Test
     fun japaneseSegmentPanelShortensLengthensAndCommits() {
@@ -246,7 +302,8 @@ class FieldTypingTest {
                 val res = instrumentation.targetContext.resources
                 val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
                     res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
-                device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+                val arrow = device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2
+                device.click(arrow, barY)
                 checkNotNull(device.wait(Until.findObject(By.text(WHOLE)), WAIT_MS)) { "the segment panel did not open" }
                 tap("私は")
                 tap(SHORTER)
@@ -256,7 +313,9 @@ class FieldTypingTest {
                 tap(SHORTER)
                 checkNotNull(device.wait(Until.findObject(By.text("私")), WAIT_MS))
                 tap("渡し")
-                checkNotNull(device.wait(Until.findObject(By.text("渡し")), WAIT_MS))
+                assertTrue("the panel stayed open after picking 渡し", device.wait(Until.gone(By.desc(BACK)), WAIT_MS))
+                device.click(arrow, barY)
+                checkNotNull(device.wait(Until.findObject(By.text("渡し")), WAIT_MS)) { "渡し was not kept" }
                 assertTrue("は and 日本人 stay", device.hasObject(By.text("は")) && device.hasObject(By.text("日本人")))
                 device.findObject(By.desc(BACK)).click()
                 checkNotNull(device.wait(Until.findObject(By.descStartsWith(ENTER)), WAIT_MS)).click()

@@ -2759,6 +2759,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * Chooses candidate [index] of the Mixed segment panel: for the whole sentence it commits;
      * for a piece it locks the piece to that reading, or to its letters as typed,
      * and the engine converts the rest around it, never rewriting a locked piece (PLAN §5.6).
+     * Side effects: either way the keys come back in the panel's place (A1, device feedback
+     * 2026-11-13); the arrow opens the panel again for the next piece.
      */
     private fun pickMixedPiece(index: Int) {
         val focus = mixedFocus
@@ -2772,6 +2774,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val piece = mixedPieces().getOrNull(focus) ?: return
         val choice = mixedChoices(piece, composing.toString()).getOrNull(index)?.second ?: return
         mixedFocus = null
+        showKeyboard()
         askMixed({ _, _, _ -> mixed.lock(span, choice) })
     }
 
@@ -2805,12 +2808,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     /**
      * Chooses candidate [index] in the segment panel: for the whole sentence it commits like the
      * candidate bar; for a segment it pins that segment and converts the rest again around it.
+     * Side effects: either way the keys come back in the panel's place (A1).
      */
     private fun pickSegment(index: Int) {
         if (mode == Mode.MIXED) return pickMixedPiece(index)
         val focus = segmentFocus ?: return run { showKeyboard(); pick(index) }
         val segment = japaneseSegments.getOrNull(focus) ?: return
         val surface = Candidates.segment(segment).getOrNull(index)?.text ?: return
+        showKeyboard()
         reconvert(Candidates.pick(japaneseSegments, focus, surface) ?: return, focus + 1)
     }
 
