@@ -193,6 +193,19 @@ internal object Candidates {
             emoji.map { it to EMOJI } + indexed.drop(at)).filter { seen.add(it.first) }
     }
 
+    /**
+     * Leaves out the entries whose text holds an ideograph the font cannot draw (A11: librime
+     * lists rare characters from the CJK extensions that the device's fonts may lack, and they
+     * would show as empty boxes).
+     * Inputs: [entries] from [chinese] or [mixed]; [canDraw] answers for one ideograph's code
+     * point and is asked about ideographs only (emoji come from what the font draws already,
+     * letters always draw).
+     * Returns: the other entries in order with their source indexes unchanged, so a pick still
+     * reaches the engine's own candidate.
+     */
+    fun drawable(entries: List<Pair<String, Int>>, canDraw: (Int) -> Boolean): List<Pair<String, Int>> =
+        entries.filter { (text, _) -> text.codePoints().allMatch { !Character.isIdeographic(it) || canDraw(it) } }
+
     /** Puts [emoji] into [list] after its first [position] entries, without duplicates. */
     fun withEmoji(list: List<String>, emoji: List<String>, position: Int = EMOJI_POSITION): List<String> {
         if (emoji.isEmpty()) return list

@@ -108,6 +108,53 @@ class FieldTypingTest {
     }
 
     /**
+     * A11 (device feedback 2026-11-13, second round, checklist 7.12): Mixed `yu`, expanded and
+     * scrolled to the end, shows no candidate the font cannot draw (librime lists rare
+     * characters from the CJK extensions). Positive: 语 is still offered and picking it types 语.
+     */
+    @Test
+    fun expandedCandidatesShowOnlyWhatTheFontDraws() {
+        val paint = android.graphics.Paint()
+        val ideograph = java.util.regex.Pattern.compile(".*\\p{IsIdeographic}.*")
+        inMode(Mode.MIXED) {
+            expanded("yu") { scenario ->
+                Thread.sleep(READ_MS * 3)
+                val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "the keys are not shown" }
+                val res = instrumentation.targetContext.resources
+                val barY = q.visibleBounds.top - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+                    res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+                device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+                checkNotNull(device.wait(Until.findObject(By.desc(BACK)), WAIT_MS)) { "the expanded panel did not open" }
+                checkNotNull(device.wait(Until.findObject(By.text("语")), WAIT_MS)) { "no 语" }
+                val seen = LinkedHashSet<String>()
+                Thread.sleep(READ_MS * 3)
+                // The list may still be redrawn (the later stage): a cell gone meanwhile is skipped.
+                val panel = device.findObjects(By.text(ideograph)).mapNotNull { runCatching { it.visibleBounds }.getOrNull() }
+                val top = panel.minOf { it.top }
+                val bottom = panel.maxOf { it.bottom }
+                // Scrolls until three swipes in a row show nothing new: the end of the list.
+                var idle = 0
+                for (i in 0 until SCROLLS) {
+                    val before = seen.size
+                    seen += device.findObjects(By.text(ideograph)).mapNotNull { runCatching { it.text }.getOrNull() }
+                    idle = if (seen.size == before) idle + 1 else 0
+                    if (idle == 3) break
+                    // From inside the cells (the collapse button sits below them) up by most of a page.
+                    device.swipe(device.displayWidth / 2, bottom - (bottom - top) / 4, device.displayWidth / 2, top, SWIPE_STEPS)
+                    Thread.sleep(READ_MS)
+                }
+                assertTrue("only ${seen.size} candidates were listed", seen.size > SCROLLED_PAST)
+                val boxes = seen.filter { t -> t.codePoints().anyMatch { Character.isIdeographic(it) && !paint.hasGlyph(String(Character.toChars(it))) } }
+                assertTrue("shown without a glyph: ${boxes.joinToString(" ") { t -> t.codePoints().toArray().joinToString("+") { "U+%X".format(it) } }}", boxes.isEmpty())
+                device.findObject(By.desc(BACK)).click()
+                checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS))
+                pickExpanded("语")
+                assertEquals("语", read(scenario))
+            }
+        }
+    }
+
+    /**
      * A1 (device feedback 2026-11-13, checklist 2.6): a pick in the panel the bar's expand arrow
      * opens returns to the keys. Chinese: 你 alone keeps 好's pinyin composed with the keys back,
      * then 好 finishes 你好; Mixed: the whole sentence commits with the keys back.
@@ -744,5 +791,9 @@ class FieldTypingTest {
         const val WAIT_MS = 3000L
         const val READS = 3
         const val READ_MS = 300L
+        /** A11: the most swipes down the expanded list, steps per swipe, and how many candidates `yu` lists at least. */
+        const val SCROLLS = 120
+        const val SWIPE_STEPS = 30
+        const val SCROLLED_PAST = 200
     }
 }

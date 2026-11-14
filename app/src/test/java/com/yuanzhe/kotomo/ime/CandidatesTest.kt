@@ -20,6 +20,24 @@ class CandidatesTest {
         assertEquals(listOf("中国" to 0, "种过" to 1, "zhongguo" to Candidates.TYPED, "🐉" to Candidates.EMOJI, "种果" to 2), list)
     }
 
+    /**
+     * A11 (device feedback 2026-11-13, second round): a candidate with an ideograph the font
+     * cannot draw is left out, and every other entry keeps its source index, so a pick still
+     * reaches the engine's own candidate. Negative: letters, emoji and drawable ideographs are
+     * kept, and only ideographs are asked about.
+     */
+    @Test
+    fun drawableLeavesOutWhatTheFontCannotDrawAndKeepsTheIndexes() {
+        val rare = String(Character.toChars(0x2B740))
+        val asked = HashSet<Int>()
+        val entries = Candidates.mixed(listOf("与", rare, "yu", "语", "余$rare"), "yu", listOf("🐟"), 2)
+        val shown = Candidates.drawable(entries) { asked += it; it < 0x20000 }
+        assertEquals(listOf("与" to 0, "🐟" to Candidates.MIXED_EMOJI, "yu" to 2, "语" to 3), shown)
+        assertEquals(setOf(0x4E0E, 0x8BED, 0x4F59, 0x2B740), asked)
+        val chinese = Candidates.drawable(Candidates.chinese(listOf("鱼", rare, "雨"), "yu", emptyList())) { it < 0x20000 }
+        assertEquals(listOf("鱼" to 0, "yu" to Candidates.TYPED, "雨" to 2), chinese)
+    }
+
     @Test
     fun chineseLeavesOutTypedLettersThatAreAlreadyACandidate() { // negative
         val list = Candidates.chinese(listOf("ok", "哦"), "ok", emptyList())

@@ -1899,7 +1899,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val emoji = emojiFor(state.preedit)
         emojiShown = emoji.toSet()
         val entries = Regional.promote(
-            Candidates.chinese(state.candidates.map { it.text }, state.input, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)),
+            Candidates.drawable(Candidates.chinese(state.candidates.map { it.text }, state.input, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)), ::canDraw),
             regionalWords,
         ) { it >= 0 }
         chineseCandidates = entries.map { it.first } + idiomRest
@@ -1915,6 +1915,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             if (separatorShown != null && separatorOnShift(settings) != separatorShown) refresh(0)
         }
     }
+
+    /** Main thread: whether the system font draws each ideograph asked about so far, by code point (A11). */
+    private val glyphs = HashMap<Int, Boolean>()
+    private val glyphPaint = android.graphics.Paint()
+
+    /**
+     * Whether the font the candidate bar and the expanded panel draw with has a glyph for the
+     * ideograph [codePoint] (A11), measured once per code point and cached for the service's life.
+     * Notes: main thread; the common characters are measured on their first appearance, so later
+     * keys only look them up.
+     */
+    private fun canDraw(codePoint: Int): Boolean = glyphs.getOrPut(codePoint) { glyphPaint.hasGlyph(String(Character.toChars(codePoint))) }
 
     /** Main thread: the quick-input query after `v` in Chinese mode (PLAN §10.4), or null when not in one. */
     private var quick: StringBuilder? = null
@@ -2427,7 +2439,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val emoji = emojiFor(raw)
         emojiShown = emoji.toSet()
         val entries = Regional.promote(
-            Candidates.mixed(snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)),
+            Candidates.drawable(Candidates.mixed(snapshot?.candidates?.map { it.text }.orEmpty(), raw, emoji, Candidates.emojiPosition(settings.mixed.weightEmoji)), ::canDraw),
             regionalWords,
         ) { it >= 0 }
         mixedIndexes = entries.map { it.second }
@@ -2741,7 +2753,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 // A piece lists its readings and its letters as typed; the whole sentence lists
                 // the engine's candidates.
                 candidates = if (focus == null) {
-                    mixedSnapshot?.candidates?.map { it.text }.orEmpty()
+                    mixedSentences().map { it.first }
                 } else {
                     mixedChoices(pieces[focus], raw).map { it.first }
                 },
@@ -2819,13 +2831,21 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * the engine's answer with its index there, and the letters as typed ([Core.AS_TYPED]) in
      * second place, where they stay on screen however many readings there are; when a reading
      * already is those letters, it stands for them. Until the answer arrives, the letters alone.
+     * Readings the font cannot draw are left out (A11).
      */
     private fun mixedChoices(piece: com.yuanzhe.kotomo.engine.Piece, raw: String): List<Pair<String, Int>> {
         val typed = raw.substring(piece.begin.coerceAtMost(raw.length), piece.end.coerceAtMost(raw.length))
-        val readings = mixedSpan?.candidates.orEmpty().mapIndexed { i, c -> c.text to i }.distinctBy { it.first }
+        val readings = Candidates.drawable(mixedSpan?.candidates.orEmpty().mapIndexed { i, c -> c.text to i }.distinctBy { it.first }, ::canDraw)
         if (readings.any { it.first == typed }) return readings
         return readings.take(1) + (typed to Core.AS_TYPED) + readings.drop(1)
     }
+
+    /**
+     * Lists the whole-sentence candidates of the Mixed segment panel: the snapshot's, each with
+     * its index there, without those the font cannot draw (A11).
+     */
+    private fun mixedSentences(): List<Pair<String, Int>> =
+        Candidates.drawable(mixedSnapshot?.candidates.orEmpty().mapIndexed { i, c -> c.text to i }, ::canDraw)
 
     /**
      * Chooses candidate [index] of the Mixed segment panel: for the whole sentence it commits;
@@ -2837,10 +2857,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun pickMixedPiece(index: Int) {
         val focus = mixedFocus
         if (focus == null) {
-            val text = mixedSnapshot?.candidates?.getOrNull(index)?.text ?: return
+            val (text, at) = mixedSentences().getOrNull(index) ?: return
             if (mixedSnapshot?.input != composing.toString()) return
             showKeyboard()
-            return commitMixed(index, text)
+            return commitMixed(at, text)
         }
         val span = mixedSpan ?: return
         val piece = mixedPieces().getOrNull(focus) ?: return
