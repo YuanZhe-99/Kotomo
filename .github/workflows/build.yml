@@ -46,6 +46,11 @@ jobs:
   data:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      deps-key: ${{ steps.deps.outputs.key }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
@@ -65,29 +70,40 @@ jobs:
       - name: Install Ninja
         run: sudo apt-get install -y ninja-build > /dev/null
 
-      # Pinned, hash-checked downloads (Boost and the data sources build-lock.json names). The
-      # scripts verify what they find, so a stale entry is downloaded again, not trusted.
-      - uses: actions/cache@v6
+      # Pinned, hash-checked downloads (Boost and the data sources). Some upstreams publish only
+      # "the current file" (CC-CEDICT), so a fresh download stops matching its pin as soon as the
+      # upstream replaces it; the cache keeps the pinned bytes for later runs. The key is the pins
+      # themselves (build-lock.json's data sources and Boost, and the tools that carry the same
+      # hashes), and an older entry is restored when they move, since every tool re-checks each
+      # file it finds and downloads only what is missing or stale.
+      - name: Download cache key
+        id: deps
+        run: |
+          pins=$(python3 -c 'import json; l = json.load(open("build-lock.json")); print(json.dumps([l["dataSources"], l["upstreams"]["boost"]], sort_keys=True))' | sha256sum | cut -c1-16)
+          echo "key=deps-$pins-${{ hashFiles('tool/BuildEnglishDict.java', 'lexicon/*.java', 'scripts/fetch-boost.sh') }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v6
+        id: restore
         with:
           path: .deps
-          key: deps-${{ hashFiles('build-lock.json') }}
+          key: ${{ steps.deps.outputs.key }}
           restore-keys: deps-
 
       - name: Boost headers
-        run: scripts/fetch-boost.sh
+        run: scripts/fetch-boost.sh 2>&1 | tee -a "$RUNNER_TEMP/downloads.log"
 
       # The app ships compiled Chinese data, so the phone never compiles it on first use.
       - name: Prebuilt Chinese data
         run: scripts/prebuild-rime.sh
 
       - name: English dictionary
-        run: java tool/BuildEnglishDict.java
+        run: java tool/BuildEnglishDict.java 2>&1 | tee -a "$RUNNER_TEMP/downloads.log"
 
       - name: Emoji asset
-        run: java lexicon/EmojiData.java
+        run: java lexicon/EmojiData.java 2>&1 | tee -a "$RUNNER_TEMP/downloads.log"
 
       - name: Cross-language lexicon
-        run: java -Xmx4g lexicon/CrossLexicon.java
+        run: java -Xmx4g lexicon/CrossLexicon.java 2>&1 | tee -a "$RUNNER_TEMP/downloads.log"
 
       - name: Lexicon sample check
         run: java lexicon/CheckSamples.java
@@ -97,6 +113,20 @@ jobs:
           cmake -S core/mixed -B build/host/mixed -G Ninja -DCMAKE_BUILD_TYPE=Release > /dev/null
           cmake --build build/host/mixed --target kotomo_lexicon_compile
           build/host/mixed/kotomo_lexicon_compile build/lexicon/pinyin-ja.tsv build/lexicon/en-ja.tsv build/lexicon/cross.klx
+
+      # Saved even when a later step failed, so the files that did match their pins are kept.
+      - uses: actions/cache/save@v6
+        if: always() && steps.deps.outputs.key != '' && steps.restore.outputs.cache-hit != 'true'
+        with:
+          path: .deps
+          key: ${{ steps.deps.outputs.key }}
+
+      - name: Explain a moved upstream file
+        if: failure()
+        run: |
+          if grep -E 'sha256 [0-9a-f]{64}, (pinned|expected) [0-9a-f]{64}' "$RUNNER_TEMP/downloads.log" 2>/dev/null; then
+            echo "::error title=Pinned data source changed::The upstream file was updated and no longer matches its pin (上游文件已更新，需要移动锁定). Move the pin in build-lock.json and the tool deliberately, then re-run CheckSamples and the whole conversion corpus."
+          fi
 
       - uses: actions/upload-artifact@v7
         with:
@@ -136,7 +166,7 @@ jobs:
       - uses: actions/cache/restore@v6
         with:
           path: .deps
-          key: deps-${{ hashFiles('build-lock.json') }}
+          key: ${{ needs.data.outputs.deps-key }}
           restore-keys: deps-
 
       - name: Boost headers
@@ -206,7 +236,7 @@ jobs:
       - uses: actions/cache/restore@v6
         with:
           path: .deps
-          key: deps-${{ hashFiles('build-lock.json') }}
+          key: ${{ needs.data.outputs.deps-key }}
           restore-keys: deps-
 
       - name: Boost headers
@@ -319,7 +349,7 @@ jobs:
       - uses: actions/cache/restore@v6
         with:
           path: .deps
-          key: deps-${{ hashFiles('build-lock.json') }}
+          key: ${{ needs.data.outputs.deps-key }}
           restore-keys: deps-
 
       - name: Boost headers

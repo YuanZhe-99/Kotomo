@@ -129,7 +129,11 @@ on a new repository builds in full; no artifact has to exist beforehand. A diffe
 hashes `build-lock.json` records (those of the development host's build) is a warning, not a
 failure, since another distribution may not build byte for byte the same. The release APK is signed
 when the secrets `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` exist and is
-left unsigned otherwise, with the workflow still passing; only the `release` job requires them.
+left unsigned otherwise, with the workflow still passing; only the `release` job requires them. The
+pinned downloads in `.deps/` are cached under the pins themselves and saved even when the `data` job
+fails, because CC-CEDICT is published only as the current file: once MDBG replaces it, a fresh
+download no longer matches its pin, the job fails with "Pinned data source changed", and the pin
+has to be moved on purpose (with `CheckSamples` and the whole corpus run again).
 
 The GitHub repository the workflows ran in was deleted with its artifacts and secrets when the
 project was archived on 2026-11-04, and none exists now, so the workflows have not run since. Until

@@ -107,6 +107,8 @@ Mozc 只来自同一次运行：Bazel 要一个小时以上，所以 `mozc.yml` 
 不需要事先存在任何产物。与 `build-lock.json` 记录的哈希（开发主机构建的哈希）不同时只给出警告、不算失败，因为换一个发行版不一定能逐字节构建出相同的结果。
 机密 `KEYSTORE_BASE64`、`STORE_PASSWORD`、`KEY_ALIAS` 与 `KEY_PASSWORD` 存在时 release APK 签名，否则不签名，工作流照样通过；
 只有 `release` 作业要求它们。
+`.deps/` 中锁定的下载以锁定值本身为键缓存，`data` 作业失败时也会保存，因为 CC-CEDICT 只发布当前文件：MDBG 一换文件，
+新下载的文件就对不上锁定，作业以"Pinned data source changed"失败，需要有意移动锁定（并重跑 `CheckSamples` 与整套语料）。
 
 这些工作流原来运行的 GitHub 仓库在项目于 2026-11-04 归档时连同产物和机密一起删除，现在没有可运行它们的仓库，
 所以它们此后没有运行过。在把仓库推送到新的仓库之前，所有构建与测试都在开发主机上运行。
