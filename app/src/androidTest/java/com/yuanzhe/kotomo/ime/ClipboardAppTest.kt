@@ -73,8 +73,11 @@ class ClipboardAppTest {
         ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
             checkNotNull(device.wait(Until.findObject(By.desc("k")), WAIT_MS)) { "Kotomo's keys did not appear" }
             runBlocking { settings.update { it.copy(clipboard = it.clipboard.copy(history = true, excludedApps = setOf(context.packageName))) } }
+            // The keyboard hears of a changed setting on its own thread a moment after the write.
+            Thread.sleep(POLL_MS * 5)
             assertFalse("copied while typing in an excluded app: not kept", copyAndWait(scenario, "$PREFIX excluded ${System.nanoTime()}"))
             runBlocking { settings.update { it.copy(clipboard = it.clipboard.copy(excludedApps = emptySet())) } }
+            Thread.sleep(POLL_MS * 5)
             assertTrue("copied in an app that is not excluded: kept", copyAndWait(scenario, "$PREFIX kept ${System.nanoTime()}"))
         }
     }
