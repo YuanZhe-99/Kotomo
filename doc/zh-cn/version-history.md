@@ -1,5 +1,14 @@
 # 版本历史
 
+## 0.1.1（2026-11-19）
+
+- 混合模式与英文 → 日语匹配优化：带括号限定语的 JMdict 英文释义在剥离括号后若为单词词元则索引进 `cross.klx`（`power` → `パワー`），附属词性义项（`suf`、`pref`、`ctr`、`aux*`、`prt`、`conj`、`int`）排在独立名词与外来语之后（`system` → `システム`），英文常见屈折词尾（`-s`、`-es`、`-ed`、`-ing`）支持词干回退查词，未登录假名回显与残留拉丁字母计入罚分以避免压过外来语，且混合模式下的英文候选保留输入的大写形式（S5 样本 40/40，反例 0/8）。
+- 混合模式拼音前缀匹配与分段上屏（引擎契约第 9 版）：多音节拼音输入在整句候选之后提供严格按音节边界对齐的 2–3 音节词组前缀与首音节单字候选（绝不在音节内部截断）；点选前缀候选仅提交该前缀并保留剩余拼音继续组词（在展开面板中点选时保持面板打开并刷新剩余拼音的候选）。
+- 展开候选面板长按详情：在 `CandidatesPanel` 与 `SegmentPanel` 中长按候选词可在面板上方的候选栏显示读音、词典来源以及 Mozc 词性、原形与活用详情。
+- 混合模式候选语言标识：候选栏、`CandidatesPanel` 与 `SegmentPanel` 中的混合模式候选词旁显示与设置页一致的微型 `中` / `EN` / `日` 标识，由 `mixed.language_tags` 设置项控制（默认开启 `true`，可在“设置 → 混合模式”中开关）。
+- 2026-11-19 核对上游，未变：librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2、Gradle 9.9.1、Android Gradle Plugin 9.5.1、Kotlin 2.4.21、Compose BOM 2026.09.00、ML Kit GenAI 1.0.0-beta1、ML Kit translate 17.0.3、NDK r30、平台 37.2、构建工具 37.0.0、CC-CEDICT 2026-11-14T02:25:17Z、jmdict-simplified 3.6.2+20261109214828、Unicode 18.0 与 cldr-json 49.0.0。
+- 2026-11-19 发布（`versionCode` 2）。在开发主机上验证：`java tool/CheckDocs.java`、`java lexicon/CheckSamples.java`（40/40）、主机 C++ 混合引擎测试（`11/11`）、整套转换语料（`301/302`，0 回退，Mixed 模式条目经协调层 `133/133` 全部通过）、`./gradlew check assembleDebug assembleRelease`，以及模拟器（Android 17、x86_64、16 KB 页、debug）：`CandidateBarTest` 3/3、`MixedTypingTest` 31/31、`FieldTypingTest` 29/29，并核对浅色/深色主题、四种界面语言与最大字体缩放（2.0）截图。本次发布周期未在物理真机上运行验证。
+
 ## 0.1.0（2026-11-14）
 
 - 仓库脚手架：工作规范（`AGENTS.md`）、计划（`PLAN.md`，来自用户的草案 2.0）、镜像文档和文档检查（`tool/CheckDocs.java`）。

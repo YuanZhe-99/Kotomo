@@ -1,5 +1,14 @@
 # Version history
 
+## 0.1.1 (2026-11-19)
+
+- Mixed mode and English → Japanese matching: JMdict glosses with parenthesized qualifiers whose remaining word is a single token now index into `cross.klx` (`power` → `パワー`), dependent POS senses (`suf`, `pref`, `ctr`, `aux*`, `prt`, `conj`, `int`) are down-weighted below nouns and loanwords (`system` → `システム`), English inflections (`-s`, `-es`, `-ed`, `-ing`) query their stems, unknown echoed kana and trailing Latin characters carry penalties so loanwords outrank kana echoes, and typed uppercase is preserved on English proposals in Mixed mode (S5 samples 40/40, counter-examples 0/8).
+- Mixed-mode Pinyin prefix matching and partial commit (engine contract version 9): multi-syllable pinyin inputs offer syllable-aligned phrase prefixes (2–3 syllables) and first-syllable single-character candidates below the top whole-input sentences without cutting inside a syllable; picking a prefix candidate commits the prefix and keeps the remaining composition active (keeping expanded panels open and refreshing for the remainder).
+- Expanded candidate panels: long-pressing a candidate in `CandidatesPanel` or `SegmentPanel` displays its reading, dictionary source, and Mozc part of speech / base form / inflections in the candidate bar above the panel.
+- Mixed-mode candidate language badges: candidates in `CandidateBar`, `CandidatesPanel`, and `SegmentPanel` display a small `中` / `EN` / `日` badge controlled by the `mixed.language_tags` setting (default `true`, configurable under Settings → Mixed mode).
+- Upstreams checked on 2026-11-19, unchanged: librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2, HeliBoard 4.2, Gradle 9.9.1, Android Gradle Plugin 9.5.1, Kotlin 2.4.21, Compose BOM 2026.09.00, ML Kit GenAI 1.0.0-beta1, ML Kit translate 17.0.3, NDK r30, platform 37.2, build tools 37.0.0, CC-CEDICT 2026-11-14T02:25:17Z, jmdict-simplified 3.6.2+20261109214828, Unicode 18.0 and cldr-json 49.0.0.
+- Released on 2026-11-19 (`versionCode` 2). Verified on the development host: `java tool/CheckDocs.java`, `java lexicon/CheckSamples.java` (40/40), host C++ Mixed tests (`11/11`), the whole conversion corpus (`301/302`, 0 regressed, Mixed lines `133/133` through the coordinator), `./gradlew check assembleDebug assembleRelease`, and on the emulator (Android 17, x86_64, 16 KB pages, debug): `CandidateBarTest` 3/3, `MixedTypingTest` 31/31, `FieldTypingTest` 29/29, plus light/dark, four-language and font-scale 2.0 screenshots. Not verified on a physical device in this release cycle.
+
 ## 0.1.0 (2026-11-14)
 
 - Repository scaffold: working conventions (`AGENTS.md`), the plan (`PLAN.md`, from the user's
