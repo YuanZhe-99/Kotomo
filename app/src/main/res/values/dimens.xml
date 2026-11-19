@@ -48,6 +48,8 @@
     <dimen name="bar_pill_pad">12dp</dimen>
     <dimen name="bar_text">18sp</dimen>
     <dimen name="bar_hint_text">14sp</dimen>
+    <dimen name="bar_lang_text">9dp</dimen>
+    <dimen name="bar_lang_gap">2dp</dimen>
     <dimen name="bar_expand">44dp</dimen>
     <!-- The most of the candidate row one candidate may take (A7), so the next one shows beside it. -->
     <integer name="bar_candidate_max_percent">60</integer>

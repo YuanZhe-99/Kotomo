@@ -888,6 +888,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     },
                     onBack = ::showKeyboard,
                     onLongPick = ::showDetails,
+                    tags = shownTags,
                 )
             }
         }
@@ -1026,6 +1027,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     private val shownCandidates = androidx.compose.runtime.mutableStateOf(emptyList<String>())
+    private val shownTags = androidx.compose.runtime.mutableStateOf(emptyList<String>())
 
     /**
      * Shows candidate [index]'s details in the bar (a long press on it): its reading and where it
@@ -2385,8 +2387,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         // Chinese candidates are librime's answer, drawn by applyChinese; what is shown here is the
         // previous key's, so the probe waits for that answer.
-        candidateBar.show(candidates, if ((usesRime || mode == Mode.MIXED) && !direct) 0 else downTime)
+        val activeMixed = mode == Mode.MIXED && !direct && mixedSnapshot?.input == raw && raw.isNotBlank()
+        val readings = if (activeMixed) mixedReadings() else emptyList()
+        val tags = if (activeMixed) mixedTags() else emptyList()
+        candidateBar.show(candidates, if ((usesRime || mode == Mode.MIXED) && !direct) 0 else downTime, readings, tags)
         shownCandidates.value = candidates
+        shownTags.value = tags
+        if (activeMixed) updateSegmentPanel()
         candidateBar.hint = notice ?: chineseHint() ?: japaneseHint(raw)
         updateQuickStrip()
         if (raw.isEmpty()) {
@@ -2517,14 +2524,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         ) { it >= 0 }
         mixedIndexes = entries.map { it.second }
         candidates = entries.map { it.first }
-        // `mixed.cross.readings`: how a cross-language Japanese candidate is read.
-        val readings = if (settings.mixed.cross.readings) {
-            mixedIndexes.map { i -> snapshot?.candidates?.getOrNull(i)?.let(Candidates::mixedReading).orEmpty() }
-        } else {
-            emptyList()
-        }
-        candidateBar.show(candidates, downTime, readings)
+        val readings = mixedReadings()
+        val tags = mixedTags()
+        candidateBar.show(candidates, downTime, readings, tags)
         shownCandidates.value = candidates
+        shownTags.value = tags
         mixedSpan = null
         // A piece stays chosen only while the segment panel is open on it.
         val open = ::panelHost.isInitialized && panelHost.getChildAt(0) === segmentPanel
@@ -2535,6 +2539,29 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /** The pieces of the best Mixed candidate, which the segment panel shows as chips. */
     private fun mixedPieces() = mixedSnapshot?.candidates?.firstOrNull()?.pieces.orEmpty()
+
+    /** Maps a Mixed candidate's target language to the badge label matching settings (`中`/`EN`/`日`). */
+    private fun langBadge(lang: Lang): String = when (lang) {
+        Lang.CHINESE -> getString(R.string.mode_badge_chinese)
+        Lang.ENGLISH -> getString(R.string.mode_badge_english)
+        Lang.JAPANESE -> getString(R.string.mode_badge_japanese)
+    }
+
+    /** Readings matching [mixedIndexes] when `mixed.cross.readings` is enabled. */
+    private fun mixedReadings(): List<String> = if (settings.mixed.cross.readings) {
+        mixedIndexes.map { i -> mixedSnapshot?.candidates?.getOrNull(i)?.let(Candidates::mixedReading).orEmpty() }
+    } else {
+        emptyList()
+    }
+
+    /** Language badges (`中` / `EN` / `日`) matching [mixedIndexes] when `mixed.language_tags` is on. */
+    private fun mixedTags(): List<String> = if (settings.mixed.languageTags) {
+        mixedIndexes.map { i ->
+            if (i >= 0) mixedSnapshot?.candidates?.getOrNull(i)?.let { langBadge(it.target) }.orEmpty() else ""
+        }
+    } else {
+        emptyList()
+    }
 
     /**
      * Runs one of the engine's local-change requests for the Mixed composition on the engine
@@ -2864,21 +2891,29 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             val pieces = mixedPieces()
             val focus = mixedFocus?.takeIf { it in pieces.indices }
             val raw = composing.toString()
+            val showBadges = settings.mixed.languageTags
+            val sentences = if (focus == null) mixedSentences() else emptyList()
+            val choices = if (focus != null) mixedChoices(pieces[focus], raw) else emptyList()
             segmentView.value = if (pieces.isEmpty()) null else SegmentView(
                 texts = pieces.map { it.text },
                 readings = pieces.map { it.reading },
                 focus = focus,
                 // A piece lists its readings and its letters as typed; the whole sentence lists
                 // the engine's candidates.
-                candidates = if (focus == null) {
-                    mixedSentences().map { it.first }
-                } else {
-                    mixedChoices(pieces[focus], raw).map { it.first }
-                },
+                candidates = if (focus == null) sentences.map { it.first } else choices.map { it.first },
                 shorter = focus != null && focus < pieces.size - 1,
                 longer = pieces.any { it.locked },
                 shorterLabel = R.string.segment_commit_here,
                 longerLabel = R.string.segment_restore,
+                candidateTags = when {
+                    !showBadges -> emptyList()
+                    focus == null -> sentences.map { (_, i) ->
+                        mixedSnapshot?.candidates?.getOrNull(i)?.let { langBadge(it.target) }.orEmpty()
+                    }
+                    else -> choices.map { (_, choice) ->
+                        if (choice != Core.AS_TYPED) mixedSpan?.candidates?.getOrNull(choice)?.let { langBadge(it.target) }.orEmpty() else ""
+                    }
+                },
             )
             return
         }

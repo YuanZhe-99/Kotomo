@@ -69,6 +69,7 @@
 | `chinese.space` | string | `commit_first` | 中文模式组合中的空格：`commit_first` 或 `next`；其他值读作默认值 |
 | `chinese.enter` | string | `shown` | 中文模式组合中的回车：`shown` 提交输入的字母，`first` 提交首选候选 |
 | `mixed.emoji_eager` | boolean | `true` | 积极匹配 Emoji，各模式都生效（反馈 C2）：打出的字母是一个完整的 Emoji 词（`cat`、`pingguo`）而不只是某个词的开头时，它最贴切的那个 Emoji 最晚排在最好的三个候选之后，与 Emoji 权重无关；这个词的其他 Emoji 仍在权重决定的位置。关闭：所有 Emoji 只按 `mixed.weight_emoji` 放置。两种状态下一个词的 Emoji 都是最贴切的在前 |
+| `mixed.language_tags` | boolean | `true` | 在混合模式的候选栏与展开面板的每个候选词旁显示小小的目标语言标识（`中` / `EN` / `日`） |
 | `mixed.abbreviation` | boolean | `true` | 混合模式的简拼：音节可以只打声母（`tq` → 天气、`woxhni` → 我喜欢你）。关闭时只有完整音节按拼音读取，正在打的最后一个音节除外。中文模式始终读取简拼 |
 | `mixed.cross.*`、`japanese.cross.*` | boolean | `true` | 混合模式与日文模式的跨语言转换开关：`pinyin_to_kanji`（按中文读音键入的日文汉字词）、`pinyin_to_katakana`、`english_to_kanji`（英文词对应的同义日文词）、`english_to_katakana`（对应的外来语）、`whole_sentence`（关闭时跨语言词只在它就是整个组合时提供）、`readings`、`emoji` |
 | `chinese.script` | string | `simplified` | 中文输出：`simplified`（大陆）、`traditional`（OpenCC 标准）、`taiwan`、`hong_kong`（带地区用词）；快捷面板还会在键盘的记忆（见下文）中按 App 记住选择 |

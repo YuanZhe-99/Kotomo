@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
@@ -500,11 +501,24 @@ private fun BarKey(modifier: Modifier, onClick: () -> Unit, content: @Composable
     ) { content() }
 }
 
+/** Renders a candidate surface together with an optional tiny language badge (`中` / `EN` / `日`). */
+@Composable
+private fun CandidateLabel(text: String, tag: String, color: Color) {
+    val badgeSize = with(LocalDensity.current) { dimensionResource(R.dimen.bar_lang_text).toSp() }
+    Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.bar_lang_gap))) {
+        Text(text, Modifier.alignByBaseline(), fontSize = 18.sp, color = color)
+        if (tag.isNotEmpty()) {
+            Text(tag, Modifier.alignByBaseline(), fontSize = badgeSize, color = color.copy(alpha = 0.72f))
+        }
+    }
+}
+
 /**
  * Shows every candidate in the keyboard's place (the candidate bar's expand arrow).
  *
  * Inputs: [candidates] follows the bar; [onPick] commits candidate n; [onLongPick] shows
- * candidate n's details; [onBack] returns to the keys.
+ * candidate n's details; [onBack] returns to the keys; [tags] supplies optional Mixed-mode
+ * language badges (`中` / `EN` / `日`).
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -513,9 +527,11 @@ fun CandidatesPanel(
     onPick: (Int) -> Unit,
     onBack: () -> Unit,
     onLongPick: (Int) -> Unit = {},
+    tags: androidx.compose.runtime.State<List<String>>? = null,
 ) {
     val back = stringResource(R.string.candidates_collapse)
     val view = LocalView.current
+    val shownTags = tags?.value.orEmpty()
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         androidx.compose.foundation.layout.FlowRow(
             Modifier
@@ -539,12 +555,12 @@ fun CandidatesPanel(
                                 onLongPick(i)
                             },
                         )
-                        .padding(horizontal = 14.dp),
+                        .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text,
-                        fontSize = 18.sp,
+                    CandidateLabel(
+                        text = text,
+                        tag = shownTags.getOrNull(i).orEmpty(),
                         color = colorResource(if (i == 0) R.color.kb_on_accent_container else R.color.kb_ink),
                     )
                 }
@@ -586,6 +602,7 @@ data class SegmentView(
     val longer: Boolean,
     val shorterLabel: Int = R.string.segment_shorter,
     val longerLabel: Int = R.string.segment_longer,
+    val candidateTags: List<String> = emptyList(),
 )
 
 /**
@@ -646,10 +663,14 @@ fun SegmentPanel(
                                 onLongPick(i)
                             },
                         )
-                        .padding(horizontal = 14.dp),
+                        .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(text, fontSize = 18.sp, color = colorResource(if (i == 0) R.color.kb_on_accent_container else R.color.kb_ink))
+                    CandidateLabel(
+                        text = text,
+                        tag = v.candidateTags.getOrNull(i).orEmpty(),
+                        color = colorResource(if (i == 0) R.color.kb_on_accent_container else R.color.kb_ink),
+                    )
                 }
             }
         }

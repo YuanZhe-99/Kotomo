@@ -154,6 +154,8 @@
     <string name="weight_emoji">Emoji</string>
     <string name="mixed_emoji_eager">Show a word\'s emoji early</string>
     <string name="mixed_emoji_eager_desc">Once a word is typed in full, its best emoji follows the three best candidates; off: every emoji is placed by the weight above</string>
+    <string name="mixed_language_tags">Show candidate language badges</string>
+    <string name="mixed_language_tags_desc">Show a small 中 / EN / 日 label next to each candidate in Mixed mode so you can tell its language at a glance</string>
     <string name="mixed_cross">Cross-language conversion</string>
     <string name="cross_pinyin_kanji">Pinyin → Japanese kanji</string>
     <string name="cross_pinyin_kanji_desc">chidai → 池袋, with the Japanese reading on the candidate</string>

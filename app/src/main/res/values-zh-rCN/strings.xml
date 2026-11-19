@@ -140,6 +140,8 @@
     <string name="weight_emoji">Emoji</string>
     <string name="mixed_emoji_eager">积极匹配 Emoji</string>
     <string name="mixed_emoji_eager_desc">词完整打出后，最贴切的 Emoji 排在前三个候选之后；关闭后 Emoji 完全按上面的权重排</string>
+    <string name="mixed_language_tags">显示候选语言标识</string>
+    <string name="mixed_language_tags_desc">在混合模式每个候选词旁显示小小的 中 / EN / 日 标识，方便一眼分辨语言</string>
     <string name="mixed_cross">跨语言转换</string>
     <string name="cross_pinyin_kanji">中文拼音 → 日语汉字</string>
     <string name="cross_pinyin_kanji_desc">chidai → 池袋，候选显示日文读音</string>

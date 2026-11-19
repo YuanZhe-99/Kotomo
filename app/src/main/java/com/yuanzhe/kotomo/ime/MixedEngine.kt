@@ -159,7 +159,12 @@ internal class MixedEngine {
     private fun answer(snapshot: Snapshot?): Snapshot? {
         // The person asked for this one (a piece chosen, the input restored, a commit taken
         // back): it is shown complete, not in two stages.
-        val full = if (snapshot?.more == true) core?.refine(snapshot.generation) ?: snapshot else snapshot
+        val refined = if (snapshot?.more == true) core?.refine(snapshot.generation) ?: snapshot else snapshot
+        val full = if (snapshot != null && refined != null && snapshot.commit.isNotEmpty() && refined.commit.isEmpty()) {
+            refined.copy(commit = snapshot.commit)
+        } else {
+            refined
+        }
         last = full
         held = full?.input.orEmpty()
         spanShown = false

@@ -101,6 +101,8 @@ data class Mixed(
      * emoji weight (`mixed.emoji_eager`, feedback C2); off: every emoji where the weight puts it.
      */
     val emojiEager: Boolean = true,
+    /** Shows a small 中 / EN / 日 language badge next to Mixed candidates (`mixed.language_tags`). */
+    val languageTags: Boolean = true,
     /** A pinyin syllable may be typed by its initial alone (`tq` → 天气; `mixed.abbreviation`). */
     val abbreviation: Boolean = true,
     val keys: CompositionKeys = CompositionKeys.MIXED,
@@ -347,6 +349,7 @@ internal object SettingsFormat {
     private val mixedWeightJapanese = intPreferencesKey("mixed.weight_japanese")
     private val mixedWeightEmoji = intPreferencesKey("mixed.weight_emoji")
     private val mixedEmojiEager = booleanPreferencesKey("mixed.emoji_eager")
+    private val mixedLanguageTags = booleanPreferencesKey("mixed.language_tags")
     private val mixedAbbreviation = booleanPreferencesKey("mixed.abbreviation")
     private val mixedSpace = stringPreferencesKey("mixed.space")
     private val mixedEnter = stringPreferencesKey("mixed.enter")
@@ -430,6 +433,7 @@ internal object SettingsFormat {
                 weightJapanese = p.int(mixedWeightJapanese, Settings.WEIGHT_RANGE, d.mixed.weightJapanese),
                 weightEmoji = p.int(mixedWeightEmoji, Settings.WEIGHT_RANGE, d.mixed.weightEmoji),
                 emojiEager = p[mixedEmojiEager] ?: d.mixed.emojiEager,
+                languageTags = p[mixedLanguageTags] ?: d.mixed.languageTags,
                 abbreviation = p[mixedAbbreviation] ?: d.mixed.abbreviation,
                 keys = readKeys(p, Mode.MIXED, mixedSpace, mixedEnter, d.mixed.keys),
             ),
@@ -524,6 +528,7 @@ internal object SettingsFormat {
         p.put(mixedWeightJapanese, old.mixed.weightJapanese, new.mixed.weightJapanese)
         p.put(mixedWeightEmoji, old.mixed.weightEmoji, new.mixed.weightEmoji)
         p.put(mixedEmojiEager, old.mixed.emojiEager, new.mixed.emojiEager)
+        p.put(mixedLanguageTags, old.mixed.languageTags, new.mixed.languageTags)
         p.put(mixedAbbreviation, old.mixed.abbreviation, new.mixed.abbreviation)
         writeKeys(p, mixedSpace, mixedEnter, old.mixed.keys, new.mixed.keys)
         writeKeys(p, japaneseSpace, japaneseEnter, old.japaneseKeys, new.japaneseKeys)

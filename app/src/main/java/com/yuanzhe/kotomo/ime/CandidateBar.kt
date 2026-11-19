@@ -62,6 +62,15 @@ class CandidateBar(
         textSize = res.getDimension(R.dimen.bar_hint_text)
         color = KeyboardColors.color(context, R.color.kb_ink_secondary)
     }
+    private val tagGap = res.getDimension(R.dimen.bar_lang_gap)
+    private val tagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = res.getDimension(R.dimen.bar_lang_text)
+        color = KeyboardColors.color(context, R.color.kb_ink_secondary)
+    }
+    private val firstTagPaint = Paint(tagPaint).apply {
+        color = KeyboardColors.color(context, R.color.kb_on_accent_container)
+        alpha = 190
+    }
     private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = KeyboardColors.color(context, R.color.kb_accent_container) }
     private val inkColor = KeyboardColors.color(context, R.color.kb_ink)
 
@@ -108,9 +117,12 @@ class CandidateBar(
     private var candidates = emptyList<String>()
     /** A short note drawn after a candidate (a Japanese reading), by index; "" or missing for none. */
     private var notes = emptyList<String>()
-    /** What is drawn of each candidate and its note, shortened to the widest a candidate may be. */
+    /** A short language badge drawn beside a Mixed candidate (`中` / `EN` / `日`), by index. */
+    private var tags = emptyList<String>()
+    /** What is drawn of each candidate, its note and its badge, shortened to the widest allowed cell. */
     private var shownText = emptyList<CharSequence>()
     private var shownNote = emptyList<CharSequence>()
+    private var shownTag = emptyList<String>()
     private val maxPercent = res.getInteger(R.integer.bar_candidate_max_percent)
     /** Left edges of the candidates in content coordinates, plus the end of the last one. */
     private var bounds = FloatArray(1)
@@ -172,9 +184,15 @@ class CandidateBar(
 
     /**
      * Replaces the candidates; [downTime] is the touch that caused it, or 0. [readings] holds, by
-     * index, a reading to draw small after a candidate ("" for none; PLAN §9.3).
+     * Replaces the candidate list and measures widths for [list], optional [readings] (PLAN §9.3),
+     * and optional Mixed-mode [languageTags] (`中` / `EN` / `日`).
      */
-    fun show(list: List<String>, downTime: Long, readings: List<String> = emptyList()) {
+    fun show(
+        list: List<String>,
+        downTime: Long,
+        readings: List<String> = emptyList(),
+        languageTags: List<String> = emptyList(),
+    ) {
         if (list != candidates) {
             scroll = 0f
             chosen = null
@@ -182,6 +200,7 @@ class CandidateBar(
         }
         candidates = list
         notes = readings
+        tags = languageTags
         measure()
         if (downTime != 0L) pendingProbe = downTime
         invalidate()
@@ -196,28 +215,36 @@ class CandidateBar(
         val widest = if (width == 0) Float.MAX_VALUE else (listEnd - padStart) * maxPercent / 100f
         val texts = ArrayList<CharSequence>(candidates.size)
         val shownNotes = ArrayList<CharSequence>(candidates.size)
+        val shownTags = ArrayList<String>(candidates.size)
         bounds = FloatArray(candidates.size + 1)
         bounds[0] = padStart + searchWidth()
         candidates.forEachIndexed { i, text ->
             val room = widest - (if (i == 0) padFirst else pad) * 2
+            val tag = tags.getOrNull(i).orEmpty()
+            val tagWidth = if (tag.isEmpty()) 0f else tagGap + tagPaint.measureText(tag)
+            val keptTag = if (tag.isNotEmpty() && tagWidth <= room) tag else ""
+            val usedTag = if (keptTag.isEmpty()) 0f else tagWidth
+            val textRoom = (room - usedTag).coerceAtLeast(0f)
             val textWidth = textPaint.measureText(text)
             val note = notes.getOrNull(i).orEmpty()
-            // The reading gives way first, then the end of the text.
-            val noteRoom = room - textWidth - pad / 2
+            // The reading gives way first, then the end of the text; the language badge keeps its slot.
+            val noteRoom = textRoom - textWidth - pad / 2
             val shownNote: CharSequence = when {
                 note.isEmpty() -> ""
                 hintPaint.measureText(note) <= noteRoom -> note
                 noteRoom >= hintPaint.measureText(MIN_NOTE) -> android.text.TextUtils.ellipsize(note, hintPaint, noteRoom, android.text.TextUtils.TruncateAt.END)
                 else -> ""
             }
-            val shown: CharSequence = if (textWidth <= room) text else android.text.TextUtils.ellipsize(text, textPaint, room, android.text.TextUtils.TruncateAt.END)
+            val shown: CharSequence = if (textWidth <= textRoom) text else android.text.TextUtils.ellipsize(text, textPaint, textRoom, android.text.TextUtils.TruncateAt.END)
             texts += shown
             shownNotes += shownNote
+            shownTags += keptTag
             val noteWidth = if (shownNote.isEmpty()) 0f else pad / 2 + hintPaint.measureText(shownNote, 0, shownNote.length)
-            bounds[i + 1] = bounds[i] + textPaint.measureText(shown, 0, shown.length) + noteWidth + (if (i == 0) padFirst else pad) * 2
+            bounds[i + 1] = bounds[i] + textPaint.measureText(shown, 0, shown.length) + noteWidth + usedTag + (if (i == 0) padFirst else pad) * 2
         }
         shownText = texts
         shownNote = shownNotes
+        shownTag = shownTags
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -304,9 +331,20 @@ class CandidateBar(
                 } else {
                     drawText(text, 0, text.length, x + inset, baseline, textPaint)
                 }
+                val textAdvance = textPaint.measureText(text, 0, text.length)
                 val note = shownNote.getOrNull(i) ?: ""
+                val noteX = x + inset + textAdvance + pad / 2
                 if (note.isNotEmpty()) {
-                    drawText(note, 0, note.length, x + inset + textPaint.measureText(text, 0, text.length) + pad / 2, baseline, hintPaint)
+                    drawText(note, 0, note.length, noteX, baseline, hintPaint)
+                }
+                val tag = shownTag.getOrNull(i) ?: ""
+                if (tag.isNotEmpty()) {
+                    val tagX = if (note.isNotEmpty()) {
+                        noteX + hintPaint.measureText(note, 0, note.length) + tagGap
+                    } else {
+                        x + inset + textAdvance + tagGap
+                    }
+                    drawText(tag, tagX, baseline, if (i == (chosen ?: 0)) firstTagPaint else tagPaint)
                 }
             }
         }

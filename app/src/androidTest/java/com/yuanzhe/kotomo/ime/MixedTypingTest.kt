@@ -376,7 +376,9 @@ class MixedTypingTest {
             checkNotNull(device.findObject(By.text("Restore input"))) { "no way back to the input" }.click()
             checkNotNull(device.wait(Until.findObject(By.text(SENTENCE)), WAIT_MS)) { "the input did not convert afresh" }
             checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "no piece 池袋 after restoring" }.click()
+            checkNotNull(device.wait(Until.findObject(By.textStartsWith("Segment 1 of")), WAIT_MS)) { "piece 池袋 did not focus" }
             checkNotNull(device.wait(Until.findObject(By.text("Commit up to here")), WAIT_MS)) { "no partial commit" }.click()
+            assertTrue("池袋 stayed in the panel", device.wait(Until.gone(By.text("池袋")), WAIT_MS))
             // The rest is still composed, now a sentence of its own: the field holds its letters
             // and choosing its conversion commits it after the piece.
             assertEquals("池袋" + SENTENCE_KEYS.removePrefix("chidai "), read(scenario))
@@ -482,6 +484,54 @@ class MixedTypingTest {
             }
         } finally {
             english.close()
+        }
+    }
+
+    /**
+     * Selecting a Mixed Pinyin prefix inside the expanded panel commits only the prefix, keeps
+     * the panel open on the remaining composition, and returns to the keys after the remainder
+     * commits.
+     */
+    @Test
+    fun mixedPrefixCommitKeepsPanelOpenForRemainder() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys("yuanzhe")
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("元")), WAIT_MS)) { "prefix 元 not offered" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("哲")), WAIT_MS)) { "remainder zhe did not refresh in panel" }
+            assertNotEquals("panel closed after prefix commit", null, device.findObject(By.text(WHOLE)))
+            assertTrue("composition cleared prematurely", composing(scenario))
+            device.findObject(By.text("哲")).click()
+            assertTrue("panel stayed open after committing remainder", device.wait(Until.gone(By.text(WHOLE)), WAIT_MS))
+            assertEquals("元哲", read(scenario))
+            assertFalse("composition still active", composing(scenario))
+        }
+    }
+
+    /** Long-pressing a candidate inside the expanded segment panel shows its reading and source above the panel. */
+    @Test
+    fun expandedPanelLongPressShowsCandidateDetails() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use {
+            keys("coffee")
+            openSegments()
+            val candidate = checkNotNull(device.wait(Until.findObject(By.text("コーヒー")), WAIT_MS)) { "coffee loanword not offered" }
+            candidate.longClick()
+            checkNotNull(device.wait(Until.findObject(By.descStartsWith("こーひー")), WAIT_MS)) { "details did not appear on long press" }
+        }
+    }
+
+    /** Mixed mode renders `中` / `EN` / `日` candidate badges when `mixed.language_tags` is on and hides them when off. */
+    @Test
+    fun mixedLanguageBadgesShowAndToggle() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use {
+            keys("ai")
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("中")), WAIT_MS)) { "Chinese badge missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("EN")), WAIT_MS)) { "English badge missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("日")), WAIT_MS)) { "Japanese badge missing" }
+            change { it.copy(mixed = it.mixed.copy(languageTags = false)) }
+            assertTrue("English badge stayed after disabling switch", device.wait(Until.gone(By.text("EN")), WAIT_MS))
+            assertTrue("Chinese badge stayed after disabling switch", device.wait(Until.gone(By.text("中")), WAIT_MS))
         }
     }
 

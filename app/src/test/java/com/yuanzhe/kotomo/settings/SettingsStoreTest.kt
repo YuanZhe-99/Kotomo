@@ -24,6 +24,7 @@ import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -60,6 +61,7 @@ class SettingsStoreTest {
             cross = CrossLanguage(englishToKatakana = false, emoji = false),
             weightEmoji = 0,
             emojiEager = false,
+            languageTags = false,
             keys = CompositionKeys(SpaceKey.NEXT, EnterKey.SHOWN),
         ),
         japanese = CrossLanguage(readings = false),
@@ -87,6 +89,7 @@ class SettingsStoreTest {
         assertEquals(Settings(), s)
         assertEquals(Mode.MIXED, s.defaultMode)
         assertEquals(MixedLevel.BALANCED, s.mixed.level)
+        assertTrue(s.mixed.languageTags)
         assertEquals(CrossLanguage(), s.japanese)
         assertFalse(s.incognito)
         assertEquals(ClipboardSettings(history = true, retentionDays = 7, quickPaste = true), s.clipboard)

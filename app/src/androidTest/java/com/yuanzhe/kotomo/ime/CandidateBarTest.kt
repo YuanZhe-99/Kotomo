@@ -36,22 +36,38 @@ class CandidateBarTest {
         assertEquals(0, pick(listOf(LONG, "二", "三"), listOf(LONG_READING, "", "")) { res.getDimension(R.dimen.bar_pad_start) * 2 })
     }
 
+    /** A language badge (`日`) beside a wide candidate still fits inside `bar_candidate_max_percent`. */
+    @Test
+    fun longCandidateWithLanguageBadgeLeavesRoomForNext() {
+        assertEquals(1, pickPastTheCap(listOf(LONG, "二", "三"), listOf(LONG_READING, "", ""), listOf("日", "中", "EN")))
+        assertEquals(0, pick(listOf(LONG, "二", "三"), listOf(LONG_READING, "", ""), listOf("日", "中", "EN")) { res.getDimension(R.dimen.bar_pad_start) * 2 })
+    }
+
     /** Taps one pill padding past the widest a candidate may be, measured from the row's start. */
-    private fun pickPastTheCap(list: List<String>, readings: List<String>): Int = pick(list, readings) { width ->
+    private fun pickPastTheCap(
+        list: List<String>,
+        readings: List<String>,
+        tags: List<String> = emptyList(),
+    ): Int = pick(list, readings, tags) { width ->
         val start = res.getDimension(R.dimen.bar_pad_start)
         val row = width - res.getDimension(R.dimen.bar_expand) - start
         start + row * res.getInteger(R.integer.bar_candidate_max_percent) / 100f + res.getDimension(R.dimen.bar_pill_pad)
     }
 
     /** Lays a bar out at the screen's width, shows [list] and returns the index a tap at [at] (of the width) picks (-1: none). */
-    private fun pick(list: List<String>, readings: List<String>, at: (Int) -> Float): Int {
+    private fun pick(
+        list: List<String>,
+        readings: List<String>,
+        tags: List<String> = emptyList(),
+        at: (Int) -> Float,
+    ): Int {
         var picked = -1
         instrumentation.runOnMainSync {
             val bar = CandidateBar(context, onPick = { picked = it }, onExpand = {}, onTool = {})
             val width = res.displayMetrics.widthPixels
             bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
             bar.layout(0, 0, width, bar.measuredHeight)
-            bar.show(list, 0, readings)
+            bar.show(list, 0, readings, tags)
             val x = at(width)
             val y = bar.measuredHeight / 2f
             val down = SystemClock.uptimeMillis()
