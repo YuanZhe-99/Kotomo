@@ -16,6 +16,13 @@ bool Outside(const Edge& edge) {
 /// hiragana, 1 for the katakana).
 constexpr int32_t kEchoCost = 1;
 
+/// Counts UTF-8 code points in `text`, used to scale `Costs::kana_echo` by echoed kana count.
+int32_t CodePoints(std::string_view text) {
+  int32_t count = 0;
+  for (const char c : text) count += (static_cast<unsigned char>(c) & 0xc0) != 0x80 ? 1 : 0;
+  return std::max<int32_t>(1, count);
+}
+
 /// Returns: where a pinned edge's text came from.
 Origin PinnedOrigin(EdgeKind kind) {
   return kind == EdgeKind::kPinyinJa ? Origin::kPinyinJa
@@ -31,10 +38,11 @@ Origin PinnedOrigin(EdgeKind kind) {
 ///   segment left without letters joins the piece before it, so pieces always tile the input.
 ///   A stretch read through a Japanese fuzzy rule must be words Mozc knows: where Mozc only
 ///   echoes the kana (it reports such a segment at no cost) the reading is dropped, or every
-///   fuzzy reading that is no word would rank first (feedback B4).
+///   fuzzy reading that is no word would rank first (feedback B4). On non-fuzzy paths an echoed
+///   segment pays `Costs::kana_echo` per echoed kana so unknown romaji never beat real words at 0.
 int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_t last,
-                       Engines& engines, bool incognito, std::vector<Piece>* pieces,
-                       std::vector<JapaneseWord>* only) {
+                       Engines& engines, bool incognito, const Costs& costs,
+                       std::vector<Piece>* pieces, std::vector<JapaneseWord>* only) {
   std::vector<JapaneseSpan> spans;
   bool free_run = false;
   bool fuzzy = false;
@@ -71,7 +79,11 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
     if (const auto free_segments = engines.Japanese(merged, incognito)) {
       unhinted = 0;
       for (const JapaneseSegment& segment : *free_segments) {
-        if (!segment.pinned && !segment.words.empty()) unhinted += segment.words.front().cost;
+        if (!segment.pinned && !segment.words.empty()) {
+          const int32_t raw_cost = segment.words.front().cost;
+          unhinted += raw_cost;
+          if (raw_cost <= kEchoCost) unhinted += costs.kana_echo * CodePoints(segment.reading);
+        }
       }
     }
   }
@@ -84,7 +96,8 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
   for (size_t s = 0; s < segments->size(); ++s) {
     const JapaneseSegment& segment = (*segments)[s];
     if (segment.words.empty()) return -1;
-    if (fuzzy && !segment.pinned && segment.words.front().cost <= kEchoCost) return -1;
+    const bool echoed = !segment.pinned && segment.words.front().cost <= kEchoCost;
+    if (fuzzy && echoed) return -1;
     reading_wanted += segment.reading.size();
     const size_t begin_edge = edge_index;
     while (edge_index < last &&
@@ -92,7 +105,10 @@ int32_t ConvertStretch(const Input& input, const Path& path, size_t first, size_
       reading_covered += path.edges[edge_index]->reading.size();
       ++edge_index;
     }
-    if (!segment.pinned) cost += segment.words.front().cost;
+    if (!segment.pinned) {
+      cost += segment.words.front().cost;
+      if (echoed) cost += costs.kana_echo * CodePoints(segment.reading);
+    }
     if (begin_edge == edge_index) {  // no letters left for this segment
       if (pieces->size() == pieces_before) return -1;
       pieces->back().text += segment.words.front().text;
@@ -150,7 +166,8 @@ void FinishJapanese(const Input& input, const Path& path, Engines& engines, cons
         has_free = true;
       }
     }
-    const int32_t mozc_cost = ConvertStretch(input, path, i, end, engines, options.incognito, &sentence.pieces,
+    const int32_t mozc_cost = ConvertStretch(input, path, i, end, engines, options.incognito, costs,
+                                             &sentence.pieces,
                                              one_free_run ? &alternatives : nullptr);
     if (mozc_cost < 0) return;
     sentence.cost += mozc_cost + (has_free ? costs.japanese_bias : 0);

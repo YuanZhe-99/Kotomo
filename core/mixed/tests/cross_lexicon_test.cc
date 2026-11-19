@@ -191,5 +191,36 @@ int main() {
               3000 + options.costs.japanese_word + 2 * options.costs.pinyin_to_japanese,
           "S6-propose-cross-level");
   }
+  {
+    // Separate budgets keep katakana loanwords alive alongside many semantic entries, and
+    // duplicate surfaces are collapsed per span; plurals fall back to the singular stem.
+    const auto rich = CrossLexicon::FromBytes(*CompileLexicon(
+        "key\tsyllables\tsurface\treading\tlid\trid\tcost\tsource\n",
+        "key\tclass\tsurface\treading\tlid\trid\tcost\tsource\n"
+        "power\tsemantic\t力\tりょく\t1\t1\t2500\ttest\n"
+        "power\tsemantic\t強さ\tつよさ\t1\t1\t2800\ttest\n"
+        "power\tsemantic\t権\tけん\t1\t1\t3300\ttest\n"
+        "power\tsemantic\t力\tりき\t1\t1\t3700\ttest\n"
+        "power\tgairaigo\tパワー\tぱわー\t1\t1\t3900\ttest\n",
+        &error));
+    const Input input = *ParseInput("power");
+    Lattice lattice(input.size());
+    ProposeCross(input, *rich, options, &lattice);
+    bool has_power = false;
+    int chikara_count = 0;
+    for (const Edge& e : lattice.From(0)) {
+      if (e.text == "パワー") has_power = true;
+      if (e.text == "力") ++chikara_count;
+    }
+    Check(has_power && chikara_count == 1 && Count(lattice, EdgeKind::kEnJa, 0, 5) == 4,
+          "Q7-propose-cross-loanword-budget-and-surface-dedup");
+
+    const Input plural = *ParseInput("powers");
+    Lattice p_lattice(plural.size());
+    ProposeCross(plural, *rich, options, &p_lattice);
+    bool plural_power = false;
+    for (const Edge& e : p_lattice.From(0)) plural_power |= (e.text == "パワー");
+    Check(plural_power, "Q7-propose-cross-plural-stem-fallback");
+  }
   return kotomo::mixed::test::Result();
 }

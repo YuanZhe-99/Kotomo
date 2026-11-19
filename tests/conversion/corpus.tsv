@@ -307,3 +307,13 @@ C3-004	mixed		chidai'ni'kai	池袋二回|池袋に回|池袋に会|池袋に買�
 C3-N01	mixed		chidai'ni'kai	!池袋二階	5	feedback C3: as A3-N01, ni and kai are not joined across the apostrophe
 C3-N02	mixed		chidai'ni'kainiikou	!chidai二階に行こう|!chidaiに買いに行こう	0	feedback C3: the pinyin is never left as typed inside the Japanese sentence
 C3-N03	mixed		xi'an	西安	1	feedback C3: the apostrophe still separates pinyin syllables
+T06-003	mixed		Power	Power	1	0.1.1: preserve Shift capitalization on English candidate in Mixed mode
+T06-004	mixed		Power	パワー	5	0.1.1: English-to-Japanese katakana loanword matches even when capitalized
+T06-005	mixed		power	パワー	3	0.1.1: English-to-Japanese katakana loanword beats minor glosses
+T06-006	mixed		system	システム	5	0.1.1: English-to-Japanese loanword is not displaced by dependent POS suffixes
+T06-007	mixed		powers	パワー	5	0.1.1: plural English input falls back to singular katakana loanword
+T06-008	mixed		power ga hoshii	パワーが欲しい	3	0.1.1: English-to-Japanese loanword joins Japanese sentence composition
+T06-009	mixed		menu	メニュー	3	0.1.1: katakana loanword outranks echoed hiragana
+T06-N01	mixed		menu	!めぬ|!メヌ	3	0.1.1: unknown echoed kana never outranks katakana loanword
+T06-N02	mixed		mode	!もで	5	0.1.1: echoed kana does not enter top 5 over real words and loanwords
+T06-N03	mixed		power	!ぽうぇr	5	0.1.1: partial echoed kana does not enter top 5 over katakana loanword

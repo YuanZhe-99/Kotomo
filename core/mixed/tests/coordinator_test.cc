@@ -187,5 +187,32 @@ int main() {
     const auto back = Decode(Encode(s));
     Check(back && *back == s, "S6-coordinator-snapshot-roundtrip");
   }
+  // Echoed unknown kana (Mozc cost <= 1) pays Costs::kana_echo per echoed kana so a real
+  // English word or cross-language loanword beats an echoed non-word (`book` vs `ぼおく`), and
+  // capitalized English (`Book`) keeps its typed casing without losing Japanese `本`/`ブック`.
+  {
+    class EchoingEngines : public test::FakeEngines {
+     public:
+      std::optional<std::vector<JapaneseSegment>> Japanese(
+          const std::vector<JapaneseSpan>& spans, bool incognito) override {
+        if (spans.size() == 1 && spans[0].surface.empty() && spans[0].reading == "のか") {
+          return std::vector<JapaneseSegment>{{.reading = "のか", .pinned = false, .words = {{"のか", "のか", 0}}}};
+        }
+        return test::FakeEngines::Japanese(spans, incognito);
+      }
+      std::vector<EnglishForm> English(std::string_view word) override {
+        if (word == "noka") return {{"noka", 120}};
+        return test::FakeEngines::English(word);
+      }
+    } echo_engines;
+    Coordinator echo_coord(echo_engines, *lexicon);
+    const Snapshot echo = echo_coord.Convert("noka", 1);
+    Check(Place(echo, "noka") == 0 && Place(echo, "のか") > 0 &&
+              Get(echo, "のか").cost >= Options().costs.kana_echo * 2,
+          "Q7-finish-japanese-kana-echo-penalized", Shown(echo));
+    const Snapshot cased = coordinator.Convert("Book", 1);
+    Check(Place(cased, "Book") == 0 && Place(cased, "本") > 0 && Place(cased, "ブック") > 0,
+          "Q7-coordinator-cased-english-keeps-cross", Shown(cased));
+  }
   return kotomo::mixed::test::Result();
 }

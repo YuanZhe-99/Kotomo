@@ -49,3 +49,9 @@ S5-P020	pinyin	shilun	世論		3	the reading as written is kept too (user decisio
 S5-P021	pinyin	diandao	転倒		3	OpenCC phrase 転倒 → 顛倒
 S5-P022	pinyin	zhuandao	転倒		3	as written: 転 → 轉 zhuǎn
 S5-N004	pinyin	*	!三﨑		0	a character with no reading anywhere (﨑, a compatibility form) still skips its word
+S5-E013	en	power	パワー		3	0.1.1: dependent POS penalty + separate loanword class ensures パワー is kept
+S5-E014	en	system	システム		3	0.1.1: suffix POS penalty prevents -制/-系/-式 from pushing システム out
+S5-E015	en	start	スタート		10	0.1.1: dependent/inflected POS penalty lifts スタート right behind semantic words; ProposeCross loanword budget always keeps it
+S5-E016	en	table	テーブル		3	0.1.1: gairaigo present near top
+S5-E017	en	house	ハウス		3	0.1.1: surface dedup + English loanword priority over non-English メゾン
+S5-E018	en	cafe	カフェ		3	0.1.1: NFD diacritic folding indexes café under cafe

@@ -55,15 +55,37 @@ void ProposeEnglish(const Input& input, Engines& engines, const Options& options
         return f.probability < floor || f.sensitive;
       });
       if (forms.empty()) continue;
-      // The word as typed comes first when the dictionary has that spelling; otherwise its most
-      // common spelling stands for it (`ai` is AI). Other spellings pay for the change of case.
-      const bool has_typed = std::any_of(forms.begin(), forms.end(), [typed](const EnglishForm& f) {
+      // Keep the cased spelling the person typed (`Power` / `POWER`) without recase penalty;
+      // otherwise prefer the dictionary form matching the typed lowercase word (`apple` before
+      // `Apple`), or its most common spelling (`ai` → `AI`). Other spellings pay `english_recased`.
+      const auto [raw_begin, raw_end] = input.Range(begin, end);
+      const std::string_view raw_word =
+          input.HintsInside(begin, end) == 0
+              ? std::string_view(input.raw).substr(raw_begin, raw_end - raw_begin)
+              : typed;
+      const bool user_cased = raw_word != typed;
+      const bool has_raw = std::any_of(forms.begin(), forms.end(), [raw_word](const EnglishForm& f) {
+        return f.text == raw_word;
+      });
+      const bool has_typed_lower = std::any_of(forms.begin(), forms.end(), [typed](const EnglishForm& f) {
         return f.text == typed;
       });
+      const bool all_upper = user_cased && std::all_of(raw_word.begin(), raw_word.end(), [](unsigned char c) {
+                               return c >= 'A' && c <= 'Z';
+                             });
       const int32_t cost = EnglishCost(forms, costs) +
                            costs.crossed_hint * input.HintsInside(begin, end);
+      const bool synthesize_raw = !has_raw && user_cased && (has_typed_lower || all_upper);
+      if (synthesize_raw) {
+        lattice->Add({.begin = static_cast<uint16_t>(begin),
+                      .end = static_cast<uint16_t>(end),
+                      .kind = EdgeKind::kEnglish,
+                      .cost = cost,
+                      .text = std::string(raw_word),
+                      .reading = {}});
+      }
       for (size_t i = 0; i < forms.size(); ++i) {
-        const bool as_typed = has_typed ? forms[i].text == typed : i == 0;
+        const bool as_typed = !synthesize_raw && (has_raw ? forms[i].text == raw_word : i == 0);
         lattice->Add({.begin = static_cast<uint16_t>(begin),
                       .end = static_cast<uint16_t>(end),
                       .kind = EdgeKind::kEnglish,

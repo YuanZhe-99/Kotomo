@@ -34,7 +34,9 @@ struct Costs {
   int32_t japanese_word = 1500;          // the connection share of a pinned Japanese word
   int32_t pinyin_to_japanese = 500;      // the penalty for a pinyin span read as a Japanese word
   int32_t english_to_japanese = 500;     // the penalty for an English word read as a Japanese word
+  int32_t english_plural_stem = 350;     // on top, English → Japanese reached via a singular stem
   int32_t transliteration = 3000;        // on top, a made-up katakana spelling
+  int32_t kana_echo = 3000;              // per unknown kana echoed unchanged by Mozc (cost <= 1)
   int32_t english_in_chinese = 1500;     // an English word kept in a Chinese sentence
   int32_t english_in_japanese = 4000;    // an English word kept in a Japanese sentence
   int32_t japanese_fuzzy = 1500;         // on top, a reading reached through a Japanese fuzzy rule
@@ -67,11 +69,12 @@ struct Options {
   // What each target language's candidates cost on top (the per-language weights of PLAN.md
   // §2.3): 0 at the default weight, negative for a language the person wants more of.
   int32_t bias[3] = {0, 0, 0};      // indexed by Lang
-  size_t beam = 16;         // partial paths kept per position
-  size_t paths = 8;         // whole paths finished per target language
-  size_t cross_words = 3;   // cross-language words proposed per span and direction
-  size_t alternatives = 6;  // engine alternatives listed when one run covers the whole input
-  size_t candidates = 20;   // candidates in a snapshot
+  size_t beam = 16;             // partial paths kept per position
+  size_t paths = 8;             // whole paths finished per target language
+  size_t cross_words = 3;       // cross-language words per span (semantic En→Ja and Pinyin→Ja)
+  size_t cross_loanwords = 2;   // katakana loanwords kept alongside semantic En→Ja matches
+  size_t alternatives = 6;      // engine alternatives listed when one run covers the whole input
+  size_t candidates = 20;       // candidates in a snapshot
   Costs costs;
 
   /// Returns: these options with the list sizes of the full answer (kRefine, feedback A9): every

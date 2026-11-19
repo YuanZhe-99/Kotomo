@@ -34,16 +34,19 @@ void ProposeJapanese(const Input& input, Engines& engines, const Options& option
 
 /// Adds kEnglish edges for every span of two or more letters that is a word of the English
 /// dictionary above the probability floor (a higher one for two and three letters inside a longer
-/// input, where possibly offensive words are not proposed either): the spelling
-/// as typed when the dictionary has it, otherwise the most common one, and the other spellings
-/// (`Apple` for apple) at `Costs::english_recased` more.
+/// input, where possibly offensive words are not proposed either): matching the cased slice the
+/// person typed (`Power` or `POWER`) first when applicable, otherwise the dictionary's most
+/// common spelling, and other spellings at `Costs::english_recased` more.
 /// Side effects: Engines::English calls.
 void ProposeEnglish(const Input& input, Engines& engines, const Options& options,
                     Lattice* lattice);
 
-/// Adds kPinyinJa and kEnJa edges for the spans that are keys of the cross-language lexicon, the
-/// Options::cross_words cheapest words per span and direction. An edge costs Mozc's word cost of
-/// the entry, plus `Costs::japanese_word`, plus the direction's penalty scaled by the level.
+/// Adds kPinyinJa and kEnJa edges for the spans that are keys of the cross-language lexicon,
+/// deduplicated by surface within each span: up to Options::cross_words entries for kPinyinJa
+/// and semantic kEnJa, up to Options::cross_loanwords katakana loanwords alongside them (with a
+/// singular-stem fallback for plurals when exact lookup finds no loanword), and at most one
+/// transliteration fallback when no loanword was found. An edge costs Mozc's word cost of the
+/// entry, plus `Costs::japanese_word`, plus the direction's penalty scaled by the level.
 /// Notes: honors the pinyin → Japanese, English → Japanese and transliteration switches; a
 ///   one-syllable pinyin key and an English key of two or three letters are proposed only as
 ///   the whole input.

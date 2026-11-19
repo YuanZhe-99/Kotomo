@@ -94,5 +94,22 @@ int main() {
     ProposeEnglish(input, engines, options, &lattice);
     Check(lattice.size() == 0, "S6-propose-english-rare-none");
   }
+  {
+    // Shift capitalization the person typed (`Book` / `BOOK`) stays ahead without recasing penalty.
+    const Input title = *ParseInput("Book");
+    Lattice t_lat(title.size());
+    ProposeEnglish(title, engines, options, &t_lat);
+    Check(!t_lat.From(0).empty() && t_lat.From(0)[0].text == "Book" &&
+              t_lat.From(0)[0].cost == costs.english_base + costs.english_step * 55 &&
+              t_lat.From(0).size() == 2 && t_lat.From(0)[1].text == "book" &&
+              t_lat.From(0)[1].cost == costs.english_base + costs.english_step * 55 + costs.english_recased,
+          "Q7-propose-english-preserves-user-title-case");
+    const Input upper = *ParseInput("BOOK");
+    Lattice u_lat(upper.size());
+    ProposeEnglish(upper, engines, options, &u_lat);
+    Check(!u_lat.From(0).empty() && u_lat.From(0)[0].text == "BOOK" &&
+              u_lat.From(0)[0].cost == costs.english_base + costs.english_step * 55,
+          "Q7-propose-english-preserves-user-all-caps");
+  }
   return kotomo::mixed::test::Result();
 }

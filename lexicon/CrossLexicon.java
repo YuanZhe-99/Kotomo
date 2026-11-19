@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -131,6 +132,12 @@ public final class CrossLexicon {
     /** An archaic, obsolete, rare or abbreviated sense. */
     private static final int ARCHAIC = 2000;
     private static final int ABBREVIATION = 1500;
+    /** A JMdict sense whose parts of speech are affixes only (suffix or prefix). */
+    private static final int AFFIX_POS = 1600;
+    /** A Mozc entry tagged as an affix, non-independent token, bound stem, person name or symbol. */
+    private static final int DEPENDENT_POS = 4500;
+    /** A katakana loanword whose recorded source languages are all non-English (e.g. French). */
+    private static final int NON_ENGLISH_LOAN = 900;
     /** The transliteration class ranks after every dictionary meaning (§5.9). */
     private static final int TRANSLIT = 4000;
 
@@ -161,6 +168,7 @@ public final class CrossLexicon {
     private final Map<String, Derivation> derived = new HashMap<>();
     private String cedictDate = "";
     private int nounId = -1;
+    private final Set<Integer> dependentIds = new HashSet<>();
 
     /**
      * Fetches or verifies the sources, then builds both tables and the metadata.
@@ -438,19 +446,34 @@ public final class CrossLexicon {
     }
 
     /**
-     * Finds the Mozc POS id of the general noun, used for words Mozc does not have (§5.9).
-     * Side effects: sets nounId.
+     * Reads Mozc's id.def to find the general noun POS id (§5.9) and the dependent/affix/name
+     * POS ids penalized when joining English → Japanese rows.
+     * Side effects: sets nounId and populates dependentIds.
      */
     private void loadNounId(Path idDef) throws IOException {
         for (String line : Files.readAllLines(idDef)) {
-            if (line.endsWith(" 名詞,一般,*,*,*,*,*")) {
-                nounId = Integer.parseInt(line.substring(0, line.indexOf(' ')));
+            int sp = line.indexOf(' ');
+            if (sp <= 0) {
+                continue;
+            }
+            int id = Integer.parseInt(line.substring(0, sp));
+            String features = line.substring(sp + 1);
+            if (features.equals("名詞,一般,*,*,*,*,*")) {
+                nounId = id;
+            }
+            boolean inflectedStem = (features.startsWith("動詞,") || features.startsWith("形容詞,"))
+                    && !features.contains(",基本形,");
+            if (features.contains("接尾") || features.contains("接頭") || features.contains("非自立")
+                    || features.contains("人名") || features.contains("助詞")
+                    || features.contains("助動詞") || features.contains("記号") || inflectedStem) {
+                dependentIds.add(id);
             }
         }
         if (nounId < 0) {
             throw new IOException("id.def has no general noun");
         }
         stats.put("mozc.generalNounId", nounId);
+        stats.put("mozc.dependentPosIds", dependentIds.size());
     }
 
     // ---------------------------------------------------------------- pinyin → Japanese
@@ -486,9 +509,10 @@ public final class CrossLexicon {
                     int cost = Integer.parseInt(f[3]);
                     String pair = surface + "\t" + reading;
                     if (wanted.contains(pair)) {
+                        int effCost = cost + (dependentIds.contains(lid) || dependentIds.contains(rid) ? DEPENDENT_POS : 0);
                         MozcWord old = mozc.get(pair);
-                        if (old == null || cost < old.cost()) {
-                            mozc.put(pair, new MozcWord(lid, rid, cost));
+                        if (old == null || effCost < old.cost()) {
+                            mozc.put(pair, new MozcWord(lid, rid, effCost));
                         }
                     }
                     if (!allKanji(surface)) {
@@ -836,11 +860,15 @@ public final class CrossLexicon {
                 for (int si = 0; si < senses.size(); si++) {
                     Map<String, Object> s = senses.get(si);
                     List<String> misc = (List<String>) s.get("misc");
-                    boolean verb = ((List<String>) s.get("partOfSpeech")).stream().anyMatch(p -> p.startsWith("v"));
+                    List<String> pos = (List<String>) s.get("partOfSpeech");
+                    boolean verb = pos.stream().anyMatch(p -> p.startsWith("v"));
+                    boolean affixOnly = !pos.isEmpty() && pos.stream().allMatch(p ->
+                            p.equals("suf") || p.equals("pref") || p.equals("n-suf") || p.equals("n-pref"));
                     boolean uk = misc.contains("uk");
                     int sensePenalty = SENSE_STEP * Math.min(si, 6)
                             + (misc.contains("arch") || misc.contains("obs") || misc.contains("rare") ? ARCHAIC : 0)
-                            + (misc.contains("abbr") ? ABBREVIATION : 0);
+                            + (misc.contains("abbr") ? ABBREVIATION : 0)
+                            + (affixOnly ? AFFIX_POS : 0);
                     List<String[]> surfaces = new ArrayList<>();
                     List<Integer> surfacePenalty = new ArrayList<>();
                     for (Map<String, Object> k : kanji) {
@@ -865,7 +893,9 @@ public final class CrossLexicon {
                         surfacePenalty.add((Boolean.TRUE.equals(k.get("common")) ? 0 : NOT_COMMON)
                                 + (uk ? USUALLY_KANA : 0) + (tags.contains("ateji") ? ATEJI : 0));
                     }
-                    boolean loan = !((List<Object>) s.get("languageSource")).isEmpty();
+                    List<Map<String, Object>> langSources = (List<Map<String, Object>>) s.get("languageSource");
+                    boolean loan = !langSources.isEmpty();
+                    boolean nonEnglishLoan = loan && langSources.stream().noneMatch(ls -> "eng".equals(ls.get("lang")));
                     for (Map<String, Object> r : kana) {
                         String rt = (String) r.get("text");
                         if (((List<String>) r.get("tags")).stream().anyMatch(badKana::contains) || !applies(s.get("appliesToKana"), rt)) {
@@ -875,7 +905,7 @@ public final class CrossLexicon {
                         if (katakana(rt)) {
                             boolean gairaigo = kanji.isEmpty() || loan;
                             surfaces.add(new String[] {rt, hiragana(rt), gairaigo ? "gairaigo" : "semantic"});
-                            surfacePenalty.add(p + (gairaigo ? 0 : KANA_OF_KANJI_WORD));
+                            surfacePenalty.add(p + (gairaigo ? (nonEnglishLoan ? NON_ENGLISH_LOAN : 0) : KANA_OF_KANJI_WORD));
                         } else if (kanji.isEmpty() || uk) {
                             surfaces.add(new String[] {rt, rt, "semantic"});
                             surfacePenalty.add(p);
@@ -946,15 +976,20 @@ public final class CrossLexicon {
 
     private static final Pattern PAREN = Pattern.compile("\\([^)]*\\)");
     private static final Pattern KEY = Pattern.compile("[a-z][a-z0-9' -]*");
+    private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
 
     /**
-     * Normalizes an English gloss to a lookup key: lower case, parentheses removed, a leading
-     * "to " (verbs) or article removed, at most three words, then spaces, hyphens and apostrophes
-     * dropped, since keys are typed without them ("credit card" → creditcard).
+     * Normalizes an English gloss to a lookup key: NFD-folded without diacritics, lower case,
+     * parentheses removed, a leading "to " (verbs) or article removed, at most three words, then
+     * spaces, hyphens and apostrophes dropped, since keys are typed without them ("credit card" →
+     * creditcard, "café" → cafe).
      * Returns: the key, or null when the gloss is not a short plain-letter phrase.
      */
     static String englishKey(String gloss, boolean verb) {
-        String s = PAREN.matcher(gloss.toLowerCase()).replaceAll(" ").trim().replaceAll("\\s+", " ");
+        String folded = DIACRITICS.matcher(Normalizer.normalize(gloss, Normalizer.Form.NFD))
+                .replaceAll("")
+                .toLowerCase(Locale.ROOT);
+        String s = PAREN.matcher(folded).replaceAll(" ").trim().replaceAll("\\s+", " ");
         if (verb && s.startsWith("to ")) {
             s = s.substring(3);
         }

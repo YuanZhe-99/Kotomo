@@ -105,7 +105,9 @@ respelled romaji may be what a kana rule starts from (`lamen` → らめん → 
 edge costs what the span costs as typed plus 1500 units, and Mozc's cost of the sentence
 replaces the estimate as for any kana, so a fuzzy reading ranks among the exact ones by how
 common it is; its candidate carries the fuzzy flag. A sentence read through a rule is dropped
-where Mozc has no word for a segment and only echoes its kana. Particles typed as they sound
+where Mozc has no word for a segment and only echoes its kana, and on free paths unknown kana
+echoed unchanged by Mozc (`cost <= 1`) pay an echo penalty per kana so they do not outrank real
+words. Particles typed as they sound
 (`wa`, `o`, `e`) are always read and are not one of these rules. Japanese mode takes the
 candidates with the fuzzy flag from the same snapshot it takes the cross-language ones from: up
 to three, those ranked before the reading as typed right after Mozc's best candidate, the others

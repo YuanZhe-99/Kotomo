@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <string>
+#include <vector>
 
 #include "propose.h"
 
@@ -19,18 +21,50 @@ bool Enabled(const CrossEntry& entry, const Options& options) {
   return false;
 }
 
-/// Adds up to `Options::cross_words` edges of `kind` for one span's entries.
-/// Inputs: `whole` is true when the span is the whole input.
-/// Notes: inside a longer input a one-syllable pinyin key (one kanji by one of its readings) is
-///   far more often a chance split than the word meant, so only the whole input may be one.
-void AddEntries(const std::vector<CrossEntry>& entries, EdgeKind kind, size_t begin, size_t end,
-                bool whole, int32_t hint_cost, const Options& options, Lattice* lattice) {
+/// Returns: true if `seen` already contains `surface`, otherwise records it and returns false.
+bool SeenSurface(std::string_view surface, std::vector<std::string>* seen) {
+  for (const std::string& prev : *seen) {
+    if (prev == surface) return true;
+  }
+  seen->emplace_back(surface);
+  return false;
+}
+
+/// Adds cross-language edges of `kind` for one span's entries, deduplicated by surface within
+/// `seen`. Returns: whether any `CrossClass::kLoanword` entry was added for this span.
+/// Inputs: `whole` is true when the span is the whole input; `extra_cost` adds to each entry
+///   (e.g. plural-stem fallback penalty).
+/// Notes: for kEnJa, semantic entries (`cross_words`), loanwords (`cross_loanwords`) and at most
+///   one fallback transliteration (when no loanword is present) hold independent budgets so
+///   multiple semantic kanji meanings do not starve katakana loanwords (`power` → パワー).
+///   Inside a longer input a one-syllable pinyin key is far more often a chance split, so only
+///   the whole input may be one.
+bool AddEntries(const std::vector<CrossEntry>& entries, EdgeKind kind, size_t begin, size_t end,
+                bool whole, int32_t hint_cost, int32_t extra_cost, const Options& options,
+                std::vector<std::string>* seen, size_t* semantic, size_t* loanword,
+                size_t* translit, size_t* pinyin, Lattice* lattice) {
   const Costs& costs = options.costs;
-  size_t added = 0;
   for (const CrossEntry& entry : entries) {
-    if (added == options.cross_words) break;
     if (!Enabled(entry, options)) continue;
-    if (kind == EdgeKind::kPinyinJa && entry.syllables == 1 && !whole) continue;
+    if (kind == EdgeKind::kPinyinJa) {
+      if (*pinyin >= options.cross_words) break;
+      if (entry.syllables == 1 && !whole) continue;
+    } else {
+      switch (entry.kind) {
+        case CrossClass::kSemantic:
+          if (*semantic >= options.cross_words) continue;
+          break;
+        case CrossClass::kLoanword:
+          if (*loanword >= options.cross_loanwords) continue;
+          break;
+        case CrossClass::kTransliteration:
+          if (*loanword > 0 || *translit >= 1) continue;
+          break;
+        case CrossClass::kPinyin:
+          continue;
+      }
+    }
+    if (SeenSurface(entry.surface, seen)) continue;
     const bool made_up = entry.kind == CrossClass::kTransliteration;
     const int32_t penalty =
         (kind == EdgeKind::kPinyinJa ? costs.pinyin_to_japanese : costs.english_to_japanese) +
@@ -38,12 +72,42 @@ void AddEntries(const std::vector<CrossEntry>& entries, EdgeKind kind, size_t be
     lattice->Add({.begin = static_cast<uint16_t>(begin),
                   .end = static_cast<uint16_t>(end),
                   .kind = kind,
-                  .cost = entry.cost + costs.japanese_word + options.Cross(penalty) + hint_cost,
+                  .cost = entry.cost + costs.japanese_word + options.Cross(penalty) + hint_cost +
+                          extra_cost,
                   .transliteration = made_up,
                   .text = std::string(entry.surface),
                   .reading = std::string(entry.reading)});
-    ++added;
+    if (kind == EdgeKind::kPinyinJa) {
+      ++(*pinyin);
+    } else if (entry.kind == CrossClass::kSemantic) {
+      ++(*semantic);
+    } else if (entry.kind == CrossClass::kLoanword) {
+      ++(*loanword);
+    } else if (entry.kind == CrossClass::kTransliteration) {
+      ++(*translit);
+    }
   }
+  return *loanword > 0;
+}
+
+/// Appends candidate singular stems for common English plurals (length >= 4) without allocating
+/// when none applies.
+void PluralStems(std::string_view key, std::vector<std::string>* out) {
+  out->clear();
+  if (key.size() < 4 || key.back() != 's') return;
+  if (key.size() >= 5 && key.ends_with("ies")) {
+    std::string stem(key.substr(0, key.size() - 3));
+    stem.push_back('y');
+    out->push_back(std::move(stem));
+    return;
+  }
+  if (key.ends_with("ss") || key.ends_with("us") || key.ends_with("is")) return;
+  if (key.ends_with("es") && key.size() >= 4) {
+    out->emplace_back(key.substr(0, key.size() - 1));
+    if (key.size() >= 4) out->emplace_back(key.substr(0, key.size() - 2));
+    return;
+  }
+  out->emplace_back(key.substr(0, key.size() - 1));
 }
 
 }  // namespace
@@ -54,6 +118,8 @@ void ProposeCross(const Input& input, const CrossLexicon& lexicon, const Options
   if (!options.pinyin_to_japanese && !english) return;
   const std::string_view letters = input.letters;
   std::vector<CrossEntry> entries;
+  std::vector<std::string> seen;
+  std::vector<std::string> stems;
   for (size_t begin = 0; begin < input.size(); ++begin) {
     const size_t longest = std::min(input.size() - begin, lexicon.longest_key());
     for (size_t length = 1; length <= longest; ++length) {
@@ -64,14 +130,30 @@ void ProposeCross(const Input& input, const CrossLexicon& lexicon, const Options
       const int32_t hint_cost = options.costs.crossed_hint * input.HintsInside(begin, end);
       if (options.pinyin_to_japanese) {
         lexicon.PinyinJa(key, &entries);
-        AddEntries(entries, EdgeKind::kPinyinJa, begin, end, whole, hint_cost, options, lattice);
+        seen.clear();
+        size_t semantic = 0, loanword = 0, translit = 0, pinyin = 0;
+        AddEntries(entries, EdgeKind::kPinyinJa, begin, end, whole, hint_cost, 0, options, &seen,
+                   &semantic, &loanword, &translit, &pinyin, lattice);
       }
       // Two or three letters inside a longer input are far more often a chance split than an
       // English word meant as Japanese (`fune` is not fun + へ): only the whole input may be
       // one, as for the English proposer's short words and the one-syllable pinyin keys.
       if (english && length > 1 && (whole || length > kShortKey)) {
         lexicon.EnJa(key, &entries);
-        AddEntries(entries, EdgeKind::kEnJa, begin, end, whole, hint_cost, options, lattice);
+        seen.clear();
+        size_t semantic = 0, loanword = 0, translit = 0, pinyin = 0;
+        AddEntries(entries, EdgeKind::kEnJa, begin, end, whole, hint_cost, 0, options, &seen,
+                   &semantic, &loanword, &translit, &pinyin, lattice);
+        if (loanword == 0 && length >= 4 && options.english_to_katakana) {
+          PluralStems(key, &stems);
+          for (const std::string& stem : stems) {
+            lexicon.EnJa(stem, &entries);
+            AddEntries(entries, EdgeKind::kEnJa, begin, end, whole, hint_cost,
+                       options.costs.english_plural_stem, options, &seen, &semantic, &loanword,
+                       &translit, &pinyin, lattice);
+            if (loanword > 0) break;
+          }
+        }
       }
     }
   }
