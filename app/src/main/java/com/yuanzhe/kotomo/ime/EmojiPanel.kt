@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,6 +48,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.integerResource
@@ -501,16 +503,19 @@ private fun BarKey(modifier: Modifier, onClick: () -> Unit, content: @Composable
 /**
  * Shows every candidate in the keyboard's place (the candidate bar's expand arrow).
  *
- * Inputs: [candidates] follows the bar; [onPick] commits candidate n; [onBack] returns to the keys.
+ * Inputs: [candidates] follows the bar; [onPick] commits candidate n; [onLongPick] shows
+ * candidate n's details; [onBack] returns to the keys.
  */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun CandidatesPanel(
     candidates: androidx.compose.runtime.State<List<String>>,
     onPick: (Int) -> Unit,
     onBack: () -> Unit,
+    onLongPick: (Int) -> Unit = {},
 ) {
     val back = stringResource(R.string.candidates_collapse)
+    val view = LocalView.current
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         androidx.compose.foundation.layout.FlowRow(
             Modifier
@@ -527,7 +532,13 @@ fun CandidatesPanel(
                         .height(androidx.compose.ui.res.dimensionResource(R.dimen.panel_touch))
                         .clip(RoundedCornerShape(12.dp))
                         .background(colorResource(if (i == 0) R.color.kb_accent_container else R.color.kb_key))
-                        .clickable { onPick(i) }
+                        .combinedClickable(
+                            onClick = { onPick(i) },
+                            onLongClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                onLongPick(i)
+                            },
+                        )
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -583,12 +594,12 @@ data class SegmentView(
  * candidates of the chosen one, and Shorter, Longer and Back.
  *
  * Inputs: [view] follows the service; [onFocus] chooses a segment (null for the whole sentence);
- * [onPick] chooses candidate n of what is listed; [onResize] runs the first (−1) or second (+1)
- * action of [SegmentView]; [onBack] returns to the keys.
+ * [onPick] chooses candidate n of what is listed; [onLongPick] shows candidate n's details;
+ * [onResize] runs the first (−1) or second (+1) action of [SegmentView]; [onBack] returns to the keys.
  * Notes: choosing a segment's candidate pins it and converts the rest again around it; the
  * segments before it keep their boundaries (PLAN §5.6).
  */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SegmentPanel(
     view: androidx.compose.runtime.State<SegmentView?>,
@@ -596,9 +607,11 @@ fun SegmentPanel(
     onPick: (Int) -> Unit,
     onResize: (Int) -> Unit,
     onBack: () -> Unit,
+    onLongPick: (Int) -> Unit = {},
 ) {
     val v = view.value ?: return
     val back = stringResource(R.string.candidates_collapse)
+    val host = LocalView.current
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         Row(
             Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(8.dp),
@@ -626,7 +639,13 @@ fun SegmentPanel(
                         .height(44.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(colorResource(if (i == 0) R.color.kb_accent_container else R.color.kb_key))
-                        .clickable { onPick(i) }
+                        .combinedClickable(
+                            onClick = { onPick(i) },
+                            onLongClick = {
+                                host.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                onLongPick(i)
+                            },
+                        )
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center,
                 ) {

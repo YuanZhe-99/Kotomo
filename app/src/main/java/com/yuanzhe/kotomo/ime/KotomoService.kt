@@ -879,6 +879,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 CandidatesPanel(
                     candidates = shownCandidates,
                     onPick = { index ->
+                        if (::candidateBar.isInitialized) candidateBar.details = null
                         val at = if (mode == Mode.MIXED && !direct) mixedIndexes.getOrNull(index) else null
                         val prefix = at != null && at >= 0 &&
                             mixedSnapshot?.candidates?.getOrNull(at)?.let { !it.sentence && it.pieces.isNotEmpty() } == true
@@ -886,6 +887,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                         pick(index)
                     },
                     onBack = ::showKeyboard,
+                    onLongPick = ::showDetails,
                 )
             }
         }
@@ -1036,12 +1038,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val chinese = usesRime && !direct
         val rime = if (chinese && rimeIndex >= 0) rimeCandidates.getOrNull(rimeIndex) else null
         val emoji = text in emojiShown || (chinese && rimeIndex == Candidates.EMOJI)
-        val inMixed = mode == Mode.MIXED && !direct
-        val mixedCandidate = if (inMixed) mixedIndexes.getOrNull(index)?.takeIf { it >= 0 }?.let { mixedSnapshot?.candidates?.getOrNull(it) } else null
+        if (mode == Mode.MIXED && !direct) {
+            val mixedCandidate = mixedIndexes.getOrNull(index)?.takeIf { it >= 0 }
+                ?.let { mixedSnapshot?.candidates?.getOrNull(it) }
+            showMixedDetails(index, text, mixedCandidate, emoji = emoji)
+            return
+        }
         val reading = when {
             emoji -> ""
-            // A Japanese candidate shows how it is read (池袋 / いけぶくろ, PLAN §9.3).
-            mixedCandidate != null -> if (mixedCandidate.target == Lang.JAPANESE && settings.mixed.cross.readings) mixedCandidate.pieces.joinToString("") { it.reading } else ""
             rime != null -> rime.comment.trim()
             mode == Mode.JAPANESE -> japaneseCandidates.firstOrNull { it.text == text }?.reading ?: japaneseReading
             else -> ""
@@ -1049,12 +1053,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val source = getString(
             when {
                 emoji -> R.string.source_emoji
-                mixedCandidate != null -> when {
-                    mixedCandidate.crossLanguage -> R.string.source_cross_language
-                    mixedCandidate.target == Lang.JAPANESE -> R.string.source_japanese
-                    mixedCandidate.target == Lang.ENGLISH -> R.string.source_english
-                    else -> R.string.source_chinese
-                }
                 rime != null -> when (rime.type) {
                     "user_phrase" -> R.string.source_learned
                     "user_table" -> R.string.source_your_dictionaries
@@ -1074,28 +1072,101 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         detailsForms = emptyList()
         // A Japanese word also shows its dictionary form and part of speech, and its forms when it
         // conjugates (PLAN §10.1, §10.2); one segment only, as a form replaces the whole composition.
-        if (mode == Mode.JAPANESE && !direct && !emoji && reading.isNotEmpty() && japaneseSegments.size <= 1) describeJapanese(index, text, reading)
+        if (mode == Mode.JAPANESE && !direct && !emoji && reading.isNotEmpty()) {
+            describeJapanese(index, text, reading, allowForms = japaneseSegments.size <= 1)
+        }
+    }
+
+    /**
+     * Shows Mixed-mode details for [text] (reading and source language or emoji), querying Mozc
+     * for single-piece Japanese words so POS and dictionary base form appear above the panel too.
+     */
+    private fun showMixedDetails(
+        index: Int,
+        text: String,
+        candidate: com.yuanzhe.kotomo.engine.SnapshotCandidate?,
+        emoji: Boolean = false,
+    ) {
+        val reading = if (candidate != null && !emoji && candidate.target == Lang.JAPANESE) {
+            candidate.pieces.joinToString("") { it.reading }
+        } else {
+            ""
+        }
+        val source = getString(
+            when {
+                emoji -> R.string.source_emoji
+                candidate == null -> R.string.source_typed
+                candidate.crossLanguage -> R.string.source_cross_language
+                candidate.target == Lang.JAPANESE -> R.string.source_japanese
+                candidate.target == Lang.ENGLISH -> R.string.source_english
+                else -> R.string.source_chinese
+            },
+        )
+        candidateBar.details = CandidateDetails(
+            index,
+            if (reading.isEmpty()) source else getString(R.string.candidate_details, reading, source),
+            null,
+        )
+        detailsForms = emptyList()
+        if (candidate != null && !emoji && candidate.target == Lang.JAPANESE &&
+            candidate.pieces.size == 1 && reading.isNotEmpty()
+        ) {
+            describeJapanese(index, text, reading, allowForms = false)
+        }
+    }
+
+    /**
+     * Shows details in the candidate bar when long-pressing item [index] inside [SegmentPanel].
+     */
+    private fun showSegmentDetails(index: Int) {
+        if (mode == Mode.MIXED && !direct) {
+            val focus = mixedFocus
+            if (focus == null) {
+                val (text, at) = mixedSentences().getOrNull(index) ?: return
+                val c = if (at >= 0) mixedSnapshot?.candidates?.getOrNull(at) else null
+                showMixedDetails(index, text, c)
+                return
+            }
+            val piece = mixedPieces().getOrNull(focus) ?: return
+            val (text, choice) = mixedChoices(piece, composing.toString()).getOrNull(index) ?: return
+            val c = if (choice != Core.AS_TYPED) mixedSpan?.candidates?.getOrNull(choice) else null
+            showMixedDetails(index, text, c)
+            return
+        }
+        val focus = segmentFocus ?: return showDetails(index)
+        val seg = japaneseSegments.getOrNull(focus) ?: return
+        val cand = Candidates.segment(seg).getOrNull(index) ?: return
+        val reading = cand.reading.ifEmpty { seg.reading }
+        val source = getString(R.string.source_japanese)
+        candidateBar.details = CandidateDetails(
+            index,
+            if (reading.isEmpty()) source else getString(R.string.candidate_details, reading, source),
+            null,
+        )
+        detailsForms = emptyList()
+        if (reading.isNotEmpty()) describeJapanese(index, cand.text, reading, allowForms = false)
     }
 
     /**
      * Asks Mozc's dictionary what Japanese candidate [index] is and adds its dictionary form, part
-     * of speech and, when it conjugates, the Forms button to the details shown (PLAN §10.1, §10.2).
+     * of speech and, when [allowForms] is set and it conjugates, the Forms button to the details.
      * Notes: the lookup runs on the engine thread; details that changed meanwhile stay as they are.
      */
-    private fun describeJapanese(index: Int, text: String, reading: String) {
+    private fun describeJapanese(index: Int, text: String, reading: String, allowForms: Boolean = true) {
+        val initial = candidateBar.details?.takeIf { it.index == index }?.text ?: return
         engine.post {
             val d = mozc?.describe(text, reading)
             main.post {
-                val shown = candidateBar.details?.takeIf { it.index == index } ?: return@post
+                val shown = candidateBar.details?.takeIf { it.index == index && it.text == initial } ?: return@post
                 if (d == null) return@post
                 val word = Inflection.word(d.entry, d.reading, d.pos)
                 val forms = word?.let { w -> listOf(Inflection.Inflected(Inflection.Form.PLAIN, w.text, w.reading)) + Inflection.forms(w) }
                     .orEmpty().filter { it.text != text }
                 val extra = listOfNotNull((word?.text ?: d.entry).takeIf { it != text }, posLabel(d.pos)?.let(::getString)).joinToString(" · ")
-                detailsForms = forms
+                detailsForms = if (allowForms) forms else emptyList()
                 candidateBar.details = shown.copy(
                     text = if (extra.isEmpty()) shown.text else getString(R.string.candidate_word, shown.text, extra),
-                    forget = if (forms.isEmpty()) shown.forget else getString(R.string.candidate_forms),
+                    forget = if (allowForms && forms.isNotEmpty()) getString(R.string.candidate_forms) else shown.forget,
                 )
             }
         }
@@ -2835,6 +2906,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onPick = ::pickSegment,
                     onResize = ::resizeSegment,
                     onBack = ::showKeyboard,
+                    onLongPick = ::showSegmentDetails,
                 )
             }
         }
@@ -2851,6 +2923,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * later; until then the panel lists the letters as typed.
      */
     private fun focusSegment(index: Int?) {
+        if (::candidateBar.isInitialized) candidateBar.details = null
         if (mode != Mode.MIXED) {
             segmentFocus = index
             return updateSegmentPanel()
@@ -2957,6 +3030,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * on the next segment, and the last segment brings the keys back (C6).
      */
     private fun pickSegment(index: Int) {
+        if (::candidateBar.isInitialized) candidateBar.details = null
         if (mode == Mode.MIXED) return pickMixedPiece(index)
         val focus = segmentFocus ?: return run { showKeyboard(); pick(index) }
         val segment = japaneseSegments.getOrNull(focus) ?: return
@@ -3236,6 +3310,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     }
 
     private fun showKeyboard() {
+        if (::candidateBar.isInitialized) candidateBar.details = null
         if (!::panelHost.isInitialized || panelHost.getChildAt(0) === keyboard) return
         panelHost.removeAllViews()
         panelHost.addView(keyboard)
