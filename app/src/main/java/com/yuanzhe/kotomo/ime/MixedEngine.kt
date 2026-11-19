@@ -209,32 +209,38 @@ internal class MixedEngine {
         return core?.refine(shown.generation)?.also { last = it }
     }
 
+    /** Result of committing or flushing a Mixed candidate: committed text, candidate, and remainder. */
+    data class Commit(val text: String, val candidate: SnapshotCandidate?, val next: Snapshot?)
+
     /**
-     * Decides what choosing a candidate commits, and empties the engine's composition.
+     * Decides what choosing a candidate commits, and selects or clears the engine's composition.
      * Inputs: [raw], [touches] and [wanted] as for [type]; [index] the candidate's index in the
      * snapshot of [raw], or null for the best candidate; [expected] the text the person tapped,
      * or null.
-     * Returns: the text, [expected] when given (what was tapped is what is committed), otherwise
-     * the best candidate's text, or [raw] without its outer spaces when there is no candidate or
-     * no coordinator; and the engine's candidate when that text is one, for the keyboard to learn
-     * from where the field allows.
+     * Returns: a [Commit] holding the committed text ([expected] when given, otherwise the chosen
+     * candidate's text or [raw] trimmed), the matched [SnapshotCandidate], and the engine's
+     * post-select [Snapshot] (whose [Snapshot.input] holds any unconsumed remainder after a prefix
+     * commit).
      * Side effects: the engine is told which candidate was chosen when it still holds the
      * snapshot the choice was made on; nothing is learned here.
      */
-    fun commit(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options, index: Int?, expected: String?): Pair<String, SnapshotCandidate?> {
+    fun commit(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options, index: Int?, expected: String?): Commit {
         val snapshot = type(raw, touches, wanted)
         val c = core
         val chosen = index ?: 0
         val candidate = snapshot?.candidates?.getOrNull(chosen)
         val text = candidate?.text
+        val matched = candidate?.takeIf { expected == null || expected == text }
+        var next: Snapshot? = null
         if (c != null) {
-            last = if (snapshot != null && text != null && (expected == null || expected == text)) {
+            next = if (snapshot != null && text != null && matched != null) {
                 c.select(++generation, snapshot.generation, chosen)
             } else {
                 c.clear(++generation)
             }
-            held = last?.input.orEmpty()
+            last = next
+            held = next?.input.orEmpty()
         }
-        return (expected ?: text ?: raw.trim()) to candidate?.takeIf { expected == null || expected == text }
+        return Commit(expected ?: next?.commit?.takeIf { it.isNotEmpty() } ?: text ?: raw.trim(), matched, next)
     }
 }

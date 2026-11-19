@@ -216,11 +216,17 @@ Snapshot Session::Handle(const Request& request) {
       break;
     case Command::kSelect:
       if (answers_last && last_focus_end_ == 0 && request.index < last_.size()) {
-        commit = last_[request.index].text;
+        const Candidate& chosen = last_[request.index];
+        commit = chosen.text;
         undo_ = State{composition_, touches_, locks_};
-        composition_.clear();
-        touches_.clear();
-        locks_.clear();
+        const size_t consumed = chosen.pieces.empty() ? 0 : chosen.pieces.back().end;
+        if (!(chosen.flags & kSentence) && consumed > 0 && consumed < composition_.size()) {
+          DropPrefix(consumed);
+        } else {
+          composition_.clear();
+          touches_.clear();
+          locks_.clear();
+        }
       }
       break;
     case Command::kAlternatives: {

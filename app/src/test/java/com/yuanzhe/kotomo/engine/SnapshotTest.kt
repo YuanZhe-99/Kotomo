@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 8):
+ * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 9):
  * the snapshot decoder accepts exactly what the engine's encoder writes and drops anything else
  * whole, and a stale update never replaces a newer one.
  *
@@ -53,10 +53,12 @@ class SnapshotTest {
         assertEquals(Lang.JAPANESE, ja.target)
         assertEquals(4200, ja.cost)
         assertFalse(ja.crossLanguage)
+        assertTrue(ja.sentence)
         assertEquals(Piece(4, 6, "を", "を", Lang.JAPANESE, Origin.RULE, pinned = true), ja.pieces[1])
         assertEquals(Piece(0, 3, "本", "ほん", Lang.JAPANESE, Origin.MOZC, pinned = false), ja.pieces[0])
         assertEquals(-5, s.candidates[1].cost)
         assertTrue(s.candidates[1].crossLanguage)
+        assertFalse(s.candidates[1].sentence)
     }
 
     @Test

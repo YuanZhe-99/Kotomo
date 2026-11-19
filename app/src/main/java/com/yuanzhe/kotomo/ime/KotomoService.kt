@@ -879,7 +879,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 CandidatesPanel(
                     candidates = shownCandidates,
                     onPick = { index ->
-                        showKeyboard()
+                        val at = if (mode == Mode.MIXED && !direct) mixedIndexes.getOrNull(index) else null
+                        val prefix = at != null && at >= 0 &&
+                            mixedSnapshot?.candidates?.getOrNull(at)?.let { !it.sentence && it.pieces.isNotEmpty() } == true
+                        if (!prefix) showKeyboard()
                         pick(index)
                     },
                     onBack = ::showKeyboard,
@@ -2561,12 +2564,57 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         mixedAwaiting = true
         engine.post {
             // Whatever happens on the way, the keys waiting in line must be let through again.
-            val (text, candidate) = runCatching {
+            val result = runCatching {
                 attachMixed()
                 mixed.commit(raw, touches, options, index, expected)
-            }.getOrDefault((expected ?: raw.trim()) to null)
+            }.getOrDefault(MixedEngine.Commit(expected ?: raw.trim(), null, null))
             main.post {
                 mixedAwaiting = false
+                val text = result.text
+                val candidate = result.candidate
+                val next = result.next
+                val remainder = next?.input.orEmpty()
+                if (serial == fieldSerial && then.isEmpty() && remainder.isNotEmpty()) {
+                    currentInputConnection?.let { ic ->
+                        ic.beginBatchEdit()
+                        ic.commitText(text, 1)
+                        val kept = touches.takeLast(remainder.length)
+                        composing.setLength(0)
+                        composing.append(remainder)
+                        taps.clear()
+                        taps += kept
+                        repeat(remainder.length - kept.size) { taps += null }
+                        ic.setComposingText(composing, 1)
+                        ic.endBatchEdit()
+                    }
+                    previousWord = null
+                    mixedFocus = null
+                    val gen = ++generation
+                    mixedLatest = gen
+                    takes(gen, 1)
+                    showMixed(next, remainder, SystemClock.uptimeMillis())
+                    mixedUndo = text.takeIf { it.isNotEmpty() }
+                    mixedLearned = null
+                    if (candidate != null && !options.incognito) {
+                        val store = MixedLearning.get(this)
+                        val before = store.current
+                        store.update { it.committed(raw, candidate, System.currentTimeMillis()) }
+                        mixedLearned = Triple(raw, candidate, before)
+                    }
+                    if (next?.more == true) {
+                        engine.post {
+                            if (gen != mixedLatest) return@post
+                            val full = mixed.refine() ?: return@post
+                            main.post {
+                                if (serial == fieldSerial && composing.toString() == remainder && takes(gen, 2)) {
+                                    showMixed(full, remainder, 0)
+                                }
+                            }
+                        }
+                    }
+                    drainQueuedKeys()
+                    return@post
+                }
                 if (serial == fieldSerial) currentInputConnection?.commitText(text + then, 1) else queuedKeys.clear()
                 previousWord = null
                 refresh(0)
@@ -2858,7 +2906,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (focus == null) {
             val (text, at) = mixedSentences().getOrNull(index) ?: return
             if (mixedSnapshot?.input != composing.toString()) return
-            showKeyboard()
+            val prefix = mixedSnapshot?.candidates?.getOrNull(at)?.let { !it.sentence && it.pieces.isNotEmpty() } == true
+            if (!prefix) showKeyboard()
             return commitMixed(at, text)
         }
         val span = mixedSpan ?: return

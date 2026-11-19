@@ -5,11 +5,13 @@
 #ifndef KOTOMO_CORE_MIXED_FINISH_H_
 #define KOTOMO_CORE_MIXED_FINISH_H_
 
+#include <span>
 #include <vector>
 
 #include "decode.h"
 #include "engines.h"
 #include "input.h"
+#include "lattice.h"
 #include "options.h"
 #include "snapshot.h"
 
@@ -24,6 +26,17 @@ namespace kotomo::mixed {
 ///   Sets `*cut` when librime may hold more conversions of the whole input than were asked for.
 void FinishChinese(const Input& input, const Path& path, Engines& engines, const Options& options,
                    std::vector<Candidate>* out, bool* cut);
+
+/// Adds syllable-aligned Chinese prefix candidates (2–3 syllable non-composed phrases and
+/// 1st-syllable characters strictly shorter than `input`) when Chinese is a target language.
+/// Inputs: `paths`, the decoded Chinese paths (empty if no full Chinese path existed).
+/// Side effects: appends non-sentence (`flags = 0`) candidates with one piece over `[0, prefix_end)`
+///   to `out`, and sets `*cut` when librime reaches `Options::alternatives` on a queried prefix.
+/// Notes: skipped on Stage 0 of long inputs (`paths == 1` with `>= 16` letters) so Stage 0 stays
+///   bounded.
+void FinishChinesePrefixes(const Input& input, const Lattice& lattice, std::span<const Path> paths,
+                           Engines& engines, const Options& options, std::vector<Candidate>* out,
+                           bool* cut);
 
 /// Finishes a Japanese path: runs of kana go to Mozc as free spans, cross-language words and
 /// particles as pinned spans of the same conversion, and English words and pending letters stay

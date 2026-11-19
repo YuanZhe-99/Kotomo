@@ -214,5 +214,59 @@ int main() {
     Check(Place(cased, "Book") == 0 && Place(cased, "本") > 0 && Place(cased, "ブック") > 0,
           "Q7-coordinator-cased-english-keeps-cross", Shown(cased));
   }
+  // Mixed-mode Pinyin prefix matching: 2–3 syllable non-composed phrases and 1st-syllable
+  // characters strictly shorter than the composition appear with kSentence unset, never cutting
+  // inside a syllable, and prefix learning keys use only the consumed prefix.
+  {
+    class PrefixEngines : public test::FakeEngines {
+     public:
+      void Spellings(std::string_view prefix, std::vector<Spelling>* out) override {
+        test::FakeEngines::Spellings(prefix, out);
+        static const std::pair<std::string_view, bool> extra[] = {
+            {"yuan", false}, {"zhe", false}, {"shi", false}, {"jian", false}, {"ji", false},
+        };
+        for (const auto& [s, p] : extra) {
+          if (prefix.starts_with(s)) out->push_back({static_cast<uint8_t>(s.size()), p, false});
+        }
+      }
+      std::vector<ChineseWord> Chinese(std::string_view syllables, size_t limit) override {
+        if (syllables == "yuan'zhe") return {{"元这", true}};
+        if (syllables == "yuan") return {{"元", false}, {"袁", false}};
+        if (syllables == "ni'hao'shi'jian") return {{"你好时间", true}};
+        if (syllables == "ni'hao'shi") return {{"你好市", true}};
+        if (syllables == "ni'hao") return {{"你好", false}};
+        if (syllables == "shi'jian") return {{"时间", false}};
+        if (syllables == "shi'ji") return {{"实际", false}};
+        if (syllables == "shi") return {{"是", false}};
+        return test::FakeEngines::Chinese(syllables, limit);
+      }
+    } prefix_engines;
+    Learned learned;
+    Coordinator pref_coord(prefix_engines, *lexicon, Options{}, &learned);
+
+    const Snapshot yz = pref_coord.Convert("yuanzhe", 1);
+    const int whole_yz = Place(yz, "元这");
+    const int p_yuan = Place(yz, "元");
+    Check(whole_yz == 0 && (yz.candidates[whole_yz].flags & kSentence) && p_yuan > 0 &&
+              !(yz.candidates[p_yuan].flags & kSentence) &&
+              yz.candidates[p_yuan].pieces.size() == 1 && yz.candidates[p_yuan].pieces[0].begin == 0 &&
+              yz.candidates[p_yuan].pieces[0].end == 4 && Place(yz, "袁") > p_yuan,
+          "Q7-prefix-first-syllable-chars", Shown(yz));
+
+    const Snapshot nhsj = pref_coord.Convert("nihaoshijian", 1);
+    Check(Place(nhsj, "你好时间") == 0 && Place(nhsj, "你好") > 0 && Place(nhsj, "你") > 0 &&
+              Place(nhsj, "你好市") < 0,
+          "Q7-prefix-noncomposed-phrase-skips-composed", Shown(nhsj));
+
+    const Snapshot sj = pref_coord.Convert("shijian", 1);
+    Check(Place(sj, "时间") == 0 && Place(sj, "实际") < 0 && Place(sj, "是") > 0,
+          "Q7-prefix-never-cuts-inside-syllable", Shown(sj));
+
+    learned["ni\t你"] = -2000;
+    const Snapshot boosted = pref_coord.Convert("nihaoshijian", 2);
+    Check(Place(boosted, "你") >= 0 && Place(boosted, "你") < Place(nhsj, "你") &&
+              (boosted.candidates[Place(boosted, "你")].flags & kLearned),
+          "Q7-prefix-learning-slices-consumed-reading", Shown(boosted));
+  }
   return kotomo::mixed::test::Result();
 }

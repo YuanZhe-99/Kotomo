@@ -156,7 +156,12 @@ data class Learned(val readings: Map<Pair<String, String>, LearnedReading> = emp
          */
         fun keys(raw: String, candidate: SnapshotCandidate): Set<Pair<String, String>> {
             val keys = LinkedHashSet<Pair<String, String>>()
-            letters(raw).takeIf { it.isNotEmpty() && candidate.text.isNotEmpty() }?.let { keys += it to candidate.text }
+            val scope = if (!candidate.sentence && candidate.pieces.isNotEmpty()) {
+                raw.substring(0, candidate.pieces.last().end.coerceAtMost(raw.length))
+            } else {
+                raw
+            }
+            letters(scope).takeIf { it.isNotEmpty() && candidate.text.isNotEmpty() }?.let { keys += it to candidate.text }
             if (candidate.pieces.size > 1) {
                 for (piece in candidate.pieces) {
                     val typed = letters(raw.substring(piece.begin.coerceAtMost(raw.length), piece.end.coerceAtMost(raw.length)))

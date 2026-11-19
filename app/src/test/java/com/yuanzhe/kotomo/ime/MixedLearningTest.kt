@@ -26,8 +26,8 @@ class MixedLearningTest {
     private val day = 86_400_000L
     private val now = 1_000 * day
 
-    private fun candidate(text: String, vararg pieces: Triple<Int, Int, String>) = SnapshotCandidate(
-        text, Lang.JAPANESE, 0, 0,
+    private fun candidate(text: String, vararg pieces: Triple<Int, Int, String>, sentence: Boolean = true) = SnapshotCandidate(
+        text, Lang.JAPANESE, 0, if (sentence) SnapshotCandidate.FLAG_SENTENCE else 0,
         pieces.map { (begin, end, t) -> Piece(begin, end, t, "", Lang.JAPANESE, Origin.MOZC, pinned = false) },
     )
 
@@ -180,5 +180,14 @@ class MixedLearningTest {
         later.setEncrypted(false)
         later.flush()
         assertTrue("a newer file was replaced", sealed.readBytes().contentEquals(newer) && !file.exists())
+    }
+
+    /** A partial prefix commit teaches only the consumed span, never the unconsumed remainder. */
+    @Test
+    fun prefixCommitTeachesOnlyConsumedSpan() {
+        val prefix = candidate("元", Triple(0, 4, "元"), sentence = false)
+        val learned = Learned().committed("yuanzhe", prefix, now)
+        assertEquals(setOf("yuan" to "元"), learned.readings.keys)
+        assertFalse(learned.readings.containsKey("yuanzhe" to "元"))
     }
 }

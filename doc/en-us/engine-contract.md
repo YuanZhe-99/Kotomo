@@ -1,7 +1,7 @@
 # Engine ↔ app contract
 
 How the app and the native engine talk: what goes in, what comes out, and how the mixed-input
-coordinator (`core/mixed/`) reaches the three engines. This is **contract version 8**
+coordinator (`core/mixed/`) reaches the three engines. This is **contract version 9**
 (`kContractVersion` in `core/mixed/snapshot.h`, `Snapshot.VERSION` in `engine/Snapshot.kt`). Both
 sides exist: the engine side is `libkotomo_core.so` (`core/mixed/session.h`, `jni/core_jni.cc`),
 the app side is the facade `engine/Core.kt` with the decoder `engine/Snapshot.kt`. Mixed mode
@@ -41,7 +41,7 @@ All integers are little-endian. A string is a `u16` byte length followed by UTF-
 | 3 | clear | — | drops the composition without committing |
 | 4 | options | u8 level (0 conservative, 1 balanced, 2 aggressive); u8 switches; u8 targets; i8 × 3 weights for Chinese, Japanese, English; u16 Japanese fuzzy rules | the switches' bits: 0 pinyin → Japanese, 1 English → Japanese kanji words, 2 English → katakana, 3 cross-language words inside a longer composition (off: only as the whole composition), 4 the field must leave no trace (Mozc converts incognito), 5 abbreviated pinyin: a syllable may be typed by its initial alone anywhere in the composition (version 7). The targets' bits name the languages candidates may be written in: 0 Chinese, 1 Japanese, 2 English; Mixed mode sets all three, Japanese mode only Japanese and takes the cross-language candidates (version 3). A weight says how far the person moved that language's weight from its default, −100…100; each point is worth 40 cost units for that language's candidates. The Japanese fuzzy rules' bits (version 8, all clear by default; an unknown bit is refused): 0 long vowel, 1 small っ, 2 ん, 3 voiced (か/が, さ/ざ, た/だ, は/ば), 4 semi-voiced (は/ぱ, ば/ぱ), 5 small ゃ ゅ ょ, 6 じ/ぢ and ず/づ, 7 ら行 for な行 or だ で ど, 8 ひ/し, 9 loanword spellings, 10 romaji l for r, 11 romaji cu for つ |
 | 5 | context | string: the text before the cursor | candidates in the language that text ends in cost 300 units less (kana, or a Han character with kana before it: Japanese; a Han character otherwise: Chinese; a Latin letter: English). Kept in memory only. The app sends it when a composition starts and never for a field that may leave no trace |
-| 6 | select | u64: the generation of the snapshot on screen; u16: a candidate's index in it | commits that candidate: the snapshot's commit field holds its text and the composition is empty. When the engine's last snapshot is another one, or has no such candidate, nothing is committed |
+| 6 | select | u64: the generation of the snapshot on screen; u16: a candidate's index in it | commits that candidate: the snapshot's commit field holds its text and the composition empties when it covers the whole composition (bit 3 of flags set). For a prefix candidate with bit 3 clear (version 9), only the consumed prefix is dropped and the remaining composition converts afresh. When the engine's last snapshot is another one, or has no such candidate, nothing is committed |
 | 7 | alternatives | u16 begin, u16 end: a byte range of the composition | changes nothing; the snapshot's candidates stand for that span alone, in every language, and its focus fields name the span. A span that is empty, runs past the composition or cuts a locked piece gets the ordinary snapshot |
 | 8 | lock | u64: the generation of the alternatives snapshot; u16: a candidate's index in it, or 0xffff for the letters as typed | locks the span to that reading: the rest converts around it, every candidate holds the locked piece and no later conversion rewrites it. When the engine's last snapshot is another one, is not an alternatives snapshot or has no such candidate, nothing is locked |
 | 9 | restore | — | drops every lock; the raw input converts afresh |
@@ -71,10 +71,13 @@ pinyin run; when that list was cut short the snapshot sets `more` too, and the r
 returns every candidate found: all of librime's conversions of the run in librime's order (up
 to 1500, each 2500 units dearer than the one before, so the other languages' candidates stand
 among the first of them), up to 2000 candidates in all. `yu` lists six Chinese characters at
-once and some six hundred after the refine request, the ones Chinese mode pages through. A
-conversion counts for a run only when it reaches the run's end: librime also lists words for a
-prefix of it (实际 after the words of `shi'jian`), which are not candidates for the whole
-input. Commits and the readings of one span are answered at once and never set `more`. While one composition is typed the engine remembers the engines' answers, so a key more
+once and some six hundred after the refine request, the ones Chinese mode pages through. Whole
+candidates must reach the run's end; when Chinese is a target language, leading non-fuzzy
+complete pinyin syllables (without locks, outside the 16-letter Stage 0 fast path) also add
+syllable-aligned prefix candidates (`flags` bit 3 clear, covering 2–3 syllable non-composed phrases
+and 1st-syllable characters) anchored after top whole-input candidates so picking a prefix commits
+it and keeps the rest composing, while never cutting inside a syllable (`shijian` never yields
+实际). Commits and the readings of one span are answered at once and never set `more`. While one composition is typed the engine remembers the engines' answers, so a key more
 asks only about the spans that end at the new letter; the memory is dropped when the composition
 is empty.
 
@@ -126,9 +129,10 @@ sentence dearer: it costs what the same letters cost without them when that is l
 ## Output: the snapshot
 
 One snapshot describes what the app shows after one request: text to commit first, the
-composition, the cursor and the candidates, best first. Every candidate covers the whole
-composition and keeps its pieces: the span of the composition each piece stands for, its text,
-its reading, the language the span was typed in and where the text came from. The pieces are
+composition, the cursor and the candidates, best first. A whole-input candidate (bit 3 set)
+covers the entire composition; a Chinese prefix candidate (bit 3 clear) covers a single piece
+at `[0, end)`. Every candidate keeps its pieces: the span of the composition each piece stands
+for, its text, its reading, the language the span was typed in and where the text came from. The pieces are
 what a later edit locks or changes, so the other pieces are never rewritten.
 
 | Field | Type | Meaning |

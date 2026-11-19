@@ -15,9 +15,10 @@ namespace kotomo::mixed {
 namespace {
 
 /// Applies "original language first" (AGENTS.md, behavior contract): a cross-language candidate
-/// never stands before every candidate written in the language its cross-language pieces were
-/// typed in. The best such candidate moves just in front of it, wherever in the list that is:
-/// `change` read as a Japanese word does not outrank the English word itself.
+/// never stands before every whole-input candidate written in the language its cross-language
+/// pieces were typed in. The best such candidate moves just in front of it, wherever in the list
+/// that is: `change` read as a Japanese word does not outrank the English word itself, while a
+/// partial prefix candidate does not hijack a cross-language whole sentence (`chidai ni kai...`).
 /// Notes: a cross-language candidate with no reading in the typed language stays where it is:
 ///   there is no original-language candidate to prefer. So does one the person's history moved
 ///   up (kLearned). The level decides how far cross-language goes; this runs below aggressive.
@@ -34,10 +35,10 @@ void OriginalLanguageFirst(std::vector<Candidate>* candidates) {
     });
     if (crossed == candidates->end()) continue;
     const auto original = std::find_if(crossed, candidates->end(), [lang](const Candidate& c) {
-      return !(c.flags & kCross) && static_cast<int>(c.target) == lang;
+      return (c.flags & kSentence) && !(c.flags & kCross) && static_cast<int>(c.target) == lang;
     });
     const bool before = std::any_of(candidates->begin(), crossed, [lang](const Candidate& c) {
-      return !(c.flags & kCross) && static_cast<int>(c.target) == lang;
+      return (c.flags & kSentence) && !(c.flags & kCross) && static_cast<int>(c.target) == lang;
     });
     if (!before && original != candidates->end()) std::rotate(crossed, original, original + 1);
   }
@@ -75,8 +76,10 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
   std::vector<Candidate> found;
   bool cut = false;  // whether a fuller conversion (Options::Full) would list more
   const auto wanted = [this](Lang lang) { return options_.targets[static_cast<int>(lang)]; };
+  std::vector<Path> chinese_paths;
   if (wanted(Lang::kChinese)) {
-    for (const Path& path : Decode(lattice, Lang::kChinese, options_)) {
+    chinese_paths = Decode(lattice, Lang::kChinese, options_);
+    for (const Path& path : chinese_paths) {
       FinishChinese(*input, path, engines_, options_, &found, &cut);
     }
   }
@@ -89,6 +92,9 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
     for (const Path& path : Decode(lattice, Lang::kEnglish, options_)) {
       FinishEnglish(*input, path, &found);
     }
+  }
+  if (wanted(Lang::kChinese) && locks.empty()) {
+    FinishChinesePrefixes(*input, lattice, chinese_paths, engines_, options_, &found, &cut);
   }
 
   for (Candidate& candidate : found) candidate.cost += options_.bias[static_cast<int>(candidate.target)];
@@ -106,7 +112,11 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
       return it == learned_->end() ? 0 : it->second;
     };
     std::erase_if(found, [&](Candidate& candidate) {
-      int32_t total = adjust(input->raw, candidate.text);
+      const std::string_view whole_key =
+          !(candidate.flags & kSentence) && !candidate.pieces.empty()
+              ? std::string_view(input->raw).substr(0, candidate.pieces.back().end)
+              : std::string_view(input->raw);
+      int32_t total = adjust(whole_key, candidate.text);
       bool blocked = total == kBlocked;
       if (candidate.pieces.size() > 1) {
         for (const Piece& piece : candidate.pieces) {

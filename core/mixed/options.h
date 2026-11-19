@@ -18,6 +18,8 @@ struct Costs {
   int32_t fuzzy = 3000;             // on top, a syllable reached only through a rule or correction
   int32_t chinese_rank = 2500;      // each place further down librime's list for a run
   int32_t chinese_composed = 4000;  // a run librime has no entry for and composes from words
+  int32_t chinese_prefix = 7600;    // floor cost of a leading Chinese prefix candidate
+  int32_t chinese_prefix_margin = 500;  // margin above the best whole Chinese sentence cost
   int32_t unfinished = 2500;        // on top, a last syllable still being typed (`shur`)
   int32_t pending = 3000;           // letters that begin a kana, kept as typed after a Japanese
                                     // sentence (`shur` → しゅ + r)

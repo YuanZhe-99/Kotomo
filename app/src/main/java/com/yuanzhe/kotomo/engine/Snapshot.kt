@@ -55,6 +55,9 @@ data class SnapshotCandidate(
     /** Whether it was reached through fuzzy pinyin or a spelling correction. */
     val fuzzy: Boolean get() = flags and FLAG_FUZZY != 0
 
+    /** Whether this candidate covers the entire composition (`FLAG_SENTENCE`). */
+    val sentence: Boolean get() = flags and FLAG_SENTENCE != 0
+
     companion object {
         const val FLAG_CROSS = 1
         const val FLAG_FUZZY = 2
@@ -88,7 +91,7 @@ data class Snapshot(
 
     companion object {
         /** The contract version this decoder reads (`kContractVersion` in core/mixed/snapshot.h). */
-        const val VERSION = 8
+        const val VERSION = 9
 
         /**
          * Decodes the bytes the engine returned.

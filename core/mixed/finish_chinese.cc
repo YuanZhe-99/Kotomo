@@ -1,5 +1,8 @@
 #include "finish.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace kotomo::mixed {
 
 Piece MakePiece(const Input& input, size_t begin, size_t end, std::string text, Lang typed,
@@ -70,6 +73,105 @@ void FinishChinese(const Input& input, const Path& path, Engines& engines, const
                   (whole_input_run[rank].composed ? composed : 0) -
                   (whole_input_run.front().composed ? composed : 0);
     out->push_back(std::move(other));
+  }
+}
+
+void FinishChinesePrefixes(const Input& input, const Lattice& lattice, std::span<const Path> paths,
+                           Engines& engines, const Options& options, std::vector<Candidate>* out,
+                           bool* cut) {
+  if (options.paths == 1 && input.size() >= 16) return;
+  constexpr size_t kMaxPrefixSyllables = 3;
+  std::vector<const Edge*> leading;
+  if (!paths.empty()) {
+    for (const Edge* edge : paths.front().edges) {
+      if (edge->kind != EdgeKind::kPinyin || edge->fuzzy || edge->partial) break;
+      leading.push_back(edge);
+      if (leading.size() == kMaxPrefixSyllables) break;
+    }
+  } else {
+    size_t pos = 0;
+    while (pos < input.size() && leading.size() < kMaxPrefixSyllables) {
+      const Edge* best = nullptr;
+      for (const Edge& edge : lattice.From(pos)) {
+        if (edge.kind != EdgeKind::kPinyin || edge.fuzzy || edge.partial) continue;
+        if (best == nullptr || edge.cost < best->cost ||
+            (edge.cost == best->cost && edge.end > best->end)) {
+          best = &edge;
+        }
+      }
+      if (best == nullptr) break;
+      leading.push_back(best);
+      pos = best->end;
+    }
+  }
+  if (leading.empty()) return;
+
+  int32_t zh_best = std::numeric_limits<int32_t>::max();
+  int32_t any_best = std::numeric_limits<int32_t>::max();
+  std::vector<std::pair<int32_t, std::string_view>> whole_sentences;
+  for (const Candidate& c : *out) {
+    if (!(c.flags & kSentence)) continue;
+    any_best = std::min(any_best, c.cost);
+    if (c.target == Lang::kChinese) zh_best = std::min(zh_best, c.cost);
+    whole_sentences.emplace_back(c.cost, c.text);
+  }
+  int32_t shield = 0;
+  if (any_best != std::numeric_limits<int32_t>::max()) {
+    std::stable_sort(whole_sentences.begin(), whole_sentences.end(),
+                     [](const auto& a, const auto& b) { return a.first < b.first; });
+    size_t kept = 0;
+    std::string_view prev[3];
+    for (const auto& [cost, text] : whole_sentences) {
+      if (cost > any_best + 5500) break;
+      bool dup = false;
+      for (size_t k = 0; k < kept; ++k) dup = dup || prev[k] == text;
+      if (dup) continue;
+      shield = cost;
+      prev[kept++] = text;
+      if (kept == 3) break;
+    }
+  }
+  if (zh_best == std::numeric_limits<int32_t>::max()) {
+    if (any_best != std::numeric_limits<int32_t>::max()) {
+      zh_best = any_best;
+    } else if (!paths.empty()) {
+      zh_best = paths.front().cost + options.costs.chinese_composed;
+    } else {
+      zh_best = static_cast<int32_t>(leading.size()) * options.costs.pinyin_syllable +
+                options.costs.chinese_composed;
+    }
+  }
+  const int32_t base = std::max(
+      {shield > 0 ? shield + 200 : 0, zh_best + options.costs.chinese_prefix_margin,
+       options.costs.chinese_prefix});
+
+  for (size_t count = leading.size(); count >= 1; --count) {
+    const size_t end = leading[count - 1]->end;
+    if (end >= input.size()) continue;
+    std::string syllables;
+    for (size_t i = 0; i < count; ++i) {
+      if (!syllables.empty()) syllables += '\'';
+      syllables += leading[i]->text;
+    }
+    const size_t limit =
+        count == 1 ? std::min<size_t>(options.alternatives, 60) : std::min<size_t>(options.alternatives, 6);
+    if (limit == 0) continue;
+    std::vector<ChineseWord> conversions = engines.Chinese(syllables, limit);
+    if (conversions.size() >= options.alternatives) *cut = true;
+    const int32_t length_step = static_cast<int32_t>(kMaxPrefixSyllables - count) * 400;
+    for (size_t rank = 0; rank < conversions.size(); ++rank) {
+      if (count >= 2 && conversions[rank].composed) continue;
+      const int32_t cost = base + length_step + static_cast<int32_t>(rank) * 1200 +
+                           (conversions[rank].composed ? options.costs.chinese_composed : 0);
+      std::string text = std::move(conversions[rank].text);
+      Candidate candidate{.text = text,
+                          .target = Lang::kChinese,
+                          .cost = cost,
+                          .flags = 0,
+                          .pieces = {MakePiece(input, 0, end, text, Lang::kChinese, Origin::kRime,
+                                               false)}};
+      out->push_back(std::move(candidate));
+    }
   }
 }
 

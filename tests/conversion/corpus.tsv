@@ -317,3 +317,11 @@ T06-009	mixed		menu	メニュー	3	0.1.1: katakana loanword outranks echoed hira
 T06-N01	mixed		menu	!めぬ|!メヌ	3	0.1.1: unknown echoed kana never outranks katakana loanword
 T06-N02	mixed		mode	!もで	5	0.1.1: echoed kana does not enter top 5 over real words and loanwords
 T06-N03	mixed		power	!ぽうぇr	5	0.1.1: partial echoed kana does not enter top 5 over katakana loanword
+A9-006	mixed		yuanzhe	元	0	0.1.1: mixed pinyin offers 1st-syllable single characters when no whole word fits
+A9-007	mixed		yuanzhe	袁	0	0.1.1: rare 1st-syllable single characters become reachable after refine
+A9-008	mixed		nihaoshijie	你好	3	0.1.1: mixed pinyin offers non-composed 2-syllable phrase prefixes
+A9-009	mixed		nihaoshijie	你	5	0.1.1: mixed pinyin offers 1st-syllable characters on multi-syllable input
+A9-010	mixed		woxiangqubeijing	我想去	5	0.1.1: mixed pinyin offers non-composed 3-syllable phrase prefixes
+A9-011	mixed		jintiantianqi	今天	3	0.1.1: mixed pinyin offers 2-syllable phrase prefixes over whole fallback
+A9-N02	mixed		nihaoshijie	!你好市|!你好世	0	0.1.1: composed 3-syllable prefixes are suppressed
+A9-N03	mixed		jintiantianqi	!今天天	0	0.1.1: composed multi-syllable prefixes do not pollute candidates

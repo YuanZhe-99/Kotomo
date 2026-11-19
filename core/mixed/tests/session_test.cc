@@ -398,5 +398,31 @@ int main() {
   Check(s.input == "a", "T09-a-key-ends-undo");
   Send(&session, Command::kClear);
 
+  // Prefix candidate select commits the prefix and drops only the consumed bytes, leaving the
+  // rest composed; undo takes the prefix commit back, while selecting a kSentence clears all.
+  s = set("nihao");
+  const int p_ni = Place(s, "你");
+  Check(p_ni > 0 && !(s.candidates[p_ni].flags & kSentence), "Q7-session-prefix-offered");
+  s = session.Handle({.generation = ++generation, .command = Command::kSelect,
+                      .shown = s.generation, .index = static_cast<uint16_t>(p_ni)});
+  Check(s.commit == "你" && s.input == "hao" && session.composition() == "hao",
+        "Q7-session-prefix-select-keeps-remainder");
+  s = Send(&session, Command::kUndo);
+  Check(s.input == "nihao" && Place(s, "你好") >= 0, "Q7-session-prefix-undo");
+  const int whole_nihao = Place(s, "你好");
+  s = session.Handle({.generation = ++generation, .command = Command::kSelect,
+                      .shown = s.generation, .index = static_cast<uint16_t>(whole_nihao)});
+  Check(s.commit == "你好" && s.input.empty() && session.composition().empty(),
+        "Q7-session-whole-select-clears");
+
+  s = set("tushuguan book");
+  const int p_lib = Place(s, "图书馆");
+  Check(p_lib >= 0 && !(s.candidates[p_lib].flags & kSentence), "Q7-session-mixed-prefix-offered");
+  s = session.Handle({.generation = ++generation, .command = Command::kSelect,
+                      .shown = s.generation, .index = static_cast<uint16_t>(p_lib)});
+  Check(s.commit == "图书馆" && s.input == "book" && session.composition() == "book",
+        "Q7-session-mixed-prefix-skips-delimiter");
+  Send(&session, Command::kClear);
+
   return kotomo::mixed::test::Result();
 }

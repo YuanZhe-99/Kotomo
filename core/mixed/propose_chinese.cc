@@ -34,6 +34,7 @@ void ProposePinyin(const Input& input, Engines& engines, const Options& options,
                             (spelling.partial ? costs.unfinished : 0) +
                             costs.crossed_hint * input.HintsInside(begin, end),
                     .fuzzy = spelling.fuzzy,
+                    .partial = spelling.partial,
                     .text = input.letters.substr(begin, spelling.length),
                     .reading = {}});
     }
