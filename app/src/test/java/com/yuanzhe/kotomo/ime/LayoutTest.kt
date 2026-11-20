@@ -142,8 +142,9 @@ class LayoutTest {
     }
 
     /**
-     * C5: in every mode a long press on the bottom row's comma and full stop offers both widths
-     * (，/, and 。/.) and the other language's marks (、 and ．), starting with the key's own mark.
+     * In every mode a long press on the bottom row's comma and full stop offers both widths
+     * (，/, and 。/.) and the other language's marks (、 and ．), defaulting to the opposite width
+     * first so long-pressing toggles full-width vs half-width (and the key's own mark second).
      */
     @Test
     fun commaAndFullStopOfferBothWidthsInEveryMode() {
@@ -152,12 +153,76 @@ class LayoutTest {
             val keys = Layout.letters(mode, false).rows.last().keys
             val commaMore = keys.first { it.action == KeyAction.Text(comma) }.more
             val stopMore = keys.first { it.action == KeyAction.Text(stop) }.more
-            assertEquals(comma, commaMore.first())
-            assertEquals(stop, stopMore.first())
+            if (mode == Mode.ENGLISH) {
+                assertEquals("，", commaMore.first())
+                assertEquals("。", stopMore.first())
+            } else {
+                assertEquals(",", commaMore.first())
+                assertEquals(".", stopMore.first())
+            }
+            assertEquals(comma, commaMore[1])
+            assertEquals(stop, stopMore[1])
             assertTrue("$mode comma: $commaMore", commaMore.containsAll(listOf(",", "，", "、")))
             assertTrue("$mode full stop: $stopMore", stopMore.containsAll(listOf(".", "。", "．")))
             // Both widths are there, so the popup marks which is which.
             assertTrue(Layout.widthMarks(commaMore).containsAll(listOf(true, false)) && Layout.widthMarks(stopMore).containsAll(listOf(true, false)))
+        }
+    }
+
+    /** Full-width symbols on both symbol pages default to half-width on long press and label both widths. */
+    @Test
+    fun fullWidthSymbolsDefaultToHalfWidthOnBothSymbolPages() {
+        val fullWidth = setOf(
+            "￥", "（", "）", "“", "”", "‘", "’", "「", "」", "『", "』", "【", "】", "《", "》",
+            "〈", "〉", "、", "；", "：", "・", "·", "？", "！", "…", "—", "～", "｜",
+        )
+        for (mode in listOf(Mode.CHINESE, Mode.MIXED, Mode.JAPANESE)) {
+            for (page in listOf(0, 1)) {
+                val keys = Layout.symbols(mode, page = page).rows.flatMap { it.keys }
+                for (k in keys.filter { it.label in fullWidth }) {
+                    assertTrue("$mode page $page ${k.label}: empty more", k.more.size >= 2)
+                    val marks = Layout.widthMarks(k.more)
+                    assertEquals("$mode page $page ${k.label}: default is not half-width (${k.more})", false, marks[0])
+                    assertEquals("$mode page $page ${k.label}: second is not full-width (${k.more})", true, marks[1])
+                }
+            }
+        }
+        val phoneZero = Layout.pad(Field.PHONE).rows.flatMap { it.keys }.first { it.label == "0" }
+        assertEquals("+", phoneZero.more.first())
+    }
+
+    /** Right-side and narrow-width popups keep the default choice directly over the key without clipping. */
+    @Test
+    fun popupPlacesDefaultChoiceOverTheKeyOnEverySideAndWidth() {
+        val maxCell = 116f
+        for (w in listOf(1080f, 700f, 540f)) {
+            val letters = Layout.letters(Mode.MIXED, false).place(w, keyHeight, rowGap, gap)
+            val symbols = Layout.symbols(Mode.MIXED, page = 1).place(w, keyHeight, rowGap, gap)
+            for (label in listOf("q", "e", "a", "i", "o", "p", "。")) {
+                val pk = letters.first { it.key.label == label }
+                val popup = Layout.placePopup(pk.key.more.size, 0, pk.centerX, w, maxCell)
+                assertEquals("$w $label default at selected", 0, popup.order[popup.selected])
+                assertTrue("$w $label left ${popup.left}", popup.left >= -0.01f)
+                assertTrue("$w $label right", popup.left + pk.key.more.size * popup.cellWidth <= w + 0.01f)
+                val slotLeft = popup.left + popup.selected * popup.cellWidth
+                val slotRight = slotLeft + popup.cellWidth
+                assertTrue(
+                    "$w $label anchor ${pk.centerX} outside $slotLeft..$slotRight",
+                    pk.centerX in (slotLeft - popup.cellWidth * 0.6f)..(slotRight + popup.cellWidth * 0.6f),
+                )
+            }
+            for (label in listOf("【", "～")) {
+                val pk = symbols.first { it.key.label == label }
+                val popup = Layout.placePopup(pk.key.more.size, 0, pk.centerX, w, maxCell)
+                assertEquals("$w $label default at selected", 0, popup.order[popup.selected])
+                assertTrue("$w $label left ${popup.left}", popup.left >= -0.01f)
+                assertTrue("$w $label right", popup.left + pk.key.more.size * popup.cellWidth <= w + 0.01f)
+            }
+            // Language selector keeps its configured order.
+            val emoji = letters.first { it.key.action == KeyAction.Emoji }
+            val fixed = Layout.placePopup(5, 2, emoji.centerX, w, maxCell, reorder = false)
+            assertEquals(listOf(0, 1, 2, 3, 4), fixed.order)
+            assertEquals(2, fixed.selected)
         }
     }
 

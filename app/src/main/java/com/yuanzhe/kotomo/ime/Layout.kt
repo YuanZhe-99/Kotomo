@@ -69,6 +69,21 @@ data class PlacedKey(val key: Key, val left: Float, val top: Float, val right: F
     val centerY get() = (top + bottom) / 2
 }
 
+/**
+ * Places a long-press popup of choices above a key within a keyboard width, with each cell at
+ * most [cellWidth] wide.
+ *
+ * Notes: for character/symbol choices the default choice (caller index 0) sits at [selected]
+ * directly over the key while secondary choices fan outward; [order] maps each visual slot left to
+ * right to the caller's choice index.
+ */
+data class PlacedPopup(
+    val left: Float,
+    val cellWidth: Float,
+    val selected: Int,
+    val order: List<Int>,
+)
+
 /** Holds the rows of one keyboard page and maps it to view coordinates. */
 data class Layout(val rows: List<Row>) {
 
@@ -224,7 +239,7 @@ data class Layout(val rows: List<Row>) {
          * Notes: one layout for every width; the last column holds the function keys.
          */
         fun pad(field: Field): Layout {
-            fun k(s: String, vararg more: String) = Key(s, KeyAction.Text(s), more = if (more.isEmpty()) emptyList() else listOf(s, *more))
+            fun k(s: String, vararg more: String) = Key(s, KeyAction.Text(s), more = if (more.isEmpty()) emptyList() else listOf(*more, s))
             val (bottomLeft, bottomRight) = when (field) {
                 Field.PHONE -> k("*", "#", ";", ",") to k("#")
                 Field.DATETIME -> k("/", "-", ".") to k(":")
@@ -308,18 +323,65 @@ data class Layout(val rows: List<Row>) {
             return key.flick.getOrNull(i)?.takeIf { it.isNotEmpty() }
         }
 
-        /** Long-press variants of symbols, the symbol itself first. */
-        private val symbolMore = mapOf(
-            "$" to "$€£¥¢₩", "¥" to "¥￥$€£", "￥" to "￥¥$€£", "-" to "-–—_", "_" to "_-—", "\"" to "\"“”„«»",
-            "'" to "'‘’‚‹›", "?" to "?¿", "!" to "!¡", "%" to "%‰", "(" to "([{<", ")" to ")]}>", "*" to "*★†‡",
-            "=" to "=≠≈∞", "/" to "/÷", "+" to "+±", "<" to "<≤«", ">" to ">≥»", "." to ".…", "…" to "…⋯",
-            "？" to "？?¿", "！" to "！!¡", "“" to "“「『\"", "”" to "”」』\"", "（" to "（【〔(", "）" to "）】〕)",
-            "、" to "、，", "・" to "・·•", "—" to "—–-",
+        /**
+         * Long-press variants of symbols: for full-width symbols the half-width counterpart comes first
+         * and the full-width mark second (so [widthMarks] labels both widths); for half-width symbols
+         * the primary variant comes first and the key's own mark last.
+         */
+        private val symbolMore: Map<String, List<String>> = mapOf(
+            // Full-width symbols (Page 0 and Page 1 in Chinese, Mixed and Japanese modes):
+            "￥" to listOf("¥", "￥", "$", "€", "£"),
+            "（" to listOf("(", "（", "【", "〔"),
+            "）" to listOf(")", "）", "】", "〕"),
+            "“" to listOf("\"", "“", "「", "『"),
+            "”" to listOf("\"", "”", "」", "』"),
+            "‘" to listOf("'", "‘", "『"),
+            "’" to listOf("'", "’", "』"),
+            "「" to listOf("[", "「", "『", "\""),
+            "」" to listOf("]", "」", "』", "\""),
+            "『" to listOf("[", "『", "「", "\""),
+            "』" to listOf("]", "』", "」", "\""),
+            "【" to listOf("[", "【", "〔", "("),
+            "】" to listOf("]", "】", "〕", ")"),
+            "《" to listOf("<", "《", "〈", "«"),
+            "》" to listOf(">", "》", "〉", "»"),
+            "〈" to listOf("<", "〈", "《", "‹"),
+            "〉" to listOf(">", "〉", "》", "›"),
+            "、" to listOf(",", "、", "\\", "，"),
+            "；" to listOf(";", "；"),
+            "：" to listOf(":", "："),
+            "・" to listOf("/", "・", ".", "·", "•"),
+            "·" to listOf("`", "·", ".", "•"),
+            "？" to listOf("?", "？", "¿"),
+            "！" to listOf("!", "！", "¡"),
+            "…" to listOf("...", "…", ".", "⋯"),
+            "—" to listOf("-", "—", "–", "_"),
+            "～" to listOf("~", "～", "〜"),
+            "｜" to listOf("|", "｜", "¦"),
+            // Half-width symbols:
+            "$" to listOf("€", "£", "¥", "¢", "₩", "$"),
+            "¥" to listOf("￥", "$", "€", "£", "¥"),
+            "-" to listOf("—", "–", "_", "-"),
+            "_" to listOf("-", "—", "_"),
+            "\"" to listOf("“", "”", "„", "«", "»", "\""),
+            "'" to listOf("‘", "’", "‚", "‹", "›", "'"),
+            "?" to listOf("？", "¿", "?"),
+            "!" to listOf("！", "¡", "!"),
+            "%" to listOf("‰", "%"),
+            "(" to listOf("[", "{", "<", "（", "("),
+            ")" to listOf("]", "}", ">", "）", ")"),
+            "*" to listOf("★", "†", "‡", "*"),
+            "=" to listOf("≠", "≈", "∞", "="),
+            "/" to listOf("÷", "\\", "/"),
+            "+" to listOf("±", "+"),
+            "<" to listOf("≤", "«", "《", "<"),
+            ">" to listOf("≥", "»", "》", ">"),
+            "." to listOf("…", "。", "."),
         )
 
         private fun symbolKeys(s: String) = s.codePoints().toArray().map { cp ->
             val c = String(Character.toChars(cp))
-            Key(c, KeyAction.Text(c), more = symbolMore[c]?.codePoints()?.toArray()?.map { String(Character.toChars(it)) }.orEmpty())
+            Key(c, KeyAction.Text(c), more = symbolMore[c].orEmpty())
         }
 
         /**
@@ -363,8 +425,8 @@ data class Layout(val rows: List<Row>) {
             when (field) {
                 Field.EMAIL, Field.URL -> {
                     val email = field == Field.EMAIL
-                    val first = if (email) Key("@", KeyAction.Text("@"), more = listOf("@", "-", "_", "+"), function = split)
-                    else Key("/", KeyAction.Text("/"), more = listOf("/", ":", "-", "_", "?", "=", "&", "#"), function = split)
+                    val first = if (email) Key("@", KeyAction.Text("@"), more = listOf("-", "_", "+", "@"), function = split)
+                    else Key("/", KeyAction.Text("/"), more = listOf(":", "-", "_", "?", "=", "&", "#", "/"), function = split)
                     val domains = listOf(".com", ".net", ".org", ".cn", ".jp", ".io")
                     return Row(
                         listOf(
@@ -372,7 +434,7 @@ data class Layout(val rows: List<Row>) {
                             first,
                             if (email) emoji else Key(".com", KeyAction.Text(".com"), more = domains, function = !split),
                             Key("", KeyAction.Space, 4.6f),
-                            Key(".", KeyAction.Text("."), more = if (email) domains else listOf(".", "-", "_"), function = split),
+                            Key(".", KeyAction.Text("."), more = if (email) domains else listOf("-", "_", "."), function = split),
                             Key("⏎", KeyAction.Enter, 1.5f, function = true),
                         ),
                     )
@@ -380,13 +442,13 @@ data class Layout(val rows: List<Row>) {
                 Field.CODE -> return bottomRow(Mode.ENGLISH, split, page, pageLabel)
                 else -> Unit
             }
-            // Every mode's popup offers its own mark first, then the other width and the other
-            // language's form (C5): full-width ，。 beside half-width , . and Japanese 、．.
+            // Full-width bottom-row keys default to their half-width counterpart first (C5 inverse)
+            // so long-pressing toggles width, while English offers full-width first.
             val (comma, stop) = punctuation(mode)
             val (commaMore, stopMore) = when (mode) {
-                Mode.ENGLISH -> listOf(",", "，", "、", ";", ":", "'", "\"") to listOf(".", "。", "．", "…", "?", "!")
-                Mode.JAPANESE -> listOf("、", ",", "，", "；", "：", "・") to listOf("。", ".", "．", "…", "？", "！")
-                else -> listOf("，", ",", "、", "；", "：", "“”") to listOf("。", ".", "．", "…", "？", "！")
+                Mode.ENGLISH, Mode.PC -> listOf("，", ",", "、", ";", ":", "'", "\"") to listOf("。", ".", "．", "…", "?", "!")
+                Mode.JAPANESE -> listOf(",", "、", "，", "；", "：", "・") to listOf(".", "。", "．", "…", "？", "！")
+                else -> listOf(",", "，", "、", "；", "：", "“”") to listOf(".", "。", "．", "…", "？", "！")
             }
             return Row(
                 listOf(
@@ -415,19 +477,65 @@ data class Layout(val rows: List<Row>) {
         private const val HINGE_SPACE = 2.3f
 
         /**
+         * Lays out a long-press popup row of [count] items over a key centred at [anchorCenter]
+         * within [width] pixels, shrinking cells below [maxCell] only when the row would overflow
+         * [width].
+         *
+         * Inputs: [reorder] is true for a key's [Key.more] choices (index 0 moves directly over the
+         * key and the remaining choices fan outward left on right-side keys and right on left-side
+         * keys) and false for fixed-order popups such as the language choice (where [selected] keeps
+         * its place).
+         * Returns: the popup's [PlacedPopup] geometry and slot-to-choice mapping.
+         */
+        fun placePopup(
+            count: Int,
+            selected: Int,
+            anchorCenter: Float,
+            width: Float,
+            maxCell: Float,
+            reorder: Boolean = true,
+        ): PlacedPopup {
+            if (count <= 0) return PlacedPopup(0f, maxCell, 0, emptyList())
+            val cellW = if (width > 0f && count * maxCell > width) width / count else maxCell
+            val maxLeft = (width - count * cellW).coerceAtLeast(0f)
+            if (!reorder) {
+                val left = (anchorCenter - cellW * (selected + 0.5f)).coerceIn(0f, maxLeft)
+                return PlacedPopup(left, cellW, selected.coerceIn(0, count - 1), (0 until count).toList())
+            }
+            val rightHalf = width > 0f && anchorCenter > width * 0.5f
+            val desiredLeft = if (rightHalf) anchorCenter - cellW * (count - 0.5f) else anchorCenter - cellW * 0.5f
+            val left = desiredLeft.coerceIn(0f, maxLeft)
+            val anchorSlot = ((anchorCenter - left) / cellW).toInt().coerceIn(0, count - 1)
+            val slots = ArrayList<Int>(count)
+            slots.add(anchorSlot)
+            for (d in 1 until count) {
+                val first = if (rightHalf) anchorSlot - d else anchorSlot + d
+                val second = if (rightHalf) anchorSlot + d else anchorSlot - d
+                if (first in 0 until count) slots.add(first)
+                if (second in 0 until count) slots.add(second)
+            }
+            val order = IntArray(count)
+            slots.forEachIndexed { choiceIndex, slot -> order[slot] = choiceIndex }
+            return PlacedPopup(left, cellW, anchorSlot, order.toList())
+        }
+
+        /**
          * Marks which popup choices are full-width (true) or half-width (false), for a popup that
          * offers both kinds; null where it says nothing (letters, or a popup with one kind only).
          * Notes: full-width covers the fullwidth forms block, CJK symbols and punctuation, and the
-         * curly quotes, ellipsis and dash used in Chinese text; half-width is printable ASCII.
+         * curly quotes, ellipsis, middle dot and dash used in Chinese text; half-width covers
+         * printable ASCII punctuation (including multi-character ASCII such as `...`) and `¥`.
          */
         fun widthMarks(choices: List<String>): List<Boolean?> {
             fun kind(s: String): Boolean? {
-                val cp = s.codePointAt(0)
+                if (s.isEmpty()) return null
+                if (s.all { it.code in 0x21..0x7E && !it.isLetterOrDigit() }) return false
                 if (s.codePointCount(0, s.length) != 1) return null
+                val cp = s.codePointAt(0)
                 return when {
                     cp in 0xFF01..0xFF60 || cp in 0xFFE0..0xFFE6 || cp in 0x3000..0x303F ||
-                        cp in listOf(0x2018, 0x2019, 0x201C, 0x201D, 0x2026, 0x2014, 0x30FB) -> true
-                    cp in 0x21..0x7E && !Character.isLetterOrDigit(cp) -> false
+                        cp in listOf(0x00B7, 0x2018, 0x2019, 0x201C, 0x201D, 0x2026, 0x2014, 0x22EF, 0x30FB) -> true
+                    cp == 0x00A5 -> false
                     else -> null
                 }
             }

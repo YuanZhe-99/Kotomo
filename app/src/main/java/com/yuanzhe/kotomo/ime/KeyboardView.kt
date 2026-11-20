@@ -329,8 +329,11 @@ class KeyboardView(
     private var pendingDrawProbe = 0L
     private val box = RectF()
 
-    /** The open popup's choices and actions, or null. */
+    /** The open popup's choices and actions (in visual left-to-right order), or null. */
     private var popupActions: List<KeyAction>? = null
+    /** Where the pressing finger sat in view X when the popup opened, and whether it left the deadzone. */
+    private var popupOpenX = 0f
+    private var popupTracking = false
 
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val repeatInterval = 50L
@@ -387,20 +390,23 @@ class KeyboardView(
      * modes not hidden, in the person's order, the current one preselected.
      */
     private fun openModes(key: PlacedKey) =
-        openPopup(key, modes.map { badges.getValue(it) }, modes.map(KeyAction::SetMode), modes.indexOf(mode).coerceAtLeast(0))
+        openPopup(key, modes.map { badges.getValue(it) }, modes.map(KeyAction::SetMode), modes.indexOf(mode).coerceAtLeast(0), reorder = false)
 
-    private fun openPopup(key: PlacedKey, labels: List<String>, actions: List<KeyAction>, selected: Int) {
+    private fun openPopup(key: PlacedKey, labels: List<String>, actions: List<KeyAction>, selected: Int, reorder: Boolean = true) {
         longPressed = true
         popupLayer.hidePreview()
         buzz(HapticFeedbackConstants.LONG_PRESS)
-        popupActions = actions
+        popupOpenX = moveX
+        popupTracking = false
         val here = IntArray(2).also(::getLocationInWindow)
         val there = IntArray(2).also(popupLayer::getLocationInWindow)
-        popupLayer.show(
+        val order = popupLayer.show(
             labels, selected,
             anchorLeft = key.left + here[0] - there[0], anchorRight = key.right + here[0] - there[0],
             anchorTop = key.top + here[1] - there[1],
+            reorder = reorder,
         )
+        popupActions = order.map(actions::get)
     }
 
     /**
@@ -596,9 +602,14 @@ class KeyboardView(
             return true
         }
         if (actions != null) {
-            // While the popup is open only the finger that opened it counts.
+            // While the popup is open only the finger that opened it counts; small jitter within
+            // touchSlop keeps the initial preselected choice.
             when (event.actionMasked) {
-                MotionEvent.ACTION_MOVE -> popupLayer.track(event.getX(0) + popupOffsetX())
+                MotionEvent.ACTION_MOVE -> {
+                    val x = event.getX(0)
+                    if (!popupTracking && kotlin.math.abs(x - popupOpenX) >= touchSlop) popupTracking = true
+                    if (popupTracking) popupLayer.track(x + popupOffsetX())
+                }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (event.actionIndex == 0) closePopup(commit = true)
                 MotionEvent.ACTION_CANCEL -> closePopup(commit = false)
             }
@@ -840,6 +851,7 @@ class PopupLayer(context: Context) : View(context) {
         textAlign = Paint.Align.CENTER
         textSize = res.getDimension(R.dimen.kb_popup_text)
     }
+    private val popupText = res.getDimension(R.dimen.kb_popup_text)
     private val inkColor = KeyboardColors.color(context, R.color.kb_ink)
     private val onAccentColor = KeyboardColors.color(context, R.color.kb_on_accent)
     private val captionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -893,6 +905,7 @@ class PopupLayer(context: Context) : View(context) {
     }
     private var left = 0f
     private var top = 0f
+    private var cellWidth = cell
     private val box = RectF()
 
     /** Index of the highlighted choice. */
@@ -904,23 +917,41 @@ class PopupLayer(context: Context) : View(context) {
         isFocusable = false
     }
 
-    /** Opens the popup above the key spanning [anchorLeft]..[anchorRight] with its top at [anchorTop]. */
-    fun show(labels: List<String>, selected: Int, anchorLeft: Float, anchorRight: Float, anchorTop: Float) {
-        this.labels = labels
-        this.captions = Layout.widthMarks(labels).map { full -> full?.let { if (it) fullWidth else halfWidth } }
-        this.selected = selected
-        val w = labels.size * cell
-        val center = (anchorLeft + anchorRight) / 2
-        // The preselected choice sits over the key; the row shifts to stay on screen.
-        left = (center - cell * (selected + 0.5f)).coerceIn(0f, (width - w).coerceAtLeast(0f))
-        top = (anchorTop - cellHeight - lift).coerceAtLeast(0f)
+    /**
+     * Opens the popup above the key spanning [anchorLeft]..[anchorRight] with its top at [anchorTop].
+     * Returns: the visual slot-to-caller choice index mapping produced by [Layout.placePopup].
+     */
+    fun show(
+        labels: List<String>,
+        selected: Int,
+        anchorLeft: Float,
+        anchorRight: Float,
+        anchorTop: Float,
+        reorder: Boolean = true,
+    ): List<Int> {
+        val placed = Layout.placePopup(
+            count = labels.size,
+            selected = selected,
+            anchorCenter = (anchorLeft + anchorRight) / 2,
+            width = width.toFloat(),
+            maxCell = cell,
+            reorder = reorder,
+        )
+        val ordered = placed.order.map(labels::get)
+        this.labels = ordered
+        this.captions = Layout.widthMarks(ordered).map { full -> full?.let { if (it) fullWidth else halfWidth } }
+        this.selected = placed.selected
+        this.cellWidth = placed.cellWidth
+        this.left = placed.left
+        this.top = (anchorTop - cellHeight - lift).coerceAtLeast(0f)
         invalidate()
+        return placed.order
     }
 
     /** Highlights the choice under [x] (clamped to the ends). */
     fun track(x: Float) {
         if (labels.isEmpty()) return
-        val index = ((x - left) / cell).toInt().coerceIn(0, labels.lastIndex)
+        val index = ((x - left) / cellWidth).toInt().coerceIn(0, labels.lastIndex)
         if (index != selected) {
             selected = index
             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -943,26 +974,28 @@ class PopupLayer(context: Context) : View(context) {
             canvas.drawText(label, previewBox.centerX(), baseline, previewPaint)
         }
         if (labels.isEmpty()) return
-        val w = labels.size * cell
+        val w = labels.size * cellWidth
         box.set(left, top + 2, left + w, top + cellHeight + 2)
         canvas.drawRoundRect(box, radius, radius, shadowPaint)
         box.set(left, top, left + w, top + cellHeight)
         canvas.drawRoundRect(box, radius, radius, panelPaint)
         labels.forEachIndexed { i, label ->
-            val x = left + i * cell
+            val x = left + i * cellWidth
             if (i == selected) {
-                box.set(x + 3, top + 3, x + cell - 3, top + cellHeight - 3)
+                box.set(x + 3, top + 3, x + cellWidth - 3, top + cellHeight - 3)
                 canvas.drawRoundRect(box, radius - 3, radius - 3, selectedPaint)
             }
             textPaint.color = if (i == selected) onAccentColor else inkColor
+            textPaint.textSize = popupText
+            fitLabel(textPaint, label, cellWidth, cellHeight)
             val caption = captions.getOrNull(i)
             // With a full/half-width caption the glyph moves up to make room below it.
             val center = if (caption == null) cellHeight / 2 else cellHeight * 0.4f
             val baseline = top + center - (textPaint.descent() + textPaint.ascent()) / 2
-            canvas.drawText(label, x + cell / 2, baseline, textPaint)
+            canvas.drawText(label, x + cellWidth / 2, baseline, textPaint)
             if (caption != null) {
                 captionPaint.color = textPaint.color
-                canvas.drawText(caption, x + cell / 2, top + cellHeight - captionPaint.descent() - 4, captionPaint)
+                canvas.drawText(caption, x + cellWidth / 2, top + cellHeight - captionPaint.descent() - 4, captionPaint)
             }
         }
     }
