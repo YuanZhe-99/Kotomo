@@ -1,5 +1,15 @@
 # Version history
 
+## 0.1.2 (2026-11-19)
+
+- Ordinary text fields no longer switch to code mode: multi-line, no-suggestion and code-hinted fields keep the current input mode and full-width symbols; English with half-width symbols applies only where the person turned on code mode for the app, and URL fields follow the current mode while `modes.url_english` is off.
+- Long-press: the popup opens anchored over the pressed key, so the corner hint (`o` → `9`, `i` → `8`) is selected without sliding even on edge keys; on the letter page's bottom row and both symbol pages, long-pressing a full-width symbol selects its half-width form first.
+- Modern Chinese vocabulary: rime-ice 2026.06.30 (`8105`, `base`, `ext`) is merged into the bundled pinyin dictionary at build time; the user dictionary and dictionary packs also apply in Mixed mode; the downloadable `zh-ice-base` and `zh-ice-ext` packs are compiled in the background.
+- Clipboard images: copied PNG, JPEG, WebP and GIF images are recorded under the same rules as text (never in sensitive fields, incognito mode or excluded apps), stored encrypted on the device, shown as thumbnails in the clipboard panel, the clipboard settings page and the quick-paste strip, and pasted into fields that accept images.
+- Mixed-mode refinement stops reading prefix candidates from librime and stale refinements are cancelled (`zhongguo` 2,475 ms → 65 ms on the host); the keyboard stays bottom-anchored when the quick-paste strip collapses.
+- Upstreams: same as the 2026-11-19 check of 0.1.1, unchanged; rime-ice 2026.06.30 newly bundled.
+- Released on 2026-11-19 (`versionCode` 3). Verified on the development host: `java tool/CheckDocs.java`, `java lexicon/CheckSamples.java` (40/40), host engine tests (English, rime `2/2`, Mixed `11/11`), the whole conversion corpus (`312/313`, 0 regressed, Mixed lines `138/138` through the coordinator), `./gradlew check assembleDebug assembleRelease assembleDebugAndroidTest`, and on the emulator (Android 17, x86_64, debug): `FieldTypingTest` 31/31, `MixedTypingTest` 31/31, `ClipboardAppTest` 4/4, `DictionaryKeyboardTest` 3/3, `FuzzySettingsTest` 4/4, plus light/dark, four-language and font-scale 1.5 screenshots. Not verified on a physical device in this release cycle.
+
 ## 0.1.1 (2026-11-19)
 
 - Mixed mode and English → Japanese matching: JMdict glosses with parenthesized qualifiers whose remaining word is a single token now index into `cross.klx` (`power` → `パワー`), dependent POS senses (`suf`, `pref`, `ctr`, `aux*`, `prt`, `conj`, `int`) are down-weighted below nouns and loanwords (`system` → `システム`), English inflections (`-s`, `-es`, `-ed`, `-ing`) query their stems, unknown echoed kana and trailing Latin characters carry penalties so loanwords outrank kana echoes, and typed uppercase is preserved on English proposals in Mixed mode (S5 samples 40/40, counter-examples 0/8).
