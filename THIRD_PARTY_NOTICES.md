@@ -30,6 +30,7 @@ each upstream's repository (the submodules under `third_party/` and the pinned s
 | Data | Notice | License |
 |---|---|---|
 | rime-luna-pinyin, rime-prelude, rime-essay | the Rime developers | LGPL-3.0 |
+| rime-ice (`cn_dicts/8105`, `base`, `ext`, weights >= 100) | iDvel and the rime-ice contributors (merged into `luna_pinyin` via `tool/BuildRimeDict.java`) | GPL-3.0 |
 | Mozc dictionary data | the notices and disclaimers of Mozc's `src/data/dictionary_oss/README.txt` | IPAdic (NAIST, ICOT terms), Okinawa dictionary, Google |
 | Unihan, Unicode Emoji data, CLDR annotations | Copyright © 1991-2026 Unicode, Inc. | Unicode License v3 |
 | CC-CEDICT readings (in `emoji.tsv`) | MDBG, based on CEDICT by Paul Andrew Denisowski | CC BY-SA 4.0 |
@@ -42,7 +43,7 @@ Not in the APK: the settings download them from their sources when the person as
 
 | Data | Notice | License |
 |---|---|---|
-| rime-ice | iDvel and the rime-ice contributors | GPL-3.0 |
+| rime-ice (`base`, `ext`, `en_ext`, `8105`) | iDvel and the rime-ice contributors | GPL-3.0 |
 | THUOCL | Copyright (c) 2018 THUNLP. Cite: Han Shiyi, Zhang Yuhui, Ma Yunshan, Tu Cunchao, Guo Zhipeng, Liu Zhiyuan, Sun Maosong. THUOCL: Tsinghua Open Chinese Lexicon. Tsinghua University, 2016. | MIT |
 | Noto Color Emoji (emoji style, downloaded on request) | Copyright 2013 Google LLC; flags from region-flags, public domain or exempt | SIL Open Font License 1.1 |
 | fcitx5-pinyin-zhwiki web slang | Chinese Wikipedia contributors; converted by Felix Yan | CC BY-SA 4.0 (converter Unlicense) |

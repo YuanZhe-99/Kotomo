@@ -8,11 +8,11 @@
 
 | 来源 | 内容 | librime 词表 | 质量 | 开关 |
 |---|---|---|---|---|
-| 内置 | APK 自带的 luna_pinyin、Mozc 与英文引擎的词典 | 方案自己的 | — | 无：始终开启 |
+| 内置 | APK 自带的 `luna_pinyin`（构建时经 `tool/BuildRimeDict.java` 合并权重 >= 100 的 `rime-ice` `8105`/`base`/`ext` 条目）、Mozc 与英文引擎的词典 | 方案自己的 | — | 无：始终开启 |
 | 手动添加（`manual`） | 在词库页输入的词语 | `custom_phrase.txt` | 1 | 你的词库 |
 | 导入（`import`） | 用户选择的文件中的词语 | `kotomo_low.txt` | −1 | 你的词库 |
 | AI 模型生成（`generated`） | 标为 LLM 输出的文件中的词语 | `kotomo_low.txt`，优先级最多 20 | −1 | 你的词库 |
-| 下载（`download`） | 从数据源下载、在手机上转换的词库 | `kotomo_packs.txt` | 0 | 下载的词库，以及每个包一个开关 |
+| 下载（`download`） | 从数据源下载、在手机上转换的词库 | `kotomo_packs.txt`（小词库）或经 `:deploy` 编译为 `kotomo_packs_bin.table.bin` 的 `kotomo_packs_bin.dict.yaml`（大词库） | `kotomo_packs.txt` 为 0；`kotomo_packs_bin` 经 `script_translator` 为 1 | 下载的词库，以及每个包一个开关 |
 
 不可信的词排在后面：导入或生成的词无论文件怎么写都不会进入 `custom_phrase.txt`，文件自称的来源一律忽略。
 每行是 `词<TAB>无空格的拼音<TAB>权重`；没有内容的词表是空文件。只有中文条目进入 librime；日文与英文条目先保存并标为
@@ -60,9 +60,9 @@ TSV、CSV 与 JSON 包含全部条目以及表头或格式版本；Rime 格式�
 | `files/dictionaries/user.prev.json` | 最后一次修改之前的版本；"恢复上一个版本"交换这两个文件 |
 | `files/dictionaries/user.kenc`、`user.prev.kenc` | 开启密码保护期间，以上两个文件的加密版本（取代明文文件） |
 | `files/dictionaries/state.json` | 开关 |
-| `files/dictionaries/packs/<id>/` | 已安装的词库包：`entries.tsv`（规范化的）、`table.txt`（它的 librime 词表行）与 `pack.json` |
+| `files/dictionaries/packs/<id>/` | 已安装的词库包：`entries.tsv`（规范化的）、`table.txt`（无空格的 librime 词表行）、`dict.txt`（带空格的编译词库源行）与 `pack.json` |
 | `files/dictionaries/packs/<id>.prev/` | 该词库包的上一个版本，用于回滚 |
-| `files/rime/user/custom_phrase.txt`、`kotomo_packs.txt`、`kotomo_low.txt` | librime 的词表，每次修改后重写 |
+| `files/rime/user/custom_phrase.txt`、`kotomo_packs.txt`、`kotomo_packs_bin.dict.yaml`、`kotomo_low.txt` | librime 的词表与编译型词库包源文件，每次修改后重写；`:deploy` 将 `kotomo_packs_bin.dict.yaml` 编译为 `build/kotomo_packs_bin.table.bin` |
 
 `user.json`：
 
@@ -125,6 +125,8 @@ offset  size  content
 | 词库包 | 文件 | 校验值 | 词数（主机，锁定的文件） |
 |---|---|---|---|
 | `zh-web-slang` | fcitx5-pinyin-zhwiki 最新发布的 `web-slang-<日期>.dict.yaml`（9 KB） | GitHub 为该附件公布的 SHA-256 摘要 | 399（丢弃 24 行拼写出的拉丁字母） |
+| `zh-ice-base` | rime-ice 最新发布的 `cn_dicts.zip` 中的 `cn_dicts/base.dict.yaml` | GitHub 的摘要 | 在 `:deploy` 中编译成 `kotomo_packs_bin.table.bin`（主机测试：`DictionaryPacksTest`） |
+| `zh-ice-ext` | rime-ice 最新发布的 `cn_dicts.zip` 中的 `cn_dicts/ext.dict.yaml` | GitHub 的摘要 | 在 `:deploy` 中编译成 `kotomo_packs_bin.table.bin`（主机测试：`DictionaryPacksTest`） |
 | `zh-thuocl-it`、`-animal`、`-finance`、`-car`、`-idioms`、`-places`、`-food`、`-law`、`-people`、`-medical`、`-poetry` | 取自 `raw.githubusercontent.com` 的 THUOCL `data/THUOCL_<领域>.txt`（每个 0.1–1 MB）与 rime-ice 的 `cn_dicts/8105.dict.yaml`（0.1 MB） | 无：只有 HTTPS | 1,602 至 43,343（IT 11,565） |
 | `en-ice-tech` | rime-ice 最新发布的 `en_dicts.zip`（0.2 MB）中的 `en_ext.dict.yaml` | GitHub 的摘要 | 2,328（已保存，尚未使用） |
 
@@ -139,7 +141,7 @@ PLAN §10.5 批准的每个来源，2026-11-11 核查（计数是 Q6 转换保�
 
 | 来源 | 手机需要下载的内容 | 是否公布校验值 | 在手机上 | 是否提供 |
 |---|---|---|---|---|
-| rime-ice `base`、`ext` | 发布附件 `cn_dicts.zip` 14.7 MB | GitHub 的 SHA-256 摘要 | base：模拟器上 38–44 秒转换出 543,423 个词，未超出 192 MB 的堆（PSS 232 MB）；但 librime 每次选择方案都把下载的词库包当作文本词表载入，安装后 25 秒键盘才重新能打字 | 否：等预编译的词库包词表 |
+| rime-ice `base`、`ext` | 发布附件 `cn_dicts.zip` 14.7 MB | GitHub 的 SHA-256 摘要 | base：模拟器上 38–44 秒转换出 543,423 个词，未超出 192 MB 的堆（PSS 232 MB）；改为在 `:deploy` 中编译成 `kotomo_packs_bin.table.bin`，避免每次选择方案加载文本词表卡顿 25 秒 | 是（`zh-ice-base`、`zh-ice-ext`，`compiled = true`；`8105`/`base`/`ext` 中权重 >= 100 的核心现代词也在构建时并入内置 `luna_pinyin`） |
 | rime-ice `en_ext`、`8105` | 发布附件 `en_dicts.zip` 0.2 MB；普通文件 `8105.dict.yaml` 0.1 MB | `en_dicts.zip`：摘要；`8105`：无 | 瞬间完成 | 是（`en-ice-tech`；`8105` 用于 THUOCL 的读音） |
 | rime-frost | 44 MB 与 88 MB 的发布整包；普通文件 `base` 与 `ext` 10 MB | 整包：摘要；普通文件：无 | 可行，但与 rime-ice 重叠 | 否 |
 | fcitx5-pinyin-zhwiki `zhwiki` | `zhwiki-<日期>.dict.yaml` 57.7 MB | 摘要 | 170 万行：转换与保存都太大 | 否 |
@@ -163,7 +165,7 @@ PLAN §10.5 批准的每个来源，2026-11-11 核查（计数是 Q6 转换保�
 - 下载显示进度，可以取消。工作文件在应用的缓存中；取消或失败（网络、大小、校验值、文件无法读取、没有可用的词、
   存储）时已安装的版本不变；结束后删除下载的文件。
 - 转换出的词一次写出（从不整体保存为条目对象）：词库包的 `entries.tsv`（规范化的 TSV，表头
-  `language text reading weight`）、它的 librime 词表 `table.txt` 与 `pack.json`；上一个版本移到 `packs/<id>.prev/`。
+  `language text reading weight`）、无空格的 librime 词表 `table.txt`、带空格的 `dict.txt`（供编译型词库包使用）与 `pack.json`；上一个版本移到 `packs/<id>.prev/`。
   权重按导入的规则处理（最大频率超过 100 时按对数缩放；没有频率为 50）。
 
 ```text
@@ -178,9 +180,11 @@ zh	你好	ni hao	90
 
 ## 键盘
 
-键盘与设置在同一进程中共用一个 `DictionaryStore`。每次修改后存储重写三份词表（词库包那一份由已启用的包的
-`table.txt` 拼接，修改时不再重新解析词库包）并增加代号；键盘随即重新选择 librime
-的方案，从而重新加载词表（主机测试 T17-rime）。首次解锁之前键盘不读取这些文件。敏感输入框的方案读取同样的词表；
+键盘与设置在同一进程中共用一个 `DictionaryStore`。每次修改后存储重写明文词表（非编译型已启用包的
+`table.txt` 拼接成 `kotomo_packs.txt`，修改时不再重新解析词库包），并为已启用的 `compiled` 包写出或删除
+`kotomo_packs_bin.dict.yaml`（拼接 `dict.txt`，缺失时流式读取 `entries.tsv`），再增加代号；键盘随即重新选择 librime
+的方案（重载明文词表，主机测试 T17-rime）并调用 `KotomoService.syncRimeBuild`，让后台 `:deploy` 不中断输入地编译
+`kotomo_packs_bin.table.bin`（若处于默认预编译规则且未启用任何编译包，则直接删除 `user/build`）。首次解锁之前键盘不读取这些文件。敏感输入框的方案读取同样的词表与编译包；
 不会有任何东西学习进这些词表。
 
 ## 测试

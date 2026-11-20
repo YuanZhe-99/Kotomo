@@ -79,7 +79,7 @@ jobs:
         id: deps
         run: |
           pins=$(python3 -c 'import json; l = json.load(open("build-lock.json")); print(json.dumps([l["dataSources"], l["upstreams"]["boost"]], sort_keys=True))' | sha256sum | cut -c1-16)
-          echo "key=deps-$pins-${{ hashFiles('tool/BuildEnglishDict.java', 'lexicon/*.java', 'scripts/fetch-boost.sh') }}" >> "$GITHUB_OUTPUT"
+          echo "key=deps-$pins-${{ hashFiles('tool/BuildEnglishDict.java', 'tool/BuildRimeDict.java', 'lexicon/*.java', 'scripts/fetch-boost.sh') }}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@v6
         id: restore

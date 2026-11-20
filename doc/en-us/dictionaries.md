@@ -9,11 +9,11 @@ The person's own words, imported files and downloaded dictionary packs (PLAN §1
 
 | Source | What it is | librime table | Quality | Switch |
 |---|---|---|---|---|
-| Built-in | luna_pinyin, Mozc's and the English engine's dictionaries shipped in the APK | the schema's own | — | none: always on |
+| Built-in | `luna_pinyin` (augmented at build time with `rime-ice` `8105`/`base`/`ext` entries weighted >= 100 via `tool/BuildRimeDict.java`), Mozc's and the English engine's dictionaries shipped in the APK | the schema's own | — | none: always on |
 | Added by hand (`manual`) | words typed in on the Dictionaries page | `custom_phrase.txt` | 1 | Your dictionary |
 | Imported (`import`) | words from a file the person picked | `kotomo_low.txt` | −1 | Your dictionary |
 | Made with an AI model (`generated`) | words from a file marked as LLM output | `kotomo_low.txt`, priority at most 20 | −1 | Your dictionary |
-| Downloaded (`download`) | dictionaries downloaded from their sources and converted on the phone | `kotomo_packs.txt` | 0 | Downloaded dictionaries, and one switch per pack |
+| Downloaded (`download`) | dictionaries downloaded from their sources and converted on the phone | `kotomo_packs.txt` (small packs) or `kotomo_packs_bin.dict.yaml` compiled to `kotomo_packs_bin.table.bin` (large packs) | 0 (`kotomo_packs.txt`), 1 via `script_translator` (`kotomo_packs_bin`) | Downloaded dictionaries, and one switch per pack |
 
 Untrusted words rank low: an imported or generated word never reaches `custom_phrase.txt`,
 whatever its file says, and a file's own claims about where its words came from are ignored.
@@ -77,9 +77,9 @@ atomic rename, on the IO dispatcher under one lock.
 | `files/dictionaries/user.prev.json` | the version before the last change; "Restore the previous version" swaps the two |
 | `files/dictionaries/user.kenc`, `user.prev.kenc` | the same two, sealed, while password protection is on (instead of the plain files) |
 | `files/dictionaries/state.json` | the switches |
-| `files/dictionaries/packs/<id>/` | an installed pack: `entries.tsv` (normalized), `table.txt` (its librime lines) and `pack.json` |
+| `files/dictionaries/packs/<id>/` | an installed pack: `entries.tsv` (normalized), `table.txt` (unspaced librime lines), `dict.txt` (spaced librime lines for compiled packs) and `pack.json` |
 | `files/dictionaries/packs/<id>.prev/` | the pack's previous version, for rollback |
-| `files/rime/user/custom_phrase.txt`, `kotomo_packs.txt`, `kotomo_low.txt` | librime's tables, rewritten after every change |
+| `files/rime/user/custom_phrase.txt`, `kotomo_packs.txt`, `kotomo_packs_bin.dict.yaml`, `kotomo_low.txt` | librime's tables and compiled-pack source, rewritten after every change; `:deploy` compiles `kotomo_packs_bin.dict.yaml` into `build/kotomo_packs_bin.table.bin` |
 
 `user.json`:
 
@@ -150,6 +150,8 @@ reading, syllable count, encoding, weight); lines that fail are dropped and coun
 | Pack | Files | Checksum | Words (host, pinned files) |
 |---|---|---|---|
 | `zh-web-slang` | fcitx5-pinyin-zhwiki's latest release, `web-slang-<date>.dict.yaml` (9 KB) | the SHA-256 digest GitHub publishes for the asset | 399 (24 spelled-out Latin letters dropped) |
+| `zh-ice-base` | rime-ice's latest release, `cn_dicts.zip`: `cn_dicts/base.dict.yaml` | GitHub's digest | compiled into `kotomo_packs_bin.table.bin` in `:deploy` (host test: `DictionaryPacksTest`) |
+| `zh-ice-ext` | rime-ice's latest release, `cn_dicts.zip`: `cn_dicts/ext.dict.yaml` | GitHub's digest | compiled into `kotomo_packs_bin.table.bin` in `:deploy` (host test: `DictionaryPacksTest`) |
 | `zh-thuocl-it`, `-animal`, `-finance`, `-car`, `-idioms`, `-places`, `-food`, `-law`, `-people`, `-medical`, `-poetry` | THUOCL `data/THUOCL_<domain>.txt` (0.1–1 MB each) and rime-ice's `cn_dicts/8105.dict.yaml` (0.1 MB) from `raw.githubusercontent.com` | none: HTTPS only | 1,602 to 43,343 (IT 11,565) |
 | `en-ice-tech` | rime-ice's latest release, `en_dicts.zip` (0.2 MB): `en_ext.dict.yaml` | GitHub's digest | 2,328 (stored, not used yet) |
 
@@ -166,7 +168,7 @@ Every source PLAN §10.5 approved, checked on 2026-11-11 (the counts are what th
 
 | Source | What a phone would download | Checksum published | On a phone | Offered |
 |---|---|---|---|---|
-| rime-ice `base`, `ext` | release asset `cn_dicts.zip` 14.7 MB | GitHub's SHA-256 digest | base: 543,423 words converted on the emulator in 38–44 s within the 192 MB heap (PSS 232 MB); but librime loads a downloaded pack as a text table at every schema selection, and the keyboard typed again only 25 s after the install | no: waits for compiled pack tables |
+| rime-ice `base`, `ext` | release asset `cn_dicts.zip` 14.7 MB | GitHub's SHA-256 digest | base: 543,423 words converted on the emulator in 38–44 s within the 192 MB heap (PSS 232 MB); compiled into `kotomo_packs_bin.table.bin` in `:deploy` instead of loading a 25 s text table on every schema selection | yes (`zh-ice-base`, `zh-ice-ext`, `compiled = true`; high-frequency `8105`/`base`/`ext` entries with weight >= 100 are also merged into built-in `luna_pinyin` at build time) |
 | rime-ice `en_ext`, `8105` | release asset `en_dicts.zip` 0.2 MB; raw `8105.dict.yaml` 0.1 MB | `en_dicts.zip`: digest; `8105`: none | instant | yes (`en-ice-tech`; `8105` for THUOCL's readings) |
 | rime-frost | release bundles of 44 MB and 88 MB; raw `base` and `ext` 10 MB | bundles: digest; raw: none | possible, but it overlaps rime-ice | no |
 | fcitx5-pinyin-zhwiki `zhwiki` | `zhwiki-<date>.dict.yaml` 57.7 MB | digest | 1.7 million lines: too large to convert and keep | no |
@@ -196,9 +198,10 @@ Every source PLAN §10.5 approved, checked on 2026-11-11 (the counts are what th
   installed version untouched when it is cancelled or fails (network, size, checksum, unreadable
   file, no usable words, storage); the files are deleted afterwards.
 - The converted words are written in one pass (never held as entry objects) as the pack's
-  `entries.tsv` (the normalized TSV, header `language text reading weight`), its librime table
-  `table.txt` and `pack.json`; the previous version moves to `packs/<id>.prev/`. Weights follow the
-  import rule (logarithm against the largest frequency above 100; 50 without one).
+  `entries.tsv` (the normalized TSV, header `language text reading weight`), its unspaced librime
+  table `table.txt`, spaced `dict.txt` (used by compiled packs) and `pack.json`; the previous
+  version moves to `packs/<id>.prev/`. Weights follow the import rule (logarithm against the
+  largest frequency above 100; 50 without one).
 
 ```text
 language	text	reading	weight
@@ -214,11 +217,15 @@ dropped by reason), `notice` (THUOCL's citation) and any member this version doe
 ## The keyboard
 
 The keyboard and the settings share one `DictionaryStore` per process. After every change the
-store rewrites the three tables (the packs' one by joining the enabled packs' `table.txt`, so a
-change never parses a pack again) and raises its generation; the keyboard then re-selects librime's
-schema, which reloads the tables (host test T17-rime). Before the first unlock the keyboard reads
-none of these files. The sensitive-field schema reads the same tables; nothing is learned into
-them.
+store rewrites the plain tables (joining the enabled non-compiled packs' `table.txt` into
+`kotomo_packs.txt`, so a change never parses a pack again), writes or deletes
+`kotomo_packs_bin.dict.yaml` for enabled `compiled` packs (joining their `dict.txt`, or streaming
+`entries.tsv` if missing), and raises its generation; the keyboard then re-selects librime's schema
+(reloading plain tables, host test T17-rime) and runs `KotomoService.syncRimeBuild` so background
+`:deploy` compiles `kotomo_packs_bin.table.bin` without interrupting typing (or drops `user/build`
+when default prebuilt rules apply and no compiled pack is active). Before the first unlock the
+keyboard reads none of these files. The sensitive-field schema reads the same tables and pack;
+nothing is learned into them.
 
 ## Tests
 

@@ -79,7 +79,7 @@ class SourcesTest {
     fun theOfferedSourcesAreComplete() {
         val ids = Sources.ALL.map { it.id }
         assertEquals(ids.distinct(), ids)
-        assertEquals(13, ids.size)
+        assertEquals(15, ids.size)
         for (s in Sources.ALL) {
             assertEquals(s.id, setOf("en", "zh-CN", "zh-TW", "ja"), s.titles.keys)
             assertTrue(s.id, s.license.isNotBlank() && s.attribution.isNotBlank() && s.licenseUrl.startsWith("https://"))
@@ -88,7 +88,11 @@ class SourcesTest {
         }
         // GitHub release assets carry a published digest; plain files do not.
         assertTrue(Sources.of("zh-web-slang")!!.checked)
+        assertTrue(Sources.of("zh-ice-base")!!.checked)
+        assertTrue(Sources.of("zh-ice-base")!!.compiled)
+        assertTrue(Sources.of("zh-ice-ext")!!.compiled)
         assertTrue(!Sources.of("zh-thuocl-it")!!.checked)
+        assertTrue(!Sources.of("zh-thuocl-it")!!.compiled)
         assertEquals(listOf("raw.githubusercontent.com"), Sources.of("zh-thuocl-it")!!.hosts)
     }
 }

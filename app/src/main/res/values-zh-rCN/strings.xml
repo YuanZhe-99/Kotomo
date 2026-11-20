@@ -276,7 +276,7 @@
     <string name="use_wordlist">英文词汇与词对</string>
     <string name="note_converted">已转换为 LatinIME 的二进制词典格式。</string>
     <string name="note_build_input">在构建 Kotomo 的跨语言词库时使用。</string>
-    <string name="use_rime_ice">技术英文，以及 THUOCL 词库的单字读音</string>
+    <string name="use_rime_ice">现代汉语常用与流行词（已编入内置词库，也可下载扩展词库）、技术英文，以及 THUOCL 词库的单字读音</string>
     <string name="use_thuocl">中文领域词表（IT、医学、法律、财经等）</string>
     <string name="use_zhwiki">中文网络用语</string>
     <string name="note_download">只在你要求时从来源下载，并在这台设备上转换；不包含在应用中。</string>

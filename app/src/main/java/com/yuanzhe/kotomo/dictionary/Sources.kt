@@ -216,6 +216,7 @@ data class DictionarySource(
     val inputs: List<Input>,
     val format: SourceFormat,
     val notice: String? = null,
+    val compiled: Boolean = false,
 ) {
     /** Whether every file is checked against a published checksum (else only HTTPS protects it). */
     val checked: Boolean get() = inputs.all { it is Input.Release }
@@ -252,12 +253,10 @@ data class DictionarySource(
  * The dictionaries the settings offer for download (PLAN §10.5 "词库数据"; the evaluation of
  * every approved source is in `doc/en-us/dictionaries.md`).
  *
- * Notes: only sources that convert on a phone in reasonable time and memory, whose words the
- * keyboard can use or show, whose licenses allow it, and whose table librime loads quickly at
- * every schema selection: rime-ice's base and ext lists convert on a phone, but librime then took
- * 25 s to load the half-million-line text table on the emulator, so they wait for compiled pack
- * tables. Japanese sources wait for Mozc's user dictionary. Every one is credited on the data
- * sources page (`settings/About.kt`).
+ * Notes: small sources write plain-text tables that librime reads at schema selection; large
+ * Chinese sources (`rime-ice` `base` and `ext`, `compiled = true`) compile into `kotomo_packs_bin.table.bin`
+ * in the background `:deploy` process so loading stays instant on the key path. Japanese sources wait
+ * for Mozc's user dictionary. Every one is credited on the data sources page (`settings/About.kt`).
  */
 object Sources {
     private const val ICE = "iDvel/rime-ice"
@@ -292,6 +291,16 @@ object Sources {
             Lang.ZH, "web-slang", "CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0/",
             "Chinese Wikipedia, through fcitx5-pinyin-zhwiki by Felix Yan",
             listOf(Input.Release("felixonmars/fcitx5-pinyin-zhwiki", Regex("web-slang-\\d+\\.dict\\.yaml"))), SourceFormat.RIME_UNWEIGHTED,
+        ))
+        add(DictionarySource(
+            "zh-ice-base", titles("Modern Chinese vocabulary (rime-ice base)", "现代汉语常用与流行词（雾凇 base）", "現代漢語常用與流行詞（霧凇 base）", "現代中国語の基本・流行語彙（rime-ice base）"),
+            Lang.ZH, "general", "GPL-3.0", GPL, ICE_BY,
+            listOf(Input.Release(ICE, Regex("cn_dicts\\.zip"), "cn_dicts/base.dict.yaml")), SourceFormat.RIME, compiled = true,
+        ))
+        add(DictionarySource(
+            "zh-ice-ext", titles("Extended Chinese vocabulary & slang (rime-ice ext)", "现代汉语扩展与网络词（雾凇 ext）", "現代漢語擴展與網路詞（霧凇 ext）", "現代中国語の拡張・ネット語彙（rime-ice ext）"),
+            Lang.ZH, "general", "GPL-3.0", GPL, ICE_BY,
+            listOf(Input.Release(ICE, Regex("cn_dicts\\.zip"), "cn_dicts/ext.dict.yaml")), SourceFormat.RIME, compiled = true,
         ))
         for (l in THUOCL_LISTS) {
             add(DictionarySource(

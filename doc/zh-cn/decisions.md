@@ -21,9 +21,9 @@
 
 ## ADR-001 引擎
 
-**决定。** 中文用 librime 1.17.0 与 `luna_pinyin` 方案（rime-luna-pinyin，LGPL-3.0）；日文用 Mozc 3.35.6354，客户端
-与 C++ 胶水层由 Kotomo 自写；英文用 HeliBoard 4.2 维护的 AOSP LatinIME 原生建议核心，词表为 aosp-dictionaries 的
-en_US。简繁转换用 OpenCC，与 librime 共用。
+**决定。** 中文用 librime 1.17.0 与 `luna_pinyin` 方案（rime-luna-pinyin，LGPL-3.0），构建时通过 `tool/BuildRimeDict.java` 补充并入
+`rime-ice` `8105`、`base`、`ext` 中权重 >= 100 的高频现代词；日文用 Mozc 3.35.6354，客户端与 C++ 胶水层由 Kotomo 自写；英文用
+HeliBoard 4.2 维护的 AOSP LatinIME 原生建议核心，词表为 aosp-dictionaries 的 en_US。简繁转换用 OpenCC，与 librime 共用。
 
 **原因。** 它们分别是各语言成熟的开源引擎，并能为 Android 构建（`upstream.md`）。Kotomo 自写的是混合输入协调层，
 而不是切分、假名汉字转换或拼写纠错（`PLAN.md` §1）。
@@ -83,7 +83,8 @@ Android 17，release）：面板可以接受，按键路径不行。输入法中
 ## ADR-006 预编译的中文数据与独立的部署进程
 
 **决定。** APK 带着在构建主机上编译好的 librime 数据（`scripts/prebuild-rime.sh`），手机首次使用时不编译。设备上需要
-改变数据时，librime 在独立进程（`:deploy`）中部署到暂存目录，键盘在此期间继续使用上一份构建的会话，完成后再换入新的
+改变数据时（模糊音规则、双拼方案、纠错开关，或启用了需要经 `:deploy` 编译为 `kotomo_packs_bin.table.bin` 的
+`compiled` 词库包），librime 在独立进程（`:deploy`）中部署到暂存目录，键盘在此期间继续使用上一份构建的会话，完成后再换入新的
 构建。
 
 **原因。** 主机上一次全新部署需要 5–15 s，峰值约 294 MB，期间拒绝会话（`upstream.md`）；键盘必须能继续输入。
@@ -163,10 +164,11 @@ JNI），用户已于 2026-11-11 追认；这些 C 函数怎样交接是本记�
 
 **决定。** Kotomo 不托管词库包。设置列出能在手机上顺利转换的已批准数据源（`dictionaries.md`）；下载时从作者
 发布的地方取来源本身的文件，在设备上用主机测试运行的同一份 Kotlin 代码（`dictionary/Sources.kt`）转换为
-PLAN §10.5 的词条模型与词库包文件。GitHub 发布附件按 GitHub 为它公布的 SHA-256 摘要核对；来源不提供校验值的
-文件只受 HTTPS 保护，设置中如实写明。只接受 HTTPS，重定向也一样。第一次下载之前显示一次说明，写明要连接的主机，
-并说明不发送任何输入内容；每个说明版本接受一次（`state.json` 的 `online_accepted`）。这取代了带自建 SHA-256
-清单与签名的托管目录（`PLAN.md` §2.5 决定 2 与 9）；`build-lock.json` 中固定的哈希只用于主机构建。
+PLAN §10.5 的词条模型与词库包文件（如 `zh-ice-base`、`zh-ice-ext` 这样的大包标记 `compiled = true`，改由后台
+`:deploy` 编译进 `kotomo_packs_bin.table.bin`，以免在切换方案时卡顿）。GitHub 发布附件按 GitHub 为它公布的 SHA-256
+摘要核对；来源不提供校验值的文件只受 HTTPS 保护，设置中如实写明。只接受 HTTPS，重定向也一样。第一次下载之前显示一次说明，
+写明要连接的主机，并说明不发送任何输入内容；每个说明版本接受一次（`state.json` 的 `online_accepted`）。这取代了带自建
+SHA-256 清单与签名的托管目录（`PLAN.md` §2.5 决定 2 与 9）；`build-lock.json` 中固定的哈希只用于主机构建。
 
 **原因。** 用户决定（2026-11-11）：不需要托管，也没有要签名的发布，词库与来源保持同样新。Q6 实测，中文与英文
 词表在设备上转换可行；需要重型工具或过大的来源不可行，设置中不提供。

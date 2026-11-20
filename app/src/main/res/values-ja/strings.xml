@@ -276,7 +276,7 @@
     <string name="use_wordlist">英語の語彙と単語の組</string>
     <string name="note_converted">LatinIME のバイナリ辞書形式に変換しています。</string>
     <string name="note_build_input">Kotomo の言語をまたぐ辞書を作るときに使います。</string>
-    <string name="use_rime_ice">技術英語と、THUOCL 辞書の漢字の読み</string>
+    <string name="use_rime_ice">現代中国語の一般・流行語彙（内蔵辞書への組み込みおよび追加パックのダウンロード）、技術英語、THUOCL 辞書の漢字の読み</string>
     <string name="use_thuocl">中国語の分野別語彙（IT、医学、法律、金融など）</string>
     <string name="use_zhwiki">中国語のネットスラング</string>
     <string name="note_download">求めたときだけ提供元からダウンロードし、この端末で変換します。アプリには含まれていません。</string>

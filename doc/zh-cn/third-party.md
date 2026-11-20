@@ -27,6 +27,7 @@ Kotomo 以 GPL-3.0 授权。本清单列出它复用或内嵌的每一个上游�
 | OpenCC | `BYVoid/OpenCC` ver.1.4.2（`025f371d`）；内含 rapidjson 与 darts-clone | librime 内的繁体 → 简体、台湾与香港转换（带地区用词，Kotomo 的 `t2twp.json` 与 `t2hkp.json`） | Apache-2.0（rapidjson 为 MIT） | 无；构建时整理文本词典并改写 `t2s.json` | 许可与 NOTICE；注明 `t2s.json` 经过转换 |
 | Boost（头文件） | boost.org 1.92.0 | librime 使用的头文件 | BSL-1.0 | 无 | 源码分发时附许可文本 |
 | rime-luna-pinyin、rime-prelude、rime-essay、rime-stroke | `rime/*`，分别在 `56b934b0`、`082425ea`、`054920de`、`1e8fff9b` | 拼音方案、词典、默认设置与语言模型；编译后的笔画数据随应用分发，供 `u` 开始的笔画查字（PLAN §10.4） | LGPL-3.0 | 无；Kotomo 增加 `default.custom.yaml` 与方案 `luna_pinyin_simp_private` | 随附 LGPL-3.0 与 GPL-3.0 文本，并提供数据来源 |
+| rime-ice（`cn_dicts/8105.dict.yaml`、`base.dict.yaml`、`ext.dict.yaml`） | `iDvel/rime-ice`（`2026.06.30`，`6810e891`，锁定在 `build-lock.json`） | 常用与现代中文词，合并到暂存的 `luna_pinyin.dict.yaml`（`tool/BuildRimeDict.java`） | GPL-3.0 | 经 OpenCC 表繁转简、仅保留纯汉字（1–16 个码位）、对 `luna_pinyin` + `essay.txt` 去重、权重 >= 100 | 随附 GPL-3.0 文本、署名作者并提供源码 |
 | Mozc | `google/mozc` 3.35.6354（`0136c357`），子模块 `third_party/mozc` | 日文转换（`libkotomo_mozc.so` 与 `mozc.data`，S3；单独构建的库打包进 APK 时由日文模式使用） | BSD-3-Clause；词典数据适用 NAIST IPAdic 声明与 ICOT 条款，另有公有领域的冲绳词典与 Google 增补 | 无；Kotomo 的胶水层独立存放（`core/mozc`） | 完整随附 Mozc 的 LICENSE，包括 NAIST 声明与 ICOT 的 "NO WARRANTY" 一节 |
 | japanese-usage-dictionary、Abseil、Protocol Buffers | 由 Mozc 的 Bazel 构建获取（用法词典 2025-01-25、abseil-cpp 20260107.1、protobuf 34.1） | 编入 `mozc.data` 与 `libkotomo_mozc.so` | BSD-2-Clause；Apache-2.0；BSD-3-Clause | 无 | 声明与许可文本 |
 | Google ML Kit：`genai-proofreading`、`genai-rewriting`、`translate`、`digital-ink-recognition` | Google Maven 1.0.0-beta1、1.0.0-beta1、17.0.3、19.0.0（最新版本，2026-11-13） | 写作助手（经 AICore 用 Gemini Nano 校对、改写）、设备端翻译与手写；翻译的语言模型（每种约 30 MB）与手写模型（每种约 20 MB）只在用户点按“下载”时从 Google 下载 | ML Kit 服务条款（闭源；条款未读） | 无 | 在许可证页致谢；在隐私政策中写明 ML Kit 自身收集的数据（`upstream.md`） |
@@ -50,7 +51,7 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 
 | 组件 | 仓库与版本 | 用途 | 许可证 | 修改 | 义务 |
 |---|---|---|---|---|---|
-| rime-ice 的 `en_dicts/en_ext.dict.yaml`（发布附件 `en_dicts.zip`）与 `cn_dicts/8105.dict.yaml`（普通文件） | `iDvel/rime-ice` 最新发布（`nightly`）；主机测试锁定 2026.06.30（`6810e891`） | 词库包 `en-ice-tech`；THUOCL 词库包的单字读音 | GPL-3.0 | 转换：读音规范化、权重缩放到 0–100、丢弃无效行 | 与 Kotomo 同为 GPL-3.0；署名作者；转换后的词库包仍为 GPL-3.0 |
+| rime-ice 的 `cn_dicts/base.dict.yaml`、`cn_dicts/ext.dict.yaml`（发布附件 `cn_dicts.zip`）、`en_dicts/en_ext.dict.yaml`（`en_dicts.zip`）与 `cn_dicts/8105.dict.yaml`（普通文件） | `iDvel/rime-ice` 最新发布（`nightly`）；主机测试锁定 2026.06.30（`6810e891`） | 编译型词库包 `zh-ice-base` 与 `zh-ice-ext`；词库包 `en-ice-tech`；THUOCL 词库包的单字读音 | GPL-3.0 | 转换：读音规范化、权重缩放到 0–100、丢弃无效行；`zh-ice-base` 与 `zh-ice-ext` 在 `:deploy` 进程中编译成 `kotomo_packs_bin.table.bin` | 与 Kotomo 同为 GPL-3.0；署名作者；转换后的词库包仍为 GPL-3.0 |
 | THUOCL（11 个领域词表） | `thunlp/THUOCL` `master`（2018-11-21 后未变，`a30ce79d`） | 11 个词库包 `zh-thuocl-*` | MIT；README 要求引用 | 读音由 rime-ice 的单字表推出（没有主导读音的多音字丢弃），权重缩放 | 保留 MIT 声明；引用"THUOCL：清华大学开放中文词库"（2016）；读音为 GPL-3.0（rime-ice） |
 | Noto Color Emoji（`2D/fonts/NotoColorEmoji.ttf`） | `googlefonts/noto-emoji` v2026-09-24-unicode18_0（Unicode 18.0），10,730,124 字节，SHA-256 锁定在 `EmojiStyles.kt` 中（仓库没有为它公布校验值） | Emoji 样式包 Noto Color Emoji（PLAN §11.5），只在键盘的 Emoji 面板中显示 | SIL OFL-1.1（`2D/fonts/LICENSE`）；其中的旗帜来自 `third_party/region-flags`，属于公有领域或不受著作权保护 | 无：按发布的原样使用字体文件 | 随附或链接 OFL 文本；不单独出售该字体；在来源页致谢 |
 | fcitx5-pinyin-zhwiki 的 `web-slang-<日期>.dict.yaml` | `felixonmars/fcitx5-pinyin-zhwiki` 最新发布；主机测试锁定 0.3.1（转储 20261018） | 词库包 `zh-web-slang` | CC BY-SA 4.0（维基百科）；转换器 Unlicense | 丢弃拼写出的拉丁字母 | 署名维基百科贡献者并链接许可证；词库包保持 CC BY-SA 4.0 |
@@ -95,7 +96,6 @@ Unihan 读音为 Unicode License v3，取自 CC-CEDICT 的拼音为 CC BY-SA 4.0
 |---|---|---|---|
 | SudachiDict 原始词表（`small_lex`、`core_lex`） | Apache-2.0；`small_lex` 含 UniDic 的一部分（BSD-3-Clause，见 `LEGAL`：须随附 UniDic 的版权声明、条件与免责声明） | Mozc 用户词典能读取后的日文词库；`build-lock.json` 锁定 20261015 | 暂不提供（`dictionaries.md`） |
 | rime-frost（`base`、`ext`） | GPL-3.0 | 另一套中文基础词库 | 不提供：它的发布只有 44–88 MB 的整包，普通文件没有校验值，且与 rime-ice 重叠 |
-| rime-ice 的 `base.dict.yaml`、`ext.dict.yaml` | GPL-3.0 | 中文常用词与扩展词 | 暂不提供：能在手机上转换，但 librime 每次选择方案都把下载的词库包当作文本词表载入，模拟器上 50 万行使键盘 25 秒无法打字 |
 | rime-ice 的 `tencent.dict.yaml`、`41448.dict.yaml` | GPL-3.0 | — | 不用 `tencent`：其词条来自腾讯 AI Lab 词向量的词表，腾讯自己的页面没有写明许可证（有一个目录标为 CC BY 3.0）；`41448` 是没有权重的单字 |
 | fcitx5-pinyin-zhwiki 的 `zhwiki` | 维基百科标题 CC BY-SA 4.0；转换器 Unlicense | 中文专有名词 | 不提供：57 MB、170 万行，在手机上转换与保存都太大 |
 | mecab-ipadic-neologd 种子（20200910） | Apache-2.0，附 `COPYING` 中的来源致谢 | 日文新词 | 不提供：xz 压缩（Android 没有解码器）、322 万行、2020 年起停更 |

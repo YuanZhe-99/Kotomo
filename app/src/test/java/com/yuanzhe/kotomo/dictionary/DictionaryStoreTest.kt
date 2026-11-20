@@ -161,6 +161,27 @@ class DictionaryStoreTest {
     }
 
     @Test
+    fun compiledPacksWriteSpacedDictYamlWithoutEnteringPlainTable() = runBlocking {
+        val s = store()
+        val compiled = PackInfo(
+            "zh-ice-base", mapOf("en" to "Ice Base"), Lang.ZH, "general", "GPL-3.0", "test", "1",
+            checked = true, extra = mapOf("compiled" to true),
+        )
+        val entries = listOf(Entry(Lang.ZH, "蔻拓摩", "kou tuo mo", 80, Source.DOWNLOAD))
+        assertTrue(s.install(compiled, entries.asSequence()))
+        assertEquals("", table(DictionaryFormat.PACKS_TABLE))
+        val dictYaml = table(DictionaryFormat.PACKS_BIN_DICT)
+        assertTrue(dictYaml.startsWith(DictionaryFormat.PACKS_BIN_HEADER))
+        assertTrue(dictYaml.endsWith("蔻拓摩\tkou tuo mo\t80\n"))
+        assertTrue(s.setPack(compiled.id, false))
+        assertFalse(File(rime, DictionaryFormat.PACKS_BIN_DICT).exists())
+        // Fallback when dict.txt is absent: rebuilds kotomo_packs_bin.dict.yaml from entries.tsv.
+        File(dir, "packs/${compiled.id}/dict.txt").delete()
+        assertTrue(s.setPack(compiled.id, true))
+        assertEquals(dictYaml, table(DictionaryFormat.PACKS_BIN_DICT))
+    }
+
+    @Test
     fun packInfoSurvivesAndBrokenOnesAreIgnored() = runBlocking {
         val s = store()
         val pack = PackInfo("sample-zh", mapOf("en" to "Sample"), Lang.ZH, "test", "GPL-3.0", "test", "2026-11-11", checked = true, extra = mapOf("future" to "kept"))

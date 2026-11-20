@@ -244,6 +244,7 @@ class Downloader(
                 extra = buildMap {
                     put("license_url", source.licenseUrl)
                     source.notice?.let { put("notice", it) }
+                    if (source.compiled) put("compiled", true)
                     put("dropped", conversion.drops.entries.associate { (k, v) -> k.name.lowercase() to v.toLong() })
                 },
             )

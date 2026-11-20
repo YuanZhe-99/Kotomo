@@ -597,7 +597,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             }
             launch {
                 DictionaryStore.get(this@KotomoService).state.map { it.generation }.distinctUntilChanged()
-                    .collect { if (it > 0) applyEngineSettings() }
+                    .collect {
+                        if (it > 0) {
+                            applyEngineSettings()
+                            store.loaded.value?.let { s -> syncRimeBuild(s.chineseFuzzy, s.doublePinyin, s.chineseKeyCorrection) }
+                        }
+                    }
             }
             // The idioms come from the downloaded Idioms dictionary; read again when the packs change.
             launch {
@@ -692,7 +697,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val (drop, deploy) = withContext(Dispatchers.IO) {
             val text = Fuzzy.yaml(rules, double, correction)
             files.writeFuzzy(text)
-            if (files.prebuilt && text == null) files.hasBuild to false else false to !files.current
+            if (files.prebuilt && text == null && !files.packs.isFile) files.hasBuild to false else false to !files.current
         }
         if (drop) reopenRime({ it.dropBuild(); true })
         if (deploy) startDeploy()

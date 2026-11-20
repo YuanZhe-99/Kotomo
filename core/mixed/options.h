@@ -20,7 +20,7 @@ struct Costs {
   int32_t chinese_composed = 4000;  // a run librime has no entry for and composes from words
   int32_t chinese_prefix = 7600;    // floor cost of a leading Chinese prefix candidate
   int32_t chinese_prefix_margin = 500;  // margin above the best whole Chinese sentence cost
-  int32_t unfinished = 2500;        // on top, a last syllable still being typed (`shur`)
+  int32_t unfinished = 3500;        // on top, a last syllable still being typed (`shur`) or abbreviated (`di'ka'n`)
   int32_t pending = 3000;           // letters that begin a kana, kept as typed after a Japanese
                                     // sentence (`shur` → しゅ + r)
   int32_t kana = 2200;              // decoding estimate for one kana edge; Mozc's cost replaces it

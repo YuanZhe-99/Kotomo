@@ -100,10 +100,10 @@ internal val DATA = listOf(
         R.string.use_wordlist, "https://codeberg.org/Helium314/aosp-dictionaries", "https://creativecommons.org/licenses/by/4.0/",
         holder = "Leipzig Corpora Collection, Universität Leipzig", notes = listOf(R.string.note_converted),
     ),
-    // The dictionaries the settings download from their sources (dictionary/Sources.kt); none ships in the APK.
+    // rime-ice contributes build-time built-in vocabulary as well as downloadable packs (Sources.kt).
     Credit(
         "rime-ice", "latest release", "GPL-3.0", R.string.use_rime_ice, "https://github.com/iDvel/rime-ice",
-        "https://www.gnu.org/licenses/gpl-3.0.html", holder = "iDvel and contributors", notes = listOf(R.string.note_download),
+        "https://www.gnu.org/licenses/gpl-3.0.html", holder = "iDvel and contributors", notes = emptyList(),
     ),
     Credit(
         "THUOCL: Tsinghua Open Chinese Lexicon", "master", "MIT", R.string.use_thuocl, "https://github.com/thunlp/THUOCL",

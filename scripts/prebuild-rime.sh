@@ -29,5 +29,6 @@ cmake --build "$work" --target kotomo_rime_prebuild || die "build failed"
 
 rm -rf "$out"
 cmake "-DKOTOMO_ROOT=$PWD" "-DOUT=$out" -P core/rime/stage-data.cmake || die "staging failed"
+java tool/BuildRimeDict.java "$out" || die "rime-ice merge failed"
 "$work/kotomo_rime_prebuild" "$out" "$work/prebuild-user" || die "prebuild failed"
 echo "prebuild-rime: $out ($(du -sh "$out" | cut -f1))"

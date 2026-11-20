@@ -89,6 +89,42 @@ class DictionaryPacksTest {
         assertEquals("pack switched off: gone", -1, rank("keduomo", "珂朵摩"))
     }
 
+    @Test
+    fun aCompiledPackDeploysAndConvertsInSentences() = runBlocking {
+        val root = root()
+        val out = Conversion(Lang.ZH)
+        Convert.rime("---\n...\n珂朵摩\tke duo mo\t100\n".lineSequence(), weighted = true, out)
+        val dir = Files.createTempDirectory("kotomo-compiled-pack").toFile().also { tmp = it }
+        val user = File(dir, "rime").apply {
+            mkdirs()
+            File(this, "build").mkdirs()
+        }
+        val store = DictionaryStore(File(dir, "dictionaries"), user, Dispatchers.Unconfined) { 0L }
+        val ice = Sources.of("zh-ice-ext")!!
+        val pack = info(ice).copy(extra = mapOf("compiled" to true))
+        assertTrue(store.install(pack, out.entries()))
+        assertTrue(File(user, DictionaryFormat.PACKS_BIN_DICT).isFile)
+
+        val shared = root.resolve("build/rime-prebuilt").path
+        assertTrue(Rime.initialize(shared, user.path))
+        assertTrue(Rime.deploy())
+        Rime.shutdown()
+        assertTrue(Rime.initialize(shared, user.path))
+        Rime.setOption("zh_hans", true)
+
+        assertTrue("compiled binary table exists", File(user, "build/kotomo_packs_bin.table.bin").isFile)
+        assertEquals("compiled pack word ranks first alone", 0, rank("keduomo", "珂朵摩"))
+        assertEquals("compiled pack participates in sentence building", 0, rank("keduomozhenbang", "珂朵摩真棒"))
+
+        assertTrue(store.setPack(ice.id, false))
+        assertTrue(!File(user, DictionaryFormat.PACKS_BIN_DICT).exists())
+        Rime.shutdown()
+        File(user, "build").deleteRecursively()
+        assertTrue(Rime.initialize(shared, user.path))
+        Rime.setOption("zh_hans", true)
+        assertEquals("disabled compiled pack is gone after drop/redeploy", -1, rank("keduomo", "珂朵摩"))
+    }
+
     /** The pinned local copy of a source file, checked against build-lock.json. */
     private fun pinned(root: File, source: String, key: String): File {
         @Suppress("UNCHECKED_CAST")
@@ -104,6 +140,8 @@ class DictionaryPacksTest {
 
     /** The pinned files a source reads, in the order of its inputs. */
     private fun files(root: File, s: DictionarySource): List<File> = when {
+        s.id == "zh-ice-base" -> listOf(pinned(root, "rime-ice", "cn_dicts/base.dict.yaml"))
+        s.id == "zh-ice-ext" -> listOf(pinned(root, "rime-ice", "cn_dicts/ext.dict.yaml"))
         s.id == "en-ice-tech" -> listOf(pinned(root, "rime-ice", "en_dicts/en_ext.dict.yaml"))
         s.id == "zh-web-slang" -> listOf(pinned(root, "zhwiki", "web-slang-20261018.dict.yaml"))
         s.format == SourceFormat.THUOCL -> listOf(

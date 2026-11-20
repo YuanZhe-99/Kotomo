@@ -34,6 +34,9 @@ data class PackInfo(
     val checked: Boolean,
     val extra: Map<String, Any?> = emptyMap(),
 ) {
+    /** Whether this pack is compiled into `kotomo_packs_bin.table.bin` in background `:deploy`. */
+    val compiled: Boolean get() = (extra["compiled"] as? Boolean) ?: (Sources.of(id)?.compiled == true)
+
     /** The pack's title in the interface [language] (`en`, `zh-CN`, `zh-TW`, `ja`), else English, else any. */
     fun title(language: String): String = titles[language] ?: titles["en"] ?: titles.values.first()
 
@@ -228,7 +231,9 @@ internal object DictionaryFormat {
 
     const val CUSTOM_TABLE = "custom_phrase.txt"
     const val PACKS_TABLE = "kotomo_packs.txt"
+    const val PACKS_BIN_DICT = "kotomo_packs_bin.dict.yaml"
     const val LOW_TABLE = "kotomo_low.txt"
+    const val PACKS_BIN_HEADER = "---\nname: kotomo_packs_bin\nversion: \"1\"\nsort: by_weight\ncolumns:\n  - text\n  - code\n  - weight\n...\n"
 }
 
 /**
@@ -348,8 +353,9 @@ class DictionaryStore(
     }
 
     /**
-     * Installs a downloaded and converted pack: `entries.tsv` (the normalized TSV), its librime
-     * table `table.txt` and `pack.json`; the previous version moves to `packs/<id>.prev/`.
+     * Installs a downloaded and converted pack: `entries.tsv` (the normalized TSV), its plain
+     * librime table `table.txt`, spaced `dict.txt` (used by compiled packs), and `pack.json`; the
+     * previous version moves to `packs/<id>.prev/`.
      * Returns: false when the files cannot be written.
      */
     suspend fun install(pack: PackInfo, entries: Sequence<Entry>) = change(user = false) {
@@ -360,11 +366,16 @@ class DictionaryStore(
         var count = 0L
         File(staging, ENTRIES).bufferedWriter().use { tsv ->
             File(staging, TABLE).bufferedWriter().use { table ->
-                tsv.write(Formats.COLUMNS.joinToString("\t", postfix = "\n"))
-                for (e in entries) {
-                    count++
-                    tsv.write(Formats.tsvLine(e))
-                    if (e.used) table.write("${e.text}\t${e.rimeCode}\t${e.weight}\n")
+                File(staging, DICT).bufferedWriter().use { dict ->
+                    tsv.write(Formats.COLUMNS.joinToString("\t", postfix = "\n"))
+                    for (e in entries) {
+                        count++
+                        tsv.write(Formats.tsvLine(e))
+                        if (e.used) {
+                            table.write("${e.text}\t${e.rimeCode}\t${e.weight}\n")
+                            if (e.reading != null) dict.write("${e.text}\t${e.reading}\t${e.weight}\n")
+                        }
+                    }
                 }
             }
         }
@@ -591,11 +602,41 @@ class DictionaryStore(
         val joined = File(rimeUser, DictionaryFormat.PACKS_TABLE + ".tmp")
         FileOutputStream(joined).use { out ->
             if (switches.downloads) {
-                packs.filter { it.enabled }.forEach { p -> File(File(packsDir, p.meta.id), TABLE).takeIf { it.isFile }?.inputStream()?.use { it.copyTo(out) } }
+                packs.filter { it.enabled && !it.meta.compiled }.forEach { p -> File(File(packsDir, p.meta.id), TABLE).takeIf { it.isFile }?.inputStream()?.use { it.copyTo(out) } }
             }
             out.fd.sync()
         }
         Files.move(joined.toPath(), File(rimeUser, DictionaryFormat.PACKS_TABLE).toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        val compiledDict = File(rimeUser, DictionaryFormat.PACKS_BIN_DICT)
+        val compiledEnabled = if (switches.downloads) packs.filter { it.enabled && it.meta.compiled } else emptyList()
+        if (compiledEnabled.isEmpty()) {
+            compiledDict.delete()
+        } else {
+            val tmp = File(rimeUser, DictionaryFormat.PACKS_BIN_DICT + ".tmp")
+            FileOutputStream(tmp).use { raw ->
+                raw.write(DictionaryFormat.PACKS_BIN_HEADER.toByteArray())
+                for (p in compiledEnabled) {
+                    val dir = File(packsDir, p.meta.id)
+                    val dict = File(dir, DICT)
+                    if (dict.isFile) {
+                        dict.inputStream().use { it.copyTo(raw) }
+                    } else {
+                        File(dir, ENTRIES).takeIf { it.isFile }?.useLines { lines ->
+                            val w = raw.bufferedWriter()
+                            lines.drop(1).forEach { line ->
+                                val c = line.split('\t')
+                                if (c.size >= 4 && c[0] == Lang.ZH.code && c[2].isNotEmpty()) {
+                                    w.write("${c[1]}\t${c[2]}\t${c[3]}\n")
+                                }
+                            }
+                            w.flush()
+                        }
+                    }
+                }
+                raw.fd.sync()
+            }
+            Files.move(tmp.toPath(), compiledDict.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        }
         _state.value = Dictionaries(
             entries = user.entries,
             packs = packs,
@@ -646,6 +687,7 @@ class DictionaryStore(
         private const val ENTRIES = "entries.tsv"
         private const val META = "pack.json"
         private const val TABLE = "table.txt"
+        private const val DICT = "dict.txt"
         /** The text sealed as the password check. */
         private val CHECK = "kotomo-dictionary-check".toByteArray()
 

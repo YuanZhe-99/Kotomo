@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.os.SystemClock
+import com.yuanzhe.kotomo.dictionary.DictionaryFormat
 import com.yuanzhe.kotomo.engine.Rime
 import java.io.File
 
@@ -32,8 +33,12 @@ class RimeFiles(context: Context) {
     private val deployed = File(root, "deployed")
     /** The fuzzy-pinyin rule file the settings ask for ([Fuzzy.yaml]); absent when no rule is on. */
     val fuzzy = File(user, Fuzzy.FILE)
+    /** The compiled-pack source dictionary when large Chinese packs are enabled; absent otherwise. */
+    val packs = File(user, DictionaryFormat.PACKS_BIN_DICT)
     /** In a staged deploy: the [Fuzzy.hash] of the rule file that deploy compiled. */
     private val stagedFuzzy = File(staging, "fuzzy.hash")
+    /** In a staged deploy: the [packsHash] of the compiled-pack source that deploy compiled. */
+    private val stagedPacks = File(staging, "packs.hash")
     private val report = File(root, "deploy.txt")
     private val statusFile = File(root, "status.txt")
 
@@ -131,8 +136,14 @@ class RimeFiles(context: Context) {
     /** Reads the [Fuzzy.hash] of the rule file in `user/` now. */
     private fun fuzzyHash() = Fuzzy.hash(runCatching { fuzzy.readText() }.getOrNull())
 
-    /** Whether `user/build` holds this version's data compiled with the rule file in `user/` now. */
-    val current get() = hasBuild && deployed.isFile && deployed.readText() == "$stamp ${fuzzyHash()}"
+    /** Summarizes [packs] in `user/` now (`none` when absent). */
+    private fun packsHash() = if (packs.isFile) "${packs.length()}-${packs.lastModified()}" else "none"
+
+    /** Formats the deploy marker stored in `deployed`. */
+    private fun stampLine(fuzzy: String = fuzzyHash(), packsHash: String = packsHash()) = "$stamp $fuzzy $packsHash"
+
+    /** Whether `user/build` holds this version's data compiled with the rules and packs in `user/` now. */
+    val current get() = hasBuild && deployed.isFile && deployed.readText() == stampLine()
 
     /**
      * Writes the fuzzy-pinyin rule file, or removes it for null (IO thread).
@@ -158,14 +169,18 @@ class RimeFiles(context: Context) {
     }
 
     /**
-     * Copies the rule file in `user/` into the staging directory, where the deploy reads it as
-     * librime's user directory, and records its hash (deploy process).
+     * Copies the rule file and any compiled-pack dictionary in `user/` into the staging directory,
+     * where the deploy reads them as librime's user directory, and records their fingerprints (deploy process).
      */
     fun stageFuzzy() {
         val text = runCatching { fuzzy.readText() }.getOrNull()
         val staged = File(staging, Fuzzy.FILE)
         if (text == null) staged.delete() else staged.writeText(text)
         stagedFuzzy.writeText(Fuzzy.hash(text))
+
+        val stagedPack = File(staging, DictionaryFormat.PACKS_BIN_DICT)
+        if (packs.isFile) packs.copyTo(stagedPack, overwrite = true) else stagedPack.delete()
+        stagedPacks.writeText(packsHash())
     }
 
     /**
@@ -188,7 +203,8 @@ class RimeFiles(context: Context) {
         val built = File(staging, "build")
         if (!built.isDirectory) return false
         val compiled = runCatching { stagedFuzzy.readText() }.getOrDefault(Fuzzy.NONE)
-        if (compiled != fuzzyHash()) {
+        val compiledPacks = runCatching { stagedPacks.readText() }.getOrDefault("none")
+        if (compiled != fuzzyHash() || compiledPacks != packsHash()) {
             staging.deleteRecursively()
             return false
         }
@@ -196,7 +212,7 @@ class RimeFiles(context: Context) {
         target.deleteRecursively()
         user.mkdirs()
         if (!built.renameTo(target)) return false
-        deployed.writeText("$stamp $compiled")
+        deployed.writeText(stampLine(compiled, compiledPacks))
         staging.deleteRecursively()
         return true
     }

@@ -325,3 +325,15 @@ A9-010	mixed		woxiangqubeijing	我想去	5	0.1.1: mixed pinyin offers non-compos
 A9-011	mixed		jintiantianqi	今天	3	0.1.1: mixed pinyin offers 2-syllable phrase prefixes over whole fallback
 A9-N02	mixed		nihaoshijie	!你好市|!你好世	0	0.1.1: composed 3-syllable prefixes are suppressed
 A9-N03	mixed		jintiantianqi	!今天天	0	0.1.1: composed multi-syllable prefixes do not pollute candidates
+T17-001	chinese		xianyanbao	显眼包	1	0.1.2: rime-ice bundled modern slang in Chinese mode
+T17-002	chinese		qingxujiazhi	情绪价值	1	0.1.2: rime-ice bundled modern phrase in Chinese mode
+T17-003	chinese		songchigan	松弛感	1	0.1.2: rime-ice bundled modern phrase in Chinese mode
+T17-004	chinese		damoxing	大模型	1	0.1.2: rime-ice bundled tech term in Chinese mode
+T17-005	chinese		zhinengti	智能体	1	0.1.2: rime-ice bundled tech term in Chinese mode
+T17-006	chinese		dianzizhacai	电子榨菜	1	0.1.2: rime-ice bundled slang in Chinese mode
+T17-007	mixed		xianyanbao	显眼包	1	0.1.2: rime-ice bundled modern slang in Mixed mode
+T17-008	mixed		qingxujiazhi	情绪价值	1	0.1.2: rime-ice bundled modern phrase in Mixed mode
+T17-009	mixed		damoxing	大模型	1	0.1.2: rime-ice bundled tech term in Mixed mode
+T17-010	mixed		hajimi	哈基米	3	0.1.2: rime-ice bundled base slang in Mixed mode
+T17-N01	mixed		xianyanbao	!顕眼包|!けんがんほう	0	0.1.2: modern Chinese slang does not produce bogus Japanese conversion
+

@@ -23,9 +23,11 @@ old one stays with its status changed. Dates are when the decision took effect.
 ## ADR-001 Engines
 
 **Decision.** Chinese uses librime 1.17.0 with the `luna_pinyin` schema (rime-luna-pinyin,
-LGPL-3.0); Japanese uses Mozc 3.35.6354 with Kotomo's own client and C++ glue; English uses AOSP
-LatinIME's native suggestion core as HeliBoard 4.2 maintains it, with the aosp-dictionaries en_US
-word list. Simplified and Traditional conversion uses OpenCC, shared with librime.
+LGPL-3.0), augmented at build time with high-frequency modern words (`weight >= 100`) from
+`rime-ice`'s `8105`, `base` and `ext` lists via `tool/BuildRimeDict.java`; Japanese uses Mozc
+3.35.6354 with Kotomo's own client and C++ glue; English uses AOSP LatinIME's native suggestion
+core as HeliBoard 4.2 maintains it, with the aosp-dictionaries en_US word list. Simplified and
+Traditional conversion uses OpenCC, shared with librime.
 
 **Why.** Each is the mature open engine for its language and builds for Android (`upstream.md`).
 Kotomo writes the mixed-input coordinator, not segmentation, kana-kanji conversion or spelling
@@ -99,9 +101,11 @@ for the key path. Compose inside the input method needs a `LifecycleOwner` and a
 ## ADR-006 Prebuilt Chinese data and a separate deploy process
 
 **Decision.** The APK ships librime's data compiled on the build host (`scripts/prebuild-rime.sh`),
-so the phone never compiles on first use. When the data must change on the device, librime
-deploys in its own process (`:deploy`) into a staging directory while the keyboard keeps its
-session on the previous build, then the keyboard swaps the new build in.
+so the phone never compiles on first use. When the data must change on the device (fuzzy rules,
+double pinyin, key correction, or enabled `compiled` dictionary packs compiled into
+`kotomo_packs_bin.table.bin`), librime deploys in its own process (`:deploy`) into a staging
+directory while the keyboard keeps its session on the previous build, then the keyboard swaps the
+new build in.
 
 **Why.** A fresh deploy takes 5–15 s with a peak of about 294 MB on the host and refuses sessions
 meanwhile (`upstream.md`); the keyboard must keep typing.
@@ -204,7 +208,9 @@ the coordinator (a boundary could then be offered there too).
 **Decision.** Kotomo does not host dictionary packs. The settings list the approved sources that
 convert well on a phone (`dictionaries.md`); a download fetches the source's own files from where
 its authors publish them and converts them on the device with the same Kotlin code the host tests
-run (`dictionary/Sources.kt`), into the entry model and pack files of PLAN §10.5. A GitHub release
+run (`dictionary/Sources.kt`), into the entry model and pack files of PLAN §10.5 (large packs
+such as `zh-ice-base` and `zh-ice-ext` set `compiled = true` so background `:deploy` compiles them
+into `kotomo_packs_bin.table.bin` instead of blocking schema selection). A GitHub release
 asset is checked against the SHA-256 digest GitHub publishes for it; a file whose source publishes
 no checksum is protected by HTTPS only, and the settings say so. Only HTTPS is accepted, redirects
 included. Before the first download a notice names the hosts and says that nothing typed is sent;
