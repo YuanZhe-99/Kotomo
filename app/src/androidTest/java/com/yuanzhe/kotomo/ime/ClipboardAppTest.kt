@@ -51,15 +51,29 @@ class ClipboardAppTest {
         device.executeShellCommand("ime enable $IME")
         device.executeShellCommand("ime set $IME")
         device.executeShellCommand("settings put secure show_ime_with_hard_keyboard 1")
+        clearSystemClipboard()
     }
 
     @After
     fun cleanUp() {
+        clearSystemClipboard()
         runBlocking {
             settings.update { it.copy(clipboard = it.clipboard.copy(excludedApps = emptySet())) }
             history.items.value.filter { it.text.startsWith(PREFIX) || it.isImage }.forEach { history.delete(it.id) }
             history.flush()
             File(context.cacheDir, "clipboard_share/test_src.png").delete()
+        }
+    }
+
+    /** Clears Android's primary clipboard so prior test clips are never re-read on process restart. */
+    private fun clearSystemClipboard() {
+        instrumentation.runOnMainSync {
+            val cm = context.getSystemService(ClipboardManager::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                cm.clearPrimaryClip()
+            } else {
+                cm.setPrimaryClip(ClipData.newPlainText(null, ""))
+            }
         }
     }
 
