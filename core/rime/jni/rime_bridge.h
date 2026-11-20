@@ -84,6 +84,21 @@ std::string Input();
 ///   SelectCandidate and DeleteCandidate count in the list this call returned.
 std::vector<Candidate> Candidates(std::size_t limit);
 
+/// Returns: whole-input candidates (`cand->end() == input.size()`) from the current menu without
+///   scanning shorter prefix candidates or populating `Candidates`'s selection-order table.
+/// Inputs: `max_scan` caps total menu entries inspected; when `stop_after_exact > 0`, stops as
+///   soon as that many uncorrected non-`sentence` candidates (matching `code_points` UTF-8 code
+///   points when `code_points > 0`) are collected.
+/// Notes: relies on librime placing all whole-input entries before prefix entries.
+std::vector<Candidate> WholeCandidates(std::size_t max_scan, std::size_t stop_after_exact = 0,
+                                       std::size_t code_points = 0);
+
+/// Returns: whether any loaded run-time `user_table` dictionary (`custom_phrase.txt`,
+///   `kotomo_packs.txt`, `kotomo_low.txt`) in `user_data_dir` indexes `key`.
+/// Notes: backed by an in-memory set refreshed whenever the schema reloads; zero I/O on the key
+///   path.
+bool HasUserTableKey(const std::string& key);
+
 /// Selects the candidate at `index` (counted from the first candidate, not the page).
 /// Returns: false if there is no such candidate.
 /// Side effects: if the selection completes the input, librime commits; read it with TakeCommit().

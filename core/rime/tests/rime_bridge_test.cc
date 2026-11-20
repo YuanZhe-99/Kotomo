@@ -315,6 +315,23 @@ int main(int argc, char** argv) {
   // built-in word uses, plus one low-priority entry on a common code.
   Check(RankOf("kaotuomo", "考拓莫") == -1 && RankOf("koutuomo", "蔻拓摩") == -1, "T17-rime-absent",
         "before the files exist the test words are not offered");
+  Check(!rb::HasUserTableKey("kaotuomo") && !rb::HasUserTableKey("koutuomo") && !rb::HasUserTableKey("nihao"),
+        "T17-rime-user-keys-empty", "user_table key set is empty before files exist");
+  {
+    rb::Clear();
+    rb::SetInput("zhong'guo");
+    const auto whole_zg = rb::WholeCandidates(12000, 1500, 2);
+    const bool all_whole = std::all_of(whole_zg.begin(), whole_zg.end(), [](const rb::Candidate& c) { return c.whole; });
+    const bool has_zg = std::any_of(whole_zg.begin(), whole_zg.end(), [](const rb::Candidate& c) { return c.text == "中国"; });
+    Check(all_whole && has_zg && !whole_zg.empty(), "T17-rime-whole-zhongguo",
+          "WholeCandidates on zhong'guo skips shorter prefixes and includes 中国");
+    rb::Clear();
+    rb::SetInput("yu");
+    const auto whole_yu = rb::WholeCandidates(12000, 1500, 1);
+    Check(whole_yu.size() > 500, "T17-rime-whole-yu",
+          "WholeCandidates preserves all single-syllable yu characters (count=" + std::to_string(whole_yu.size()) + ")");
+    rb::Clear();
+  }
   const auto write = [&](const char* name, const std::string& lines) {
     std::FILE* f = std::fopen((fresh_user / name).string().c_str(), "wb");
     std::fputs(lines.c_str(), f);
@@ -324,6 +341,8 @@ int main(int argc, char** argv) {
   write("kotomo_packs.txt", "蔻拓摩\tkoutuomo\t50\n");
   write("kotomo_low.txt", "泥好\tnihao\t20\n");
   Check(rb::SetLearning(true), "T17-rime-reload", "re-selecting the schema reloads the tables");
+  Check(rb::HasUserTableKey("kaotuomo") && rb::HasUserTableKey("koutuomo") && rb::HasUserTableKey("nihao"),
+        "T17-rime-user-keys-loaded", "user_table key set tracks loaded custom/pack/low keys");
   const int manual = RankOf("kaotuomo", "考拓莫");
   Check(manual == 0, "T17-rime-manual", "a hand-added entry is first: rank " + std::to_string(manual));
   const int pack = RankOf("koutuomo", "蔻拓摩");
@@ -368,6 +387,8 @@ int main(int argc, char** argv) {
   write("custom_phrase.txt", "");
   rb::SetLearning(true);
   Check(RankOf("kaotuomo", "考拓莫") == -1, "T17-rime-removed", "an entry removed from the file is gone after a reload");
+  Check(!rb::HasUserTableKey("kaotuomo") && rb::HasUserTableKey("koutuomo"),
+        "T17-rime-user-keys-removed", "clearing custom_phrase removes its keys on reload");
   rb::Shutdown();
 
   // Feedback B2: Chinese mode's key correction, as the app turns it on: the rule file names

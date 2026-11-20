@@ -34,20 +34,21 @@ size_t Spellings(const char* letters, size_t size, KotomoRimeSpelling* out, size
   return count;
 }
 
-/// Notes: librime lists whole-run sentences and words together with words for a prefix of the
-///   run; the ones that end where the run ends, with one character per syllable, convert the
-///   whole run. (A prefix word may have as many characters as the run has syllables: after the
-///   words of `shi'jian` librime lists 实际 for `shi'ji`.)
+/// Notes: librime places all whole-input candidates before shorter prefix candidates, so scanning
+///   stops at the first prefix candidate via `rb::WholeCandidates` instead of pulling thousands of
+///   prefixes through OpenCC and `Uniquifier`.
 ///   Kotomo's run-time user_table dictionaries (custom_phrase, kotomo_packs, kotomo_low) index
-///   keys without interior apostrophes, so when `run` contains `'`, we also query the stripped
-///   key for matching whole-run `user_table` entries and merge them in librime's trust order.
+///   keys without interior apostrophes, so when `run` contains `'` and `rb::HasUserTableKey`
+///   matches the stripped key, we also query the stripped key for matching whole-run `user_table`
+///   entries and merge them in librime's trust order.
 void Convert(const char* syllables, size_t size, size_t limit, void* context,
              KotomoRimeWordSink sink) {
+  if (limit == 0) return;
   const std::string run(syllables, size);
   const size_t count = 1 + static_cast<size_t>(std::count(run.begin(), run.end(), '\''));
   rb::Clear();
   if (!rb::SetInput(run)) return;
-  std::vector<rb::Candidate> run_candidates = rb::Candidates(limit * 8);
+  std::vector<rb::Candidate> run_candidates = rb::WholeCandidates(limit * 8, limit, count);
   rb::Clear();
 
   std::vector<rb::Candidate> top_user;
@@ -58,9 +59,10 @@ void Convert(const char* syllables, size_t size, size_t limit, void* context,
     for (const char c : run) {
       if (c != '\'') stripped += c;
     }
-    if (rb::SetInput(stripped)) {
+    if (rb::HasUserTableKey(stripped) && rb::SetInput(stripped)) {
       bool seen_dict = false;
-      for (rb::Candidate& candidate : rb::Candidates(limit * 8)) {
+      for (rb::Candidate& candidate :
+           rb::WholeCandidates(std::max<std::size_t>(limit * 8, 2048))) {
         if (!candidate.whole || candidate.corrected || CodePoints(candidate.text) != count) {
           continue;
         }
@@ -70,8 +72,8 @@ void Convert(const char* syllables, size_t size, size_t limit, void* context,
           seen_dict = true;
         }
       }
+      rb::Clear();
     }
-    rb::Clear();
   }
 
   std::unordered_set<std::string> seen;

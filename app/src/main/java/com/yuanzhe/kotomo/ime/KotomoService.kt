@@ -2488,6 +2488,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val gen = ++generation
         takes(gen, 0)
         if (mode != Mode.MIXED || raw.isEmpty()) {
+            mixedLatest = gen
             mixedSnapshot = null
             mixedIndexes = emptyList()
         }
@@ -2770,6 +2771,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val touches = taps.toList()
         val options = mixedOptions()
         val serial = fieldSerial
+        mixedLatest = ++generation
         composing.clear()
         taps.clear()
         mixedSnapshot = null

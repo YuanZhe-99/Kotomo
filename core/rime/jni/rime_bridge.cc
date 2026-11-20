@@ -15,6 +15,7 @@
 
 #include <sys/stat.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -22,7 +23,8 @@
 #include <fstream>
 #include <iterator>
 #include <numeric>
-#include <algorithm>
+#include <string_view>
+#include <unordered_set>
 
 namespace kotomo::rime_bridge {
 namespace {
@@ -45,12 +47,44 @@ std::string shared_dir;
 std::string user_dir;
 // The deploy tasks that failed in the last Deploy().
 std::string failed_tasks;
+// Lower-case toneless keys indexed by the three run-time plain-text user_table dictionaries.
+std::unordered_set<std::string> user_table_keys;
+
+/// Counts UTF-8 code points in `text`.
+std::size_t CodePoints(std::string_view text) {
+  std::size_t n = 0;
+  for (const char c : text) n += (static_cast<unsigned char>(c) & 0xc0) != 0x80 ? 1 : 0;
+  return n;
+}
+
+/// Refreshes `user_table_keys` from `custom_phrase.txt`, `kotomo_packs.txt` and `kotomo_low.txt`
+/// inside `user_dir` so Mixed-mode `Convert` skips extra un-apostrophed lookups when absent.
+void LoadUserTableKeys() {
+  user_table_keys.clear();
+  if (user_dir.empty()) return;
+  for (const char* name : {"custom_phrase.txt", "kotomo_packs.txt", "kotomo_low.txt"}) {
+    std::ifstream in(std::filesystem::path(user_dir) / name);
+    if (!in) continue;
+    for (std::string line; std::getline(in, line);) {
+      if (!line.empty() && line.back() == '\r') line.pop_back();
+      if (line.empty() || line[0] == '#') continue;
+      const std::size_t tab1 = line.find('\t');
+      if (tab1 == std::string::npos) continue;
+      const std::size_t tab2 = line.find('\t', tab1 + 1);
+      std::string key =
+          tab2 == std::string::npos ? line.substr(tab1 + 1) : line.substr(tab1 + 1, tab2 - tab1 - 1);
+      if (!key.empty()) user_table_keys.insert(std::move(key));
+    }
+  }
+}
 
 /// Selects the schema that matches `learning` and `nine_key` in the open session.
 bool ApplyLearning() {
   const char* schema = nine_key ? (learning ? kNineKeySchema : kNineKeyPrivateSchema)
                                 : (learning ? kSchema : kPrivateSchema);
-  return session != 0 && api->select_schema(session, schema);
+  const bool ok = session != 0 && api->select_schema(session, schema);
+  if (ok) LoadUserTableKeys();
+  return ok;
 }
 
 /// Maps the spelling table of the schema the session runs: the deployed one in the user
@@ -74,6 +108,7 @@ bool OpenSession() {
 void CloseSession() {
   if (session != 0) api->destroy_session(session);
   session = 0;
+  user_table_keys.clear();
   CloseSpellings();
 }
 
@@ -283,6 +318,39 @@ std::vector<Candidate> Candidates(std::size_t limit) {
     result = std::move(sorted);
   }
   return result;
+}
+
+std::vector<Candidate> WholeCandidates(std::size_t max_scan, std::size_t stop_after_exact,
+                                       std::size_t code_points) {
+  std::vector<Candidate> result;
+  if (session == 0 || max_scan == 0) return result;
+  auto s = rime::Service::instance().GetSession(session);
+  if (!s) return result;
+  rime::Context* context = s->context();
+  if (context == nullptr || !context->HasMenu()) return result;
+  const auto menu = context->composition().back().menu;
+  if (!menu) return result;
+  const std::string& input = context->input();
+  const std::size_t input_size = input.size();
+  const bool correcting = Correcting();
+  std::size_t exact = 0;
+  for (std::size_t i = 0; i < max_scan; ++i) {
+    const auto cand = menu->GetCandidateAt(i);
+    if (!cand || cand->end() != input_size) break;
+    const auto genuine = rime::Candidate::GetGenuineCandidate(cand);
+    std::string text = cand->text();
+    std::string type = genuine->type();
+    const bool corrected = correcting && Corrected(genuine, input);
+    const bool count_match =
+        !corrected && type != "sentence" && (code_points == 0 || CodePoints(text) == code_points);
+    result.push_back({std::move(text), {}, std::move(type), /*whole=*/true, corrected});
+    if (stop_after_exact > 0 && count_match && ++exact >= stop_after_exact) break;
+  }
+  return result;
+}
+
+bool HasUserTableKey(const std::string& key) {
+  return user_table_keys.find(key) != user_table_keys.end();
 }
 
 bool DeleteCandidate(std::size_t index) {

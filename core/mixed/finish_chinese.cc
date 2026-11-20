@@ -52,14 +52,16 @@ void FinishChinese(const Input& input, const Path& path, Engines& engines, const
       if (!syllables.empty()) syllables += '\'';
       syllables += path.edges[end]->text;
     }
-    std::vector<ChineseWord> conversions = engines.Chinese(syllables, options.alternatives);
+    const bool whole_run = (i == 0 && end == path.edges.size());
+    std::vector<ChineseWord> conversions =
+        engines.Chinese(syllables, whole_run ? options.alternatives : 1);
     if (conversions.empty()) return;
     sentence.pieces.push_back(MakePiece(input, first.begin, path.edges[end - 1]->end,
                                         conversions.front().text, Lang::kChinese, Origin::kRime,
                                         false));
     sentence.text += conversions.front().text;
     if (conversions.front().composed) sentence.cost += options.costs.chinese_composed;
-    if (i == 0 && end == path.edges.size()) whole_input_run = std::move(conversions);
+    if (whole_run) whole_input_run = std::move(conversions);
     i = end;
   }
   out->push_back(sentence);
