@@ -761,6 +761,77 @@ class FieldTypingTest {
     }
 
     /**
+     * Commit 1 regression test: multi-line fields with `TYPE_TEXT_FLAG_NO_SUGGESTIONS` (common in
+     * messaging, notes and AI chat boxes) keep the user's Chinese mode and full-width symbols
+     * instead of auto-switching to `Field.CODE` (English + forced half-width).
+     */
+    @Test
+    fun multiLineNoSuggestionsStaysInChineseMode() {
+        val context = instrumentation.targetContext
+        val memory = KeyboardMemory.get(context)
+        val beforeApp = memory.current.app(context.packageName)
+        val multiLineNoSuggest = InputType.TYPE_CLASS_TEXT or
+            InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+            InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        withSettings({ it.copy(defaultMode = Mode.CHINESE, chineseNineKey = false) }) {
+            memory.update { m -> m.withApp(context.packageName) { AppMemory() } }
+            try {
+                assertEquals("你好", typeInto(multiLineNoSuggest, 0, "nihao", expected = "你好"))
+                val intent = Intent(context, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, multiLineNoSuggest)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, 0)
+                ActivityScenario.launch<FieldTestActivity>(intent).use {
+                    checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                    key(SYMBOLS)
+                    assertTrue("symbol page was forced to ASCII half-width", device.wait(Until.hasObject(By.desc("（")), WAIT_MS))
+                }
+            } finally {
+                memory.update { m -> m.withApp(context.packageName) { beforeApp } }
+            }
+        }
+    }
+
+    /**
+     * Commit 2 regression test: right-edge letter keys (`i` -> `8`, `o` -> `9`) commit their corner
+     * default on long press, and full-width symbols on bottom row, Symbol Page 0 and Symbol Page 1
+     * default to their half-width counterpart.
+     */
+    @Test
+    fun longPressDefaultsOnRightLettersAndFullWidthSymbols() {
+        withSettings({ it.copy(chineseNineKey = false, smartQuotes = false, autoPair = false) }) {
+            inMode(Mode.CHINESE) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+                ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                    checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                    listOf("i", "o", "，", "。").forEach { d ->
+                        checkNotNull(device.wait(Until.findObject(By.desc(d)), WAIT_MS)) { "no key $d" }.longClick()
+                        Thread.sleep(READ_MS)
+                    }
+                    assertEquals("89,.", read(scenario))
+
+                    key(SYMBOLS)
+                    checkNotNull(device.wait(Until.findObject(By.desc("（")), WAIT_MS)) { "no full-width symbol page 0" }
+                    listOf("（", "？", "；").forEach { d ->
+                        checkNotNull(device.wait(Until.findObject(By.desc(d)), WAIT_MS)) { "no key $d" }.longClick()
+                        Thread.sleep(READ_MS)
+                    }
+                    assertEquals("89,.(?;", read(scenario))
+
+                    key(SYMBOLS)
+                    checkNotNull(device.wait(Until.findObject(By.desc("【")), WAIT_MS)) { "no full-width symbol page 1" }
+                    listOf("【", "「", "～", "《").forEach { d ->
+                        checkNotNull(device.wait(Until.findObject(By.desc(d)), WAIT_MS)) { "no key $d" }.longClick()
+                        Thread.sleep(READ_MS)
+                    }
+                    assertEquals("89,.(?;[[~<", read(scenario))
+                }
+            }
+        }
+    }
+
+    /**
      * Runs [block] with the current app fixed to [mode] in Kotomo's memory (the quick panel's
      * "Fix this mode here"), and releases it afterwards.
      */
