@@ -27,10 +27,11 @@ class FieldsTest {
     }
 
     @Test
-    fun codeLikeFieldsAreRecognised() {
-        assertEquals(Field.CODE, Fields.of(text or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS, null))
-        assertEquals(Field.CODE, Fields.of(text, "Enter a command"))
-        assertEquals(Field.CODE, Fields.of(text, "输入代码"))
+    fun ordinaryTextAndCodeHintsStayText() {
+        assertEquals(Field.TEXT, Fields.of(text or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS, null))
+        assertEquals(Field.TEXT, Fields.of(text, "Enter a command"))
+        assertEquals(Field.TEXT, Fields.of(text, "输入代码"))
+        assertEquals(Field.TEXT, Fields.of(text, "Verification code"))
         // Negative: an ordinary multi-line field, and a word that merely contains "code".
         assertEquals(Field.TEXT, Fields.of(text or InputType.TYPE_TEXT_FLAG_MULTI_LINE, "Write a reply"))
         assertEquals(Field.TEXT, Fields.of(text, "Decoded message"))

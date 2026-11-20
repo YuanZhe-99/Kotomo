@@ -1497,7 +1497,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         field = appField(field)
         mode = when {
             remembered?.pinned != null -> settings.usable(remembered.pinned)
-            field == Field.CODE -> Mode.ENGLISH
+            field == Field.CODE -> settings.usable(Mode.ENGLISH)
             else -> settings.usable(remembered?.mode)
         }
         pinnedHere.value = remembered?.pinned
@@ -2327,8 +2327,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         keyboard.deleteSwipe = s.gestures.deleteSwipe
         keyboard.spaceLanguage = s.gestures.spaceLanguage
         keyboard.enterStyle = Fields.enter(currentInputEditorInfo?.imeOptions ?: 0)
-        // E-mail, web-address and code-like fields take ASCII symbols whatever the mode.
-        val symbolMode = if (field == Field.EMAIL || field == Field.URL || field == Field.CODE) Mode.ENGLISH else mode
+        // E-mail, code fields and (when `modes.url_english` is on) web-address fields take ASCII symbols.
+        val symbolMode = if (field == Field.EMAIL || field == Field.CODE || (field == Field.URL && s.urlEnglish)) Mode.ENGLISH else mode
         // The 9-key layout needs librime's 9-key schema; it follows the layout (PLAN §10.9). With
         // the keys hidden for a physical keyboard, its letters need the letter schema (PLAN §12).
         val nine = mode == Mode.CHINESE && s.chineseNineKey && !direct && field == Field.TEXT && keyboard.visibility == View.VISIBLE

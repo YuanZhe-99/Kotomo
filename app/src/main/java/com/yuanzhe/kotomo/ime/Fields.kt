@@ -13,39 +13,32 @@ enum class Field { TEXT, EMAIL, URL, PHONE, NUMBER, DATETIME, CODE }
 enum class EnterStyle { NEWLINE, SEARCH, SEND, GO, NEXT, PREVIOUS, DONE }
 
 /**
- * Holds the field-adaptation and spacing rules, as pure functions of the field's input type,
- * options and hint and of the text before the cursor, so they are unit-tested on the JVM.
+ * Holds the field-adaptation and spacing rules, as pure functions of the field's input type and
+ * options and of the text before the cursor, so they are unit-tested on the JVM.
  *
  * Notes: called on the main thread when a field starts and after keys; nothing here touches the
  * InputConnection.
  */
 internal object Fields {
-    /** Words in a field's hint or label that mark it as code-like (commands, queries, code). */
-    private val codeHint = Regex(
-        "\\b(code|command|regex|sql|shell|terminal|script)\\b|代码|代碼|命令|コード|コマンド",
-        RegexOption.IGNORE_CASE,
-    )
-
     /**
      * Sorts a field.
      * Inputs: inputType and the hint or label text from the field's EditorInfo (other apps' data:
      * any value is accepted).
-     * Returns: the field kind; a multi-line field without suggestions or a hint naming code,
-     * commands or queries is CODE.
+     * Returns: the field kind from [inputType]; `Field.CODE` is never guessed from flags or hint
+     * text (which ordinary chat boxes, web views and verification-code fields set), and is set
+     * only when the person turns on "Code in this app" (`AppMemory.code`).
      */
-    fun of(inputType: Int, hint: CharSequence?): Field {
+    @Suppress("UNUSED_PARAMETER")
+    fun of(inputType: Int, hint: CharSequence? = null): Field {
         val variation = inputType and InputType.TYPE_MASK_VARIATION
         return when (inputType and InputType.TYPE_MASK_CLASS) {
             InputType.TYPE_CLASS_PHONE -> Field.PHONE
             InputType.TYPE_CLASS_NUMBER -> Field.NUMBER
             InputType.TYPE_CLASS_DATETIME -> Field.DATETIME
-            InputType.TYPE_CLASS_TEXT -> when {
-                variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS ||
-                    variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> Field.EMAIL
-                variation == InputType.TYPE_TEXT_VARIATION_URI -> Field.URL
-                inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS != 0 &&
-                    inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0 -> Field.CODE
-                hint != null && codeHint.containsMatchIn(hint) -> Field.CODE
+            InputType.TYPE_CLASS_TEXT -> when (variation) {
+                InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+                InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> Field.EMAIL
+                InputType.TYPE_TEXT_VARIATION_URI -> Field.URL
                 else -> Field.TEXT
             }
             else -> Field.TEXT
