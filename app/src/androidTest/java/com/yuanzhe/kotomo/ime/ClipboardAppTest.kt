@@ -54,11 +54,13 @@ class ClipboardAppTest {
     }
 
     @After
-    fun cleanUp() = runBlocking {
-        settings.update { it.copy(clipboard = it.clipboard.copy(excludedApps = emptySet())) }
-        history.items.value.filter { it.text.startsWith(PREFIX) || it.isImage }.forEach { history.delete(it.id) }
-        history.flush()
-        File(context.cacheDir, "clipboard_share/test_src.png").delete()
+    fun cleanUp() {
+        runBlocking {
+            settings.update { it.copy(clipboard = it.clipboard.copy(excludedApps = emptySet())) }
+            history.items.value.filter { it.text.startsWith(PREFIX) || it.isImage }.forEach { history.delete(it.id) }
+            history.flush()
+            File(context.cacheDir, "clipboard_share/test_src.png").delete()
+        }
     }
 
     /** Copies [text] from the field's activity and returns whether the history keeps it within the wait. */
