@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 #include "rime_bridge.h"
@@ -37,21 +38,60 @@ size_t Spellings(const char* letters, size_t size, KotomoRimeSpelling* out, size
 ///   run; the ones that end where the run ends, with one character per syllable, convert the
 ///   whole run. (A prefix word may have as many characters as the run has syllables: after the
 ///   words of `shi'jian` librime lists 实际 for `shi'ji`.)
+///   Kotomo's run-time user_table dictionaries (custom_phrase, kotomo_packs, kotomo_low) index
+///   keys without interior apostrophes, so when `run` contains `'`, we also query the stripped
+///   key for matching whole-run `user_table` entries and merge them in librime's trust order.
 void Convert(const char* syllables, size_t size, size_t limit, void* context,
              KotomoRimeWordSink sink) {
   const std::string run(syllables, size);
   const size_t count = 1 + static_cast<size_t>(std::count(run.begin(), run.end(), '\''));
   rb::Clear();
   if (!rb::SetInput(run)) return;
+  std::vector<rb::Candidate> run_candidates = rb::Candidates(limit * 8);
+  rb::Clear();
+
+  std::vector<rb::Candidate> top_user;
+  std::vector<rb::Candidate> rest_user;
+  if (run.find('\'') != std::string::npos) {
+    std::string stripped;
+    stripped.reserve(run.size());
+    for (const char c : run) {
+      if (c != '\'') stripped += c;
+    }
+    if (rb::SetInput(stripped)) {
+      bool seen_dict = false;
+      for (rb::Candidate& candidate : rb::Candidates(limit * 8)) {
+        if (!candidate.whole || candidate.corrected || CodePoints(candidate.text) != count) {
+          continue;
+        }
+        if (candidate.type == "user_table") {
+          (seen_dict ? rest_user : top_user).push_back(std::move(candidate));
+        } else if (candidate.type != "sentence") {
+          seen_dict = true;
+        }
+      }
+    }
+    rb::Clear();
+  }
+
+  std::unordered_set<std::string> seen;
   size_t passed = 0;
-  for (const rb::Candidate& candidate : rb::Candidates(limit * 8)) {
-    if (passed == limit) break;
+  const auto emit = [&](const std::string& text, bool composed) {
+    if (passed == limit || !seen.insert(text).second) return;
+    sink(context, text.data(), text.size(), composed ? 1 : 0);
+    ++passed;
+  };
+  for (const rb::Candidate& candidate : top_user) emit(candidate.text, false);
+  for (const rb::Candidate& candidate : run_candidates) {
     // Corrected readings stay out: the coordinator has its own key correction, placed by cost.
     if (!candidate.whole || candidate.corrected || CodePoints(candidate.text) != count) continue;
-    sink(context, candidate.text.data(), candidate.text.size(), candidate.type == "sentence");
-    ++passed;
+    if (candidate.type != "sentence") emit(candidate.text, false);
   }
-  rb::Clear();
+  for (const rb::Candidate& candidate : rest_user) emit(candidate.text, false);
+  for (const rb::Candidate& candidate : run_candidates) {
+    if (!candidate.whole || candidate.corrected || CodePoints(candidate.text) != count) continue;
+    if (candidate.type == "sentence") emit(candidate.text, true);
+  }
 }
 
 const KotomoRimeApi kApi = {

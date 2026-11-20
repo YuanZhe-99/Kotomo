@@ -147,7 +147,7 @@ Mozc 查不到词、原样回显的假名段（`cost <= 1`）按假名数加回�
 | 问题 | 由谁回答 | 函数表 |
 |---|---|---|
 | 这些字母的开头拼出哪些拼音音节 | 会话所用方案的 librime 拼写表（prism），在会话打开时映射，所以模糊音与纠错规则同中文模式一样生效；未完成的音节（方案的简拼，以及整串字母只是某个音节开头的情况）带标记列出 | `core/rime/jni/kotomo_rime_api.h`：`spellings` |
-| 转换这一串音节 | librime 的会话，音节之间用撇号连接 | `kotomo_rime_api.h`：`convert` |
+| 转换这一串音节 | librime 的会话，音节之间用撇号连接（同时以去掉撇号的键补充查询 Kotomo 运行时词表中的 `user_table` 条目） | `kotomo_rime_api.h`：`convert` |
 | 把这段罗马字映射为平假名 | Mozc 的罗马字表 | `core/mozc/kotomo_mozc_api.h`：`hiragana` |
 | 在固定这些片段、并让这些片段各自保持为一个文节的前提下转换这段读音 | Mozc 的转换器（`MozcEngine::PinnedConvert`） | `kotomo_mozc_api.h`：`convert` |
 | 这个读音是不是一个词，有多常用 | Mozc 的词典，按键精确查找（`MozcEngine::WordCost`）；只为日语模糊音规则产生的读音而问（函数表第 3 版） | `kotomo_mozc_api.h`：`known` |

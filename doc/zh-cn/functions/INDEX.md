@@ -57,7 +57,7 @@
 | `core/english/` | 英文引擎（S4）：LatinIME 核心与 Kotomo 的 JNI 桥接的 CMake 构建；主机测试 | `jni/english_jni.cpp`、`jni/english_api.h`（交给协调层的函数表）、`tests/run-host.sh` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/English.kt` | `libkotomo_english.so` 的 Kotlin 外观（只在引擎线程上调用） | `English.open`、`suggestions` |
 | `tool/BuildEnglishDict.java` | 用 AOSP 的 dicttool 从锁定的词表构建英文词典 | `main` |
-| `core/rime/` | 中文引擎（S2）：把 librime 及其依赖构建为 `libkotomo_rime.so` 的 CMake 构建、桥接（学习、不学习与九宫格方案，PLAN §10.9；`data/` 里有 Kotomo 的方案补丁与 `kotomo_t9`、`kotomo_t9_private`）层、数据整理与主机测试 | `jni/rime_bridge.h`、`jni/rime_spellings.h`（方案的拼写表）、`jni/kotomo_rime_api.h`（交给协调层的函数表）、`stage-data.cmake`、`tests/rime_bridge_test.cc` |
+| `core/rime/` | 中文引擎（S2）：把 librime 及其依赖构建为 `libkotomo_rime.so` 的 CMake 构建、桥接（学习、不学习与九宫格方案，PLAN §10.9；`KotomoRimeApi.convert` 同时按无撇号键查询 `user_table` 运行时词表供混合模式使用；`data/` 里有 Kotomo 的方案补丁与 `kotomo_t9`、`kotomo_t9_private`）层、数据整理与主机测试 | `jni/rime_bridge.h`、`jni/rime_spellings.h`（方案的拼写表）、`jni/kotomo_rime_api.h`（交给协调层的函数表）、`stage-data.cmake`、`tests/rime_bridge_test.cc` |
 | `app/src/main/java/com/yuanzhe/kotomo/engine/Rime.kt` | `libkotomo_rime.so` 的 Kotlin 外观（只在引擎线程上调用） | `initialize`、`deploy`、`processKey`、`setLearning`、`setNineKey` |
 | `scripts/fetch-boost.sh` | 下载并校验 librime 需要的 Boost 头文件 | — |
 | `core/mozc/` | 日文引擎胶水层（S3）：基于 Mozc 的会话转换、固定片段与固定边界转换、预测，从词典查词性与活用（`Describe`，编入 id.def 的词性名称，PLAN §10.1、§10.2），查一个读音是不是词典里的键（`WordCost`，供日语模糊音规则使用），JNI，主机测试；在 Mozc 的 Bazel 工作区内构建 | `kotomo_mozc.h`、`kotomo_mozc_api.h`（交给协调层的函数表）、`kotomo_mozc_service.cc`（供 `core/mixed` 使用的主机行服务）、`tests/kotomo_mozc_test.cc` |

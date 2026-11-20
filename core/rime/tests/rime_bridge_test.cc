@@ -333,6 +333,36 @@ int main(int argc, char** argv) {
   Check(low > 0 && common == 0, "T17-rime-low",
         "a low-priority entry is offered (rank " + std::to_string(low) + ") but 你好 stays first (rank " +
             std::to_string(common) + ")");
+  // Mixed mode sends syllable-separated keys (`kao'tuo'mo`); user_table entries must still appear.
+  {
+    struct ApiWords {
+      std::vector<std::string> texts;
+      std::vector<int> composed;
+    };
+    const auto convert_api = [](const std::string& input, size_t limit) {
+      ApiWords out;
+      KotomoRimeGetApi()->convert(
+          input.data(), input.size(), limit, &out,
+          [](void* context, const char* text, size_t size, int composed) {
+            auto* w = static_cast<ApiWords*>(context);
+            w->texts.emplace_back(text, size);
+            w->composed.push_back(composed);
+          });
+      return out;
+    };
+    const ApiWords manual_api = convert_api("kao'tuo'mo", 10);
+    Check(!manual_api.texts.empty() && manual_api.texts[0] == "考拓莫" && manual_api.composed[0] == 0,
+          "T17-rime-api-manual", "Mixed API exposes manual user_table entry on kao'tuo'mo");
+    const ApiWords pack_api = convert_api("kou'tuo'mo", 10);
+    Check(!pack_api.texts.empty() && pack_api.texts[0] == "蔻拓摩" && pack_api.composed[0] == 0,
+          "T17-rime-api-pack", "Mixed API exposes pack user_table entry on kou'tuo'mo");
+    const ApiWords low_api = convert_api("ni'hao", 20);
+    const auto it_nihao = std::find(low_api.texts.begin(), low_api.texts.end(), "你好");
+    const auto it_ni = std::find(low_api.texts.begin(), low_api.texts.end(), "泥好");
+    Check(it_nihao == low_api.texts.begin() && it_ni != low_api.texts.end() && it_nihao < it_ni &&
+              low_api.composed[static_cast<size_t>(it_ni - low_api.texts.begin())] == 0,
+          "T17-rime-api-low", "Mixed API exposes low user_table entry after 你好 on ni'hao");
+  }
   Check(rb::SetLearning(false) && RankOf("kaotuomo", "考拓莫") == 0, "T17-rime-private",
         "sensitive fields see the same dictionaries");
   write("custom_phrase.txt", "");

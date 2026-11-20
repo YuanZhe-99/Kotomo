@@ -193,7 +193,7 @@ nothing and the other languages keep working.
 | Question | Answered by | Table |
 |---|---|---|
 | which pinyin syllables does the start of these letters spell | librime's spelling table (prism) of the session's schema, mapped when the session opens, so fuzzy rules and corrections apply as in Chinese mode; unfinished syllables (the schema's abbreviations, and the letters as a whole when they only begin a syllable) are listed with a mark | `core/rime/jni/kotomo_rime_api.h`: `spellings` |
-| convert this run of syllables | librime's session with the syllables joined by apostrophes | `kotomo_rime_api.h`: `convert` |
+| convert this run of syllables | librime's session with the syllables joined by apostrophes (also querying the un-apostrophed key for `user_table` entries in Kotomo's run-time tables) | `kotomo_rime_api.h`: `convert` |
 | map this romaji to hiragana | Mozc's romaji table | `core/mozc/kotomo_mozc_api.h`: `hiragana` |
 | convert this reading with these spans pinned, and these spans kept as one segment each | Mozc's converter (`MozcEngine::PinnedConvert`) | `kotomo_mozc_api.h`: `convert` |
 | is this reading a word, and how common | Mozc's dictionary, exact lookup of the key (`MozcEngine::WordCost`); asked only for the readings of the Japanese fuzzy rules (table version 3) | `kotomo_mozc_api.h`: `known` |
