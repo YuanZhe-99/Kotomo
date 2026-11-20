@@ -1430,7 +1430,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             setContent {
                 EditPanel(
                     onKey = { code, select -> currentInputConnection?.let { TextEditing.key(it, code, select) } },
-                    onAction = { id -> currentInputConnection?.let { TextEditing.action(it, id) } },
+                    onAction = { id ->
+                        if (id == android.R.id.paste) {
+                            quickPaste.done()
+                            updateQuickStrip()
+                        }
+                        currentInputConnection?.let { TextEditing.action(it, id) }
+                    },
                     onBack = ::showKeyboard,
                 )
             }

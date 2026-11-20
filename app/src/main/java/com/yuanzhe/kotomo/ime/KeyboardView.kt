@@ -1051,7 +1051,7 @@ class InputRoot(context: Context, private val content: View, private val popups:
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         val w = content.measuredWidth
         val h = content.measuredHeight
-        val (x, y) = if (floating) clamp(offset ?: (((right - left) - w) / 2 to (bottom - top) - h)) else 0 to 0
+        val (x, y) = if (floating) clamp(offset ?: (((right - left) - w) / 2 to (bottom - top) - h)) else 0 to ((bottom - top) - h).coerceAtLeast(0)
         content.layout(x, y, x + w, y + h)
         popups.layout(x, y, x + w, y + h)
         contentRect.set(x, y, x + w, y + h)
