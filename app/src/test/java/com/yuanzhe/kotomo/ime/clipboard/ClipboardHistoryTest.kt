@@ -400,6 +400,139 @@ class ClipboardHistoryTest {
         }
     }
 
+    private fun fakePng(tag: Byte): ByteArray = byteArrayOf(
+        0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+        0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        tag, 0x01, 0x02, 0x03,
+    ) + "kotomo-secret-image-marker-$tag".toByteArray()
+
+    private val imagesDir get() = File(file.parentFile, "images")
+
+    @Test
+    fun imageClipIsEncryptedAndSurvivesReopening() { // CLIP-28
+        val raw = fakePng(1)
+        withHistory { h ->
+            val copied = h.addImage(raw, "IMAGE/PNG", 120, 80, now)
+            h.flush()
+            assertNotNull(copied?.image)
+            val clip = h.items.value.single()
+            assertTrue(clip.isImage)
+            assertEquals(ClipKind.IMAGE, clip.kind)
+            assertEquals("image/png", clip.image?.mime)
+            assertEquals(120, clip.image?.width)
+            assertEquals(80, clip.image?.height)
+
+            val encFile = File(imagesDir, clip.image!!.file)
+            assertTrue(encFile.isFile)
+            val encBytes = encFile.readBytes()
+            assertArrayEquals("KCLI".toByteArray(), encBytes.copyOfRange(0, 4))
+            assertFalse(String(encBytes, Charsets.ISO_8859_1).contains("kotomo-secret-image-marker"))
+            assertArrayEquals(raw, h.readImageBytes(clip))
+        }
+        val header = ClipFile.open(file.readBytes(), key).first()
+        assertEquals("2", header["format_version"])
+        withHistory { h ->
+            val clip = h.items.value.single()
+            assertEquals(ClipKind.IMAGE, clip.kind)
+            assertArrayEquals(raw, h.readImageBytes(clip))
+        }
+    }
+
+    @Test
+    fun imageClipDedupesAndKeepsPin() { // CLIP-29
+        val a = fakePng(1)
+        val b = fakePng(2)
+        withHistory { h ->
+            h.addImage(a, "image/png", 10, 10, now)
+            h.flush()
+            val aId = h.items.value.single().id
+            h.pin(aId, true)
+            h.addImage(b, "image/jpeg", 20, 20, now + 1)
+            // Same image copied again moves to front and keeps its pin.
+            h.addImage(a, "image/png", 10, 10, now + 2)
+            // Same timestamp is a no-op.
+            assertNull(h.addImage(a, "image/png", 10, 10, now + 2))
+            h.flush()
+            assertEquals(2, h.items.value.size)
+            assertTrue(h.items.value.first().pinned)
+            assertEquals(10, h.items.value.first().image?.width)
+            assertEquals(2, imagesDir.listFiles()?.size)
+        }
+    }
+
+    @Test
+    fun expiringDeletingAndCapRemoveImageFiles() { // CLIP-30
+        withHistory { h ->
+            h.addImage(fakePng(100), "image/png", 32, 32, now)
+            h.flush()
+            val pinnedClip = h.items.value.single()
+            h.pin(pinnedClip.id, true)
+
+            repeat(ClipboardHistory.MAX_IMAGES + 3) { i ->
+                h.addImage(fakePng((i + 1).toByte()), "image/png", 16, 16, now + 1 + i)
+            }
+            h.flush()
+            val images = h.items.value.filter { it.isImage }
+            assertEquals(ClipboardHistory.MAX_IMAGES + 1, images.size)
+            assertTrue(images.any { it.id == pinnedClip.id })
+            assertEquals(images.size, imagesDir.listFiles()?.size)
+
+            h.clearUnpinned()
+            h.flush()
+            assertEquals(listOf(pinnedClip.image?.file), imagesDir.listFiles()?.map { it.name })
+
+            h.delete(pinnedClip.id)
+            h.flush()
+            assertFalse(imagesDir.exists())
+            assertFalse(file.exists())
+        }
+    }
+
+    @Test
+    fun invalidAndHistoryOffImagesWriteNoFiles() { // CLIP-31 (negative)
+        withHistory { h ->
+            assertNull(h.addImage(fakePng(1), "image/svg+xml", 16, 16, now))
+            assertNull(h.addImage(ByteArray(0), "image/png", 16, 16, now))
+            assertNull(h.addImage(fakePng(1), "image/png", 0, 16, now))
+            assertNull(h.addImage(fakePng(1), "image/png", ClipboardHistory.MAX_IMAGE_EDGE + 1, 16, now))
+            h.flush()
+            assertTrue(h.items.value.isEmpty())
+            assertFalse(imagesDir.exists())
+        }
+        // Traversal filename in a forged/damaged record is rejected cleanly when loading.
+        val forged = listOf(
+            mapOf("format_version" to "2"),
+            mapOf("id" to "1", "text" to "", "time_utc_ms" to now.toString(), "pinned" to "0", "phrase" to "0", "image" to "../evil.kci", "mime" to "image/png", "width" to "10", "height" to "10"),
+        )
+        file.parentFile!!.mkdirs()
+        file.writeBytes(ClipFile.seal(forged, key))
+        withHistory { h -> assertTrue(h.items.value.isEmpty()) }
+
+        // History off writes nothing to disk, while still offering the in-memory image clip.
+        settings = ClipboardSettings(history = false)
+        withHistory { h ->
+            val copied = h.addImage(fakePng(7), "image/jpg", 50, 40, now + 10)
+            h.flush()
+            assertEquals("image/jpeg", copied?.image?.mime)
+            assertNull(copied?.image?.file)
+            assertTrue(h.items.value.isEmpty())
+            assertFalse(imagesDir.exists())
+        }
+    }
+
+    @Test
+    fun mimeMatchingAndFallbackSelection() { // CLIP-32
+        assertTrue(ClipboardHistory.mimeMatches("image/png", "IMAGE/*"))
+        assertTrue(ClipboardHistory.mimeMatches("image/webp; charset=binary", "image/webp"))
+        assertTrue(ClipboardHistory.mimeMatches("image/gif", "*/*"))
+        assertFalse(ClipboardHistory.mimeMatches("image/png", "text/plain"))
+        assertEquals("image/webp", ClipboardHistory.chooseCommitMime("image/webp", listOf("image/png", "image/webp")))
+        assertEquals("image/png", ClipboardHistory.chooseCommitMime("image/webp", listOf("image/png")))
+        assertEquals("image/jpeg", ClipboardHistory.chooseCommitMime("image/png", listOf("image/jpeg")))
+        assertNull(ClipboardHistory.chooseCommitMime("image/gif", listOf("image/png", "image/jpeg")))
+        assertEquals("image/gif", ClipboardHistory.chooseCommitMime("image/gif", listOf("image/*")))
+    }
+
     private companion object {
         const val DAY = 86_400_000L
     }

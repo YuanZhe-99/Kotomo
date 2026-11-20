@@ -38,49 +38,57 @@ method and the focused app may read the clipboard, Android 10+) and hands each p
   is not a refusal.
 - Switching the history off deletes nothing: what is already saved stays until it expires or the
   person deletes it, and the switch's description says so.
-- Only the first item's plain text is taken; URIs, intents and blank text are ignored, and text
-  longer than 20,000 characters is not recorded.
+- For text clips, only the first item's plain text is taken; blank text and text longer than
+  20,000 characters are ignored.
+- For image clips (`image/png`, `image/jpeg`, `image/webp`, `image/gif`), only the first item's
+  `content://` URI is read on the history's background thread (`Dispatchers.IO`) when recording is
+  allowed: files larger than 10 MB are ignored, and static images larger than 4,096 pixels on
+  either edge are downscaled to fit 2,048 pixels as PNG. Intents and other URIs are ignored.
 - The time of a clip is the clipboard's own timestamp (`ClipDescription.getTimestamp`, UTC
   milliseconds), so reading the same clip again when the keyboard opens changes nothing.
-- Copying text already in the history moves it to the front and keeps its pin.
+- Copying text or an image already in the history (by exact text or SHA-256 hash) moves it to the
+  front and keeps its pin.
 - Clips from another device (`EXTRA_IS_REMOTE_DEVICE`) are treated like local ones.
 
 ## Pins, quick phrases, expiry and the cap
 
 - Pinned items and quick phrases are kept until the person removes them.
 - Other items expire after the retention (`clipboard.retention_days`, 7 by default, 1–90) and at
-  most 200 of them are kept, newest first. Expiry runs when the file is read, with every change,
+  most 200 of them are kept overall, including at most 30 unpinned image clips, newest first.
+  Expiry runs when the file is read, with every change,
   when something is copied while the history is switched off, and through
   `ClipboardHistory.expire()`, which the keyboard calls when the panel opens. A read that finds
-  expired items rewrites the file without them at once, so expired text does not stay on disk;
-  when nothing is left, the file is deleted. While the keyboard's process lives, the history also
-  arranges a check for the moment its oldest unpinned item expires, so expired text goes without
-  the keyboard being used; after the process ends, the next read does it.
+  expired items rewrites the file without them at once, so expired text and removed image files do
+  not stay on disk; when nothing is left, the file and `images/` directory are deleted. While the
+  keyboard's process lives, the history also arranges a check for the moment its oldest unpinned item
+  expires, so expired text and images go without the keyboard being used; after the process ends,
+  the next read does it.
 - `ClipboardHistory.clearUnpinned()` deletes every item that is neither pinned nor a phrase (the
-  Privacy page's Clear button).
+  Privacy page's Clear button) and prunes their encrypted image files.
 
 ## The history page
 
 Settings → Privacy → See, search and edit the history lists the items newest first:
 
 - Search narrows the list to items whose text holds the query (ignoring case); the categories are
-  All, Pinned, Phrases, Codes, Links, Phone numbers, Addresses and Text (`ClipFilter`).
-- Tapping an item edits it: its text (re-tagged as it changes; editing it into the text of another
+  All, Pinned, Phrases, Codes, Links, Phone numbers, Addresses, Images and Text (`ClipFilter`).
+- Tapping a text item edits it: its text (re-tagged as it changes; editing it into the text of another
   item merges the two and keeps either one's pin and phrase mark), its pin and whether it is a
-  quick phrase; or deletes it.
+  quick phrase; tapping an image item previews it and lets the person toggle its pin or delete it.
 - Select all shown, or tick items, then delete them at once.
 - Add a quick phrase: kept until deleted, shown with the pinned items in the keyboard's panel.
 - The apps where nothing is kept, each with Remove.
 
 ## Classification
 
-`ClipKind.of` sorts each clip with local rules, in this order: a bare code (4–8 digits, `123-456`,
-or 4–8 capitals and digits with at least two digits), a link (one URL and nothing else), a phone
-number (7–15 digits with a `+`, separators, or nine digits and more), a message of at most 160
-characters whose likeliest code scores 70 or more, an address (Japanese prefecture and city shapes,
-丁目 and 番地; Chinese province, city and district or road and number shapes; an English number and
-street word; never with sentence punctuation), else plain text. A quick phrase shows the phrase
-tag whatever its kind.
+`ClipKind.of` sorts each text clip with local rules, in this order: a bare code (4–8 digits,
+`123-456`, or 4–8 capitals and digits with at least two digits), a link (one URL and nothing else),
+a phone number (7–15 digits with a `+`, separators, or nine digits and more), a message of at most
+160 characters whose likeliest code scores 70 or more, an address (Japanese prefecture and city
+shapes, 丁目 and 番地; Chinese province, city and district or road and number shapes; an English
+number and street word; never with sentence punctuation), else plain text. Image clips take
+`ClipKind.IMAGE` before calling `ClipKind.of`. A quick phrase shows the phrase tag whatever its
+kind.
 
 ## Verification codes
 
@@ -106,14 +114,19 @@ plausible they are all shown, the first marked as likelier (PLAN §10.7).
 ## Quick-paste strip
 
 `QuickPaste` offers what was just copied for 60 seconds after copying, once per clip: pasting it,
-closing the strip or copying something newer removes the offer, and the same clip (same text and
-time) is not offered again. The strip shows a chip per code, the likeliest highlighted, then the
-copied text; in number fields, or when the whole clip is the code, only the codes. Nothing of the
-strip is written to disk. Codes come only from what was copied: the keyboard never reads
-notifications (the user decided on 2026-11-13 not to, since Android 15 hides one-time codes from
-notification listeners it does not trust, `upstream.md`). `ClipboardAppTest.aCopiedCodeIsOfferedAndTyped`
-(CLIP-27) checks it on the emulator: a copied message's code is offered and typed, the same
-message marked sensitive offers nothing.
+closing the strip or copying something newer removes the offer, and the same clip (same text or
+image hash and time) is not offered again. For text, the strip shows a chip per code, the likeliest
+highlighted, then the copied text; in number fields, or when the whole clip is the code, only the
+codes. For a copied image, the strip shows a thumbnail chip only when the focused field declares
+support for a compatible image MIME type (`EditorInfoCompat.getContentMimeTypes`) and is not a
+number field; tapping it commits the image through `InputConnectionCompat.commitContent` with a
+temporary `FileProvider` URI (`${applicationId}.clipboard.fileprovider`). Nothing of the strip is
+written to disk. Codes come only from what was copied: the keyboard never reads notifications (the
+user decided on 2026-11-13 not to, since Android 15 hides one-time codes from notification listeners
+it does not trust, `upstream.md`). `ClipboardAppTest.aCopiedCodeIsOfferedAndTyped` (CLIP-27) checks
+text codes on the emulator: a copied message's code is offered and typed, the same message marked
+sensitive offers nothing; `ClipboardAppTest.aCopiedImageIsSavedAndCommitted` (CLIP-33) checks
+encrypted image capture and `commitContent` delivery.
 
 ## Storage format
 
@@ -136,10 +149,22 @@ per record:
 
 - The key is the Android Keystore key `kotomo_clipboard` (AES-256, GCM, no padding); it never
   leaves the Keystore.
-- Header fields: `format_version` (this build writes `1` and never lowers a newer value) and
+- Header fields: `format_version` (this build writes `2` and never lowers a newer value) and
   `updated_utc_ms`.
-- Item fields: `id`, `text`, `time_utc_ms` (UTC milliseconds), `pinned` and `phrase` (`1` or `0`).
+- Item fields: `id`, `text`, `time_utc_ms` (UTC milliseconds), `pinned` and `phrase` (`1` or `0`),
+  and for image items: `image` (`<64 lowercase hex sha256>.kci`), `mime` (`image/png`,
+  `image/jpeg`, `image/webp` or `image/gif`), `width` and `height` (`1..4096`).
   Kinds and codes are derived when read, never stored.
+- Encrypted image payloads live under `files/clipboard/images/<sha256>.kci`, framed identically with
+  magic `"KCLI"` and version byte `1`:
+  - `0..3`: magic `"KCLI"`
+  - `4`: container version (`1`)
+  - `5..16`: fresh 12-byte AES-GCM IV
+  - `17..n`: AES-256-GCM ciphertext of the raw encoded image bytes (128-bit tag, AAD = bytes `0..4`)
+- Temporary share copies written under `cacheDir/clipboard_share/` when pasting an image through
+  `FileProvider` are bounded (at most the 3 newest files) and expire after 5 minutes.
+- Orphaned `.kci` or `.tmp` files under `files/clipboard/images/` not referenced by the active
+  list are deleted whenever the history loads, saves, expires, or sets aside an unreadable index.
 - Fields this version does not know, in the header or in an item, are kept when the file is
   rewritten. A newer format version adds fields only; a change that is not compatible raises the
   container version.

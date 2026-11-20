@@ -1,5 +1,7 @@
 package com.yuanzhe.kotomo.ime.clipboard
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.yuanzhe.kotomo.ime.kbColor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,10 +22,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -33,8 +41,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.yuanzhe.kotomo.R
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 
 /**
  * Decides what the quick-paste strip offers: the text just copied, for a short window after
@@ -84,10 +94,11 @@ class QuickPaste(private val windowMs: Long = WINDOW_MS) {
         state.value = null
     }
 
-    /** One chip of the strip: a code (the likeliest is [best]) or the copied text. */
+    /** One chip of the strip: a code (the likeliest is [best]), the copied text, or a copied image. */
     sealed interface Chip {
         data class Code(val code: VerificationCode, val best: Boolean) : Chip
         data class Text(val text: String) : Chip
+        data class Image(val image: CopiedImage) : Chip
     }
 
     companion object {
@@ -95,12 +106,16 @@ class QuickPaste(private val windowMs: Long = WINDOW_MS) {
         const val WINDOW_MS = 60_000L
 
         /**
-         * Lists the chips for [copied]: its codes, likeliest first, then the copied text.
+         * Lists the chips for [copied]: its image when present and the field accepts images (and
+         * is not a number field), or its codes (likeliest first) and copied text.
          * Inputs: numberField is true for number fields (code fields), where only codes are
-         * offered when there are any.
+         * offered when there are any; acceptsImages says whether the field accepts rich content.
          * Notes: when the whole clip is the code, only the code chip is shown.
          */
-        fun chips(copied: Copied, numberField: Boolean): List<Chip> {
+        fun chips(copied: Copied, numberField: Boolean, acceptsImages: Boolean = true): List<Chip> {
+            copied.image?.let { img ->
+                return if (acceptsImages && !numberField) listOf(Chip.Image(img)) else emptyList()
+            }
             val codes = copied.codes.mapIndexed { i, c -> Chip.Code(c, best = i == 0) }
             val onlyCodes = codes.isNotEmpty() && (numberField || VerificationCodes.bare(copied.text) != null)
             return if (onlyCodes) codes else codes + Chip.Text(copied.text)
@@ -111,16 +126,25 @@ class QuickPaste(private val windowMs: Long = WINDOW_MS) {
 /**
  * Shows the quick-paste strip above the keys per the design (PhoneQuickPaste): a line saying what
  * is offered with a close button, then chips for each verification code (the likeliest
- * highlighted, marked when several are plausible, each with a little context) and for the text
- * just copied.
+ * highlighted, marked when several are plausible, each with a little context), the copied text,
+ * or a copied image.
  *
- * Inputs: copied is [QuickPaste.current]; numberField is true in number fields; onPaste commits a
- * chip's text; onClose hides the strip.
- * Notes: the caller calls [QuickPaste.done] after onPaste and onClose.
+ * Inputs: copied is [QuickPaste.current]; numberField is true in number fields; acceptsImages says
+ * whether the field accepts pasted images; onPaste commits a text/code chip; onPasteImage commits
+ * a copied image; onClose hides the strip.
+ * Notes: the caller calls [QuickPaste.done] after onPaste, onPasteImage and onClose.
  */
 @Composable
-fun QuickPasteStrip(copied: Copied, numberField: Boolean, onPaste: (String) -> Unit, onClose: () -> Unit) {
-    val chips = QuickPaste.chips(copied, numberField)
+fun QuickPasteStrip(
+    copied: Copied,
+    numberField: Boolean,
+    acceptsImages: Boolean = true,
+    onPaste: (String) -> Unit,
+    onPasteImage: (CopiedImage) -> Unit = {},
+    onClose: () -> Unit,
+) {
+    val chips = QuickPaste.chips(copied, numberField, acceptsImages)
+    if (chips.isEmpty()) return
     val codes = chips.count { it is QuickPaste.Chip.Code }
     val region = stringResource(R.string.quick_region)
     val secondary = kbColor(R.color.kb_ink_secondary)
@@ -151,6 +175,7 @@ fun QuickPasteStrip(copied: Copied, numberField: Boolean, onPaste: (String) -> U
             Text(
                 stringResource(
                     when {
+                        copied.image != null -> R.string.quick_copied_image_hint
                         codes > 1 -> R.string.quick_codes_many
                         codes == 1 -> R.string.quick_code_one
                         else -> R.string.quick_copied_hint
@@ -187,6 +212,7 @@ fun QuickPasteStrip(copied: Copied, numberField: Boolean, onPaste: (String) -> U
                 when (chip) {
                     is QuickPaste.Chip.Code -> CodeChip(chip, marked = codes > 1) { onPaste(chip.code.value) }
                     is QuickPaste.Chip.Text -> TextChip(chip.text) { onPaste(chip.text) }
+                    is QuickPaste.Chip.Image -> ImageChip(chip.image) { onPasteImage(chip.image) }
                 }
             }
         }
@@ -255,6 +281,62 @@ private fun TextChip(text: String, onClick: () -> Unit) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** Draws the chip of an image just copied: thumbnail preview beside "Just copied" / "Image". */
+@Composable
+private fun ImageChip(image: CopiedImage, onClick: () -> Unit) {
+    val thumbSize = dimensionResource(R.dimen.quick_thumb_size)
+    val thumbPx = with(LocalDensity.current) { thumbSize.roundToPx() }
+    val bitmap by produceState<Bitmap?>(null, image.sha256, thumbPx) {
+        value = withContext(Dispatchers.Default) {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(image.bytes, 0, image.bytes.size, bounds)
+            val w = bounds.outWidth
+            val h = bounds.outHeight
+            if (w <= 0 || h <= 0) return@withContext null
+            var sample = 1
+            while (maxOf(w, h) / (sample * 2) >= thumbPx) sample *= 2
+            BitmapFactory.decodeByteArray(image.bytes, 0, image.bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+        }
+    }
+    val ink = kbColor(R.color.kb_ink)
+    Chip(dimensionResource(R.dimen.quick_chip_best_width), kbColor(R.color.kb_key), onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap))) {
+            Box(
+                Modifier
+                    .size(thumbSize)
+                    .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_thumb_radius)))
+                    .background(kbColor(R.color.kb_background)),
+                contentAlignment = Alignment.Center,
+            ) {
+                bitmap?.let { bmp ->
+                    Image(
+                        bmp.asImageBitmap(),
+                        contentDescription = stringResource(R.string.quick_copied_image),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.quick_copied),
+                    fontSize = dimensionResource(R.dimen.quick_copied_text).asText(),
+                    fontWeight = FontWeight.Medium,
+                    color = ink,
+                    maxLines = 1,
+                )
+                Text(
+                    "${stringResource(R.string.quick_copied_image)} · ${image.width}×${image.height}",
+                    fontSize = dimensionResource(R.dimen.quick_context_text).asText(),
+                    color = kbColor(R.color.kb_ink_secondary),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 

@@ -68,4 +68,14 @@ class QuickPasteTest {
         assertEquals(Ago.Yesterday, Ago.of(t0 + 30 * 60 * m, t0))
         assertEquals(Ago.Days(2), Ago.of(t0 + 50 * 60 * m, t0))
     }
+
+    @Test
+    fun imageOfferDependsOnFieldSupport() { // QUICK-06
+        val image = CopiedImage(byteArrayOf(1, 2, 3), "image/png", 64, 64, "0".repeat(64))
+        val offer = Copied("", emptyList(), t0, image)
+        val shown = QuickPaste.chips(offer, numberField = false, acceptsImages = true)
+        assertEquals(listOf(QuickPaste.Chip.Image(image)), shown)
+        assertTrue(QuickPaste.chips(offer, numberField = false, acceptsImages = false).isEmpty())
+        assertTrue(QuickPaste.chips(offer, numberField = true, acceptsImages = true).isEmpty())
+    }
 }

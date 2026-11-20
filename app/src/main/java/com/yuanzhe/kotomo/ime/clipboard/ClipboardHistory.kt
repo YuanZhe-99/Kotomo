@@ -1,9 +1,13 @@
 package com.yuanzhe.kotomo.ime.clipboard
 
 import android.content.ClipData
+import android.content.ContentResolver
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.LruCache
 import android.view.inputmethod.EditorInfo
 import com.yuanzhe.kotomo.ime.Fields
 import com.yuanzhe.kotomo.settings.ClipboardSettings
@@ -11,12 +15,12 @@ import com.yuanzhe.kotomo.settings.Settings
 import com.yuanzhe.kotomo.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -25,18 +29,21 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.GeneralSecurityException
 import java.security.KeyStore
+import java.security.MessageDigest
+import java.util.HexFormat
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** Sorts a clip for its tag in the panel: a link, an address, a phone number, a code or text. */
+/** Sorts a clip for its tag in the panel: a link, an address, a phone number, a code, text or an image. */
 enum class ClipKind {
-    TEXT, LINK, ADDRESS, PHONE, CODE;
+    TEXT, LINK, ADDRESS, PHONE, CODE, IMAGE;
 
     companion object {
         private val link = Regex("^(https?://|www\\.)\\S+$", RegexOption.IGNORE_CASE)
@@ -79,10 +86,21 @@ enum class ClipKind {
 }
 
 /**
- * Holds one item of the clipboard history.
+ * Describes a stored image clip: its encrypted file name under `files/clipboard/images/`,
+ * normalized MIME type, and pixel dimensions.
+ */
+data class ClipImage(
+    val file: String,
+    val mime: String,
+    val width: Int,
+    val height: Int,
+)
+
+/**
+ * Holds one item of the clipboard history (either text or an image).
  *
  * Notes: [timeUtcMs] is when it was copied (UTC milliseconds). Pinned items and quick phrases
- * never expire and are never dropped by the count cap. [extra] keeps fields written by a newer
+ * never expire and are never dropped by the count caps. [extra] keeps fields written by a newer
  * format so they survive this version rewriting the file. [kind] and [code] are derived when the
  * item is made (on the history's I/O thread), so the panel never classifies while drawing.
  */
@@ -93,9 +111,13 @@ data class Clip(
     val pinned: Boolean = false,
     val phrase: Boolean = false,
     val extra: Map<String, String> = emptyMap(),
+    val image: ClipImage? = null,
 ) {
+    /** Whether this clip holds an image rather than text. */
+    val isImage: Boolean get() = image != null
+
     /** The tag the panel shows. */
-    val kind: ClipKind = ClipKind.of(text)
+    val kind: ClipKind = if (image != null) ClipKind.IMAGE else ClipKind.of(text)
 
     /** The likeliest verification code, for code items. */
     val code: VerificationCode? = if (kind == ClipKind.CODE) VerificationCodes.find(text).firstOrNull() else null
@@ -105,26 +127,66 @@ data class Clip(
 }
 
 /**
- * Holds text just copied, for the quick-paste strip: the text, the codes found in it, and when it
- * was copied (UTC milliseconds).
+ * Holds an image just copied, for the quick-paste strip in memory: raw encoded bytes, normalized
+ * MIME type, pixel dimensions, SHA-256 hex digest, and optional stored encrypted file name.
  */
-data class Copied(val text: String, val codes: List<VerificationCode>, val atUtcMs: Long)
+data class CopiedImage(
+    val bytes: ByteArray,
+    val mime: String,
+    val width: Int,
+    val height: Int,
+    val sha256: String,
+    val file: String? = null,
+) {
+    override fun equals(other: Any?): Boolean =
+        this === other || (other is CopiedImage &&
+            sha256 == other.sha256 &&
+            mime == other.mime &&
+            width == other.width &&
+            height == other.height &&
+            file == other.file)
+
+    override fun hashCode(): Int {
+        var result = sha256.hashCode()
+        result = 31 * result + mime.hashCode()
+        result = 31 * result + width
+        result = 31 * result + height
+        result = 31 * result + (file?.hashCode() ?: 0)
+        return result
+    }
+}
 
 /**
- * Reads and writes the history file: an encrypted container around a list of tagged records.
+ * Holds text or image just copied, for the quick-paste strip: the text, the codes found in it,
+ * when it was copied (UTC milliseconds), and an optional copied image.
+ */
+data class Copied(
+    val text: String,
+    val codes: List<VerificationCode>,
+    val atUtcMs: Long,
+    val image: CopiedImage? = null,
+)
+
+/**
+ * Reads and writes the history file and encrypted image files: an encrypted container around a list
+ * of tagged records (`KCLP`), plus per-image AES-GCM containers (`KCLI`).
  *
- * Notes: the layout is documented in `doc/en-us/clipboard.md`. Container: the magic `KCLP`, one
- * container-version byte, a 12-byte GCM IV, then the AES-GCM ciphertext and tag; the magic and
- * version are the associated data. Plaintext: a record count, then each record as a field count
- * and key/value pairs (key: modified UTF-8 via writeUTF; value: length and UTF-8 bytes). The first
- * record is the header. Pure JVM code, unit-tested with a software key.
+ * Notes: the layout is documented in `doc/en-us/clipboard.md`. History container: the magic
+ * `KCLP`, one container-version byte, a 12-byte GCM IV, then the AES-GCM ciphertext and tag; the
+ * magic and version are the associated data. Plaintext: a record count, then each record as a
+ * field count and key/value pairs (key: modified UTF-8 via writeUTF; value: length and UTF-8 bytes).
+ * The first record is the header. Image container: the magic `KCLI`, one version byte (1), a
+ * 12-byte GCM IV, then AES-GCM ciphertext and tag of the encoded image bytes with AAD = bytes 0..4.
+ * Pure JVM code, unit-tested with a software key.
  */
 internal object ClipFile {
     /** The container layout this build reads and writes. */
     const val CONTAINER = 1
     /** The record format this build writes (the header's `format_version`). */
-    const val VERSION = 1
+    const val VERSION = 2
     private val MAGIC = "KCLP".toByteArray(Charsets.US_ASCII)
+    private val IMAGE_MAGIC = "KCLI".toByteArray(Charsets.US_ASCII)
+    private const val IMAGE_CONTAINER = 1
     private const val IV = 12
     private const val TAG_BITS = 128
     private const val CIPHER = "AES/GCM/NoPadding"
@@ -159,6 +221,35 @@ internal object ClipFile {
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, bytes, headSize, IV))
         cipher.updateAAD(bytes, 0, headSize)
         return decode(cipher.doFinal(bytes, headSize + IV, bytes.size - headSize - IV))
+    }
+
+    /**
+     * Encrypts and frames raw image [plain] bytes in a `KCLI` container with a fresh random IV.
+     */
+    fun sealBytes(plain: ByteArray, key: SecretKey): ByteArray {
+        val head = IMAGE_MAGIC + byteArrayOf(IMAGE_CONTAINER.toByte())
+        val cipher = Cipher.getInstance(CIPHER).apply { init(Cipher.ENCRYPT_MODE, key) }
+        cipher.updateAAD(head)
+        return head + cipher.iv + cipher.doFinal(plain)
+    }
+
+    /**
+     * Decrypts a `KCLI` image container.
+     * Returns: the plaintext encoded image bytes.
+     * Notes: throws IOException on bad header/version, GeneralSecurityException on wrong key or tampering.
+     */
+    fun openBytes(bytes: ByteArray, key: SecretKey): ByteArray {
+        val headSize = IMAGE_MAGIC.size + 1
+        if (bytes.size <= headSize + IV || !bytes.copyOfRange(0, IMAGE_MAGIC.size).contentEquals(IMAGE_MAGIC)) {
+            throw IOException("not an image clip file")
+        }
+        if (bytes[IMAGE_MAGIC.size].toInt() != IMAGE_CONTAINER) {
+            throw IOException("unsupported image clip container")
+        }
+        val cipher = Cipher.getInstance(CIPHER)
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, bytes, headSize, IV))
+        cipher.updateAAD(bytes, 0, headSize)
+        return cipher.doFinal(bytes, headSize + IV, bytes.size - headSize - IV)
     }
 
     private fun encode(records: List<Map<String, String>>): ByteArray {
@@ -232,6 +323,18 @@ class ClipboardHistory internal constructor(
      */
     @Volatile private var refusedAt = 0L
     private val refusedFile = File(file.parentFile, "refused")
+    /** Folder holding encrypted image clip containers (`<sha256>.kci`). */
+    private val imagesDir = File(file.parentFile, "images")
+    /** Main thread: clipboard timestamp of the last image clip handed to background capture. */
+    @Volatile private var lastImageAt = 0L
+    /** Lazy so JVM unit tests never instantiate Android LruCache unless thumbnails are requested. */
+    private val thumbCache by lazy {
+        object : LruCache<String, Bitmap>(THUMB_CACHE_BYTES) {
+            override fun sizeOf(key: String, value: Bitmap): Int = value.allocationByteCount.coerceAtLeast(1)
+        }
+    }
+    /** Monotonic suffix for temporary share files created for `commitContent`. */
+    private var shareSeq = 0L
     /** Background thread only: the pending expiry of the oldest unpinned item. */
     private var timer: Job? = null
 
@@ -250,21 +353,65 @@ class ClipboardHistory internal constructor(
     }
 
     /**
-     * Records the primary clip, when allowed, and returns it for the quick-paste strip.
+     * Records the primary clip (plain text or image URI), when allowed, and returns text clips
+     * synchronously for the quick-paste strip; image clips are read, validated and encrypted off
+     * the main thread on [serial] and delivered through [onImage].
+     *
      * Inputs: clip is ClipboardManager.getPrimaryClip(); allowed is [allowedIn] for the current
-     * field and settings.
-     * Returns: the copied text and its codes, or null when nothing may be offered: not allowed now
-     * or when the keyboard first saw the clip ([onCopy]), no text, or a clip marked sensitive.
-     * Side effects: adds it to the history when the history is on.
-     * Notes: main thread. Clips marked `EXTRA_IS_SENSITIVE` (Android 13+, and the same key set by
-     * password managers on older versions) are neither recorded nor returned. Only the first
-     * item's plain text is taken; URIs and intents are ignored.
+     * field and settings; resolver opens content URIs for image clips; onImage is called on [serial]
+     * once a copied image is ready to offer.
+     * Returns: the copied text and its codes, or null when the clip is empty, sensitive, refused,
+     * has no text/image, or is an image being processed asynchronously.
+     * Side effects: adds text or encrypted image clips when the history is on; records refused
+     * timestamps without reading clip content.
+     * Notes: main thread. Clips marked `EXTRA_IS_SENSITIVE` are ignored without reading URIs.
      */
-    fun onPrimaryClip(clip: ClipData?, allowed: Boolean): Copied? {
+    fun onPrimaryClip(
+        clip: ClipData?,
+        allowed: Boolean,
+        resolver: ContentResolver? = null,
+        onImage: ((Copied) -> Unit)? = null,
+    ): Copied? {
         if (clip == null || clip.itemCount == 0) return null
         val description = clip.description
         if (description?.extras?.getBoolean(EXTRA_IS_SENSITIVE) == true) return null
-        return onCopy(description?.timestamp ?: 0, allowed) { clip.getItemAt(0).text?.toString() }
+        val timestamp = description?.timestamp ?: 0L
+        val item = clip.getItemAt(0)
+        val uri = item.uri
+        val imageMime = if (uri != null && resolver != null) {
+            normalizeImageMime(runCatching { resolver.getType(uri) }.getOrNull())
+                ?: (0 until (description?.mimeTypeCount ?: 0))
+                    .firstNotNullOfOrNull { normalizeImageMime(description?.getMimeType(it)) }
+        } else {
+            null
+        }
+        if (uri != null && imageMime != null && resolver != null) {
+            if (!allowed) {
+                if (timestamp > 0 && timestamp != refusedAt) {
+                    refusedAt = timestamp
+                    scope.launch(serial) { runCatching { refusedFile.parentFile?.mkdirs(); refusedFile.writeText(timestamp.toString()) } }
+                }
+                return null
+            }
+            if (timestamp > 0 && timestamp == refusedAt) return null
+            if (timestamp > 0 && timestamp == lastImageAt) return null
+            if (timestamp > 0) lastImageAt = timestamp
+            val atUtcMs = timestamp.takeIf { it > 0 } ?: clock()
+            scope.launch(serial) {
+                val raw = runCatching {
+                    resolver.openInputStream(uri)?.use { readBounded(it, MAX_IMAGE_BYTES) }
+                        ?: resolver.openTypedAssetFileDescriptor(uri, imageMime, null)?.use { afd ->
+                            afd.createInputStream().use { readBounded(it, MAX_IMAGE_BYTES) }
+                        }
+                }.getOrNull() ?: return@launch
+                val prepared = prepareCapturedImage(raw, imageMime) ?: return@launch
+                val copied = recordImageOnSerial(prepared.bytes, prepared.mime, prepared.width, prepared.height, atUtcMs)
+                    ?: return@launch
+                onImage?.invoke(copied)
+            }
+            return null
+        }
+        return onCopy(timestamp, allowed) { item.text?.toString() }
     }
 
     /**
@@ -311,6 +458,134 @@ class ClipboardHistory internal constructor(
         return Copied(text, VerificationCodes.find(text), atUtcMs)
     }
 
+    /**
+     * Adds an encoded image clip on [serial] and returns its in-memory offer, or null when invalid
+     * or duplicate at the same timestamp. Pure JVM helper for tests and callers holding bytes.
+     */
+    internal suspend fun addImage(
+        bytes: ByteArray,
+        mime: String,
+        width: Int,
+        height: Int,
+        atUtcMs: Long,
+    ): Copied? = withContext(serial) { recordImageOnSerial(bytes, mime, width, height, atUtcMs) }
+
+    /** Validates, encrypts, dedupes and stores one image clip; must run on [serial]. */
+    private fun recordImageOnSerial(
+        bytes: ByteArray,
+        mime: String,
+        width: Int,
+        height: Int,
+        atUtcMs: Long,
+    ): Copied? {
+        val normMime = normalizeImageMime(mime) ?: return null
+        if (bytes.size !in 1..MAX_IMAGE_BYTES) return null
+        if (width !in 1..MAX_IMAGE_EDGE || height !in 1..MAX_IMAGE_EDGE) return null
+        val hash = sha256Hex(bytes)
+        val fileName = "$hash.kci"
+        if (!settings().history) {
+            expireOnSerial()
+            return Copied("", emptyList(), atUtcMs, CopiedImage(bytes, normMime, width, height, hash, file = null))
+        }
+        val oldList = state.value
+        val existing = oldList.firstOrNull { it.image?.file == fileName }
+        if (existing != null && existing.timeUtcMs >= atUtcMs) return null
+        var storedFile: String? = null
+        if (writable) {
+            val key = try { secret } catch (_: Exception) { writable = false; null }
+            if (key != null) {
+                val target = File(imagesDir, fileName)
+                val wrote = if (target.isFile) true else writeEncryptedImage(target, bytes, key)
+                if (!wrote) return null
+                storedFile = fileName
+            }
+        }
+        if (storedFile != null) {
+            val clip = existing?.copy(timeUtcMs = atUtcMs)
+                ?: Clip(nextId(oldList), "", atUtcMs, image = ClipImage(storedFile, normMime, width, height))
+            val updated = trim(listOf(clip) + oldList.filterNot { it === existing })
+            schedule(updated)
+            if (updated != oldList) {
+                state.value = updated
+                save(updated)
+            } else {
+                pruneImages(updated)
+            }
+        }
+        return Copied("", emptyList(), atUtcMs, CopiedImage(bytes, normMime, width, height, hash, storedFile))
+    }
+
+    /** Decrypts and returns the encoded image bytes of [clip], or null when missing or damaged. */
+    suspend fun readImageBytes(clip: Clip): ByteArray? = withContext(serial) {
+        val image = clip.image ?: return@withContext null
+        val key = try { secret } catch (_: Exception) { writable = false; return@withContext null }
+        val imageFile = File(imagesDir, image.file)
+        if (!imageFile.isFile) return@withContext null
+        runCatching { ClipFile.openBytes(imageFile.readBytes(), key) }.getOrNull()
+    }
+
+    /**
+     * Loads a downsampled [Bitmap] thumbnail of [clip] cached by size ([maxPx]), decrypting on
+     * [serial] and decoding off the main thread. Returns null if missing, non-image or unreadable.
+     */
+    suspend fun loadThumbnail(clip: Clip, maxPx: Int): Bitmap? {
+        val image = clip.image ?: return null
+        val boundedPx = maxPx.coerceIn(1, MAX_IMAGE_EDGE)
+        val cacheKey = "${image.file}@$boundedPx"
+        thumbCache.get(cacheKey)?.let { return it }
+        val bytes = readImageBytes(clip) ?: return null
+        val bitmap = withContext(Dispatchers.Default) {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            val w = bounds.outWidth
+            val h = bounds.outHeight
+            if (w <= 0 || h <= 0) return@withContext null
+            var sample = 1
+            while (maxOf(w, h) / (sample * 2) >= boundedPx) sample *= 2
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+        } ?: return null
+        thumbCache.put(cacheKey, bitmap)
+        return bitmap
+    }
+
+    /**
+     * Prepares a temporary decrypted share file under `<cacheDir>/clipboard_share/` compatible with
+     * [acceptedMimes] for `FileProvider` + `commitContent`, sweeping stale temporary share files
+     * (`paste_*`) older than 5 minutes or beyond the newest 3.
+     *
+     * Returns: `(file, commitMime)` or null when the target accepts none of the compatible MIME
+     * types or transcoding fails.
+     * Notes: writes original bytes directly when [sourceMime] itself matches [acceptedMimes].
+     */
+    fun prepareShareFile(
+        cacheDir: File,
+        bytes: ByteArray,
+        sourceMime: String,
+        acceptedMimes: Collection<String>,
+    ): Pair<File, String>? {
+        val normSource = normalizeImageMime(sourceMime) ?: return null
+        val commitMime = chooseCommitMime(normSource, acceptedMimes) ?: return null
+        val payload = if (commitMime == normSource) bytes else transcodeImage(bytes, commitMime) ?: return null
+        val shareDir = File(cacheDir, SHARE_DIR).apply { mkdirs() }
+        val now = clock()
+        val existing = shareDir.listFiles { f -> f.isFile && f.name.startsWith(SHARE_PREFIX) }
+            ?.sortedByDescending { it.lastModified() }
+            .orEmpty()
+        existing.forEachIndexed { idx, old ->
+            if (idx >= MAX_SHARE_FILES || now - old.lastModified() > SHARE_TTL_MS) old.delete()
+        }
+        val seq = synchronized(this) { ++shareSeq }
+        val ext = extensionForMime(commitMime)
+        val out = File(shareDir, "$SHARE_PREFIX${now}_$seq.$ext")
+        return try {
+            FileOutputStream(out).use { it.write(payload); it.fd.sync() }
+            out to commitMime
+        } catch (_: IOException) {
+            out.delete()
+            null
+        }
+    }
+
     /** Pins or unpins an item; pinned items never expire. */
     fun pin(id: Long, pinned: Boolean) = change { list -> list.map { if (it.id == id) it.copy(pinned = pinned) else it } }
 
@@ -325,22 +600,26 @@ class ClipboardHistory internal constructor(
 
     /**
      * Replaces an item's text, keeping its time, pin and phrase mark (the settings' editor).
-     * Notes: blank or over-long text is ignored; another item with the same text is merged into
-     * it, keeping either one's pin and phrase mark. The tag and codes follow the new text.
+     * Notes: blank, over-long text and image clips are ignored; another text item with the same
+     * text is merged into it, keeping either one's pin and phrase mark. The tag and codes follow
+     * the new text.
      */
     fun edit(id: Long, text: String) {
         if (text.isBlank() || text.length > MAX_TEXT) return
         change { list ->
             val item = list.firstOrNull { it.id == id } ?: return@change list
-            val twin = list.firstOrNull { it.text == text && it.id != id }
+            if (item.isImage) return@change list
+            val twin = list.firstOrNull { !it.isImage && it.text == text && it.id != id }
             list.filterNot { it === twin }.map {
                 if (it !== item) it else it.copy(text = text, pinned = it.pinned || twin?.pinned == true, phrase = it.phrase || twin?.phrase == true)
             }
         }
     }
 
-    /** Marks an item as a quick phrase (kept until removed), or makes it an ordinary item again. */
-    fun setPhrase(id: Long, phrase: Boolean) = change { list -> list.map { if (it.id == id) it.copy(phrase = phrase) else it } }
+    /** Marks a text item as a quick phrase (kept until removed), or makes it an ordinary item again. */
+    fun setPhrase(id: Long, phrase: Boolean) = change { list ->
+        list.map { if (it.id == id && !it.isImage) it.copy(phrase = phrase) else it }
+    }
 
     /**
      * Adds a quick phrase (kept until removed), or marks the same text already in the history as one.
@@ -350,7 +629,7 @@ class ClipboardHistory internal constructor(
         if (text.isBlank() || text.length > MAX_TEXT) return
         val now = clock()
         change { list ->
-            val old = list.firstOrNull { it.text == text }
+            val old = list.firstOrNull { !it.isImage && it.text == text }
             if (old != null) list.map { if (it === old) it.copy(phrase = true) else it } else listOf(Clip(nextId(list), text, now, phrase = true)) + list
         }
     }
@@ -404,11 +683,102 @@ class ClipboardHistory internal constructor(
         }
     }
 
-    /** Keeps pinned items and phrases, unpinned items within the retention, at most [MAX_ITEMS] of them. */
+    /** Keeps pinned items and phrases, unpinned items within the retention, at most [MAX_ITEMS] total and [MAX_IMAGES] images. */
     private fun trim(list: List<Clip>): List<Clip> {
         val cutoff = cutoff()
         var unpinned = 0
-        return list.filter { it.kept || (it.timeUtcMs >= cutoff && ++unpinned <= MAX_ITEMS) }
+        var unpinnedImages = 0
+        return list.filter { clip ->
+            if (clip.kept) return@filter true
+            if (clip.timeUtcMs < cutoff) return@filter false
+            if (clip.isImage && unpinnedImages >= MAX_IMAGES) return@filter false
+            if (unpinned >= MAX_ITEMS) return@filter false
+            unpinned++
+            if (clip.isImage) unpinnedImages++
+            true
+        }
+    }
+
+    /** Applies expiration and count caps on [serial] and deletes any unreferenced image files. */
+    private fun expireOnSerial() {
+        val old = state.value
+        val updated = trim(old)
+        schedule(updated)
+        if (updated == old) {
+            pruneImages(updated)
+            return
+        }
+        state.value = updated
+        save(updated)
+    }
+
+    /** Checks bounds of a captured image clip and downscales oversized static images into PNG. */
+    private fun prepareCapturedImage(bytes: ByteArray, mime: String): PreparedImage? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val w = bounds.outWidth
+        val h = bounds.outHeight
+        if (w !in 1..MAX_DECODE_EDGE || h !in 1..MAX_DECODE_EDGE) return null
+        if (maxOf(w, h) <= MAX_IMAGE_EDGE) return PreparedImage(bytes, mime, w, h)
+        if (mime == "image/gif") return null
+        var sample = 1
+        while (maxOf(w, h) / (sample * 2) >= DOWNSCALE_EDGE) sample *= 2
+        val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return null
+        return try {
+            val out = ByteArrayOutputStream()
+            if (!bmp.compress(Bitmap.CompressFormat.PNG, 100, out)) return null
+            val png = out.toByteArray()
+            if (png.size !in 1..MAX_IMAGE_BYTES || bmp.width !in 1..MAX_IMAGE_EDGE || bmp.height !in 1..MAX_IMAGE_EDGE) {
+                null
+            } else {
+                PreparedImage(png, "image/png", bmp.width, bmp.height)
+            }
+        } finally {
+            bmp.recycle()
+        }
+    }
+
+    /** Encrypts and atomically writes one image container to [target]; returns false on I/O failure. */
+    private fun writeEncryptedImage(target: File, bytes: ByteArray, key: SecretKey): Boolean {
+        val sealed = ClipFile.sealBytes(bytes, key)
+        return try {
+            imagesDir.mkdirs()
+            val tmp = File(target.path + ".tmp")
+            FileOutputStream(tmp).use { it.write(sealed); it.fd.sync() }
+            Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            true
+        } catch (_: IOException) {
+            false
+        }
+    }
+
+    /** Deletes every file in [imagesDir] not referenced by [kept], removing [imagesDir] when empty. */
+    private fun pruneImages(kept: List<Clip>) {
+        if (!writable) return
+        val wanted = kept.mapNotNullTo(HashSet()) { it.image?.file }
+        val files = imagesDir.listFiles() ?: return
+        for (f in files) {
+            if (f.name !in wanted) f.delete()
+        }
+        if (imagesDir.listFiles()?.isEmpty() == true) imagesDir.delete()
+    }
+
+    /** Transcodes [bytes] into [targetMime] (`image/png` or `image/jpeg`) for fallback commitContent targets. */
+    private fun transcodeImage(bytes: ByteArray, targetMime: String): ByteArray? {
+        val format = when (targetMime) {
+            "image/png" -> Bitmap.CompressFormat.PNG
+            "image/jpeg" -> Bitmap.CompressFormat.JPEG
+            else -> return null
+        }
+        val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        return try {
+            val out = ByteArrayOutputStream()
+            if (!bmp.compress(format, 92, out)) return null
+            out.toByteArray()
+        } finally {
+            bmp.recycle()
+        }
     }
 
     /** Returns the UTC milliseconds before which unpinned items have expired. */
@@ -450,15 +820,16 @@ class ClipboardHistory internal constructor(
         val kept = trim(read)
         state.value = kept
         schedule(kept)
-        if (kept.size != read.size) save(kept)
+        if (kept.size != read.size) save(kept) else pruneImages(kept)
     }
 
     /**
-     * Writes [list] through a temporary file and an atomic replace.
-     * Side effects: deletes the file instead when [list] is empty.
+     * Writes [list] through a temporary file and an atomic replace, and prunes orphaned image files.
+     * Side effects: deletes `history.kcb` instead when [list] is empty.
      */
     private fun save(list: List<Clip>) {
         if (!writable) return
+        pruneImages(list)
         if (list.isEmpty()) {
             file.delete()
             return
@@ -478,13 +849,15 @@ class ClipboardHistory internal constructor(
     }
 
     /**
-     * Moves the unreadable history file to [leftover], replacing an older leftover.
+     * Moves the unreadable history file to [leftover], replacing an older leftover, and removes
+     * any unreadable image files alongside it.
      * Notes: the move keeps the file's modification time (the history's last write), which
      * [dropStaleLeftover] goes by.
      */
     private fun setAside() {
         try {
             Files.move(file.toPath(), leftover.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            pruneImages(emptyList())
         } catch (_: IOException) {
             writable = false
         }
@@ -500,13 +873,29 @@ class ClipboardHistory internal constructor(
         if (modified != 0L && modified < cutoff()) leftover.delete()
     }
 
+    /** Prepared static/GIF image validated for storage in [ClipboardHistory]. */
+    private class PreparedImage(val bytes: ByteArray, val mime: String, val width: Int, val height: Int)
+
     companion object {
         /** The extra that marks a sensitive clip (`ClipDescription.EXTRA_IS_SENSITIVE`, API 33; apps set it earlier too). */
         private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
         /** Unpinned items kept at most. */
         const val MAX_ITEMS = 200
-        /** Longer clips are not recorded. */
+        /** Unpinned image clips kept at most. */
+        const val MAX_IMAGES = 30
+        /** Longer text clips are not recorded. */
         const val MAX_TEXT = 20_000
+        /** Larger copied images (bytes) are not recorded. */
+        const val MAX_IMAGE_BYTES = 10 * 1024 * 1024
+        /** Maximum stored pixel edge; static images larger than this are downscaled to [DOWNSCALE_EDGE]. */
+        const val MAX_IMAGE_EDGE = 4096
+        private const val MAX_DECODE_EDGE = 16384
+        private const val DOWNSCALE_EDGE = 2048
+        private const val THUMB_CACHE_BYTES = 4 * 1024 * 1024
+        private const val SHARE_DIR = "clipboard_share"
+        private const val SHARE_PREFIX = "paste_"
+        private const val SHARE_TTL_MS = 5 * 60_000L
+        private const val MAX_SHARE_FILES = 3
         private const val DAY_MS = 86_400_000L
         /** How long after an item's expiry the arranged check runs. */
         private const val EXPIRY_GRACE_MS = 500L
@@ -514,25 +903,121 @@ class ClipboardHistory internal constructor(
         private const val UPDATED = "updated_utc_ms"
         private const val KEY_ALIAS = "kotomo_clipboard"
         private const val FILE = "clipboard/history.kcb"
+        val SUPPORTED_IMAGE_MIMES = setOf("image/png", "image/jpeg", "image/webp", "image/gif")
+        private val IMAGE_FILE_PATTERN = Regex("^[0-9a-f]{64}\\.kci$")
+
+        /**
+         * Normalizes a MIME string (`image/jpg` -> `image/jpeg`, trims `;...` parameters) and
+         * returns it iff supported ([SUPPORTED_IMAGE_MIMES]), or null otherwise.
+         */
+        fun normalizeImageMime(mime: String?): String? {
+            val base = mime?.substringBefore(';')?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+            val norm = if (base == "image/jpg") "image/jpeg" else base
+            return norm.takeIf { it in SUPPORTED_IMAGE_MIMES }
+        }
+
+        /**
+         * Returns true when concrete [mime] matches target MIME [pattern] (universal wildcard,
+         * type wildcard, or exact match, ignoring case and `;...` parameters).
+         */
+        fun mimeMatches(mime: String, pattern: String): Boolean {
+            val m = mime.substringBefore(';').trim().lowercase()
+            val p = pattern.substringBefore(';').trim().lowercase()
+            if (m.isEmpty() || p.isEmpty()) return false
+            if (p == "*/*") return true
+            val mSlash = m.indexOf('/')
+            val pSlash = p.indexOf('/')
+            if (mSlash <= 0 || pSlash <= 0) return false
+            if (p.substring(pSlash + 1) == "*") {
+                return m.substring(0, mSlash) == p.substring(0, pSlash)
+            }
+            return m == p
+        }
+
+        /**
+         * Chooses the MIME type to pass to `InputConnectionCompat.commitContent`: prefers [sourceMime],
+         * else for static images falls back to `image/png` or `image/jpeg` when accepted.
+         */
+        fun chooseCommitMime(sourceMime: String, acceptedMimes: Collection<String>): String? {
+            val norm = normalizeImageMime(sourceMime) ?: return null
+            if (acceptedMimes.any { mimeMatches(norm, it) }) return norm
+            if (norm == "image/gif") return null
+            if (acceptedMimes.any { mimeMatches("image/png", it) }) return "image/png"
+            if (acceptedMimes.any { mimeMatches("image/jpeg", it) }) return "image/jpeg"
+            return null
+        }
+
+        /** Returns the lower-case SHA-256 hex digest of [bytes]. */
+        fun sha256Hex(bytes: ByteArray): String =
+            HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
+
+        /**
+         * Reads [input] up to [maxBytes] bytes; returns null when empty or when [input] exceeds
+         * [maxBytes].
+         */
+        fun readBounded(input: InputStream, maxBytes: Int): ByteArray? {
+            if (maxBytes <= 0) return null
+            val out = ByteArrayOutputStream()
+            val buf = ByteArray(16 * 1024)
+            var total = 0
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                total += n
+                if (total > maxBytes) return null
+                out.write(buf, 0, n)
+            }
+            return if (total == 0) null else out.toByteArray()
+        }
+
+        private fun extensionForMime(mime: String): String = when (mime) {
+            "image/png" -> "png"
+            "image/jpeg" -> "jpg"
+            "image/webp" -> "webp"
+            "image/gif" -> "gif"
+            else -> "bin"
+        }
 
         /** Reads one item record; null when its required fields are missing or malformed. */
         private fun clipOf(r: Map<String, String>): Clip? {
             val id = r["id"]?.toLongOrNull() ?: return null
-            val text = r["text"]?.takeIf { it.isNotBlank() } ?: return null
             val time = r["time_utc_ms"]?.toLongOrNull() ?: return null
+            val imageFile = r["image"]
+            if (imageFile != null) {
+                if (!IMAGE_FILE_PATTERN.matches(imageFile)) return null
+                val mime = normalizeImageMime(r["mime"]) ?: return null
+                val width = r["width"]?.toIntOrNull()?.takeIf { it in 1..MAX_IMAGE_EDGE } ?: return null
+                val height = r["height"]?.toIntOrNull()?.takeIf { it in 1..MAX_IMAGE_EDGE } ?: return null
+                return Clip(
+                    id = id,
+                    text = "",
+                    timeUtcMs = time,
+                    pinned = r["pinned"] == "1",
+                    phrase = false,
+                    extra = r - KNOWN,
+                    image = ClipImage(imageFile, mime, width, height),
+                )
+            }
+            val text = r["text"]?.takeIf { it.isNotBlank() } ?: return null
             return Clip(id, text, time, r["pinned"] == "1", r["phrase"] == "1", r - KNOWN)
         }
 
-        private val KNOWN = setOf("id", "text", "time_utc_ms", "pinned", "phrase")
+        private val KNOWN = setOf("id", "text", "time_utc_ms", "pinned", "phrase", "image", "mime", "width", "height")
 
         /** Writes one item record, its unknown fields kept. */
-        private fun recordOf(c: Clip): Map<String, String> = c.extra + mapOf(
-            "id" to c.id.toString(),
-            "text" to c.text,
-            "time_utc_ms" to c.timeUtcMs.toString(),
-            "pinned" to if (c.pinned) "1" else "0",
-            "phrase" to if (c.phrase) "1" else "0",
-        )
+        private fun recordOf(c: Clip): Map<String, String> = c.extra + buildMap {
+            put("id", c.id.toString())
+            put("text", c.text)
+            put("time_utc_ms", c.timeUtcMs.toString())
+            put("pinned", if (c.pinned) "1" else "0")
+            put("phrase", if (c.phrase && !c.isImage) "1" else "0")
+            c.image?.let { img ->
+                put("image", img.file)
+                put("mime", img.mime)
+                put("width", img.width.toString())
+                put("height", img.height.toString())
+            }
+        }
 
         /**
          * Decides whether the keyboard may record or offer clips now.

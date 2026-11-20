@@ -1,15 +1,25 @@
 package com.yuanzhe.kotomo.settings
 
+import android.graphics.Bitmap
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
@@ -23,16 +33,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.yuanzhe.kotomo.R
 import com.yuanzhe.kotomo.ime.clipboard.Ago
 import com.yuanzhe.kotomo.ime.clipboard.Clip
@@ -48,6 +64,7 @@ internal enum class ClipFilter(@StringRes val label: Int, val keeps: (Clip) -> B
     LINKS(R.string.clip_filter_links, { it.kind == ClipKind.LINK }),
     PHONES(R.string.clip_filter_phones, { it.kind == ClipKind.PHONE }),
     ADDRESSES(R.string.clip_filter_addresses, { it.kind == ClipKind.ADDRESS }),
+    IMAGES(R.string.clip_filter_images, { it.isImage }),
     TEXT(R.string.clip_filter_text, { it.kind == ClipKind.TEXT }),
     ;
 
@@ -106,7 +123,7 @@ internal fun ClipboardPage(settings: Settings, store: SettingsStore) {
         }
         if (shown.isEmpty()) Inset { Note(stringResource(if (items.isEmpty()) R.string.clip_empty_all else R.string.clip_none_found)) }
         shown.forEach { clip ->
-            ClipRow(clip, now, clip.id in selected, selecting = selected.isNotEmpty(),
+            ClipRow(clip, now, history, clip.id in selected, selecting = selected.isNotEmpty(),
                 toggle = { on -> selected = if (on) selected + clip.id else selected - clip.id },
                 open = { editing = clip.id })
         }
@@ -116,9 +133,17 @@ internal fun ClipboardPage(settings: Settings, store: SettingsStore) {
     if (adding) PhraseDialog(history) { adding = false }
 }
 
-/** Draws one item: selection box, up to three lines of text, its tag, age and pin. */
+/** Draws one item: selection box, thumbnail or up to three lines of text, its tag, age and pin. */
 @Composable
-private fun ClipRow(clip: Clip, now: Long, checked: Boolean, selecting: Boolean, toggle: (Boolean) -> Unit, open: () -> Unit) {
+private fun ClipRow(
+    clip: Clip,
+    now: Long,
+    history: ClipboardHistory,
+    checked: Boolean,
+    selecting: Boolean,
+    toggle: (Boolean) -> Unit,
+    open: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = dimensionResource(R.dimen.settings_touch))
             .clickable { if (selecting) toggle(!checked) else open() }
@@ -126,9 +151,44 @@ private fun ClipRow(clip: Clip, now: Long, checked: Boolean, selecting: Boolean,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked, toggle)
+        clip.image?.let { img ->
+            val thumbDp = dimensionResource(R.dimen.clip_settings_thumb)
+            val thumbPx = with(LocalDensity.current) { thumbDp.roundToPx() }
+            val bitmap by produceState<Bitmap?>(null, img.file, thumbPx) {
+                value = history.loadThumbnail(clip, thumbPx)
+            }
+            Box(
+                Modifier
+                    .size(thumbDp)
+                    .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_thumb_radius)))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                bitmap?.let { bmp ->
+                    Image(
+                        bmp.asImageBitmap(),
+                        contentDescription = stringResource(R.string.clip_tag_image),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            }
+            Spacer(Modifier.width(dimensionResource(R.dimen.settings_row_gap)))
+        }
         Column(Modifier.weight(1f)) {
-            Text(clip.text, style = MaterialTheme.typography.bodyLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
-            Note(listOfNotNull(tagOf(clip)?.let { stringResource(it) }, age(clip, now), if (clip.pinned) stringResource(R.string.clip_pinned) else null).joinToString(" · "))
+            if (clip.image != null) {
+                Text(stringResource(R.string.clip_tag_image), style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                Note(
+                    listOfNotNull(
+                        "${clip.image.width}×${clip.image.height}",
+                        age(clip, now),
+                        if (clip.pinned) stringResource(R.string.clip_pinned) else null,
+                    ).joinToString(" · "),
+                )
+            } else {
+                Text(clip.text, style = MaterialTheme.typography.bodyLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Note(listOfNotNull(tagOf(clip)?.let { stringResource(it) }, age(clip, now), if (clip.pinned) stringResource(R.string.clip_pinned) else null).joinToString(" · "))
+            }
         }
     }
 }
@@ -143,6 +203,7 @@ private fun tagOf(clip: Clip): Int? = when {
         ClipKind.ADDRESS -> R.string.clip_tag_address
         ClipKind.PHONE -> R.string.clip_tag_phone
         ClipKind.CODE -> R.string.clip_tag_code
+        ClipKind.IMAGE -> R.string.clip_tag_image
     }
 }
 
@@ -157,7 +218,8 @@ private fun age(clip: Clip, now: Long): String = when (val ago = Ago.of(now, cli
 }
 
 /**
- * Edits one item: its text, its pin and whether it is a quick phrase.
+ * Edits one item: for text, its text, pin and whether it is a quick phrase; for an image, its
+ * preview and pin.
  * Side effects: Save applies the changes, Delete removes the item; both close the dialog.
  */
 @Composable
@@ -170,16 +232,44 @@ private fun ClipDialog(clip: Clip, history: ClipboardHistory, close: () -> Unit)
         title = { Text(stringResource(R.string.clip_edit_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.settings_card_gap))) {
-                OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), maxLines = 8, label = { Text(stringResource(R.string.clip_edit_text)) })
+                clip.image?.let { img ->
+                    val previewHeight = dimensionResource(R.dimen.clip_dialog_preview_height)
+                    val previewPx = with(LocalDensity.current) { 320.dp.roundToPx() }
+                    val bitmap by produceState<Bitmap?>(null, img.file, previewPx) {
+                        value = history.loadThumbnail(clip, previewPx)
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(previewHeight)
+                            .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_thumb_radius)))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        bitmap?.let { bmp ->
+                            Image(
+                                bmp.asImageBitmap(),
+                                contentDescription = stringResource(R.string.clip_tag_image),
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit,
+                            )
+                        }
+                    }
+                    Note("${img.width}×${img.height} · ${img.mime}")
+                } ?: run {
+                    OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), maxLines = 8, label = { Text(stringResource(R.string.clip_edit_text)) })
+                }
                 DialogSwitch(R.string.clip_edit_pinned, pinned) { pinned = it }
-                DialogSwitch(R.string.clip_edit_phrase, phrase) { phrase = it }
+                if (!clip.isImage) {
+                    DialogSwitch(R.string.clip_edit_phrase, phrase) { phrase = it }
+                }
             }
         },
         confirmButton = {
-            TextButton(enabled = text.isNotBlank() && text.length <= ClipboardHistory.MAX_TEXT, onClick = {
-                if (text != clip.text) history.edit(clip.id, text)
+            TextButton(enabled = clip.isImage || (text.isNotBlank() && text.length <= ClipboardHistory.MAX_TEXT), onClick = {
+                if (!clip.isImage && text != clip.text) history.edit(clip.id, text)
                 if (pinned != clip.pinned) history.pin(clip.id, pinned)
-                if (phrase != clip.phrase) history.setPhrase(clip.id, phrase)
+                if (!clip.isImage && phrase != clip.phrase) history.setPhrase(clip.id, phrase)
                 close()
             }) { Text(stringResource(R.string.clip_save)) }
         },

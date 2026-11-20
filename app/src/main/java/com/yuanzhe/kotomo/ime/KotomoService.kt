@@ -46,8 +46,10 @@ import android.content.ClipboardManager
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.yuanzhe.kotomo.ime.clipboard.Clip
 import com.yuanzhe.kotomo.ime.clipboard.ClipboardHistory
 import com.yuanzhe.kotomo.ime.clipboard.ClipboardPanel
+import com.yuanzhe.kotomo.ime.clipboard.CopiedImage
 import com.yuanzhe.kotomo.ime.clipboard.QuickPaste
 import com.yuanzhe.kotomo.ime.clipboard.QuickPasteStrip
 import com.yuanzhe.kotomo.settings.ChineseScript
@@ -72,9 +74,13 @@ import kotlinx.coroutines.withContext
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.inputmethod.EditorInfoCompat
+import androidx.core.view.inputmethod.InputConnectionCompat
+import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.updatePadding
 import androidx.core.view.WindowInsetsCompat.Type
 import androidx.lifecycle.Lifecycle
@@ -160,6 +166,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var clipboardPanel: ComposeView? = null
     /** Main thread: the app the clipboard panel was opened in (its package), for the per-app toggle. */
     private val clipboardApp = androidx.compose.runtime.mutableStateOf<String?>(null)
+    /** Main thread: whether the current field accepts image input via `commitContent`. */
+    private var quickAcceptsImages by androidx.compose.runtime.mutableStateOf(false)
+    /** Main thread: whether the current field is a number field for [QuickPasteStrip]. */
+    private var quickNumberField by androidx.compose.runtime.mutableStateOf(false)
     /** The quick-paste strip above the keys (shown in the candidate bar's place). */
     private lateinit var quickStrip: ComposeView
     private lateinit var clipboard: ClipboardManager
@@ -741,9 +751,15 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 quickPaste.offer.collectAsState().value?.let { copied ->
                     QuickPasteStrip(
                         copied,
-                        numberField = (currentInputEditorInfo?.inputType ?: 0) and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_NUMBER,
+                        numberField = quickNumberField,
+                        acceptsImages = quickAcceptsImages,
                         onPaste = { text ->
                             currentInputConnection?.commitText(text, 1)
+                            quickPaste.done()
+                            updateQuickStrip()
+                        },
+                        onPasteImage = { img ->
+                            pasteImageBytes(img.bytes, img.mime)
                             quickPaste.done()
                             updateQuickStrip()
                         },
@@ -908,26 +924,55 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun onClip() {
         if (!::history.isInitialized) return
-        val copied = history.onPrimaryClip(clipboard.primaryClip, ClipboardHistory.allowedIn(currentInputEditorInfo, settings.copy(incognito = incognito))) ?: return
+        val allowed = ClipboardHistory.allowedIn(currentInputEditorInfo, settings.copy(incognito = incognito))
+        val copied = history.onPrimaryClip(
+            clipboard.primaryClip,
+            allowed,
+            contentResolver,
+            onImage = { offered ->
+                main.post {
+                    if (settings.clipboard.quickPaste) {
+                        quickPaste.offer(offered)
+                        updateQuickStrip()
+                    }
+                }
+            },
+        ) ?: return
         if (settings.clipboard.quickPaste) {
             quickPaste.offer(copied)
             updateQuickStrip()
         }
     }
 
+    /** Returns whether [info] advertises support for any image MIME type via `EditorInfoCompat`. */
+    private fun acceptsImages(info: EditorInfo?): Boolean {
+        val target = info ?: return false
+        return EditorInfoCompat.getContentMimeTypes(target).any { pattern ->
+            ClipboardHistory.SUPPORTED_IMAGE_MIMES.any { ClipboardHistory.mimeMatches(it, pattern) }
+        }
+    }
+
     /**
-     * Shows the quick-paste strip in the candidate bar's place while a fresh clip is on offer and
-     * nothing is being composed, and hides it when the offer runs out.
+     * Shows the quick-paste strip in the candidate bar's place while a fresh clip is on offer
+     * (and has chips applicable to the current field) and nothing is being composed, and hides it
+     * when the offer runs out or a notice is shown.
      */
     private fun updateQuickStrip() {
         if (!::quickStrip.isInitialized) return
+        val info = currentInputEditorInfo
+        val numberField = ((info?.inputType ?: 0) and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_NUMBER
+        val imageField = acceptsImages(info)
+        quickNumberField = numberField
+        quickAcceptsImages = imageField
         val now = System.currentTimeMillis()
+        val offer = quickPaste.current(now)
         val composingNow = composing.isNotEmpty() || chinesePreedit.isNotEmpty()
-        val show = quickPaste.current(now) != null && !composingNow && panelHost.getChildAt(0) === keyboard
+        val hasChips = offer != null && QuickPaste.chips(offer, numberField, imageField).isNotEmpty()
+        val show = hasChips && notice == null && !composingNow && panelHost.getChildAt(0) === keyboard
         quickStrip.visibility = if (show) View.VISIBLE else View.GONE
         candidateBar.visibility = if (show) View.GONE else View.VISIBLE
         main.removeCallbacks(quickStripTimeout)
-        if (show) main.postDelayed(quickStripTimeout, quickPaste.remainingMs(now))
+        if (offer != null) main.postDelayed(quickStripTimeout, quickPaste.remainingMs(now))
     }
 
     /** Opens the clipboard history in the keyboard's place (the toolbar's clipboard button). */
@@ -957,12 +1002,80 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onExclude = { off ->
                         if (app != null) store.set { it.copy(clipboard = it.clipboard.copy(excludedApps = if (off) it.clipboard.excludedApps + app else it.clipboard.excludedApps - app)) }
                     },
+                    onPasteImage = ::pasteImageClip,
+                    loadThumb = history::loadThumbnail,
                 )
             }
         }
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
         updateQuickStrip()
+    }
+
+    /**
+     * Decrypts [clip]'s stored image on `Dispatchers.IO` and commits it to the focused field via
+     * `InputConnectionCompat.commitContent`; shows a brief notice if the field rejects images.
+     */
+    private fun pasteImageClip(clip: Clip) {
+        val image = clip.image ?: return
+        val targetInfo = currentInputEditorInfo
+        val accepted = targetInfo?.let { EditorInfoCompat.getContentMimeTypes(it).toList() }.orEmpty()
+        if (targetInfo == null || ClipboardHistory.chooseCommitMime(image.mime, accepted) == null) {
+            showKeyboard()
+            showNotice(getString(R.string.clip_image_unsupported))
+            return
+        }
+        showKeyboard()
+        lifecycleScope.launch(Dispatchers.IO) {
+            val bytes = history.readImageBytes(clip) ?: return@launch
+            commitPreparedImage(bytes, image.mime, targetInfo, accepted)
+        }
+    }
+
+    /**
+     * Prepares an in-memory copied image on `Dispatchers.IO` and commits it to the focused field
+     * via `InputConnectionCompat.commitContent`.
+     */
+    private fun pasteImageBytes(bytes: ByteArray, mime: String) {
+        val targetInfo = currentInputEditorInfo
+        val accepted = targetInfo?.let { EditorInfoCompat.getContentMimeTypes(it).toList() }.orEmpty()
+        if (targetInfo == null || ClipboardHistory.chooseCommitMime(mime, accepted) == null) {
+            showNotice(getString(R.string.clip_image_unsupported))
+            return
+        }
+        lifecycleScope.launch(Dispatchers.IO) {
+            commitPreparedImage(bytes, mime, targetInfo, accepted)
+        }
+    }
+
+    /** Writes a temporary share file via `FileProvider` and calls `commitContent` back on `main`. */
+    private suspend fun commitPreparedImage(
+        bytes: ByteArray,
+        sourceMime: String,
+        targetInfo: EditorInfo,
+        accepted: List<String>,
+    ) {
+        val prepared = history.prepareShareFile(cacheDir, bytes, sourceMime, accepted) ?: run {
+            main.post {
+                if (currentInputEditorInfo === targetInfo) showNotice(getString(R.string.clip_image_unsupported))
+            }
+            return
+        }
+        val (shareFile, commitMime) = prepared
+        val uri = FileProvider.getUriForFile(this, "$packageName.clipboard.fileprovider", shareFile)
+        val desc = android.content.ClipDescription(getString(R.string.clip_tag_image), arrayOf(commitMime))
+        withContext(Dispatchers.Main) {
+            val ic = currentInputConnection
+            if (currentInputEditorInfo !== targetInfo || ic == null) return@withContext
+            val ok = InputConnectionCompat.commitContent(
+                ic,
+                targetInfo,
+                InputContentInfoCompat(uri, desc, null),
+                InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION,
+                null,
+            )
+            if (!ok) showNotice(getString(R.string.clip_image_unsupported))
+        }
     }
 
     /** Main thread: one-handed mode before the first unlock, when nothing may be written (null: none chosen). */

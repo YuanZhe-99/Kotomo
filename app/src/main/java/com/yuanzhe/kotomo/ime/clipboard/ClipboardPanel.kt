@@ -1,5 +1,6 @@
 package com.yuanzhe.kotomo.ime.clipboard
 
+import android.graphics.Bitmap
 import com.yuanzhe.kotomo.ime.kbColor
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -7,9 +8,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,12 +34,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
@@ -53,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import com.yuanzhe.kotomo.R
 
 /** One tab of the clipboard panel and which items it lists. */
@@ -60,6 +67,7 @@ private enum class Tab(@StringRes val label: Int, val shows: (Clip) -> Boolean) 
     ALL(R.string.clip_tab_all, { true }),
     PINNED(R.string.clip_tab_pinned, { it.kept }),
     CODES(R.string.clip_tab_codes, { it.kind == ClipKind.CODE }),
+    IMAGES(R.string.clip_tab_images, { it.isImage }),
 }
 
 /** How long ago an item was copied, as the panel words it. */
@@ -122,6 +130,8 @@ fun ClipboardPanel(
     onManage: () -> Unit,
     appExcluded: Boolean? = null,
     onExclude: (Boolean) -> Unit = {},
+    onPasteImage: (Clip) -> Unit = {},
+    loadThumb: suspend (Clip, Int) -> Bitmap? = { _, _ -> null },
 ) {
     var tab by remember { mutableStateOf(Tab.ALL) }
     var actions by remember { mutableStateOf<Long?>(null) }
@@ -141,6 +151,7 @@ fun ClipboardPanel(
                                 Tab.ALL -> R.string.clip_empty_all
                                 Tab.PINNED -> R.string.clip_empty_pinned
                                 Tab.CODES -> R.string.clip_empty_codes
+                                Tab.IMAGES -> R.string.clip_empty_images
                             },
                         ),
                         Modifier.align(Alignment.Center).padding(dimensionResource(R.dimen.clip_footer_pad)),
@@ -160,7 +171,13 @@ fun ClipboardPanel(
                         verticalArrangement = Arrangement.spacedBy(gap),
                     ) {
                         items(items, key = { it.id }) { clip ->
-                            Card(clip, now, onClick = { onPaste(clip.code?.value ?: clip.text) }, onLongClick = { actions = clip.id })
+                            Card(
+                                clip,
+                                now,
+                                loadThumb = loadThumb,
+                                onClick = { if (clip.isImage) onPasteImage(clip) else onPaste(clip.code?.value ?: clip.text) },
+                                onLongClick = { actions = clip.id },
+                            )
                         }
                     }
                 }
@@ -207,7 +224,10 @@ private fun TopBar(tab: Tab, onBack: () -> Unit, onTab: (Tab) -> Unit) {
                 colorFilter = ColorFilter.tint(kbColor(R.color.kb_ink)),
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.clip_bar_gap))) {
+        Row(
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.clip_bar_gap)),
+        ) {
             Tab.entries.forEach { t ->
                 val selected = t == tab
                 Box(
@@ -246,6 +266,7 @@ private fun tagOf(clip: Clip): Int? = when {
         ClipKind.ADDRESS -> R.string.clip_tag_address
         ClipKind.PHONE -> R.string.clip_tag_phone
         ClipKind.CODE -> R.string.clip_tag_code
+        ClipKind.IMAGE -> R.string.clip_tag_image
     }
 }
 
@@ -262,10 +283,16 @@ private fun timeOf(clip: Clip, now: Long): String {
     }
 }
 
-/** Draws one history card: its tag, time and pin mark over the text or the code. */
+/** Draws one history card: its tag, time and pin mark over the text, code or image thumbnail. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Card(clip: Clip, now: Long, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun Card(
+    clip: Clip,
+    now: Long,
+    loadThumb: suspend (Clip, Int) -> Bitmap?,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
     val secondary = kbColor(R.color.kb_ink_secondary)
     val meta = dimensionResource(R.dimen.clip_meta_text).asText()
     CardFrame(
@@ -321,26 +348,52 @@ private fun Card(clip: Clip, now: Long, onClick: () -> Unit, onLongClick: () -> 
             }
         }
         val code = clip.code
-        if (code != null) {
-            Text(code.value, fontSize = dimensionResource(R.dimen.clip_code_text).asText(), color = kbColor(R.color.kb_ink), maxLines = 1)
-            if (code.context.isNotEmpty()) {
-                Text(code.context, fontSize = meta, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        when {
+            clip.isImage -> {
+                val thumbPx = with(LocalDensity.current) { 160.dp.roundToPx() }
+                val bitmap by produceState<Bitmap?>(null, clip.image?.file, thumbPx) {
+                    value = loadThumb(clip, thumbPx)
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_thumb_radius)))
+                        .background(kbColor(R.color.kb_background)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    bitmap?.let { bmp ->
+                        Image(
+                            bmp.asImageBitmap(),
+                            contentDescription = stringResource(R.string.clip_tag_image),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                }
             }
-        } else {
-            Text(
-                clip.text,
-                fontSize = dimensionResource(R.dimen.clip_text).asText(),
-                color = kbColor(R.color.kb_ink),
-                maxLines = integerResource(R.integer.clip_text_lines),
-                overflow = TextOverflow.Ellipsis,
-            )
+            code != null -> {
+                Text(code.value, fontSize = dimensionResource(R.dimen.clip_code_text).asText(), color = kbColor(R.color.kb_ink), maxLines = 1)
+                if (code.context.isNotEmpty()) {
+                    Text(code.context, fontSize = meta, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            else -> {
+                Text(
+                    clip.text,
+                    fontSize = dimensionResource(R.dimen.clip_text).asText(),
+                    color = kbColor(R.color.kb_ink),
+                    maxLines = integerResource(R.integer.clip_text_lines),
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
 
 /**
- * Draws a card's long-press menu over the panel: the clip's first line, then Pin or Unpin, Paste
- * the whole text, Delete and Cancel.
+ * Draws a card's long-press menu over the panel: the clip's first line (or image dimensions),
+ * then Pin or Unpin, Paste the whole text, Delete and Cancel.
  * Notes: drawn inside the panel (a popup window would be clipped by the input method window),
  * at the bottom, no wider than the menu token on wide screens; the dimmed area around it cancels.
  */
@@ -366,8 +419,10 @@ private fun Actions(clip: Clip, onPin: () -> Unit, onPasteAll: () -> Unit, onDel
         ) {
             // Scrolls rather than shrinking a line below the touch size when the keyboard is short.
             Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = dimensionResource(R.dimen.panel_menu_pad_v))) {
+                val summary = clip.image?.let { img -> "${stringResource(R.string.clip_tag_image)} · ${img.width}×${img.height}" }
+                    ?: clip.text.lineSequence().first().trim()
                 Text(
-                    clip.text.lineSequence().first().trim(),
+                    summary,
                     Modifier.padding(horizontal = dimensionResource(R.dimen.panel_menu_pad_h), vertical = dimensionResource(R.dimen.panel_menu_pad_v)),
                     fontSize = dimensionResource(R.dimen.clip_meta_text).asText(),
                     color = kbColor(R.color.kb_ink_secondary),
@@ -375,7 +430,7 @@ private fun Actions(clip: Clip, onPin: () -> Unit, onPasteAll: () -> Unit, onDel
                     overflow = TextOverflow.Ellipsis,
                 )
                 Action(if (clip.pinned) R.string.clip_unpin else R.string.clip_pin, onPin)
-                if (clip.code != null && clip.code.value != clip.text.trim()) Action(R.string.clip_paste_all, onPasteAll)
+                if (!clip.isImage && clip.code != null && clip.code.value != clip.text.trim()) Action(R.string.clip_paste_all, onPasteAll)
                 Action(R.string.clip_delete, onDelete)
                 Action(R.string.clip_cancel, onCancel, accent = false)
             }
@@ -405,7 +460,7 @@ private fun Action(@StringRes label: Int, onClick: () -> Unit, accent: Boolean =
 
 /** Draws the rounded card frame of the grid, at the design's card height. */
 @Composable
-private fun CardFrame(modifier: Modifier, content: @Composable () -> Unit) {
+private fun CardFrame(modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()

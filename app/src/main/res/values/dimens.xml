@@ -133,6 +133,9 @@
     <dimen name="clip_footer_text">12sp</dimen>
     <dimen name="clip_manage_pad">10dp</dimen>
     <dimen name="clip_manage_text">13sp</dimen>
+    <dimen name="clip_thumb_radius">8dp</dimen>
+    <dimen name="clip_settings_thumb">52dp</dimen>
+    <dimen name="clip_dialog_preview_height">180dp</dimen>
     <!-- Quick-paste strip (PhoneQuickPaste). -->
     <dimen name="quick_pad_h">8dp</dimen>
     <dimen name="quick_pad_top">8dp</dimen>
@@ -149,6 +152,7 @@
     <dimen name="quick_chip_radius">14dp</dimen>
     <dimen name="quick_chip_pad_h">12dp</dimen>
     <dimen name="quick_chip_icon">16dp</dimen>
+    <dimen name="quick_thumb_size">44dp</dimen>
     <dimen name="quick_code_text">20sp</dimen>
     <dimen name="quick_code_spacing">1.5sp</dimen>
     <dimen name="quick_context_text">11sp</dimen>

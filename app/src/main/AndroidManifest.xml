@@ -68,6 +68,17 @@
             android:name=".ime.RimeDeployService"
             android:exported="false"
             android:process=":deploy" />
+
+        <!-- Grants temporary read access to pasted clipboard images (doc/en-us/clipboard.md). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.clipboard.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/clipboard_share_paths" />
+        </provider>
     </application>
 
 </manifest>
