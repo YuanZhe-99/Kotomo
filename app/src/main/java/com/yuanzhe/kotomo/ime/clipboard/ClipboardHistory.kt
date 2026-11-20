@@ -35,7 +35,6 @@ import java.nio.file.StandardCopyOption
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.MessageDigest
-import java.util.HexFormat
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -949,7 +948,7 @@ class ClipboardHistory internal constructor(
 
         /** Returns the lower-case SHA-256 hex digest of [bytes]. */
         fun sha256Hex(bytes: ByteArray): String =
-            HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
+            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }
 
         /**
          * Reads [input] up to [maxBytes] bytes; returns null when empty or when [input] exceeds
