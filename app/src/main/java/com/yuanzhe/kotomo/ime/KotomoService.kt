@@ -1031,10 +1031,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun updateHeaderVisibility() {
         if (!::detailsBar.isInitialized) return
         val showingDetails = detailsBar.current != null
-        detailsBar.visibility = if (showingDetails) View.VISIBLE else View.GONE
-        barContainer.visibility = if (showingDetails) View.GONE else View.VISIBLE
-        quickStrip.visibility = if (!showingDetails && quickStripWanted) View.VISIBLE else View.GONE
-        candidateBar.visibility = if (quickStripWanted) View.GONE else View.VISIBLE
+        val detailsVis = if (showingDetails) View.VISIBLE else View.GONE
+        if (detailsBar.visibility != detailsVis) detailsBar.visibility = detailsVis
+        val barContainerVis = if (showingDetails) View.GONE else View.VISIBLE
+        if (barContainer.visibility != barContainerVis) barContainer.visibility = barContainerVis
+        val quickVis = if (!showingDetails && quickStripWanted) View.VISIBLE else View.GONE
+        if (quickStrip.visibility != quickVis) quickStrip.visibility = quickVis
+        val candidateVis = if (quickStripWanted) View.GONE else View.VISIBLE
+        if (candidateBar.visibility != candidateVis) candidateBar.visibility = candidateVis
         val showStrip = !showingDetails &&
             !quickStripWanted &&
             !direct &&
@@ -3282,12 +3286,18 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
     }
 
-    /** Updates the live [SegmentStrip] above the candidate bar from the current conversion. */
+    /**
+     * Updates the live [SegmentStrip] above the candidate bar from the current conversion.
+     * Notes: while a Mixed composition is open and waiting for the engine thread to answer the new
+     * key, keeps the previous snapshot's chips on screen (matching the candidate bar) so the strip
+     * never collapses to GONE and pops back to VISIBLE between keystrokes.
+     */
     private fun updateSegmentStrip() {
         val raw = composing.toString()
+        val snap = mixedSnapshot
         segmentStripItems = when {
             direct || emojiSearch != null || raw.isBlank() -> emptyList()
-            mode == Mode.MIXED && mixedSnapshot?.input == raw -> mixedChipItems(mixedPieces(), raw)
+            mode == Mode.MIXED && snap != null -> mixedChipItems(mixedPieces(), snap.input)
             mode == Mode.JAPANESE -> japaneseChipItems()
             else -> emptyList()
         }

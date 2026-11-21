@@ -1,5 +1,11 @@
 # Version history
 
+## 0.1.4 (2026-11-20)
+
+- Fixed keyboard vertical jumping while typing: `updateSegmentStrip` now keeps the previous snapshot's chips visible while the engine thread processes a new keystroke (matching the candidate bar) instead of clearing `SegmentStrip` to `GONE` on key down and restoring it to `VISIBLE` when the snapshot arrives, and `SegmentStrip.show` skips redundant layout updates when the shown items have not changed.
+- Upstreams: same as 0.1.3 (checked on 2026-11-20, unchanged).
+- Tagged on 2026-11-20 (`versionCode` 5). Verified on the development host: `java tool/CheckDocs.java` and `./gradlew assembleDebug assembleRelease`.
+
 ## 0.1.3 (2026-11-20)
 
 - Live segment strip and grouped segment panel: Mixed and Japanese modes display a live segment strip (`SegmentStrip`) above the candidate bar; tapping a segment opens the segment panel with source-marked chips, two-column language/reading-grouped candidate cards, and a three-column kana & original row (`CandidateDetailsBar` and strip buttons fit at 1.5x font scale).

@@ -85,40 +85,53 @@ class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : H
         addView(row, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 
+    private var shownItems: List<SegmentChipItem> = emptyList()
+
     /** Updates the strip to show [items], or hides it when [items] is empty. */
     fun show(items: List<SegmentChipItem>) {
         if (items.isEmpty()) {
-            visibility = GONE
+            shownItems = emptyList()
+            if (visibility != GONE) visibility = GONE
             return
         }
+        if (items == shownItems && visibility == VISIBLE) return
+        shownItems = items
         while (pool.size < items.size) pool += newChip()
         items.forEachIndexed { index, item ->
             val chip = pool[index]
-            chip.root.visibility = VISIBLE
+            if (chip.root.visibility != VISIBLE) chip.root.visibility = VISIBLE
             val (label, bg, fg) = when (item.source) {
                 SegmentSource.PINYIN -> Triple(badgePinyin, pinyinBg, pinyinFg)
                 SegmentSource.ROMAJI -> Triple(badgeRomaji, romajiBg, romajiFg)
                 SegmentSource.KANA -> Triple(badgeKana, romajiBg, romajiFg)
                 SegmentSource.ENGLISH -> Triple(badgeEnglish, englishBg, englishFg)
             }
-            chip.badge.text = label
+            if (chip.badge.text != label) chip.badge.text = label
             chip.badge.setTextColor(fg)
             chip.badgeBg.setColor(bg)
-            chip.text.text = item.text
-            if (item.rawHint.isNotEmpty() && item.rawHint != item.text) {
-                chip.hint.text = item.rawHint
-                chip.hint.visibility = VISIBLE
+            if (chip.text.text != item.text) chip.text.text = item.text
+            val hintText = if (item.rawHint.isNotEmpty() && item.rawHint != item.text) item.rawHint else ""
+            if (hintText.isNotEmpty()) {
+                if (chip.hint.text != hintText) chip.hint.text = hintText
+                if (chip.hint.visibility != VISIBLE) chip.hint.visibility = VISIBLE
             } else {
-                chip.hint.text = ""
-                chip.hint.visibility = GONE
+                if (chip.hint.text.isNotEmpty()) chip.hint.text = ""
+                if (chip.hint.visibility != GONE) chip.hint.visibility = GONE
             }
             chip.rootBg.setColor(keyColor)
             chip.rootBg.setStroke(if (item.locked) strokePx else 0, accentColor)
-            (chip.root.layoutParams as LinearLayout.LayoutParams).marginEnd = if (index < items.lastIndex) gap else 0
+            val lp = chip.root.layoutParams as LinearLayout.LayoutParams
+            val targetMargin = if (index < items.lastIndex) gap else 0
+            if (lp.marginEnd != targetMargin) {
+                lp.marginEnd = targetMargin
+                chip.root.layoutParams = lp
+            }
             chip.root.setOnClickListener { onChipClick(index) }
         }
-        for (i in items.size until pool.size) pool[i].root.visibility = GONE
-        visibility = VISIBLE
+        for (i in items.size until pool.size) {
+            if (pool[i].root.visibility != GONE) pool[i].root.visibility = GONE
+        }
+        if (visibility != VISIBLE) visibility = VISIBLE
     }
 
     private fun newChip(): ChipViews {
