@@ -94,10 +94,15 @@
     <dimen name="forms_gap">6dp</dimen>
     <dimen name="forms_radius">12dp</dimen>
     <dimen name="forms_chip_height">52dp</dimen>
-    <dimen name="forms_chip_pad">12dp</dimen>
-    <dimen name="forms_back_height">48dp</dimen>
+    <dimen name="forms_chip_pad">8dp</dimen>
+    <dimen name="forms_close_size">36dp</dimen>
+    <dimen name="forms_tab_bar_height">36dp</dimen>
+    <dimen name="forms_variant_height">32dp</dimen>
+    <dimen name="forms_header_text">18sp</dimen>
+    <dimen name="forms_meta_text">12sp</dimen>
+    <dimen name="forms_tab_text">14sp</dimen>
     <dimen name="forms_label_text">11sp</dimen>
-    <dimen name="forms_text">18sp</dimen>
+    <dimen name="forms_text">17sp</dimen>
     <!-- The space between section tabs; the row scrolls when they do not fit. -->
     <dimen name="emoji_tab_gap">6dp</dimen>
     <dimen name="emoji_picker_pad">6dp</dimen>

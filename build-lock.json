@@ -83,8 +83,8 @@
         "run": "41931242062",
         "commit": "0172e41",
         "sha256": {
-          "arm64-v8a/libkotomo_mozc.so": "2f0793341f4c61f49ac6d52560f8bdaed9920a1482610ea255c2ec15e6c319d6",
-          "x86_64/libkotomo_mozc.so": "02e1d35eda450e2ff6043208185ef56c317f9f282380fe9ea3ccc8a863d9cc84",
+          "arm64-v8a/libkotomo_mozc.so": "3c28b792cb30095388ed3b02e650cc0cf430684999253211ce992d4a8c560cf6",
+          "x86_64/libkotomo_mozc.so": "928a9c47e91c687d8328060ccf3772566ae7834e859700579e7f8e06d57b6c6e",
           "mozc.data": "7a47a2b3958baeb0796345aec2c3f380b1d783d6fa399c8a0c358a197bee6046"
         }
       }

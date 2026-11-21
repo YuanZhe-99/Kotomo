@@ -118,11 +118,33 @@ TEST_F(MozcEngineTest, DescribesConjugatedVerbs) {
   const auto noun = engine_->Describe("池袋", "いけぶくろ");
   ASSERT_TRUE(noun.has_value());
   EXPECT_EQ(noun->pos.rfind("名詞", 0), 0u) << noun->pos;
+  // Homographs and negative stems must prefer conjugable POS entries when stripped.
+  const auto suru = engine_->Describe("します", "します");
+  ASSERT_TRUE(suru.has_value());
+  EXPECT_EQ(suru->value, "し");
+  EXPECT_NE(suru->pos.find("サ変・スル"), std::string::npos) << suru->pos;
+  const auto ikanakatta = engine_->Describe("行かなかった", "いかなかった");
+  ASSERT_TRUE(ikanakatta.has_value());
+  EXPECT_EQ(ikanakatta->value, "行か");
+  EXPECT_NE(ikanakatta->pos.find("五段・カ行促音便"), std::string::npos) << ikanakatta->pos;
+  const auto konai = engine_->Describe("来ない", "こない");
+  ASSERT_TRUE(konai.has_value());
+  EXPECT_EQ(konai->value, "来");
+  EXPECT_NE(konai->pos.find("カ変"), std::string::npos) << konai->pos;
+  const auto benkyou = engine_->Describe("勉強します", "べんきょうします");
+  ASSERT_TRUE(benkyou.has_value());
+  EXPECT_EQ(benkyou->value, "勉強");
+  EXPECT_NE(benkyou->pos.find("名詞,サ変接続"), std::string::npos) << benkyou->pos;
+  const auto shizuka = engine_->Describe("静かです", "しずかです");
+  ASSERT_TRUE(shizuka.has_value());
+  EXPECT_EQ(shizuka->value, "静か");
+  EXPECT_NE(shizuka->pos.find("名詞,形容動詞語幹"), std::string::npos) << shizuka->pos;
 }
 
 TEST_F(MozcEngineTest, DescribesNothingForPinyin) {
-  // Negative: a pinyin reading is not a Mozc reading.
+  // Negative: a pinyin reading is not a Mozc reading, and noun + particle is not a verb conjugation.
   EXPECT_FALSE(engine_->Describe("池袋", "ちだい").has_value());
+  EXPECT_FALSE(engine_->Describe("勉強に", "べんきょうに").has_value());
   EXPECT_EQ(MozcEngine::PosName(65535), "");
 }
 
@@ -290,6 +312,20 @@ TEST_F(MozcEngineTest, ApiTableConvertsWithAPinnedSpan) {
   seen = {};
   EXPECT_EQ(api->convert(engine_, spans, 0, 1, &sink), 0);
   EXPECT_EQ(seen.segments, 0);
+}
+
+TEST_F(MozcEngineTest, ConjugatedPinnedVerbPreservesGrammar) {
+  const PosIds ids = engine_->LookupPosIds("いきます", "行きます");
+  EXPECT_TRUE(ids.from_dictionary);
+  const auto conversion = engine_->PinnedConvert(
+      {{.reading = "いけぶくろ", .surface = "池袋"},
+       {.reading = "に", .fixed = true},
+       {.reading = "かい", .fixed = true},
+       {.reading = "に", .fixed = true},
+       {.reading = "いきます", .surface = "行きます"}},
+      /*incognito=*/true);
+  ASSERT_TRUE(conversion);
+  EXPECT_EQ(conversion->Sentence(), "池袋に買いに行きます");
 }
 
 TEST_F(MozcEngineTest, RejectsEmptySpan) {

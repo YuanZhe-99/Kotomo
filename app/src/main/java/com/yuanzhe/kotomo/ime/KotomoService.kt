@@ -162,9 +162,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private lateinit var content: LinearLayout
     private var emojiPanel: ComposeView? = null
     private var candidatesPanel: ComposeView? = null
-    /** Main thread: the forms panel of a Japanese word (PLAN §10.1) and what it shows. */
+    /** Main thread: the forms panel of a Japanese word or sentence (PLAN §10.1) and what it shows. */
     private var formsPanel: ComposeView? = null
-    private val shownForms = androidx.compose.runtime.mutableStateOf<List<Inflection.Inflected>>(emptyList())
+    private val formsView = androidx.compose.runtime.mutableStateOf<FormsView?>(null)
+    private var currentFormsTarget: Inflection.Target? = null
+    private var focusedFormsTarget: Inflection.Target? = null
+    private var formsReturnToSegments = false
+    private var formsPickAction: ((text: String, reading: String) -> Unit)? = null
     private var kanjiScript: KanjiScript? = null
     private var segmentStripItems: List<SegmentChipItem> = emptyList()
     private var detailsToken = 0
@@ -399,6 +403,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun rebuildViews() {
         emojiPanel = null
         candidatesPanel = null
+        formsPanel = null
         segmentPanel = null
         quickPanel = null
         clipboardPanel = null
@@ -758,7 +763,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         popupOverlayActive = false
         segmentStripItems = emptyList()
         keyboard = KeyboardView(this, popups, ::onKey)
-        segmentStrip = SegmentStrip(this) { i -> showSegments(initialFocus = i) }
+        segmentStrip = SegmentStrip(this, onChipClick = { i -> showSegments(initialFocus = i) }, onFormsClick = ::openStripForms)
         detailsBar = CandidateDetailsBar(this) { clearDetails() }
         candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::showDetails) { leaveSearch(toPanel = true) }
         candidateBar.onListChanged = ::clearDetails
@@ -1046,7 +1051,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             ::panelHost.isInitialized &&
             panelHost.getChildAt(0) === keyboard &&
             segmentStripItems.isNotEmpty()
-        segmentStrip.show(if (showStrip) segmentStripItems else emptyList())
+        segmentStrip.show(if (showStrip) segmentStripItems else emptyList(), hasForms = showStrip && currentFormsTarget != null)
     }
 
     /** Opens the clipboard history in the keyboard's place (the toolbar's clipboard button). */
@@ -1288,16 +1293,25 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         detailsBar.show(CandidateDetailsState(info, actions))
         updateHeaderVisibility()
         syncAutofillObscured()
-        // A Japanese word also shows its dictionary form and part of speech, and its forms when it
-        // conjugates (PLAN §10.1, §10.2); one segment only, as a form replaces the whole composition.
+        // A Japanese word or sentence also shows its dictionary form, part of speech, and forms
+        // (PLAN §10.1, §10.2).
         if (mode == Mode.JAPANESE && !direct && !emoji && reading.isNotEmpty()) {
-            describeJapanese(token, text, reading, allowForms = japaneseSegments.size <= 1)
+            val topSentence = japaneseCandidates.firstOrNull()?.text
+            val segmentsForForms = if (japaneseSegments.size > 1 && text == topSentence) {
+                japaneseSegments.map { seg -> (seg.candidates.firstOrNull()?.value ?: seg.reading) to seg.reading }
+            } else {
+                listOf(text to reading)
+            }
+            describeJapanese(token, text, reading, segmentsForForms) { chosenText, _ ->
+                commitJapaneseLiteral(chosenText)
+            }
         }
     }
 
     /**
      * Shows Mixed-mode details for [text] (reading, source/shared label, and optional `→ 日` / `→ 中`
-     * script switch), querying Mozc for single-piece Japanese words so POS and base form appear.
+     * script switch), querying Mozc for Japanese candidates, whole Mixed Japanese sentences, or
+     * focused segments so POS and conjugation/keigo forms appear.
      */
     private fun showMixedDetails(
         @Suppress("UNUSED_PARAMETER") index: Int,
@@ -1344,10 +1358,28 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         detailsBar.show(CandidateDetailsState(info, actions))
         updateHeaderVisibility()
         syncAutofillObscured()
-        if (candidate != null && !emoji && candidate.target == Lang.JAPANESE &&
-            (focusPiece != null || candidate.pieces.size == 1) && reading.isNotEmpty()
-        ) {
-            describeJapanese(token, text, reading, allowForms = false)
+        val hasJapaneseTail = candidate != null && !emoji && (
+            candidate.target == Lang.JAPANESE ||
+                candidate.pieces.lastOrNull()?.typed == Lang.JAPANESE ||
+                hasKana(candidate.pieces.lastOrNull()?.text.orEmpty())
+            )
+        if (hasJapaneseTail && (reading.isNotEmpty() || candidate.pieces.size > 1 || focusPiece != null)) {
+            val raw = composing.toString()
+            val pairs = candidate.pieces.map { it.text to it.reading }.ifEmpty { listOf(text to reading) }
+            val onPickForm: (String, String) -> Unit = if (focusPiece != null) {
+                { chosenText, chosenReading -> lockMixedPieceFromForms(focusPiece, chosenText, chosenReading) }
+            } else {
+                { chosenText, _ -> commitMixedLiteral(chosenText) }
+            }
+            describeJapanese(
+                token = token,
+                text = text,
+                reading = reading,
+                segmentsForForms = pairs,
+                mixedRaw = raw,
+                mixedPiecesForReading = candidate.pieces,
+                onPickForm = onPickForm,
+            )
         }
     }
 
@@ -1385,28 +1417,57 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         detailsBar.show(CandidateDetailsState(info, actions))
         updateHeaderVisibility()
         syncAutofillObscured()
-        if (reading.isNotEmpty()) describeJapanese(token, cand.text, reading, allowForms = false)
+        if (reading.isNotEmpty()) {
+            describeJapanese(token, cand.text, reading, listOf(cand.text to reading)) { chosenText, _ ->
+                lockJapaneseSegmentFromForms(focus, chosenText)
+            }
+        }
     }
 
     /**
      * Asks Mozc's dictionary what Japanese candidate matches the current details sheet [token] and
-     * adds its dictionary form, part of speech and, when [allowForms] is set and it conjugates,
-     * the Forms pill to Row 2 without disturbing existing action pills.
+     * adds its dictionary form, part of speech and, when forms exist for [segmentsForForms], the
+     * Forms pill to Row 2 without disturbing existing action pills.
      * Notes: the lookup runs on the engine thread; details that closed or changed meanwhile stay put.
      */
-    private fun describeJapanese(token: Int, text: String, reading: String, allowForms: Boolean = true) {
+    private fun describeJapanese(
+        token: Int,
+        text: String,
+        reading: String,
+        segmentsForForms: List<Pair<String, String>>,
+        mixedRaw: String = "",
+        mixedPiecesForReading: List<Piece> = emptyList(),
+        onPickForm: ((String, String) -> Unit)? = null,
+    ) {
+        val incog = incognito || sensitive
+        val returnToSegments = ::panelHost.isInitialized && panelHost.getChildAt(0) === segmentPanel
         engine.post {
-            val d = mozc?.describe(text, reading)
+            val resolvedPairs = if (mixedPiecesForReading.isNotEmpty()) {
+                mixedPiecePairsOnEngine(mixedPiecesForReading, mixedRaw, incog)
+            } else {
+                segmentsForForms
+            }
+            val lookupReading = reading.ifEmpty { resolvedPairs.joinToString("") { it.second } }
+            val d = if (resolvedPairs.size == 1 && lookupReading.isNotEmpty()) {
+                mozc?.describe(text, lookupReading)
+            } else {
+                null
+            }
+            val target = Inflection.extractTarget(resolvedPairs, ::describeWord)
             main.post {
                 if (token != detailsToken) return@post
                 val shown = detailsBar.current ?: return@post
-                if (d == null) return@post
-                val word = Inflection.word(d.entry, d.reading, d.pos)
-                val forms = word?.let { w -> listOf(Inflection.Inflected(Inflection.Form.PLAIN, w.text, w.reading)) + Inflection.forms(w) }
-                    .orEmpty().filter { it.text != text }
-                val extra = listOfNotNull((word?.text ?: d.entry).takeIf { it != text }, posLabel(d.pos)?.let(::getString)).joinToString(" · ")
-                val updatedActions = if (allowForms && forms.isNotEmpty()) {
-                    shown.actions + CandidateAction(getString(R.string.candidate_forms)) { showForms(forms) }
+                val hasForms = target != null && onPickForm != null &&
+                    (resolvedPairs.size == 1 || target.forms.any { target.prefix + it.text + target.suffix != text })
+                val baseEntry = d?.entry ?: target?.word?.text
+                val extra = listOfNotNull(
+                    baseEntry?.takeIf { it != text },
+                    d?.pos?.let(::posLabel)?.let(::getString),
+                ).joinToString(" · ")
+                val updatedActions = if (hasForms) {
+                    shown.actions + CandidateAction(getString(R.string.candidate_forms)) {
+                        openForms(checkNotNull(target), returnToSegments = returnToSegments, onPick = checkNotNull(onPickForm))
+                    }
                 } else {
                     shown.actions
                 }
@@ -1472,6 +1533,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         mixedFocus = null
         mixedSpan = null
         mixedFocusHira = ""
+        currentFormsTarget = null
+        focusedFormsTarget = null
         currentInputConnection?.commitText(text, 1)
         previousWord = null
         mixedUndo = null
@@ -1522,29 +1585,159 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         else -> null
     }
 
-    /** Shows [forms] of the word whose details were open in the keyboard's place (PLAN §10.1). */
-    private fun showForms(forms: List<Inflection.Inflected>) {
+    /** Queries Mozc for the dictionary entry and part of speech of [surface]/[reading] (engine thread). */
+    private fun describeWord(surface: String, reading: String): Inflection.DescribedWord? =
+        mozc?.describe(surface, reading)?.let { Inflection.DescribedWord(it.entry, it.reading, it.pos) }
+
+    /** Extracts a conjugable or keigo [Inflection.Target] from Japanese segments on the engine thread. */
+    private fun japaneseTargetOnEngine(segments: List<Mozc.Segment>): Inflection.Target? {
+        if (segments.isEmpty()) return null
+        val pairs = segments.map { seg -> (seg.candidates.firstOrNull()?.value ?: seg.reading) to seg.reading }
+        return Inflection.extractTarget(pairs, ::describeWord)
+    }
+
+    /**
+     * Resolves `(surface, reading)` pairs for Mixed [pieces], filling missing Japanese readings via
+     * Mozc near the tail so whole-sentence conjugation and per-piece details work for romaji/kana.
+     */
+    private fun mixedPiecePairsOnEngine(pieces: List<Piece>, raw: String, incog: Boolean): List<Pair<String, String>> =
+        pieces.mapIndexed { i, p ->
+            val r = when {
+                hasHiragana(p.reading) -> p.reading
+                p.text.isNotEmpty() && p.text.all { it in '\u3040'..'\u309F' || it == 'ー' } -> p.text
+                p.typed == Lang.JAPANESE || i >= pieces.size - 3 -> {
+                    val slice = raw.substring(p.begin.coerceAtMost(raw.length), p.end.coerceAtMost(raw.length))
+                    if (slice.isNotEmpty() && slice.all { it.isLetter() && it.code < LATIN_END }) {
+                        mozc?.sessionConvert(slice, incog)?.joinToString("") { it.reading }.orEmpty()
+                    } else {
+                        p.reading
+                    }
+                }
+                else -> p.reading
+            }
+            p.text to r
+        }
+
+    /** Extracts a conjugable or keigo [Inflection.Target] from the best Mixed candidate on the engine thread. */
+    private fun mixedTargetOnEngine(snapshot: Snapshot?, raw: String, incog: Boolean): Inflection.Target? {
+        val best = snapshot?.candidates?.firstOrNull() ?: return null
+        val pieces = best.pieces
+        if (pieces.isEmpty()) return null
+        val last = pieces.last()
+        val prev = pieces.getOrNull(pieces.size - 2)
+        val hasJapaneseTail = best.target == Lang.JAPANESE ||
+            last.typed == Lang.JAPANESE ||
+            hasKana(last.text) ||
+            (prev != null && last.text.all { !it.isLetterOrDigit() } && (prev.typed == Lang.JAPANESE || hasKana(prev.text)))
+        if (!hasJapaneseTail) return null
+        return Inflection.extractTarget(mixedPiecePairsOnEngine(pieces, raw, incog), ::describeWord)
+    }
+
+    /** Shows [FormsPanel] for [target], returning to keyboard or [SegmentPanel] on back/lock. */
+    private fun openForms(
+        target: Inflection.Target,
+        returnToSegments: Boolean,
+        onPick: (text: String, reading: String) -> Unit,
+    ) {
+        clearDetails()
         val height = keyboard.height
         val panel = formsPanel ?: ComposeView(this).also { view ->
             formsPanel = view
-            view.setContent { FormsPanel(shownForms, onPick = { i -> showKeyboard(); commitForm(i) }, onBack = ::showKeyboard) }
+            view.setContent {
+                FormsPanel(
+                    view = formsView,
+                    onPick = { chosenText, chosenReading ->
+                        formsPickAction?.invoke(chosenText, chosenReading)
+                    },
+                    onBack = {
+                        if (formsReturnToSegments) {
+                            showSegments(if (mode == Mode.MIXED) mixedFocus else segmentFocus)
+                        } else {
+                            showKeyboard()
+                        }
+                    },
+                )
+            }
         }
-        shownForms.value = forms
+        formsReturnToSegments = returnToSegments
+        formsPickAction = onPick
+        formsView.value = FormsView(target)
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
         updateHeaderVisibility()
     }
 
-    /** Commits form [i] of the forms panel in place of the Japanese composition. */
-    private fun commitForm(i: Int) {
-        val form = shownForms.value.getOrNull(i) ?: return
-        val ic = currentInputConnection ?: return
-        if (mode != Mode.JAPANESE) return
-        ic.commitText(form.text, 1)
-        composing.clear()
-        taps.clear()
-        clearJapanese()
-        refresh(0)
+    /** Opens [FormsPanel] from the trailing pill on [SegmentStrip] to replace the whole composition. */
+    private fun openStripForms() {
+        val target = currentFormsTarget ?: return
+        openForms(target, returnToSegments = false) { chosenText, _ ->
+            if (mode == Mode.MIXED) commitMixedLiteral(chosenText) else commitJapaneseLiteral(chosenText)
+        }
+    }
+
+    /** Opens [FormsPanel] from [SegmentPanel]'s bottom button for the focused segment or whole sentence. */
+    private fun openSegmentForms() {
+        if (mode == Mode.MIXED) {
+            val focus = mixedFocus
+            if (focus == null) {
+                val target = currentFormsTarget ?: return
+                openForms(target, returnToSegments = true) { chosenText, _ -> commitMixedLiteral(chosenText) }
+                return
+            }
+            val piece = mixedPieces().getOrNull(focus) ?: return
+            val target = focusedFormsTarget ?: return
+            openForms(target, returnToSegments = true) { chosenText, chosenReading ->
+                lockMixedPieceFromForms(piece, chosenText, chosenReading)
+            }
+            return
+        }
+        val focus = segmentFocus
+        if (focus == null) {
+            val target = currentFormsTarget ?: return
+            openForms(target, returnToSegments = true) { chosenText, _ -> commitJapaneseLiteral(chosenText) }
+            return
+        }
+        val target = focusedFormsTarget ?: return
+        openForms(target, returnToSegments = true) { chosenText, _ ->
+            lockJapaneseSegmentFromForms(focus, chosenText)
+        }
+    }
+
+    /** Puts [SegmentPanel] back into [panelHost] when returning from [FormsPanel] to advance segments. */
+    private fun restoreSegmentHost() {
+        val panel = segmentPanel ?: return showKeyboard()
+        if (panelHost.getChildAt(0) !== panel) {
+            panelHost.removeAllViews()
+            panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, keyboard.height))
+            updateHeaderVisibility()
+        }
+    }
+
+    /** Locks Mixed [piece] to [chosenText]/[chosenReading] via `kLockText` and advances focus or closes. */
+    private fun lockMixedPieceFromForms(piece: Piece, chosenText: String, chosenReading: String) {
+        val reading = chosenReading.ifEmpty {
+            piece.reading.takeIf(::hasHiragana) ?: mixedFocusHira
+        }
+        mixedFocus = null
+        askMixed({ raw, touches, options ->
+            mixed.lockText(raw, touches, options, piece.begin, piece.end, chosenText, reading, Lang.JAPANESE)
+        }) { snapshot, raw ->
+            val next = snapshot.candidates.firstOrNull()?.pieces.orEmpty().indexOfFirst { it.begin >= piece.end }
+            if (next >= 0) {
+                restoreSegmentHost()
+                mixedFocus = next
+            } else {
+                showKeyboard()
+            }
+            raw
+        }
+    }
+
+    /** Pins Japanese segment [focus] to [chosenText] via `Candidates.pick` and reconverts or closes. */
+    private fun lockJapaneseSegmentFromForms(focus: Int, chosenText: String) {
+        val spans = Candidates.pick(japaneseSegments, focus, chosenText) ?: return showKeyboard()
+        if (focus == japaneseSegments.lastIndex) showKeyboard() else restoreSegmentHost()
+        reconvert(spans, focus + 1)
     }
 
     /**
@@ -2708,6 +2901,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             clearDetails()
             candidateBar.hint = null
             segmentStripItems = emptyList()
+            currentFormsTarget = null
+            focusedFormsTarget = null
             updateQuickStrip()
             return
         }
@@ -2718,6 +2913,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             mixedLatest = gen
             mixedSnapshot = null
             mixedIndexes = emptyList()
+            if (raw.isEmpty()) {
+                currentFormsTarget = null
+                focusedFormsTarget = null
+            }
         }
         candidates = when {
             direct -> emptyList()
@@ -2835,11 +3034,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             attachMixed()
             if (before != null) mixed.context(before)
             val snapshot = mixed.type(raw, touches, options)
+            val formsTarget = mixedTargetOnEngine(snapshot, raw, options.incognito)
             val work = SystemClock.uptimeMillis() - started
             main.post {
                 Probe.engineWork.add(work)
                 if (!takes(gen, 1)) return@post
-                showMixed(snapshot, raw, downTime)
+                showMixed(snapshot, raw, downTime, formsTarget)
                 answeredSpace()
             }
             // A long composition's first answer holds the best sentences only (PLAN §5.5). The
@@ -2849,8 +3049,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 engine.post {
                     if (gen != mixedLatest) return@post
                     val full = mixed.refine() ?: return@post
+                    val fullTarget = mixedTargetOnEngine(full, raw, options.incognito)
                     // A candidate the space key chose stays: the fuller list would move it.
-                    main.post { if (spaceFocus == null && takes(gen, 2)) showMixed(full, raw, 0) }
+                    main.post { if (spaceFocus == null && takes(gen, 2)) showMixed(full, raw, 0, fullTarget) }
                 }
             }
         }
@@ -2861,7 +3062,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      * as typed, the readings of cross-language Japanese candidates, and the segment panel's
      * pieces (main thread).
      */
-    private fun showMixed(snapshot: Snapshot?, raw: String, downTime: Long) {
+    private fun showMixed(
+        snapshot: Snapshot?,
+        raw: String,
+        downTime: Long,
+        formsTarget: Inflection.Target? = null,
+    ) {
+        currentFormsTarget = formsTarget
         mixedSnapshot = snapshot
         val emoji = emojiFor(raw)
         emojiShown = emoji.toSet()
@@ -2942,11 +3149,14 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val serial = fieldSerial
         engine.post {
             attachMixed()
-            val snapshot = runCatching { ask(raw, touches, options) }.getOrNull()
+            val first = runCatching { ask(raw, touches, options) }.getOrNull()
+            val snapshot = if (first?.more == true) (runCatching { mixed.refine() }.getOrNull() ?: first) else first
+            val targetRaw = if (snapshot?.commit?.isNotEmpty() == true) snapshot.input else raw
+            val formsTarget = mixedTargetOnEngine(snapshot, targetRaw, options.incognito)
             main.post {
                 if (snapshot == null || serial != fieldSerial || composing.toString() != raw || !takes(gen, 1)) return@post
                 val now = then(snapshot, raw) ?: return@post
-                showMixed(snapshot, now, 0)
+                showMixed(snapshot, now, 0, formsTarget)
             }
         }
     }
@@ -2959,8 +3169,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun undoMixed(text: String) {
         val serial = fieldSerial
         mixedAwaiting = true
+        val incog = incognito || sensitive
         engine.post {
-            val snapshot = runCatching { attachMixed(); mixed.undo() }.getOrNull()
+            val first = runCatching { attachMixed(); mixed.undo() }.getOrNull()
+            val snapshot = if (first?.more == true) (runCatching { mixed.refine() }.getOrNull() ?: first) else first
+            val formsTarget = mixedTargetOnEngine(snapshot, snapshot?.input.orEmpty(), incog)
             main.post {
                 mixedAwaiting = false
                 val ic = currentInputConnection
@@ -2982,7 +3195,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     mixedLearned = null
                     mixedHeld = true
                     takes(++generation, 1)
-                    showMixed(snapshot, snapshot.input, 0)
+                    showMixed(snapshot, snapshot.input, 0, formsTarget)
                 } else if (serial == fieldSerial) {
                     // Nothing to take back: the key deletes as usual.
                     sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
@@ -3028,6 +3241,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 attachMixed()
                 mixed.commit(raw, touches, options, index, expected)
             }.getOrDefault(MixedEngine.Commit(expected ?: raw.trim(), null, null))
+            val nextTarget = result.next?.let { nextSnap ->
+                if (nextSnap.input.isNotEmpty()) mixedTargetOnEngine(nextSnap, nextSnap.input, options.incognito) else null
+            }
             main.post {
                 mixedAwaiting = false
                 val text = result.text
@@ -3052,7 +3268,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     val gen = ++generation
                     mixedLatest = gen
                     takes(gen, 1)
-                    showMixed(next, remainder, SystemClock.uptimeMillis())
+                    showMixed(next, remainder, SystemClock.uptimeMillis(), nextTarget)
                     mixedUndo = text.takeIf { it.isNotEmpty() }
                     mixedLearned = null
                     if (candidate != null && !options.incognito) {
@@ -3065,9 +3281,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                         engine.post {
                             if (gen != mixedLatest) return@post
                             val full = mixed.refine() ?: return@post
+                            val fullTarget = mixedTargetOnEngine(full, remainder, options.incognito)
                             main.post {
                                 if (serial == fieldSerial && composing.toString() == remainder && takes(gen, 2)) {
-                                    showMixed(full, remainder, 0)
+                                    showMixed(full, remainder, 0, fullTarget)
                                 }
                             }
                         }
@@ -3145,6 +3362,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 emptyList()
             }
             val unavailable = m == null
+            val formsTarget = if (segments.isNotEmpty()) japaneseTargetOnEngine(segments) else null
             val work = SystemClock.uptimeMillis() - started
             main.post {
                 Probe.engineWork.add(work)
@@ -3154,7 +3372,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     if (unavailable) candidateBar.hint = japaneseHint(typed)
                     return@post
                 }
-                showJapanese(segments, predicted, typed, crossed)
+                showJapanese(segments, predicted, typed, crossed, formsTarget)
                 answeredSpace()
             }
         }
@@ -3193,7 +3411,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun showJapanese(
         segments: List<Mozc.Segment>, predicted: List<Mozc.Candidate>, typed: String,
         crossed: List<Candidates.Japanese> = emptyList(),
+        formsTarget: Inflection.Target? = null,
     ) {
+        currentFormsTarget = formsTarget
         japaneseSegments = segments
         val reading = segments.joinToString("") { it.reading }
         japaneseReading = reading
@@ -3240,6 +3460,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         japaneseSegments = emptyList()
         japaneseCandidates = emptyList()
         segmentFocus = null
+        currentFormsTarget = null
+        focusedFormsTarget = null
         updateSegmentStrip()
     }
 
@@ -3357,6 +3579,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     longer = pieces.any { it.locked },
                     shorterLabel = R.string.segment_commit_here,
                     longerLabel = R.string.segment_restore,
+                    hasForms = currentFormsTarget != null,
                 )
             } else {
                 val piece = pieces[focus]
@@ -3387,6 +3610,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     longer = pieces.any { it.locked },
                     shorterLabel = R.string.segment_commit_here,
                     longerLabel = R.string.segment_restore,
+                    hasForms = focusedFormsTarget != null,
                 )
             }
             return
@@ -3408,6 +3632,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 wholeCandidates = japaneseCandidates.map { it.text },
                 shorter = false,
                 longer = false,
+                hasForms = currentFormsTarget != null,
             )
         } else {
             val seg = segments[focus]
@@ -3437,6 +3662,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 kanaRaw = japaneseKanaRaw(seg),
                 shorter = Candidates.resize(segments, focus, -1) != null,
                 longer = Candidates.resize(segments, focus, 1) != null,
+                hasForms = focusedFormsTarget != null,
             )
         }
     }
@@ -3455,6 +3681,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     onResize = ::resizeSegment,
                     onBack = ::showKeyboard,
                     onLongPick = ::showSegmentDetails,
+                    onForms = ::openSegmentForms,
                 )
             }
         }
@@ -3469,11 +3696,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 mixedFocus = null
                 mixedSpan = null
                 mixedFocusHira = ""
+                focusedFormsTarget = null
                 updateSegmentPanel()
             }
         } else {
-            segmentFocus = initialFocus?.takeIf { it in japaneseSegments.indices }
-            updateSegmentPanel()
+            focusSegment(initialFocus?.takeIf { it in japaneseSegments.indices })
         }
         updateHeaderVisibility()
     }
@@ -3486,9 +3713,25 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun focusSegment(index: Int?) {
         clearDetails()
         mixedFocusHira = ""
+        focusedFormsTarget = null
         if (mode != Mode.MIXED) {
             segmentFocus = index
-            return updateSegmentPanel()
+            updateSegmentPanel()
+            val seg = index?.let(japaneseSegments::getOrNull) ?: return
+            val segSurface = seg.candidates.firstOrNull()?.value ?: seg.reading
+            val segReading = seg.reading
+            val typed = composing.toString()
+            engine.post {
+                val target = if (segReading.isNotEmpty() || Inflection.lexical(segSurface, segReading) != null) {
+                    Inflection.extractTarget(listOf(segSurface to segReading), ::describeWord)
+                } else null
+                main.post {
+                    if (composing.toString() != typed || segmentFocus != index || mode != Mode.JAPANESE) return@post
+                    focusedFormsTarget = target
+                    updateSegmentPanel()
+                }
+            }
+            return
         }
         mixedFocus = index
         mixedSpan = null
@@ -3512,10 +3755,22 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     .takeIf { s -> s.isNotEmpty() && s.all { c -> c in '\u3040'..'\u309F' || c == 'ー' } }
                     .orEmpty()
             } else ""
+            val pieceReading = when {
+                hasHiragana(piece.reading) -> piece.reading
+                fallbackHira.isNotEmpty() -> fallbackHira
+                hasHiragana(piece.text) && piece.text.all { it in '\u3040'..'\u309F' || it == 'ー' } -> piece.text
+                else -> span?.candidates.orEmpty()
+                    .firstOrNull { it.target == Lang.JAPANESE && hasHiragana(it.pieces.joinToString("") { p -> p.reading }) }
+                    ?.pieces?.joinToString("") { it.reading }.orEmpty()
+            }
+            val segTarget = if (pieceReading.isNotEmpty() || Inflection.lexical(piece.text, piece.reading) != null) {
+                Inflection.extractTarget(listOf(piece.text to pieceReading), ::describeWord)
+            } else null
             main.post {
                 if (composing.toString() != raw || mixedFocus != index || mode != Mode.MIXED) return@post
                 mixedSpan = span
                 mixedFocusHira = fallbackHira
+                focusedFormsTarget = segTarget
                 updateSegmentPanel()
             }
         }
@@ -3719,10 +3974,13 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val gen = ++generation
         engine.post {
             val segments = mozc?.pinnedConvert(spans, incognito).orEmpty()
+            val formsTarget = if (segments.isNotEmpty()) japaneseTargetOnEngine(segments) else null
             main.post {
                 if (segments.isEmpty() || !takes(gen, 1)) return@post
-                segmentFocus = focus.coerceIn(0, segments.size - 1)
-                showJapanese(segments, emptyList(), typed)
+                val newFocus = focus.coerceIn(0, segments.size - 1)
+                segmentFocus = newFocus
+                showJapanese(segments, emptyList(), typed, formsTarget = formsTarget)
+                if (panelHost.getChildAt(0) === segmentPanel) focusSegment(newFocus)
             }
         }
     }

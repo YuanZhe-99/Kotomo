@@ -143,9 +143,11 @@ class MozcEngine {
   /// Describes `surface` read as `reading` from Mozc's dictionary: its part of
   /// speech and, for a verb or adjective, its conjugation type and form.
   /// Inputs: a candidate's surface and reading (`行きます`, `いきます`).
-  /// Returns: the first dictionary entry found while trailing kana that the
-  /// surface and the reading share are dropped one at a time (`行きます` →
-  /// `行き`, the 連用形 of 行く), with its POS fields; nullopt when none is found.
+  /// Returns: the conjugable dictionary entry (`動詞`, `形容詞`, `サ変接続`,
+  /// `形容動詞語幹`) found while trailing kana that the surface and the reading
+  /// share are dropped one at a time (`行きます` → `行き`, `します` → `し`),
+  /// or the non-conjugable exact entry when no conjugable entry matches;
+  /// nullopt when none is found.
   /// Side effects: none; nothing is learned.
   std::optional<WordInfo> Describe(std::string_view surface,
                                    std::string_view reading) const;

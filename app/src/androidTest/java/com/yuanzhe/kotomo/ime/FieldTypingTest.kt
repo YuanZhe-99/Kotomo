@@ -708,6 +708,39 @@ class FieldTypingTest {
     }
 
     /**
+     * T16 / v0.1.5 (PLAN §10.1): SegmentStrip's trailing Forms chip opens the 4-register panel for
+     * both single words (`tabemasu` -> Honorific `召し上がります`) and multi-segment sentences
+     * (`gakkouniiku` -> Humble `参ります`), preserving prefix and replacing the whole sentence.
+     */
+    @Test
+    fun japaneseFormsSwitchRegistersAndWholeSentence() {
+        inMode(Mode.JAPANESE) {
+            val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                "tabemasu".forEach { device.findObject(By.desc(it.toString())).click() }
+                checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "SegmentStrip Forms chip missing" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text("Honorific")), WAIT_MS)) { "Honorific tab missing" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text("召し上がります")), WAIT_MS)) { "召し上がります card missing" }.click()
+                assertEquals("召し上がります", read(scenario))
+                assertFalse("the form was left composing", composing(scenario))
+            }
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                "gakkouniiku".forEach { device.findObject(By.desc(it.toString())).click() }
+                checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "Whole-sentence Forms chip missing" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text("行く")), WAIT_MS)) { "Whole-sentence header missing" }
+                checkNotNull(device.wait(Until.findObject(By.text("Humble")), WAIT_MS)) { "Humble tab missing" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text("参ります")), WAIT_MS)) { "参ります card missing" }.click()
+                assertEquals("学校に参ります", read(scenario))
+                assertFalse("the form was left composing", composing(scenario))
+            }
+        }
+    }
+
+    /**
      * T14-emoji-panel (PLAN §10.6): a favorite is sent from Favorites, the long-press card removes
      * it, and a kaomoji is sent from Kaomoji.
      */

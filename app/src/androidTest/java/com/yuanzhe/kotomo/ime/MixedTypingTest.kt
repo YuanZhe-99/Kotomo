@@ -606,6 +606,47 @@ class MixedTypingTest {
         }
     }
 
+    /**
+     * Stage 2 (v0.1.5): Mixed whole-sentence forms via SegmentStrip's trailing Forms chip (`Humble`
+     * -> `池袋に買いに参ります`) and per-segment locking inside SegmentPanel (`Polite` -> `行きます`).
+     */
+    @Test
+    fun mixedFormsWholeSentenceAndSegmentLock() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            var matched = false
+            repeat(ATTEMPTS) {
+                if (matched) return@repeat
+                keys(SENTENCE_KEYS)
+                Thread.sleep(READ_MS * 3)
+                if (device.wait(Until.findObject(By.text("池袋")), WAIT_MS) != null &&
+                    device.wait(Until.findObject(By.text("Forms")), WAIT_MS) != null
+                ) {
+                    matched = true
+                } else {
+                    clear(scenario)
+                }
+            }
+            check(matched) { "Mixed SegmentStrip 池袋 / Forms missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "Mixed SegmentStrip Forms chip missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("行く")), WAIT_MS)) { "Mixed forms header missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("Humble")), WAIT_MS)) { "Humble tab missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("参ります")), WAIT_MS)) { "参ります card missing" }.click()
+            assertEquals("池袋に買いに参ります", read(scenario))
+            assertFalse("whole-sentence form left composing", composing(scenario))
+        }
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys(SENTENCE_KEYS)
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("行こう")), WAIT_MS)) { "piece 行こう missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "SegmentPanel Forms button missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("Polite")), WAIT_MS)) { "Polite tab missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("行きます")), WAIT_MS)) { "行きます card missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.desc(BACKSPACE)), WAIT_MS)) { "keys did not return after final segment lock" }
+            enter()
+            assertEquals("池袋に買いに行きます", read(scenario))
+        }
+    }
+
     /** Applies [update] to the settings and gives the keyboard a moment to follow the store. */
     private fun change(update: (Settings) -> Settings) = runBlocking {
         store.update(update)

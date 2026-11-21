@@ -29,7 +29,11 @@ data class SegmentChipItem(
  * Notes: main thread. Reuses child chip views across updates so keystrokes do not inflate layouts;
  * tapping chip `i` opens [SegmentPanel] focused directly on that segment or word ([onChipClick]).
  */
-class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : HorizontalScrollView(context) {
+class SegmentStrip(
+    context: Context,
+    private val onChipClick: (Int) -> Unit,
+    private val onFormsClick: () -> Unit = {},
+) : LinearLayout(context) {
     private val res = context.resources
     private val stripHeight = res.getDimensionPixelSize(R.dimen.segment_strip_height)
     private val padH = res.getDimensionPixelSize(R.dimen.segment_strip_pad_h)
@@ -58,12 +62,33 @@ class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : H
     private val badgeRomaji = context.getString(R.string.seg_badge_romaji)
     private val badgeKana = context.getString(R.string.seg_badge_kana)
     private val badgeEnglish = context.getString(R.string.seg_badge_english)
+    private val formsLabel = context.getString(R.string.candidate_forms)
 
-    private val row = LinearLayout(context).apply {
+    private val chipContainer = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(padH, (4 * density).toInt(), padH, (4 * density).toInt())
-        minimumHeight = stripHeight
+    }
+
+    private val scrollView = HorizontalScrollView(context).apply {
+        isHorizontalScrollBarEnabled = false
+        addView(chipContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+
+    private val formsChip = TextView(context).apply {
+        text = formsLabel
+        textSize = textSp
+        setTextColor(romajiFg)
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER
+        isSingleLine = true
+        minimumHeight = chipHeight
+        setPadding((10 * density).toInt(), (2 * density).toInt(), (10 * density).toInt(), (2 * density).toInt())
+        background = GradientDrawable().apply {
+            cornerRadius = chipRadius
+            setColor(romajiBg)
+        }
+        visibility = GONE
+        setOnClickListener { onFormsClick() }
     }
 
     private class ChipViews(
@@ -78,24 +103,38 @@ class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : H
     private val pool = ArrayList<ChipViews>()
 
     init {
-        isHorizontalScrollBarEnabled = false
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
         visibility = GONE
+        minimumHeight = stripHeight
+        setPadding(padH, (4 * density).toInt(), padH, (4 * density).toInt())
         setBackgroundColor(KeyboardColors.color(context, R.color.kb_background))
         // Heights are minimums, not fixed values: the chip text is in sp and grows with the font scale.
-        addView(row, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        addView(scrollView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(formsChip, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            marginStart = gap
+        })
     }
 
     private var shownItems: List<SegmentChipItem> = emptyList()
+    private var shownForms = false
 
-    /** Updates the strip to show [items], or hides it when [items] is empty. */
-    fun show(items: List<SegmentChipItem>) {
+    /**
+     * Updates the strip to show [items] and a pinned trailing `Forms` pill ([hasForms]), or
+     * hides the strip when [items] is empty.
+     */
+    fun show(items: List<SegmentChipItem>, hasForms: Boolean = false) {
         if (items.isEmpty()) {
             shownItems = emptyList()
+            shownForms = false
+            scrollView.scrollTo(0, 0)
+            if (formsChip.visibility != GONE) formsChip.visibility = GONE
             if (visibility != GONE) visibility = GONE
             return
         }
-        if (items == shownItems && visibility == VISIBLE) return
+        if (items == shownItems && hasForms == shownForms && visibility == VISIBLE) return
         shownItems = items
+        shownForms = hasForms
         while (pool.size < items.size) pool += newChip()
         items.forEachIndexed { index, item ->
             val chip = pool[index]
@@ -120,7 +159,7 @@ class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : H
             }
             chip.rootBg.setColor(keyColor)
             chip.rootBg.setStroke(if (item.locked) strokePx else 0, accentColor)
-            val lp = chip.root.layoutParams as LinearLayout.LayoutParams
+            val lp = chip.root.layoutParams as LayoutParams
             val targetMargin = if (index < items.lastIndex) gap else 0
             if (lp.marginEnd != targetMargin) {
                 lp.marginEnd = targetMargin
@@ -131,6 +170,8 @@ class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : H
         for (i in items.size until pool.size) {
             if (pool[i].root.visibility != GONE) pool[i].root.visibility = GONE
         }
+        val formsVis = if (hasForms) VISIBLE else GONE
+        if (formsChip.visibility != formsVis) formsChip.visibility = formsVis
         if (visibility != VISIBLE) visibility = VISIBLE
     }
 
@@ -176,7 +217,7 @@ class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : H
                 marginStart = (4 * density).toInt()
             })
         }
-        row.addView(root, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        chipContainer.addView(root, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         return ChipViews(root, badge, text, hint, rootBg, badgeBg)
     }
 }

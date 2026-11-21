@@ -629,6 +629,7 @@ data class SegmentView(
     val longer: Boolean,
     val shorterLabel: Int = R.string.segment_shorter,
     val longerLabel: Int = R.string.segment_longer,
+    val hasForms: Boolean = false,
 )
 
 /**
@@ -651,6 +652,7 @@ fun SegmentPanel(
     onResize: (Int) -> Unit,
     onBack: () -> Unit,
     onLongPick: (Int) -> Unit = {},
+    onForms: () -> Unit = {},
 ) {
     val v = view.value ?: return
     val back = stringResource(R.string.candidates_collapse)
@@ -780,6 +782,9 @@ fun SegmentPanel(
         Row(Modifier.fillMaxWidth().height(40.dp).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SegmentButton(stringResource(v.shorterLabel), v.shorter, Modifier.weight(1f)) { onResize(-1) }
             SegmentButton(stringResource(v.longerLabel), v.longer, Modifier.weight(1f)) { onResize(1) }
+            if (v.hasForms) {
+                SegmentButton(stringResource(R.string.candidate_forms), true, Modifier.weight(1f), onForms)
+            }
             Box(
                 Modifier
                     .weight(1f)
