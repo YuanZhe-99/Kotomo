@@ -39,7 +39,8 @@ class Session {
   ///   candidate's text and empties the composition.
   ///   kAlternatives answers with the readings of one span (`focus_begin`, `focus_end`) and
   ///   changes nothing; kLock fixes that span to one of them (or to its letters) and converts
-  ///   the rest around it; kRestore drops every lock; kCommitPrefix commits a candidate's pieces
+  ///   the rest around it; kLockText fixes a span to an explicit surface and optional reading;
+  ///   kRestore drops every lock; kCommitPrefix commits a candidate's pieces
   ///   up to a piece boundary and keeps the rest composed; kUndo brings back what the last
   ///   kSelect or kCommitPrefix took, until a key is typed. A span that cuts a lock, a boundary
   ///   that is not one, and an answer to another snapshot change nothing.

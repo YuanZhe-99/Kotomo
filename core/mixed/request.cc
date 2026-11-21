@@ -1,7 +1,7 @@
 #include "request.h"
 
 #include "fuzzy_kana.h"
-
+#include "input.h"
 #include "snapshot.h"
 #include "wire.h"
 
@@ -49,6 +49,13 @@ std::string Encode(const Request& request) {
       w.Int(request.index);
       w.Int(request.end);
       break;
+    case Command::kLockText:
+      w.Int(request.begin);
+      w.Int(request.end);
+      w.Str(request.text);
+      w.Str(request.reading);
+      w.Int(request.target);
+      break;
     case Command::kBackspace:
     case Command::kClear:
     case Command::kRestore:
@@ -66,7 +73,7 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
   uint8_t command = 0;
   Request request;
   if (!r.Int(&version) || version != kContractVersion || !r.Int(&request.generation) ||
-      !r.Int(&command) || command > static_cast<uint8_t>(Command::kRefine)) {
+      !r.Int(&command) || command > static_cast<uint8_t>(Command::kLockText)) {
     return std::nullopt;
   }
   request.command = static_cast<Command>(command);
@@ -100,6 +107,13 @@ std::optional<Request> DecodeRequest(std::string_view bytes) {
       break;
     case Command::kCommitPrefix:
       ok = r.Int(&request.shown) && r.Int(&request.index) && r.Int(&request.end);
+      break;
+    case Command::kLockText:
+      ok = r.Int(&request.begin) && r.Int(&request.end) && request.begin < request.end &&
+           r.Str(&request.text) && !request.text.empty() &&
+           request.text.size() <= kMaxInput * 4 &&
+           r.Str(&request.reading) && request.reading.size() <= kMaxInput * 4 &&
+           r.Int(&request.target) && request.target <= 2;
       break;
     case Command::kBackspace:
     case Command::kClear:

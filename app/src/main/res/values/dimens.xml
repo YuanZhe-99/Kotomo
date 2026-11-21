@@ -38,6 +38,20 @@
     <dimen name="kb_word_step">40dp</dimen>
     <!-- Candidate bar and toolbar -->
     <dimen name="bar_height">52dp</dimen>
+    <dimen name="segment_strip_height">40dp</dimen>
+    <dimen name="segment_strip_pad_h">8dp</dimen>
+    <dimen name="segment_strip_gap">6dp</dimen>
+    <dimen name="segment_chip_height">30dp</dimen>
+    <dimen name="segment_chip_radius">15dp</dimen>
+    <dimen name="segment_badge_size">22dp</dimen>
+    <dimen name="segment_badge_text">11sp</dimen>
+    <dimen name="segment_chip_text">15sp</dimen>
+    <dimen name="segment_hint_text">11sp</dimen>
+    <dimen name="details_row_height">44dp</dimen>
+    <dimen name="details_pad_h">8dp</dimen>
+    <dimen name="details_action_height">44dp</dimen>
+    <dimen name="details_action_pad_h">14dp</dimen>
+    <dimen name="details_action_gap">8dp</dimen>
     <dimen name="bar_pad_start">8dp</dimen>
     <dimen name="bar_pill_height">40dp</dimen>
     <dimen name="bar_pill_radius">20dp</dimen>

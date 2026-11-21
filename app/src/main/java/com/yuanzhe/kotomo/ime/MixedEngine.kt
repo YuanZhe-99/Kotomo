@@ -2,6 +2,7 @@ package com.yuanzhe.kotomo.ime
 
 import com.yuanzhe.kotomo.engine.Core
 import com.yuanzhe.kotomo.engine.English
+import com.yuanzhe.kotomo.engine.Lang
 import com.yuanzhe.kotomo.engine.Mozc
 import com.yuanzhe.kotomo.engine.Snapshot
 import com.yuanzhe.kotomo.engine.SnapshotCandidate
@@ -132,6 +133,24 @@ internal class MixedEngine {
      * another request since [span].
      */
     fun lock(span: Snapshot, index: Int): Snapshot? = answer(core?.lock(++generation, span.generation, index))
+
+    /**
+     * Locks the span [[begin], [end]) of [raw] to an explicit surface [text], optional hiragana
+     * [reading] and typed language [typed], and converts the rest around it.
+     */
+    fun lockText(
+        raw: String,
+        touches: List<Pair<Int, Int>?>,
+        wanted: Core.Options,
+        begin: Int,
+        end: Int,
+        text: String,
+        reading: String,
+        typed: Lang,
+    ): Snapshot? {
+        type(raw, touches, wanted) ?: return null
+        return answer(core?.lockText(++generation, begin, end, text, reading, typed))
+    }
 
     /** Drops every locked piece of [raw]: it converts afresh. Returns: its snapshot. */
     fun restore(raw: String, touches: List<Pair<Int, Int>?>, wanted: Core.Options): Snapshot? {

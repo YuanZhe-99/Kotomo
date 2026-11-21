@@ -5,6 +5,7 @@
     <string name="mode_badge_chinese" translatable="false">中</string>
     <string name="mode_badge_japanese" translatable="false">日</string>
     <string name="mode_badge_english" translatable="false">EN</string>
+    <string name="candidate_badge_zh_ja" translatable="false">中日</string>
 
 
     <string name="emoji_back">Back to keyboard</string>

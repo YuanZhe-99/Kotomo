@@ -22,7 +22,7 @@ Snapshot Sample() {
   ja.text = "本を";
   ja.target = Lang::kJapanese;
   ja.cost = 4200;
-  ja.flags = kSentence;
+  ja.flags = kSentence | kSharedZhJa;
   ja.pieces.push_back({0, 3, "本", "ほん", Lang::kJapanese, Origin::kMozc, false});
   ja.pieces.push_back({4, 6, "を", "を", Lang::kJapanese, Origin::kRule, true});
   Candidate zh;

@@ -118,6 +118,20 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
     fun restore(generation: Long): Snapshot? = call(generation, RESTORE) {}
 
     /**
+     * Locks the composition span [[begin], [end]) to an explicit surface [text], optional
+     * hiragana [reading] (for Japanese pieces), and typed language [typed], converting the rest
+     * around it.
+     */
+    fun lockText(generation: Long, begin: Int, end: Int, text: String, reading: String, typed: Lang): Snapshot? =
+        call(generation, LOCK_TEXT) {
+            it.putShort(begin.toShort())
+                .putShort(end.toShort())
+                .string(text.take(MAX_COMPOSITION))
+                .string(reading.take(MAX_COMPOSITION))
+                .put(typed.ordinal.toByte())
+        }
+
+    /**
      * Commits the pieces of candidate [index] of the snapshot of generation [shown] that end at
      * or before byte [end] of the composition, which must be a piece boundary inside it; the
      * rest stays composed. Returns: a snapshot with [Snapshot.commit], or one that commits
@@ -181,8 +195,8 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         /** How much of the text before the cursor is handed over. */
         private const val CONTEXT_CHARS = 64
 
-        /** Room for the largest request: the header, two strings of the longest composition and a number. */
-        private const val REQUEST_BYTES = 16 + 2 * (3 * MAX_COMPOSITION + 2) + 2
+        /** Room for the largest request: the header, two strings of the longest composition, spans and flags. */
+        private const val REQUEST_BYTES = 16 + 2 * (3 * MAX_COMPOSITION + 2) + 16
 
         private const val SET = 0
         private const val KEY = 1
@@ -198,6 +212,7 @@ class Core private constructor(private var handle: Long) : AutoCloseable {
         private const val UNDO = 11
         private const val LEARN = 12
         private const val REFINE = 13
+        private const val LOCK_TEXT = 14
 
         /** [learn]'s adjustment for a reading that is never offered. */
         const val BLOCKED = 32767

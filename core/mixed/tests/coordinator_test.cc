@@ -268,5 +268,41 @@ int main() {
               (boosted.candidates[Place(boosted, "你")].flags & kLearned),
           "Q7-prefix-learning-slices-consumed-reading", Shown(boosted));
   }
+  // Contract v10: candidates produced identically by both Chinese and Japanese carry kSharedZhJa,
+  // while distinct candidates (e.g. 书 vs 書, 你好) do not.
+  {
+    class SharedEngines : public test::FakeEngines {
+     public:
+      void Spellings(std::string_view prefix, std::vector<Spelling>* out) override {
+        test::FakeEngines::Spellings(prefix, out);
+        for (const std::string_view s : {"ri", "ben"}) {
+          if (prefix.starts_with(s)) out->push_back({static_cast<uint8_t>(s.size()), false, false});
+        }
+      }
+      std::vector<ChineseWord> Chinese(std::string_view syllables, size_t limit) override {
+        if (syllables == "ri'ben") return {{"日本", false}};
+        return test::FakeEngines::Chinese(syllables, limit);
+      }
+    } shared_engines;
+    std::string error;
+    const auto shared_lex = CrossLexicon::FromBytes(*CompileLexicon(
+        "key\tsyllables\tsurface\treading\tlid\trid\tcost\tsource\n"
+        "riben\tri4 ben3\t日本\tにほん\t1\t1\t3000\ttest\n",
+        "key\tclass\tsurface\treading\tlid\trid\tcost\tsource\n",
+        &error));
+    Coordinator shared_coord(shared_engines, *shared_lex);
+    const Snapshot riben = shared_coord.Convert("riben", 1);
+    const int at = Place(riben, "日本");
+    int count = 0;
+    for (const Candidate& c : riben.candidates) count += c.text == "日本" ? 1 : 0;
+    Check(at == 0 && count == 1 && (riben.candidates[at].flags & kSharedZhJa),
+          "V10-shared-zh-ja-merged-and-flagged", Shown(riben));
+    const Snapshot nihao = shared_coord.Convert("nihao", 2);
+    Check(Place(nihao, "你好") == 0 && !(Get(nihao, "你好").flags & kSharedZhJa),
+          "V10-chinese-only-not-shared", Shown(nihao));
+    const Snapshot shu = coordinator.Convert("shu", 3);
+    Check(!(Get(shu, "书").flags & kSharedZhJa) && !(Get(shu, "書").flags & kSharedZhJa),
+          "V10-distinct-zh-ja-not-shared", Shown(shu));
+  }
   return kotomo::mixed::test::Result();
 }

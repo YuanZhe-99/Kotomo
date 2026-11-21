@@ -191,6 +191,29 @@ class LayoutTest {
         assertEquals("+", phoneZero.more.first())
     }
 
+    /** Symbol pages in Mixed, Chinese and Japanese modes default bottom-row comma/period to half-width, while letter pages keep full-width. */
+    @Test
+    fun symbolPagesUseHalfWidthCommaAndStopOnBottomRow() {
+        for (mode in listOf(Mode.MIXED, Mode.CHINESE, Mode.JAPANESE)) {
+            val (fullComma, fullStop) = Layout.punctuation(mode)
+            val letterBottom = Layout.letters(mode, false).rows.last().keys
+            assertTrue("$mode letters missing $fullComma", letterBottom.any { it.label == fullComma && it.more.first() == "," })
+            assertTrue("$mode letters missing $fullStop", letterBottom.any { it.label == fullStop && it.more.first() == "." })
+
+            for (page in listOf(0, 1)) {
+                val bottom = Layout.symbols(mode, page = page).rows.last().keys
+                val comma = bottom.firstOrNull { it.action == KeyAction.Text(",") }
+                val stop = bottom.firstOrNull { it.action == KeyAction.Text(".") }
+                assertTrue("$mode page $page missing half-width comma", comma != null && comma.label == ",")
+                assertTrue("$mode page $page missing half-width stop", stop != null && stop.label == ".")
+                assertEquals("$mode page $page comma long-press default", fullComma, comma!!.more.first())
+                assertEquals("$mode page $page stop long-press default", fullStop, stop!!.more.first())
+                assertEquals(listOf(true, false), Layout.widthMarks(comma.more).take(2))
+                assertEquals(listOf(true, false), Layout.widthMarks(stop.more).take(2))
+            }
+        }
+    }
+
     /** Right-side and narrow-width popups keep the default choice directly over the key without clipping. */
     @Test
     fun popupPlacesDefaultChoiceOverTheKeyOnEverySideAndWidth() {

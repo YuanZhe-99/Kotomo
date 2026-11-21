@@ -412,15 +412,23 @@ data class Layout(val rows: List<Row>) {
             } else {
                 listOf(Row(symbolKeys(row1)), Row(symbolKeys(row2)), Row(third))
             }
-            return Layout(styled(rows + bottomRow(mode, split, KeyAction.Letters, "ABC").aroundHinge(split && hinge), style))
+            return Layout(styled(rows + bottomRow(mode, split, KeyAction.Letters, "ABC", halfWidth = true).aroundHinge(split && hinge), style))
         }
 
         /**
          * The design's bottom row: page switch, comma, Emoji, space, full stop, enter.
          * Notes: on the phone the comma and full stop are light keys and Emoji a dark one; split,
-         * the other way round.
+         * the other way round. [halfWidth] (used on symbol pages) makes the comma and full stop
+         * half-width (`,` and `.`) with full-width defaults on long press.
          */
-        private fun bottomRow(mode: Mode, split: Boolean, page: KeyAction, pageLabel: String, field: Field = Field.TEXT): Row {
+        private fun bottomRow(
+            mode: Mode,
+            split: Boolean,
+            page: KeyAction,
+            pageLabel: String,
+            field: Field = Field.TEXT,
+            halfWidth: Boolean = false,
+        ): Row {
             val emoji = Key("☺", KeyAction.Emoji, function = !split)
             when (field) {
                 Field.EMAIL, Field.URL -> {
@@ -442,12 +450,14 @@ data class Layout(val rows: List<Row>) {
                 Field.CODE -> return bottomRow(Mode.ENGLISH, split, page, pageLabel)
                 else -> Unit
             }
-            // Full-width bottom-row keys default to their half-width counterpart first (C5 inverse)
-            // so long-pressing toggles width, while English offers full-width first.
-            val (comma, stop) = punctuation(mode)
-            val (commaMore, stopMore) = when (mode) {
-                Mode.ENGLISH, Mode.PC -> listOf("，", ",", "、", ";", ":", "'", "\"") to listOf("。", ".", "．", "…", "?", "!")
-                Mode.JAPANESE -> listOf(",", "、", "，", "；", "：", "・") to listOf(".", "。", "．", "…", "？", "！")
+            // On letter pages full-width bottom-row keys default to half-width first (C5 inverse);
+            // on symbol pages (halfWidth) they type half-width `,`/`.` and default to full-width first.
+            val (comma, stop) = if (halfWidth) "," to "." else punctuation(mode)
+            val (commaMore, stopMore) = when {
+                mode == Mode.ENGLISH || mode == Mode.PC -> listOf("，", ",", "、", ";", ":", "'", "\"") to listOf("。", ".", "．", "…", "?", "!")
+                halfWidth && mode == Mode.JAPANESE -> listOf("、", ",", "，", "；", "：", "・") to listOf("。", ".", "．", "…", "？", "！")
+                halfWidth -> listOf("，", ",", "、", "；", "：", "“”") to listOf("。", ".", "．", "…", "？", "！")
+                mode == Mode.JAPANESE -> listOf(",", "、", "，", "；", "：", "・") to listOf(".", "。", "．", "…", "？", "！")
                 else -> listOf(",", "，", "、", "；", "：", "“”") to listOf(".", "。", "．", "…", "？", "！")
             }
             return Row(

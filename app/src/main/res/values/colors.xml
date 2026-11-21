@@ -17,6 +17,9 @@
     <color name="clip_on_tag_neutral">#3A3F4A</color>
     <color name="clip_tag_phrase">#F6DCC4</color>
     <color name="clip_on_tag_phrase">#7A3E0B</color>
+    <!-- Segment source badges (SegmentStrip, SegmentPanel). -->
+    <color name="seg_tag_en">#D6F0E0</color>
+    <color name="seg_on_tag_en">#135D36</color>
     <!-- Settings app surfaces (SettingsHome, SettingsMixed, SettingsTablet). -->
     <color name="settings_background">#F6F7F9</color>
     <color name="settings_card">#FFFFFF</color>

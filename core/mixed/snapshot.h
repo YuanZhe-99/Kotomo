@@ -15,7 +15,7 @@ namespace kotomo::mixed {
 
 /// Names the contract version; Encode writes it and Decode refuses any other.
 /// Notes: bumped with every change to the fields below or their encoding, on both sides at once.
-inline constexpr uint16_t kContractVersion = 9;
+inline constexpr uint16_t kContractVersion = 10;
 
 /// Names a language: the one a span was typed in, or the one a candidate is written in.
 enum class Lang : uint8_t { kChinese = 0, kJapanese = 1, kEnglish = 2 };
@@ -31,11 +31,12 @@ enum class Origin : uint8_t {
 };
 
 /// Candidate flags (bits of Candidate::flags).
-inline constexpr uint8_t kCross = 1;     // holds a cross-language piece
-inline constexpr uint8_t kFuzzy = 2;     // matched through fuzzy pinyin or a correction
-inline constexpr uint8_t kEmoji = 4;     // an emoji, never part of a sentence
-inline constexpr uint8_t kSentence = 8;  // covers the whole input
-inline constexpr uint8_t kLearned = 16;  // the person's history made it cheaper
+inline constexpr uint8_t kCross = 1;       // holds a cross-language piece
+inline constexpr uint8_t kFuzzy = 2;       // matched through fuzzy pinyin or a correction
+inline constexpr uint8_t kEmoji = 4;       // an emoji, never part of a sentence
+inline constexpr uint8_t kSentence = 8;    // covers the whole input
+inline constexpr uint8_t kLearned = 16;    // the person's history made it cheaper
+inline constexpr uint8_t kSharedZhJa = 32; // produced identically by both Chinese and Japanese
 
 /// Holds one piece of a candidate: the span of the input it stands for and how it was read, so a
 /// later edit can lock or change one piece without rewriting the others (PLAN.md §5.6).

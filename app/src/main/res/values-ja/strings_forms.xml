@@ -2,6 +2,26 @@
 <!-- Japanese word forms and parts of speech (PLAN §10.1, §10.2). -->
 <resources>
     <string name="candidate_forms">活用</string>
+    <string name="candidate_details_close">候補の詳細を閉じる</string>
+    <string name="candidate_to_japanese">→ 日 %1$s</string>
+    <string name="candidate_to_chinese">→ 中 %1$s</string>
+    <string name="source_shared_zh_ja">中日共通</string>
+    <string name="seg_badge_pinyin">拼</string>
+    <string name="seg_badge_romaji">ロ</string>
+    <string name="seg_badge_kana">仮</string>
+    <string name="seg_badge_english">英</string>
+    <string name="segment_subtitle">文節 %1$d / %2$d · %3$s の候補 · 選択に応じて残りを再変換</string>
+    <string name="segment_word_subtitle">単語 %1$s の候補</string>
+    <string name="segment_group_pinyin">ピンイン %1$s</string>
+    <string name="segment_group_romaji">ローマ字 %1$s</string>
+    <string name="segment_group_kana">かな %1$s</string>
+    <string name="segment_group_english">英語 %1$s</string>
+    <string name="segment_group_candidates">候補</string>
+    <string name="segment_group_kana_raw">かな・原文</string>
+    <string name="segment_lang_zh">中国語</string>
+    <string name="segment_lang_ja">日本語</string>
+    <string name="segment_lang_en">英語</string>
+    <string name="segment_lang_zh_ja">中日共通</string>
     <string name="form_plain">辞書形</string>
     <string name="form_polite">丁寧形</string>
     <string name="form_masu">ます形</string>

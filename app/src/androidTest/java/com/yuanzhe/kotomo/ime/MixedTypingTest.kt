@@ -535,6 +535,77 @@ class MixedTypingTest {
         }
     }
 
+    /**
+     * Stage 1 (v0.1.3): live segment strip appears for single words and sentences, tapping a chip
+     * opens the grouped panel with `Kana & original`, and tapping katakana locks it via kLockText.
+     */
+    @Test
+    fun segmentStripAndGroupedPanelLockKatakana() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys("chidai")
+            checkNotNull(device.wait(Until.findObject(By.text("痴呆")), WAIT_MS)) { "single-word strip chip missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.text("By pinyin chidai")), WAIT_MS)) { "group header missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("Chinese & Japanese · いけぶくろ")), WAIT_MS)) { "card subtitle missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("Kana & original")), WAIT_MS)) { "kana group missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("イケブクロ")), WAIT_MS)) { "katakana pill missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.desc(BACKSPACE)), WAIT_MS)) { "keys did not return on single word" }
+            enter()
+            assertEquals("イケブクロ", read(scenario))
+        }
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use {
+            keys(SENTENCE_KEYS)
+            checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "sentence strip chip 池袋 missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.textStartsWith("Segment 1 of")), WAIT_MS)) { "focused subtitle missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("イケブクロ")), WAIT_MS)) { "sentence katakana pill missing" }.click()
+            checkNotNull(device.wait(Until.findObject(By.textStartsWith(SEGMENT_2)), WAIT_MS)) { "panel did not advance to segment 2" }
+            device.findObject(By.text(WHOLE)).click()
+            checkNotNull(device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("イケブクロ.+"))), WAIT_MS)) { "locked katakana missing from whole sentence" }
+        }
+    }
+
+    /** Stage 1 (v0.1.3): `中日` badge appears on shared Han candidates like 日本 while 你好 stays 中. */
+    @Test
+    fun sharedZhJaBadgeAppearsOnSharedKanjiOnly() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use {
+            keys("nihao")
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("中")), WAIT_MS)) { "你好 badge 中 missing" }
+            assertEquals(null, device.findObject(By.text("中日")))
+        }
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use {
+            keys("riben")
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("日本")), WAIT_MS)) { "日本 candidate missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("中日")), WAIT_MS)) { "shared 中日 badge missing for 日本" }
+        }
+    }
+
+    /**
+     * Stage 1 (v0.1.3): long-pressing a candidate with differing Chinese/Japanese Han glyph opens
+     * the conflict-free action bar with `→ 日` or `→ 中` and switches script on tap.
+     */
+    @Test
+    fun longPressSwitchesBetweenChineseAndJapaneseScripts() {
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }.visibleBounds
+            keys("tianqi")
+            Thread.sleep(READ_MS * 3)
+            val dp = context.resources.displayMetrics.density
+            val y = (q.top - 32 * dp).toInt()
+            device.swipe((q.left + 40 * dp).toInt(), y, (q.left + 40 * dp).toInt(), y, 120)
+            checkNotNull(device.wait(Until.findObject(By.text("→ 日 天気")), WAIT_MS)) { "missing → 日 天気 pill" }.click()
+            assertEquals("天気", read(scenario))
+        }
+        launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            keys("tenki")
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("天気")), WAIT_MS)) { "天気 candidate missing" }
+            device.findObjects(By.text("天気")).last().longClick()
+            checkNotNull(device.wait(Until.findObject(By.text("→ 中 天气")), WAIT_MS)) { "missing → 中 天气 pill" }.click()
+            assertEquals("天气", read(scenario))
+        }
+    }
+
     /** Applies [update] to the settings and gives the keyboard a moment to follow the store. */
     private fun change(update: (Settings) -> Settings) = runBlocking {
         store.update(update)

@@ -668,8 +668,7 @@ class FieldTypingTest {
                 val dp = instrumentation.targetContext.resources.displayMetrics.density
                 val y = (q.top - 32 * dp).toInt()
                 device.swipe((q.left + 40 * dp).toInt(), y, (q.left + 40 * dp).toInt(), y, 120)
-                Thread.sleep(READ_MS)
-                device.click((device.displayWidth - 36 * dp).toInt(), y)
+                checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "no Forms button" }.click()
                 checkNotNull(device.wait(Until.findObject(By.text("食べない")), WAIT_MS)) { "no forms panel" }.click()
                 assertEquals("食べない", read(scenario))
                 assertFalse("the form was left composing", composing(scenario))
@@ -826,6 +825,44 @@ class FieldTypingTest {
                         Thread.sleep(READ_MS)
                     }
                     assertEquals("89,.(?;[[~<", read(scenario))
+                }
+            }
+        }
+    }
+
+    /** Letter pages type full-width comma/period while symbol pages type half-width `,`/`.` in Mixed, Chinese and Japanese modes. */
+    @Test
+    fun symbolPageBottomPunctuationIsHalfWidthInCjkModes() {
+        withSettings({ it.copy(chineseNineKey = false, japaneseFlick = false, smartQuotes = false, autoPair = false) }) {
+            for ((mode, expected) in listOf(
+                Mode.MIXED to "，。,.，。,.，。",
+                Mode.CHINESE to "，。,.，。,.，。",
+                Mode.JAPANESE to "、。,.、。,.、。",
+            )) {
+                val (fullComma, fullStop) = Layout.punctuation(mode)
+                inMode(mode) {
+                    val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                        .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                        .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+                    ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                        checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                        key(fullComma); key(fullStop)
+                        key(SYMBOLS)
+                        checkNotNull(device.wait(Until.findObject(By.desc(",")), WAIT_MS)) { "$mode symbol page 0 missing half-width comma" }.click()
+                        checkNotNull(device.findObject(By.desc("."))).click()
+                        checkNotNull(device.findObject(By.desc(","))).longClick()
+                        Thread.sleep(READ_MS)
+                        checkNotNull(device.findObject(By.desc("."))).longClick()
+                        Thread.sleep(READ_MS)
+                        key(SYMBOLS)
+                        checkNotNull(device.wait(Until.findObject(By.desc(",")), WAIT_MS)) { "$mode symbol page 1 missing half-width comma" }.click()
+                        checkNotNull(device.findObject(By.desc("."))).click()
+                        checkNotNull(device.findObject(By.desc(","))).longClick()
+                        Thread.sleep(READ_MS)
+                        checkNotNull(device.findObject(By.desc("."))).longClick()
+                        Thread.sleep(READ_MS)
+                        assertEquals("$mode punctuation mismatch", expected, read(scenario))
+                    }
                 }
             }
         }

@@ -3,6 +3,27 @@
 <resources>
     <string name="candidate_forms">Forms</string>
     <string name="candidate_word" translatable="false">%1$s · %2$s</string>
+    <string name="candidate_details_close">Close candidate details</string>
+    <string name="candidate_to_japanese">→ 日 %1$s</string>
+    <string name="candidate_to_chinese">→ 中 %1$s</string>
+    <string name="source_shared_zh_ja">Chinese &amp; Japanese</string>
+    <string name="seg_badge_pinyin">PY</string>
+    <string name="seg_badge_romaji">RM</string>
+    <string name="seg_badge_kana">KA</string>
+    <string name="seg_badge_english">EN</string>
+    <string name="segment_subtitle">Segment %1$d of %2$d · %3$s — rest reconverts on pick</string>
+    <string name="segment_word_subtitle">Word %1$s — tap a reading or form</string>
+    <string name="segment_group_pinyin">By pinyin %1$s</string>
+    <string name="segment_group_romaji">By romaji %1$s</string>
+    <string name="segment_group_kana">By kana %1$s</string>
+    <string name="segment_group_english">By English %1$s</string>
+    <string name="segment_group_candidates">Candidates</string>
+    <string name="segment_group_kana_raw">Kana &amp; original</string>
+    <string name="segment_lang_zh">Chinese</string>
+    <string name="segment_lang_ja">Japanese</string>
+    <string name="segment_lang_en">English</string>
+    <string name="segment_lang_zh_ja">Chinese &amp; Japanese</string>
+    <string name="segment_card_meta" translatable="false">%1$s · %2$s</string>
     <string name="form_plain">Dictionary form</string>
     <string name="form_polite">Polite</string>
     <string name="form_masu">-masu</string>

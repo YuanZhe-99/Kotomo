@@ -274,6 +274,43 @@ Snapshot Session::Handle(const Request& request) {
                       std::move(lock));
       }
       break;
+    case Command::kLockText: {
+      const auto parsed = ParseInput(composition_);
+      if (parsed && request.begin < request.end && request.end <= composition_.size() &&
+          !request.text.empty()) {
+        const auto ends_begin = parsed->offset.end() - 1;
+        const bool has_begin =
+            std::find(parsed->offset.begin(), ends_begin, request.begin) != ends_begin;
+        const bool has_end =
+            std::find(parsed->offset.begin(), ends_begin, request.end - 1) != ends_begin;
+        bool whole = has_begin && has_end;
+        for (const Piece& old : locks_) {
+          const bool overlaps = request.begin < old.end && request.end > old.begin;
+          if (overlaps && !(request.begin <= old.begin && request.end >= old.end)) whole = false;
+        }
+        if (whole) {
+          const Lang typed = static_cast<Lang>(request.target);
+          const Origin origin = (typed == Lang::kJapanese && !request.reading.empty())
+                                    ? Origin::kMozc
+                                    : (typed == Lang::kChinese ? Origin::kRime : Origin::kEnglish);
+          Piece lock{.begin = request.begin,
+                     .end = request.end,
+                     .text = request.text,
+                     .reading = request.reading,
+                     .typed = typed,
+                     .origin = origin,
+                     .pinned = true,
+                     .locked = true};
+          std::erase_if(locks_, [&lock](const Piece& old) {
+            return old.begin < lock.end && old.end > lock.begin;
+          });
+          locks_.insert(std::find_if(locks_.begin(), locks_.end(),
+                                     [&lock](const Piece& old) { return old.begin > lock.begin; }),
+                        std::move(lock));
+        }
+      }
+      break;
+    }
     case Command::kRestore:
       locks_.clear();
       break;

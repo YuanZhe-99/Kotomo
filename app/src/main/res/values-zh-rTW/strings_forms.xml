@@ -2,6 +2,26 @@
 <!-- Japanese word forms and parts of speech (PLAN §10.1, §10.2). -->
 <resources>
     <string name="candidate_forms">變化</string>
+    <string name="candidate_details_close">關閉候選詳情</string>
+    <string name="candidate_to_japanese">→ 日 %1$s</string>
+    <string name="candidate_to_chinese">→ 中 %1$s</string>
+    <string name="source_shared_zh_ja">中日共用</string>
+    <string name="seg_badge_pinyin">拼</string>
+    <string name="seg_badge_romaji">羅</string>
+    <string name="seg_badge_kana">假</string>
+    <string name="seg_badge_english">英</string>
+    <string name="segment_subtitle">片段 %1$d/%2$d · %3$s 的候選 · 其餘部分隨選擇重新轉換</string>
+    <string name="segment_word_subtitle">詞彙 %1$s 的候選</string>
+    <string name="segment_group_pinyin">依拼音 %1$s</string>
+    <string name="segment_group_romaji">依羅馬字 %1$s</string>
+    <string name="segment_group_kana">依假名 %1$s</string>
+    <string name="segment_group_english">依英文 %1$s</string>
+    <string name="segment_group_candidates">候選</string>
+    <string name="segment_group_kana_raw">假名與原文</string>
+    <string name="segment_lang_zh">中文</string>
+    <string name="segment_lang_ja">日文</string>
+    <string name="segment_lang_en">英文</string>
+    <string name="segment_lang_zh_ja">中日共用</string>
     <string name="form_plain">原形</string>
     <string name="form_polite">禮貌形</string>
     <string name="form_masu">ます形</string>

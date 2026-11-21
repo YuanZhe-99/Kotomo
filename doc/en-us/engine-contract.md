@@ -1,7 +1,7 @@
 # Engine ↔ app contract
 
 How the app and the native engine talk: what goes in, what comes out, and how the mixed-input
-coordinator (`core/mixed/`) reaches the three engines. This is **contract version 9**
+coordinator (`core/mixed/`) reaches the three engines. This is **contract version 10**
 (`kContractVersion` in `core/mixed/snapshot.h`, `Snapshot.VERSION` in `engine/Snapshot.kt`). Both
 sides exist: the engine side is `libkotomo_core.so` (`core/mixed/session.h`, `jni/core_jni.cc`),
 the app side is the facade `engine/Core.kt` with the decoder `engine/Snapshot.kt`. Mixed mode
@@ -49,6 +49,7 @@ All integers are little-endian. A string is a `u16` byte length followed by UTF-
 | 11 | undo | — | takes back the last commit (select or commit prefix): the composition and its locks return. One level only, and a key or a set after the commit ends it. The app removes the committed text from the field |
 | 12 | learn | string: letters typed, lower case, without delimiters; string: the text they were read as; i16 adjust | sets what the person's history adds to that reading's cost: negative for a reading chosen before, positive for a demoted one, 32767 for one that is never offered, 0 to forget it; both strings empty forgets everything. A candidate's cost moves by its whole input's reading and, when it has several pieces, by each piece's that is not locked. The engine keeps the table in memory only (the app owns the versioned file, `settings-format.md`) and ignores it while the incognito switch is set |
 | 13 | refine | — (the generation is that of the snapshot to refine) | changes nothing; answers with the full list for the composition as stage 1 of that generation. Asked after a snapshot that set `more` |
+| 14 | lock text | u16 begin, u16 end: a byte range on whole-letter boundaries inside the composition; string: the locked surface text; string: optional hiragana reading; u8 target language (0, 1, 2) | locks the span `[begin, end)` to the supplied surface text, optional hiragana reading, and target language (version 10); the remaining composition converts around it without rewriting the locked piece. Ignores partial overlaps with existing locks or non-letter boundaries |
 
 Every request is answered with a snapshot of the composition it leaves. A request the engine
 cannot decode (another version, an unknown command, level or switch bit, a weight out of range, a
@@ -150,7 +151,7 @@ what a later edit locks or changes, so the other pieces are never rewritten.
 | candidate: text | string | what choosing it commits |
 | candidate: target | u8 | the language it is written in: 0 Chinese, 1 Japanese, 2 English |
 | candidate: cost | i32 | the engine's cost, lower first; comparable only within one snapshot |
-| candidate: flags | u8 | bit 0 cross-language, bit 1 fuzzy or corrected, bit 2 emoji, bit 3 whole composition, bit 4 made cheaper by the person's history |
+| candidate: flags | u8 | bit 0 cross-language, bit 1 fuzzy or corrected, bit 2 emoji, bit 3 whole composition, bit 4 made cheaper by the person's history, bit 5 same whole-input surface produced in both Chinese and Japanese (version 10) |
 | candidate: piece count | u16 | then that many pieces, in input order |
 | piece: begin, end | u16, u16 | the byte range of the composition the piece stands for |
 | piece: text | string | what the piece commits |

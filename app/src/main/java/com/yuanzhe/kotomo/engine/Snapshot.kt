@@ -58,12 +58,16 @@ data class SnapshotCandidate(
     /** Whether this candidate covers the entire composition (`FLAG_SENTENCE`). */
     val sentence: Boolean get() = flags and FLAG_SENTENCE != 0
 
+    /** Whether both Chinese and Japanese engines produced this exact surface (`FLAG_SHARED_ZH_JA`). */
+    val sharedZhJa: Boolean get() = flags and FLAG_SHARED_ZH_JA != 0
+
     companion object {
         const val FLAG_CROSS = 1
         const val FLAG_FUZZY = 2
         const val FLAG_EMOJI = 4
         const val FLAG_SENTENCE = 8
         const val FLAG_LEARNED = 16
+        const val FLAG_SHARED_ZH_JA = 32
     }
 }
 
@@ -91,7 +95,7 @@ data class Snapshot(
 
     companion object {
         /** The contract version this decoder reads (`kContractVersion` in core/mixed/snapshot.h). */
-        const val VERSION = 9
+        const val VERSION = 10
 
         /**
          * Decodes the bytes the engine returned.

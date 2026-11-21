@@ -1,7 +1,7 @@
 #include "coordinator.h"
 
 #include <algorithm>
-#include <unordered_set>
+#include <unordered_map>
 
 #include "decode.h"
 #include "finish.h"
@@ -134,13 +134,23 @@ Snapshot Coordinator::Convert(std::string_view composition, uint64_t generation,
   }
   std::stable_sort(found.begin(), found.end(),
                    [](const Candidate& a, const Candidate& b) { return a.cost < b.cost; });
-  std::unordered_set<std::string> seen;
+  std::unordered_map<std::string, size_t> seen;
   for (Candidate& candidate : found) {
-    if (!seen.insert(candidate.text).second) continue;
+    const auto existing = seen.find(candidate.text);
+    if (existing != seen.end()) {
+      Candidate& kept = snapshot.candidates[existing->second];
+      if ((kept.flags & kSentence) && (candidate.flags & kSentence) &&
+          ((kept.target == Lang::kChinese && candidate.target == Lang::kJapanese) ||
+           (kept.target == Lang::kJapanese && candidate.target == Lang::kChinese))) {
+        kept.flags |= kSharedZhJa;
+      }
+      continue;
+    }
     if (snapshot.candidates.size() == options_.candidates) {
       cut = true;
-      break;
+      continue;
     }
+    seen.emplace(candidate.text, snapshot.candidates.size());
     snapshot.candidates.push_back(std::move(candidate));
   }
   if (options_.level != Level::kAggressive) OriginalLanguageFirst(&snapshot.candidates);

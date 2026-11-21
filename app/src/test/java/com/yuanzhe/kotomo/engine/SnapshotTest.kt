@@ -9,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 9):
+ * Checks the app's side of the engine ↔ app contract (doc/en-us/engine-contract.md, version 10):
  * the snapshot decoder accepts exactly what the engine's encoder writes and drops anything else
  * whole, and a stale update never replaces a newer one.
  *
@@ -30,9 +30,9 @@ class SnapshotTest {
     }
 
     /** A snapshot of `hon wo` with a two-piece Japanese candidate and a Chinese one. */
-    private fun sample(version: Int = Snapshot.VERSION, target: Int = 1, pieceEnd: Int = 6, cursor: Int = 6, pinned: Int = 1, focusEnd: Int = 0, more: Int = 1) =
+    private fun sample(version: Int = Snapshot.VERSION, target: Int = 1, pieceEnd: Int = 6, cursor: Int = 6, pinned: Int = 1, focusEnd: Int = 0, more: Int = 1, flags0: Int = 8) =
         Bytes().raw("KS").u16(version).u64(7).u8(1).u8(more).str("hon wo").u16(cursor).u16(0).u16(focusEnd).str("本").u16(2)
-            .str("本を").u8(target).i32(4200).u8(8).u16(2)
+            .str("本を").u8(target).i32(4200).u8(flags0).u16(2)
             .u16(0).u16(3).str("本").str("ほん").u8(1).u8(1).u8(0)
             .u16(4).u16(pieceEnd).str("を").str("を").u8(1).u8(5).u8(pinned)
             .str("红").u8(0).i32(-5).u8(1).u16(1)
@@ -59,6 +59,9 @@ class SnapshotTest {
         assertEquals(-5, s.candidates[1].cost)
         assertTrue(s.candidates[1].crossLanguage)
         assertFalse(s.candidates[1].sentence)
+        assertFalse(ja.sharedZhJa)
+        val shared = Snapshot.decode(sample(flags0 = SnapshotCandidate.FLAG_SENTENCE or SnapshotCandidate.FLAG_SHARED_ZH_JA))!!
+        assertTrue(shared.candidates[0].sharedZhJa && shared.candidates[0].sentence)
     }
 
     @Test

@@ -37,6 +37,7 @@ object KeyboardColors {
         R.color.kb_ink, R.color.kb_ink_secondary, R.color.kb_accent, R.color.kb_on_accent,
         R.color.kb_accent_container, R.color.kb_on_accent_container, R.color.kb_key_shadow,
         R.color.clip_tag_phrase, R.color.clip_on_tag_phrase, R.color.clip_tag_neutral, R.color.clip_on_tag_neutral,
+        R.color.seg_tag_en, R.color.seg_on_tag_en,
     )
 
     /** The color resource each theme color replaces. */

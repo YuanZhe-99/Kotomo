@@ -424,5 +424,31 @@ int main() {
         "Q7-session-mixed-prefix-skips-delimiter");
   Send(&session, Command::kClear);
 
+  // Contract v10: kLockText locks an explicit surface and reading on a span, reconverts around it,
+  // survives commitPrefix and undo, is cleared by restore, and rejects invalid/partial spans.
+  s = set("tushuguan book");
+  s = session.Handle({.generation = ++generation, .command = Command::kLockText,
+                      .text = "トショカン", .reading = "としょかん", .target = 1,
+                      .begin = 0, .end = 9});
+  Check(all_hold(s, "トショカン", 0) && Place(s, "トショカン本") >= 0, "V10-lock-text-japanese-kana");
+  const int lock_idx = Place(s, "トショカン本");
+  Snapshot prefix = session.Handle({.generation = ++generation, .command = Command::kCommitPrefix,
+                                    .shown = s.generation, .index = static_cast<uint16_t>(lock_idx),
+                                    .end = 9});
+  Check(prefix.commit == "トショカン" && prefix.input == "book", "V10-lock-text-commit-prefix");
+  s = Send(&session, Command::kUndo);
+  Check(s.input == "tushuguan book" && all_hold(s, "トショカン", 0), "V10-lock-text-undo");
+  // Negative: cutting an existing lock, pointing at delimiter, or out-of-bounds does nothing.
+  s = session.Handle({.generation = ++generation, .command = Command::kLockText,
+                      .text = "bad", .reading = "", .target = 2, .begin = 4, .end = 14});
+  Check(all_hold(s, "トショカン", 0) && !all_hold(s, "bad", 4), "V10-lock-text-cutting-lock-refused");
+  s = session.Handle({.generation = ++generation, .command = Command::kLockText,
+                      .text = "bad", .reading = "", .target = 2, .begin = 9, .end = 14});
+  Check(all_hold(s, "トショカン", 0) && !all_hold(s, "bad", 9), "V10-lock-text-delimiter-refused");
+  // Restore clears the explicit text lock.
+  s = Send(&session, Command::kRestore);
+  Check(!all_hold(s, "トショカン", 0) && Place(s, "図書館本") >= 0, "V10-lock-text-restore");
+  Send(&session, Command::kClear);
+
   return kotomo::mixed::test::Result();
 }

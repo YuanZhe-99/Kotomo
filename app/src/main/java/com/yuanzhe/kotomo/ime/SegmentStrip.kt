@@ -1,0 +1,169 @@
+package com.yuanzhe.kotomo.ime
+
+import android.content.Context
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
+import android.widget.TextView
+import com.yuanzhe.kotomo.R
+
+/** Identifies how a segment or word on [SegmentStrip] was typed. */
+enum class SegmentSource { PINYIN, ROMAJI, KANA, ENGLISH }
+
+/** One chip displayed on [SegmentStrip]. */
+data class SegmentChipItem(
+    val text: String,
+    val source: SegmentSource,
+    val rawHint: String = "",
+    val locked: Boolean = false,
+)
+
+/**
+ * Live horizontal strip of segment chips placed above the candidate bar while composing in Mixed
+ * or Japanese mode (single words and whole sentences alike).
+ *
+ * Notes: main thread. Reuses child chip views across updates so keystrokes do not inflate layouts;
+ * tapping chip `i` opens [SegmentPanel] focused directly on that segment or word ([onChipClick]).
+ */
+class SegmentStrip(context: Context, private val onChipClick: (Int) -> Unit) : HorizontalScrollView(context) {
+    private val res = context.resources
+    private val stripHeight = res.getDimensionPixelSize(R.dimen.segment_strip_height)
+    private val padH = res.getDimensionPixelSize(R.dimen.segment_strip_pad_h)
+    private val gap = res.getDimensionPixelSize(R.dimen.segment_strip_gap)
+    private val chipHeight = res.getDimensionPixelSize(R.dimen.segment_chip_height)
+    private val chipRadius = res.getDimension(R.dimen.segment_chip_radius)
+    private val badgeSize = res.getDimensionPixelSize(R.dimen.segment_badge_size)
+    private val density = res.displayMetrics.density
+    private val badgeSp = res.getDimension(R.dimen.segment_badge_text) / density
+    private val textSp = res.getDimension(R.dimen.segment_chip_text) / density
+    private val hintSp = res.getDimension(R.dimen.segment_hint_text) / density
+    private val strokePx = (2 * density).toInt().coerceAtLeast(1)
+
+    private val keyColor = KeyboardColors.color(context, R.color.kb_key)
+    private val accentColor = KeyboardColors.color(context, R.color.kb_accent)
+    private val inkColor = KeyboardColors.color(context, R.color.kb_ink)
+    private val secondaryColor = KeyboardColors.color(context, R.color.kb_ink_secondary)
+    private val pinyinBg = KeyboardColors.color(context, R.color.clip_tag_phrase)
+    private val pinyinFg = KeyboardColors.color(context, R.color.clip_on_tag_phrase)
+    private val romajiBg = KeyboardColors.color(context, R.color.kb_accent_container)
+    private val romajiFg = KeyboardColors.color(context, R.color.kb_on_accent_container)
+    private val englishBg = KeyboardColors.color(context, R.color.seg_tag_en)
+    private val englishFg = KeyboardColors.color(context, R.color.seg_on_tag_en)
+
+    private val badgePinyin = context.getString(R.string.seg_badge_pinyin)
+    private val badgeRomaji = context.getString(R.string.seg_badge_romaji)
+    private val badgeKana = context.getString(R.string.seg_badge_kana)
+    private val badgeEnglish = context.getString(R.string.seg_badge_english)
+
+    private val row = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(padH, (4 * density).toInt(), padH, (4 * density).toInt())
+        minimumHeight = stripHeight
+    }
+
+    private class ChipViews(
+        val root: LinearLayout,
+        val badge: TextView,
+        val text: TextView,
+        val hint: TextView,
+        val rootBg: GradientDrawable,
+        val badgeBg: GradientDrawable,
+    )
+
+    private val pool = ArrayList<ChipViews>()
+
+    init {
+        isHorizontalScrollBarEnabled = false
+        visibility = GONE
+        setBackgroundColor(KeyboardColors.color(context, R.color.kb_background))
+        // Heights are minimums, not fixed values: the chip text is in sp and grows with the font scale.
+        addView(row, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+
+    /** Updates the strip to show [items], or hides it when [items] is empty. */
+    fun show(items: List<SegmentChipItem>) {
+        if (items.isEmpty()) {
+            visibility = GONE
+            return
+        }
+        while (pool.size < items.size) pool += newChip()
+        items.forEachIndexed { index, item ->
+            val chip = pool[index]
+            chip.root.visibility = VISIBLE
+            val (label, bg, fg) = when (item.source) {
+                SegmentSource.PINYIN -> Triple(badgePinyin, pinyinBg, pinyinFg)
+                SegmentSource.ROMAJI -> Triple(badgeRomaji, romajiBg, romajiFg)
+                SegmentSource.KANA -> Triple(badgeKana, romajiBg, romajiFg)
+                SegmentSource.ENGLISH -> Triple(badgeEnglish, englishBg, englishFg)
+            }
+            chip.badge.text = label
+            chip.badge.setTextColor(fg)
+            chip.badgeBg.setColor(bg)
+            chip.text.text = item.text
+            if (item.rawHint.isNotEmpty() && item.rawHint != item.text) {
+                chip.hint.text = item.rawHint
+                chip.hint.visibility = VISIBLE
+            } else {
+                chip.hint.text = ""
+                chip.hint.visibility = GONE
+            }
+            chip.rootBg.setColor(keyColor)
+            chip.rootBg.setStroke(if (item.locked) strokePx else 0, accentColor)
+            (chip.root.layoutParams as LinearLayout.LayoutParams).marginEnd = if (index < items.lastIndex) gap else 0
+            chip.root.setOnClickListener { onChipClick(index) }
+        }
+        for (i in items.size until pool.size) pool[i].root.visibility = GONE
+        visibility = VISIBLE
+    }
+
+    private fun newChip(): ChipViews {
+        val rootBg = GradientDrawable().apply {
+            cornerRadius = chipRadius
+            setColor(keyColor)
+        }
+        val badgeBg = GradientDrawable().apply {
+            cornerRadius = badgeSize / 2f
+        }
+        val badge = TextView(context).apply {
+            textSize = badgeSp
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            minWidth = badgeSize
+            minHeight = badgeSize
+            setPadding((4 * density).toInt(), 0, (4 * density).toInt(), 0)
+            background = badgeBg
+            isSingleLine = true
+        }
+        val text = TextView(context).apply {
+            textSize = textSp
+            setTextColor(inkColor)
+            isSingleLine = true
+        }
+        val hint = TextView(context).apply {
+            textSize = hintSp
+            setTextColor(secondaryColor)
+            isSingleLine = true
+        }
+        val root = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rootBg
+            minimumHeight = chipHeight
+            setPadding((4 * density).toInt(), (2 * density).toInt(), (10 * density).toInt(), (2 * density).toInt())
+            addView(badge, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(text, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = (6 * density).toInt()
+            })
+            addView(hint, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = (4 * density).toInt()
+            })
+        }
+        row.addView(root, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        return ChipViews(root, badge, text, hint, rootBg, badgeBg)
+    }
+}

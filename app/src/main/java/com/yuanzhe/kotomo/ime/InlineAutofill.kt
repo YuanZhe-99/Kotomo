@@ -86,6 +86,14 @@ class InlineAutofill(private val context: Context) {
     private var generation = 0
     private var count = 0
 
+    /** Whether a keyboard overlay (long-press popup or key preview) is temporarily covering the bar. */
+    var obscured = false
+        set(value) {
+            if (field == value) return
+            field = value
+            update()
+        }
+
     /** Whether the candidate bar shows its toolbar (nothing typed, no hint); the strip shows only then. */
     var barIdle = true
         set(value) {
@@ -140,6 +148,7 @@ class InlineAutofill(private val context: Context) {
                 slots.filterNotNull().forEach { chip ->
                     // The system sizes each chip to what the service drew (its layout parameters).
                     val size = chip.layoutParams
+                    chip.visibility = if (obscured) View.INVISIBLE else View.VISIBLE
                     row.addView(chip, LinearLayout.LayoutParams(size?.width ?: ViewGroup.LayoutParams.WRAP_CONTENT, size?.height ?: chipHeight).apply { marginEnd = gap })
                 }
             }
@@ -161,9 +170,23 @@ class InlineAutofill(private val context: Context) {
         toolsButton.setColorFilter(KeyboardColors.color(context, R.color.kb_ink))
     }
 
-    /** Shows the strip while there are suggestions not put aside and the bar is idle; tells the bar what waits. */
+    /**
+     * Shows the strip while there are suggestions not put aside and the bar is idle; tells the bar
+     * what waits. While [obscured] is set, hides both the container and each `InlineContentView`
+     * child (`View.INVISIBLE`) so its top-ordered `SurfaceView` cannot occlude keyboard popups
+     * without disturbing [waiting] or flashing the toolbar.
+     */
     private fun update() {
-        view.visibility = if (count > 0 && barIdle && !dismissed) View.VISIBLE else View.GONE
+        val visible = count > 0 && barIdle && !dismissed
+        view.visibility = when {
+            !visible -> View.GONE
+            obscured -> View.INVISIBLE
+            else -> View.VISIBLE
+        }
+        val childVisibility = if (obscured) View.INVISIBLE else View.VISIBLE
+        for (i in 0 until row.childCount) {
+            row.getChildAt(i).visibility = childVisibility
+        }
         onWaiting?.invoke(waiting)
     }
 

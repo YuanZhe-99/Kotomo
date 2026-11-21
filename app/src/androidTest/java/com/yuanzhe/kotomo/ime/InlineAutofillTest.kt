@@ -81,6 +81,29 @@ class InlineAutofillTest {
         }
     }
 
+    /** Regression: long-pressing a top-row key obscures the inline autofill surface so it never blocks the popup, then restores it. */
+    @Test
+    fun longPressTopRowObscuresAutofillAndCommitsDigit() {
+        open { scenario ->
+            val toolsDesc = context.getString(com.yuanzhe.kotomo.R.string.autofill_show_tools)
+            checkNotNull(device.wait(Until.findObject(By.desc(toolsDesc)), WAIT_MS)) { "the strip has no toolbar button" }
+            val iKey = checkNotNull(device.findObject(By.desc("i"))) { "no i key" }
+            val cx = iKey.visibleCenter.x
+            val cy = iKey.visibleCenter.y
+            // Long-press without sliding (corner hint '8' is selected in place).
+            device.swipe(cx, cy, cx, cy, 120)
+            Thread.sleep(SETTLE_MS)
+            var typed = ""
+            scenario.onActivity { typed = it.findViewById<EditText>(FieldTestActivity.FIELD_ID).text.toString() }
+            assertEquals("8", typed)
+            // Clearing the non-matching "8" restores Android Autofill matching; the strip reappears
+            // unobscured and still fills the field on tap.
+            checkNotNull(device.findObject(By.desc("Delete"))) { "no backspace key" }.click()
+            val tools = checkNotNull(device.wait(Until.findObject(By.desc(toolsDesc)), WAIT_MS)) { "the strip did not return after long press" }
+            assertEquals(FakeAutofillService.VALUE, tapChip(scenario, tools.visibleCenter.y))
+        }
+    }
+
     /** Opens the test field, taps the start of the candidate bar and returns the field's text. */
     private fun tapBarStart(): String = open { scenario ->
         val q = checkNotNull(device.findObject(By.desc("q")))

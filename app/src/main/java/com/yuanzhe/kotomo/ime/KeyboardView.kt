@@ -394,7 +394,6 @@ class KeyboardView(
 
     private fun openPopup(key: PlacedKey, labels: List<String>, actions: List<KeyAction>, selected: Int, reorder: Boolean = true) {
         longPressed = true
-        popupLayer.hidePreview()
         buzz(HapticFeedbackConstants.LONG_PRESS)
         popupOpenX = moveX
         popupTracking = false
@@ -606,11 +605,15 @@ class KeyboardView(
             // touchSlop keeps the initial preselected choice.
             when (event.actionMasked) {
                 MotionEvent.ACTION_MOVE -> {
-                    val x = event.getX(0)
-                    if (!popupTracking && kotlin.math.abs(x - popupOpenX) >= touchSlop) popupTracking = true
-                    if (popupTracking) popupLayer.track(x + popupOffsetX())
+                    val pi = event.findPointerIndex(pointerId)
+                    if (pi >= 0) {
+                        val x = event.getX(pi)
+                        if (!popupTracking && kotlin.math.abs(x - popupOpenX) >= touchSlop) popupTracking = true
+                        if (popupTracking) popupLayer.track(x + popupOffsetX())
+                    }
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (event.actionIndex == 0) closePopup(commit = true)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP ->
+                    if (event.getPointerId(event.actionIndex) == pointerId) closePopup(commit = true)
                 MotionEvent.ACTION_CANCEL -> closePopup(commit = false)
             }
             return true
@@ -871,6 +874,18 @@ class PopupLayer(context: Context) : View(context) {
         textSize = res.getDimension(R.dimen.kb_preview_text)
     }
 
+    /** Notifies listeners whenever a long-press popup or key preview is drawn on this layer. */
+    var onOverlayActive: ((Boolean) -> Unit)? = null
+    private var overlayActive = false
+
+    private fun syncOverlay() {
+        val active = labels.isNotEmpty() || preview != null
+        if (active != overlayActive) {
+            overlayActive = active
+            onOverlayActive?.invoke(active)
+        }
+    }
+
     /** Maps a key of [view] to this layer's coordinates. */
     private fun boxOf(key: PlacedKey, view: View): RectF {
         val here = IntArray(2).also(view::getLocationInWindow)
@@ -890,6 +905,7 @@ class PopupLayer(context: Context) : View(context) {
         previewBox.set(k.centerX() - w / 2, k.top - cellHeight - lift, k.centerX() + w / 2, k.top - lift)
         if (previewBox.top < 0) previewBox.offset(0f, -previewBox.top)
         preview = label
+        syncOverlay()
         invalidate()
     }
 
@@ -901,6 +917,7 @@ class PopupLayer(context: Context) : View(context) {
     fun hidePreview() {
         if (preview == null) return
         preview = null
+        syncOverlay()
         invalidate()
     }
     private var left = 0f
@@ -938,12 +955,14 @@ class PopupLayer(context: Context) : View(context) {
             reorder = reorder,
         )
         val ordered = placed.order.map(labels::get)
+        this.preview = null
         this.labels = ordered
         this.captions = Layout.widthMarks(ordered).map { full -> full?.let { if (it) fullWidth else halfWidth } }
         this.selected = placed.selected
         this.cellWidth = placed.cellWidth
         this.left = placed.left
         this.top = (anchorTop - cellHeight - lift).coerceAtLeast(0f)
+        syncOverlay()
         invalidate()
         return placed.order
     }
@@ -961,6 +980,7 @@ class PopupLayer(context: Context) : View(context) {
 
     fun hide() {
         labels = emptyList()
+        syncOverlay()
         invalidate()
     }
 

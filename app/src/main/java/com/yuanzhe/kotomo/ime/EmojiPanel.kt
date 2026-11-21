@@ -1,9 +1,11 @@
 package com.yuanzhe.kotomo.ime
 
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -14,13 +16,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -57,6 +62,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -587,34 +594,52 @@ fun CandidatesPanel(
 }
 
 
+/** One rich candidate card shown in the focused section of [SegmentPanel]. */
+data class SegmentCandidateCard(
+    val text: String,
+    val subtitle: String,
+    val selected: Boolean = false,
+)
+
+/** One kana or original-letters pill shown under "Kana & original" in [SegmentPanel]. */
+data class SegmentKanaOption(
+    val text: String,
+    val reading: String,
+    val asTyped: Boolean = false,
+)
+
 /**
- * Describes what the segment panel shows: each segment's text and reading, the segment being
- * edited (null for the whole sentence), the candidates listed, and whether its two actions are
- * available: Shorter and Longer for a Japanese conversion; in Mixed mode [shorterLabel] and
- * [longerLabel] name Commit up to here and Restore input instead (PLAN §5.6).
+ * Describes what the segment panel shows: each segment's chip ([SegmentChipItem]), the segment
+ * being edited (null for the whole sentence), the whole-sentence candidates or grouped segment
+ * cards + kana/original options, and whether its two bottom actions are available: Shorter and
+ * Longer for a Japanese conversion; in Mixed mode [shorterLabel] and [longerLabel] name Commit up
+ * to here and Restore input instead (PLAN §5.6).
  */
 data class SegmentView(
-    val texts: List<String>,
-    val readings: List<String>,
+    val chips: List<SegmentChipItem>,
     val focus: Int?,
-    val candidates: List<String>,
+    val showWholeChip: Boolean,
+    val subtitle: String,
+    val groupTitle: String,
+    val wholeCandidates: List<String>,
+    val wholeTags: List<String> = emptyList(),
+    val cards: List<SegmentCandidateCard> = emptyList(),
+    val kanaRaw: List<SegmentKanaOption> = emptyList(),
     val shorter: Boolean,
     val longer: Boolean,
     val shorterLabel: Int = R.string.segment_shorter,
     val longerLabel: Int = R.string.segment_longer,
-    val candidateTags: List<String> = emptyList(),
 )
 
 /**
- * Shows a Japanese conversion's segments (bunsetsu) in the keyboard's place (the candidate bar's
- * expand arrow in Japanese mode, PLAN §8.2): the whole sentence and each segment as chips, the
- * candidates of the chosen one, and Shorter, Longer and Back.
+ * Shows a Japanese or Mixed conversion's segments (or a single word's readings) in the keyboard's
+ * place: source-badged chips at the top, whole-sentence candidates when [SegmentView.focus] is
+ * null, or grouped 2-column language/reading cards plus "Kana & original" pills when focused.
  *
  * Inputs: [view] follows the service; [onFocus] chooses a segment (null for the whole sentence);
- * [onPick] chooses candidate n of what is listed; [onLongPick] shows candidate n's details;
- * [onResize] runs the first (−1) or second (+1) action of [SegmentView]; [onBack] returns to the keys.
- * Notes: choosing a segment's candidate pins it and converts the rest again around it; the
- * segments before it keep their boundaries (PLAN §5.6).
+ * [onPick] chooses candidate n of what is listed; [onPickKana] chooses kana/original pill n;
+ * [onLongPick] shows candidate n's details; [onResize] runs the first (−1) or second (+1) action
+ * of [SegmentView]; [onBack] returns to the keys.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -622,6 +647,7 @@ fun SegmentPanel(
     view: androidx.compose.runtime.State<SegmentView?>,
     onFocus: (Int?) -> Unit,
     onPick: (Int) -> Unit,
+    onPickKana: (Int) -> Unit,
     onResize: (Int) -> Unit,
     onBack: () -> Unit,
     onLongPick: (Int) -> Unit = {},
@@ -629,52 +655,129 @@ fun SegmentPanel(
     val v = view.value ?: return
     val back = stringResource(R.string.candidates_collapse)
     val host = LocalView.current
+    val bodyScroll = rememberScrollState()
     Column(Modifier.fillMaxSize().background(kbColor(R.color.kb_background))) {
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            SegmentChip(stringResource(R.string.segment_whole), v.focus == null) { onFocus(null) }
-            v.texts.forEachIndexed { i, text -> SegmentChip(text, v.focus == i) { onFocus(i) } }
+            if (v.showWholeChip) {
+                SegmentChip(stringResource(R.string.segment_whole), v.focus == null) { onFocus(null) }
+            }
+            v.chips.forEachIndexed { i, chip ->
+                SegmentSourceChip(chip, v.focus == i) { onFocus(i) }
+            }
         }
-        v.focus?.let { f ->
+        if (v.subtitle.isNotEmpty()) {
             Text(
-                stringResource(R.string.segment_position, f + 1, v.texts.size, v.readings[f]),
-                Modifier.padding(horizontal = 12.dp),
-                fontSize = 13.sp,
+                v.subtitle,
+                Modifier.padding(horizontal = 12.dp, vertical = 1.dp),
+                fontSize = 11.sp,
                 color = kbColor(R.color.kb_ink_secondary),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        androidx.compose.foundation.layout.FlowRow(
-            Modifier.weight(1f).fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            v.candidates.forEachIndexed { i, text ->
-                Box(
-                    Modifier
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(colorResource(if (i == 0) R.color.kb_accent_container else R.color.kb_key))
-                        .combinedClickable(
-                            onClick = { onPick(i) },
-                            onLongClick = {
-                                host.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                onLongPick(i)
-                            },
+        if (v.focus == null) {
+            androidx.compose.foundation.layout.FlowRow(
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(bodyScroll).padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                v.wholeCandidates.forEachIndexed { i, text ->
+                    Box(
+                        Modifier
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(kbColor(if (i == 0) R.color.kb_accent_container else R.color.kb_key))
+                            .combinedClickable(
+                                onClick = { onPick(i) },
+                                onLongClick = {
+                                    host.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    onLongPick(i)
+                                },
+                            )
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CandidateLabel(
+                            text = text,
+                            tag = v.wholeTags.getOrNull(i).orEmpty(),
+                            color = kbColor(if (i == 0) R.color.kb_on_accent_container else R.color.kb_ink),
                         )
-                        .padding(horizontal = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CandidateLabel(
-                        text = text,
-                        tag = v.candidateTags.getOrNull(i).orEmpty(),
-                        color = colorResource(if (i == 0) R.color.kb_on_accent_container else R.color.kb_ink),
+                    }
+                }
+            }
+        } else {
+            val indexed = v.cards.withIndex().toList()
+            val primary = indexed.take(2)
+            val overflow = indexed.drop(2)
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(bodyScroll)
+                    .padding(horizontal = 10.dp, vertical = 2.dp),
+            ) {
+                if (v.groupTitle.isNotEmpty() && primary.isNotEmpty()) {
+                    Text(
+                        v.groupTitle,
+                        fontSize = 11.sp,
+                        color = kbColor(R.color.kb_ink_secondary),
+                        modifier = Modifier.padding(bottom = 2.dp),
                     )
+                }
+                if (primary.isNotEmpty()) {
+                    SegmentCardGrid(primary, host, onPick, onLongPick)
+                }
+                if (v.kanaRaw.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.segment_group_kana_raw),
+                        fontSize = 11.sp,
+                        color = kbColor(R.color.kb_ink_secondary),
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                    val kanaRows = v.kanaRaw.withIndex().chunked(3)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        for (triple in kanaRows) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
+                                for ((j, opt) in triple) {
+                                    Box(
+                                        Modifier
+                                            .weight(1f)
+                                            .height(30.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(kbColor(R.color.kb_key))
+                                            .clickable { onPickKana(j) }
+                                            .padding(horizontal = 6.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            opt.text,
+                                            fontSize = 14.sp,
+                                            color = kbColor(R.color.kb_ink),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                                repeat(3 - triple.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                    }
+                }
+                if (overflow.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    SegmentCardGrid(overflow, host, onPick, onLongPick)
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().height(48.dp).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().height(40.dp).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SegmentButton(stringResource(v.shorterLabel), v.shorter, Modifier.weight(1f)) { onResize(-1) }
             SegmentButton(stringResource(v.longerLabel), v.longer, Modifier.weight(1f)) { onResize(1) }
             Box(
@@ -693,19 +796,121 @@ fun SegmentPanel(
     }
 }
 
+/** Renders a 2-column grid of [cards] preserving each card's original index for [onPick]/[onLongPick]. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SegmentCardGrid(
+    cards: List<IndexedValue<SegmentCandidateCard>>,
+    host: android.view.View,
+    onPick: (Int) -> Unit,
+    onLongPick: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (pair in cards.chunked(2)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                for ((i, card) in pair) {
+                    val bg = kbColor(if (card.selected) R.color.kb_accent_container else R.color.kb_key)
+                    val fg = kbColor(if (card.selected) R.color.kb_on_accent_container else R.color.kb_ink)
+                    val sub = kbColor(if (card.selected) R.color.kb_on_accent_container else R.color.kb_ink_secondary)
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = 38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(bg)
+                            .combinedClickable(
+                                onClick = { onPick(i) },
+                                onLongClick = {
+                                    host.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    onLongPick(i)
+                                },
+                            )
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            card.text,
+                            fontSize = 15.sp,
+                            fontWeight = if (card.selected) FontWeight.Medium else FontWeight.Normal,
+                            color = fg,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (card.subtitle.isNotEmpty()) {
+                            Text(
+                                card.subtitle,
+                                fontSize = 10.sp,
+                                color = sub,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 /** Draws one segment chip, filled while it is the one listed. */
 @Composable
 private fun SegmentChip(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
-            .height(36.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(colorResource(if (selected) R.color.kb_accent_container else R.color.kb_key))
+            .height(28.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(kbColor(if (selected) R.color.kb_accent_container else R.color.kb_key))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 16.sp, color = colorResource(if (selected) R.color.kb_on_accent_container else R.color.kb_ink))
+        Text(text, fontSize = 13.sp, color = kbColor(if (selected) R.color.kb_on_accent_container else R.color.kb_ink), maxLines = 1)
+    }
+}
+
+/** Draws a source-badged compact segment chip inside [SegmentPanel]. */
+@Composable
+private fun SegmentSourceChip(chip: SegmentChipItem, selected: Boolean, onClick: () -> Unit) {
+    val (badgeText, badgeBgId, badgeFgId) = when (chip.source) {
+        SegmentSource.PINYIN -> Triple(stringResource(R.string.seg_badge_pinyin), R.color.clip_tag_phrase, R.color.clip_on_tag_phrase)
+        SegmentSource.ROMAJI -> Triple(stringResource(R.string.seg_badge_romaji), R.color.kb_accent_container, R.color.kb_on_accent_container)
+        SegmentSource.KANA -> Triple(stringResource(R.string.seg_badge_kana), R.color.kb_accent_container, R.color.kb_on_accent_container)
+        SegmentSource.ENGLISH -> Triple(stringResource(R.string.seg_badge_english), R.color.seg_tag_en, R.color.seg_on_tag_en)
+    }
+    val shape = RoundedCornerShape(14.dp)
+    val borderMod = if (selected || chip.locked) {
+        Modifier.border(BorderStroke(if (selected) 2.dp else 1.dp, kbColor(R.color.kb_accent)), shape)
+    } else {
+        Modifier
+    }
+    Row(
+        Modifier
+            .height(28.dp)
+            .clip(shape)
+            .background(kbColor(R.color.kb_key))
+            .then(borderMod)
+            .clickable(onClick = onClick)
+            .padding(start = 3.dp, end = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            Modifier
+                .height(18.dp)
+                .widthIn(min = 18.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(kbColor(badgeBgId))
+                .padding(horizontal = 3.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(badgeText, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = kbColor(badgeFgId), maxLines = 1)
+        }
+        Text(chip.text, fontSize = 13.sp, color = kbColor(R.color.kb_ink), maxLines = 1)
     }
 }
 
@@ -720,6 +925,11 @@ private fun SegmentButton(label: String, enabled: Boolean, modifier: Modifier, o
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, fontSize = 15.sp, color = kbColor(if (enabled) R.color.kb_ink else R.color.kb_ink_secondary))
+        // Shrinks rather than cuts the label off at large font scales.
+        Text(
+            label, color = kbColor(if (enabled) R.color.kb_ink else R.color.kb_ink_secondary), maxLines = 1,
+            modifier = Modifier.padding(horizontal = 4.dp),
+            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 15.sp),
+        )
     }
 }
