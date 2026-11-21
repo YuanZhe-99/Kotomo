@@ -1,5 +1,12 @@
 # 版本历史
 
+## 0.1.5（2026-11-21）
+
+- 日文与混合模式活用变形、敬语体裁与整句变形（第二阶段）：`core/mozc` 由 `LookupPosIds` 与 `Describe` 共用 `FindStemToken`，使多语素活用谓词（如 `行きます`）在 `PinnedConvert` 时保留动词词性；`Inflection` 支持四档礼貌体裁（普通/礼貌/尊敬/谦让）、通用 `五段動詞` 词尾推行、Mozc 词典 `未然ウ接続` 预变形条目（`行こう`、`飲もう`、`食べよう`、`来よう`、`しよう`）归一化、形容动词与换词敬语、保留前文与助词的整句谓词抽取（`extractTarget`），以及平假名/片假名/半角片假名写法变体。
+- 变形面板与三个入口：`FormsPanel` 提供四档体裁分段标签与左右滑动切换、实时整句高亮预览，以及适应字体缩放的三列/两列（`fontScale >= 1.4f`）卡片网格（覆盖英/简/繁/日四语）；`SegmentStrip` 在保持 `scrollX = 0` 的同时于右侧固定“变形”胶囊，`SegmentPanel` 新增“变形”按钮以按片段锁定（`lockText` / `Candidates.pick`）并继续转换其余未锁定片段，`CandidateDetailsBar` 在日文与混合模式下均支持打开“变形”（含混合模式下 `>= 16` 字母输入的二阶段 `mixed.refine()` 收敛）。
+- 上游：与 0.1.4 相同（2026-11-21 核对，未变）；因 `LookupPosIds` / `Describe` 词干查词改动重新构建 Android Mozc 库（`arm64-v8a`、`x86_64`）并更新 `build-lock.json`。
+- 2026-11-21 标记发布（`versionCode` 6）。在开发主机上验证：`java tool/CheckDocs.java`、`//kotomo:kotomo_mozc_test`（`19/19`）、`ctest build/host/mixed`（`11/11`）、`ctest build/host/rime`（`2/2`）、整套转换语料（`312/313`，0 回退，Mixed 模式条目经协调层 `138/138`）、`./gradlew check assembleDebug assembleRelease assembleDebugAndroidTest`（`InflectionTest` `10/10`，单元测试 `298/306` 通过、8 项主机跳过）、改版本号后的 `./gradlew assembleDebug assembleRelease`，以及模拟器（`Medium_Phone_API_37.0`、Android 17、x86_64、debug）：`FieldTypingTest` `33/33`、`MixedTypingTest` `35/35`，并核对深浅色、四语界面及 `1.0x`/`1.5x` 字体缩放截图。本次发布周期未在物理真机上运行验证。
+
 ## 0.1.4（2026-11-20）
 
 - 修复输入时键盘上下跳动：`updateSegmentStrip` 在等待引擎线程处理新按键期间保留上一快照的片段条显示（与候选栏一致），不再在按下按键时将 `SegmentStrip` 清空隐藏为 `GONE`、待快照返回又恢复为 `VISIBLE`，同时 `SegmentStrip.show` 在片段项未变时跳过冗余布局刷新。
