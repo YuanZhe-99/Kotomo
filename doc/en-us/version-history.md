@@ -1,5 +1,13 @@
 # Version history
 
+## 0.1.3 (2026-11-20)
+
+- Live segment strip and grouped segment panel: Mixed and Japanese modes display a live segment strip (`SegmentStrip`) above the candidate bar; tapping a segment opens the segment panel with source-marked chips, two-column language/reading-grouped candidate cards, and a three-column kana & original row (`CandidateDetailsBar` and strip buttons fit at 1.5x font scale).
+- Chinese/Japanese kanji script switching (Mixed engine contract version 10, command `14` lock text, candidate flag bit `5` `sharedZhJa`): shared Chinese/Japanese kanji carry a `中日` mark; the two-row `CandidateDetailsBar` switches candidates between Chinese and Japanese kanji forms via bundled OpenCC tables alongside Forget and Forms without overlapping.
+- Symbol-page punctuation and autofill popup fix: Mixed, Chinese and Japanese letter pages keep full-width comma and period while both symbol pages' bottom row types half-width `,` and `.` (with full-width first on long press); top-row long-press popups and key previews are no longer covered by pinned inline autofill chips, and `KeyboardView` pointer tracking follows `pointerId`.
+- Upstreams: Android Gradle Plugin bumped from 9.5.1 to 9.5.2 (PR #1); other upstreams same as the 0.1.2 baseline (`0.1.1` check on 2026-11-19).
+- Tagged on 2026-11-20 (`versionCode` 4). Verified on `1a22596` (before merging PR #1) on the development host: `ctest core/mixed` (11/11), conversion corpus (`312/313`, 0 regressed, Mixed lines `138/138` through the coordinator), `./gradlew check assembleDebug assembleRelease assembleDebugAndroidTest`, and on the emulator (Android 17, API 37, debug): `InlineAutofillTest`, `FieldTypingTest`, `MixedTypingTest` and `CandidateBarTest` (73/73). Not re-run after merging PR #1 (AGP 9.5.2) per user instruction; not verified on a physical device in this release cycle.
+
 ## 0.1.2 (2026-11-19)
 
 - Ordinary text fields no longer switch to code mode: multi-line, no-suggestion and code-hinted fields keep the current input mode and full-width symbols; English with half-width symbols applies only where the person turned on code mode for the app, and URL fields follow the current mode while `modes.url_english` is off.
