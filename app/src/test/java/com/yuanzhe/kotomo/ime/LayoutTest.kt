@@ -2,6 +2,7 @@ package com.yuanzhe.kotomo.ime
 
 import com.yuanzhe.kotomo.settings.KeyStyle
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -298,4 +299,103 @@ class LayoutTest {
         }
     }
 
+    /**
+     * Symbol pages cover all 32 printable ASCII symbols and core math operators in every mode
+     * without duplicate keys on a page or across page 0 and page 1.
+     */
+    @Test
+    fun symbolPagesHaveNoDuplicatesAndCoverAllAsciiSymbols() {
+        val printableAsciiSymbols = (0x21..0x7E)
+            .map { it.toChar() }
+            .filter { !it.isLetterOrDigit() }
+            .map { it.toString() }
+        assertEquals(32, printableAsciiSymbols.size)
+        val mathSymbols = "+-*/=×÷±≠≈∞≤≥‰°".map { it.toString() }
+
+        for (mode in Mode.entries) {
+            val page0Keys = Layout.symbols(mode, page = 0).rows.dropLast(1).flatMap { it.keys }
+                .filter { it.action is KeyAction.Text }
+            val page1Keys = Layout.symbols(mode, page = 1).rows.dropLast(1).flatMap { it.keys }
+                .filter { it.action is KeyAction.Text }
+
+            val p0Labels = page0Keys.map { it.label }
+            val p1Labels = page1Keys.map { it.label }
+            assertEquals("$mode page 0 has duplicates: $p0Labels", p0Labels.size, p0Labels.toSet().size)
+            assertEquals("$mode page 1 has duplicates: $p1Labels", p1Labels.size, p1Labels.toSet().size)
+            assertTrue("$mode repeats keys across page 0 and 1: ${p0Labels.toSet() intersect p1Labels.toSet()}", (p0Labels.toSet() intersect p1Labels.toSet()).isEmpty())
+
+            assertTrue("$mode page 0 missing /, *, _", listOf("/", "*", "_").all { it in p0Labels })
+            assertTrue(
+                "$mode page 1 missing core symbols",
+                listOf("\\", "[", "]", "{", "}", "<", ">", "%", "`", "|", "=", "^").all { it in p1Labels },
+            )
+
+            val allKeys = Layout.symbols(mode, page = 0).rows.flatMap { it.keys } +
+                Layout.symbols(mode, page = 1).rows.flatMap { it.keys }
+            val direct = allKeys.filter { it.action is KeyAction.Text }.map { it.label }.toSet()
+            val allReachable = direct + allKeys.flatMap { it.more }
+            val defaults = allKeys.mapNotNull { it.more.firstOrNull() }.toSet()
+
+            for (ascii in printableAsciiSymbols) {
+                assertTrue("$mode missing ASCII symbol $ascii", ascii in allReachable)
+                if (ascii !in direct) {
+                    assertTrue("$mode non-direct ASCII $ascii is not a primary long-press choice", ascii in defaults)
+                }
+            }
+            for (math in mathSymbols) {
+                assertTrue("$mode missing math symbol $math", math in allReachable)
+            }
+        }
+    }
+
+    /** Split symbol pages never separate an opening bracket/quote from its closing counterpart. */
+    @Test
+    fun symbolPagesKeepBracketAndQuotePairsUnbrokenInSplitMode() {
+        val pairs = listOf(
+            "(" to ")", "（" to "）", "“" to "”", "‘" to "’",
+            "「" to "」", "『" to "』", "【" to "】", "《" to "》",
+            "〈" to "〉", "[" to "]", "{" to "}", "<" to ">",
+        )
+        for (mode in Mode.entries) {
+            for (page in 0..1) {
+                for (row in Layout.symbols(mode, split = true, page = page).rows) {
+                    if (row.splitAt < 0) continue
+                    val left = row.keys.subList(0, row.splitAt).map { it.label }
+                    val right = row.keys.subList(row.splitAt, row.keys.size).map { it.label }
+                    for ((open, close) in pairs) {
+                        assertFalse(
+                            "$mode page $page splits pair $open$close across splitAt=${row.splitAt}",
+                            open in left && close in right,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Every symbol key with long-press options lists itself, has no duplicates, and offers key operators. */
+    @Test
+    fun symbolLongPressVariantsIncludeKeyItselfAndNoDuplicates() {
+        for (mode in Mode.entries) {
+            for (page in 0..1) {
+                val keys = Layout.symbols(mode, page = page).rows.dropLast(1).flatMap { it.keys }
+                for (k in keys) {
+                    if (k.more.isEmpty()) continue
+                    assertEquals("$mode page $page ${k.label} has duplicate long-press items", k.more.size, k.more.distinct().size)
+                    assertTrue("$mode page $page ${k.label} missing self in more=${k.more}", k.label in k.more)
+                }
+                if (page == 0) {
+                    val slash = keys.first { it.label == "/" }
+                    assertTrue("$mode / missing ÷ or \\", listOf("÷", "\\").all { it in slash.more })
+                    val star = keys.first { it.label == "*" }
+                    assertEquals("$mode * should offer × first", "×", star.more.first())
+                } else {
+                    val backslash = keys.first { it.label == "\\" }
+                    assertTrue("$mode \\ missing /", "/" in backslash.more)
+                    val pipe = keys.first { it.label == "|" }
+                    assertEquals("$mode | should offer ｜ first", "｜", pipe.more.first())
+                }
+            }
+        }
+    }
 }

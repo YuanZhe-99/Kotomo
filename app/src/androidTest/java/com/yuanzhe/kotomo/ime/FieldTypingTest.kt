@@ -270,7 +270,7 @@ class FieldTypingTest {
                 key("Symbols")
                 "1+2".forEach { key(it.toString()) }
                 key("Letters")
-                // The Chinese symbol page has no *: it is z's long press.
+                // Also exercise letter long-press: z -> *, e -> 3.
                 "ze".forEach { device.findObject(By.desc(it.toString())).longClick() }
                 Thread.sleep(READ_MS)
             }
@@ -988,6 +988,76 @@ class FieldTypingTest {
                     // Unlocking Caps lock mid-composition restores the syllable separator.
                     device.click(cx, cy)
                     assertTrue("separator did not return after unlocking Caps lock", device.wait(Until.hasObject(By.desc(Layout.SEPARATOR)), WAIT_MS))
+                }
+            }
+        }
+    }
+
+    /**
+     * Symbol-page audit (v0.1.7): `/`, `*`, `_`, `\`, brackets, backtick and `%` are directly
+     * reachable across Mixed, Chinese, Japanese and English symbol pages, and `/` / `*` / `\` offer
+     * `÷`, `×` and `/` on long press.
+     */
+    @Test
+    fun symbolPagesTypeSlashAsteriskAndBracketsAcrossModes() {
+        withSettings({ it.copy(chineseNineKey = false, japaneseFlick = false, smartQuotes = false, autoPair = false) }) {
+            inMode(Mode.MIXED) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+                ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                    checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                    key(SYMBOLS)
+                    checkNotNull(device.wait(Until.findObject(By.desc("/")), WAIT_MS)) { "Mixed symbol page 0 missing /" }
+                    listOf("/", "*", "_").forEach(::key)
+                    listOf("/", "*").forEach { d ->
+                        checkNotNull(device.wait(Until.findObject(By.desc(d)), WAIT_MS)) { "no key $d" }.longClick()
+                        Thread.sleep(READ_MS)
+                    }
+                    key(SYMBOLS)
+                    checkNotNull(device.wait(Until.findObject(By.desc("\\")), WAIT_MS)) { "Mixed symbol page 1 missing \\" }
+                    listOf("\\", "[", "]", "{", "}", "`", "%").forEach(::key)
+                    checkNotNull(device.findObject(By.desc("\\"))).longClick()
+                    Thread.sleep(READ_MS)
+                    assertEquals("/*_÷×\\[]{}`%/", read(scenario))
+                }
+            }
+
+            inMode(Mode.CHINESE) {
+                val divided = typeInto(InputType.TYPE_CLASS_TEXT, 0, "v", expected = "3") {
+                    key(SYMBOLS)
+                    "6/2".forEach { key(it.toString()) }
+                }
+                assertEquals("3", divided)
+            }
+
+            inMode(Mode.JAPANESE) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+                ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                    checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                    key(SYMBOLS)
+                    checkNotNull(device.wait(Until.findObject(By.desc("/")), WAIT_MS)) { "Japanese symbol page 0 missing /" }
+                    listOf("/", "*", "_", "「", "」").forEach(::key)
+                    key(SYMBOLS)
+                    checkNotNull(device.wait(Until.findObject(By.desc("\\")), WAIT_MS)) { "Japanese symbol page 1 missing \\" }
+                    listOf("\\", "\"", "'", "[", "]", "`").forEach(::key)
+                    assertEquals("/*_「」\\\"'[]`", read(scenario))
+                }
+            }
+
+            inMode(Mode.ENGLISH) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+                ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                    checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                    key(SYMBOLS)
+                    listOf("/", "*").forEach(::key)
+                    key(SYMBOLS)
+                    key("\\")
+                    assertEquals("/*\\", read(scenario))
                 }
             }
         }

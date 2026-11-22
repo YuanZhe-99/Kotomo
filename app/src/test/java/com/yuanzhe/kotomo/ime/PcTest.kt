@@ -142,4 +142,20 @@ class PcTest {
         // Hiding every other mode never leaves only PC.
         assertFalse(Mode.PC in Settings(hiddenModes = Mode.entries.toSet()).modes)
     }
+
+    /** Both PC phone symbol pages cover all 32 printable ASCII symbols (with `/` on page 1 and `\` on page 2). */
+    @Test
+    fun pcLayoutsCoverAllPrintableAsciiSymbols() {
+        val printableAsciiSymbols = (0x21..0x7E).map { it.toChar() }.filter { !it.isLetterOrDigit() }
+        assertEquals(32, printableAsciiSymbols.size)
+        val p1 = PcLayout.phone(1, PcHost.WINDOWS).rows.flatMap { it.keys }.mapNotNull { (it.action as? KeyAction.Text)?.text }
+        val p2 = PcLayout.phone(2, PcHost.WINDOWS).rows.flatMap { it.keys }.mapNotNull { (it.action as? KeyAction.Text)?.text }
+        assertTrue("PC symbol page 1 missing /", "/" in p1)
+        assertTrue("PC symbol page 2 missing \\", "\\" in p2)
+        val combined = (p1 + p2).toSet()
+        for (c in printableAsciiSymbols) {
+            assertTrue("PC symbol pages missing $c", c.toString() in combined)
+            assertTrue("PcKeys.of missing $c", PcKeys.of(c) != null)
+        }
+    }
 }

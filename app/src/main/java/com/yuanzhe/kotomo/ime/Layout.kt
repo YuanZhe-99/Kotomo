@@ -361,21 +361,30 @@ data class Layout(val rows: List<Row>) {
             // Half-width symbols:
             "$" to listOf("€", "£", "¥", "¢", "₩", "$"),
             "¥" to listOf("￥", "$", "€", "£", "¥"),
-            "-" to listOf("—", "–", "_", "-"),
+            "-" to listOf("—", "–", "_", "ー", "-"),
             "_" to listOf("-", "—", "_"),
             "\"" to listOf("“", "”", "„", "«", "»", "\""),
             "'" to listOf("‘", "’", "‚", "‹", "›", "'"),
             "?" to listOf("？", "¿", "?"),
             "!" to listOf("！", "¡", "!"),
+            ":" to listOf("：", ":"),
+            ";" to listOf("；", ";"),
             "%" to listOf("‰", "%"),
             "(" to listOf("[", "{", "<", "（", "("),
             ")" to listOf("]", "}", ">", "）", ")"),
-            "*" to listOf("★", "†", "‡", "*"),
+            "[" to listOf("【", "「", "『", "〔", "["),
+            "]" to listOf("】", "」", "』", "〕", "]"),
+            "*" to listOf("×", "★", "†", "‡", "*"),
             "=" to listOf("≠", "≈", "∞", "="),
             "/" to listOf("÷", "\\", "/"),
+            "\\" to listOf("/", "|", "\\"),
+            "|" to listOf("｜", "¦", "|"),
+            "~" to listOf("～", "〜", "~"),
+            "`" to listOf("·", "・", "•", "`"),
             "+" to listOf("±", "+"),
             "<" to listOf("≤", "«", "《", "<"),
             ">" to listOf("≥", "»", "》", ">"),
+            "°" to listOf("℃", "℉", "′", "″", "°"),
             "." to listOf("…", "。", "."),
         )
 
@@ -385,21 +394,24 @@ data class Layout(val rows: List<Row>) {
         }
 
         /**
-         * Builds symbol page [page] for [mode]: page 0 has the digits and the marks used most,
-         * page 1 more symbols; Chinese and Mixed use full-width Chinese punctuation, Japanese its
-         * own marks, English ASCII. The third row's first key switches page; the bottom row returns
+         * Builds symbol page [page] for [mode]: page 0 has the digits and the marks used most
+         * (including `/`, `*`, and `_` in every mode), page 1 more symbols (including `\`, `[ ]`,
+         * `{ }`, `< >`, `` ` ``, `|`, `%`, `=`, `^`); Chinese and Mixed use full-width Chinese
+         * punctuation, Japanese its own marks, English and PC ASCII. Across both pages every mode
+         * exposes all 32 printable ASCII symbols with no duplicate keys and unbroken bracket/quote
+         * pairs in split layouts. The third row's first key switches page; the bottom row returns
          * to letters. Many symbols offer variants on long press. [style] sets the space width and
          * mirroring (PLAN §10.9).
          */
         fun symbols(mode: Mode, split: Boolean = false, page: Int = 0, hinge: Boolean = false, style: KeyStyle = KeyStyle()): Layout {
             val (row2, row3) = when (mode) {
                 Mode.ENGLISH, Mode.PC -> if (page == 0) "@#\$_&-+()/" to "*\"':;!?" else "~`|•√π÷×¶∆" to "%©®™✓[]<>"
-                Mode.JAPANESE -> if (page == 0) "@#￥&-+（）「」" to "、；：・？！…" else "『』【】〈〉《》～｜" to "%^=\\{}<>"
-                Mode.MIXED, Mode.CHINESE -> if (page == 0) "@#￥&-+（）“”" to "、；：‘’？！" else "【】《》「」…—·～" to "%^=\\{}<>"
+                Mode.JAPANESE -> if (page == 0) "@#￥_&-+（）/" to "*「」；：・？！" else "…『』【】〈〉《》～" to "\"'[]{}<>"
+                Mode.MIXED, Mode.CHINESE -> if (page == 0) "@#￥_&-+（）/" to "*“”、；：？！" else "·【】《》「」—…～" to "‘’[]{}<>"
             }
             val row1 = if (page == 0) "1234567890" else when (mode) {
-                Mode.ENGLISH -> "£€¥¢^°={}\\"
-                else -> "£€$¢^°=_|\\"
+                Mode.ENGLISH, Mode.PC -> "£€¥¢^°={}\\"
+                else -> "£€\$%^°=`|\\"
             }
             val switch = Key(if (page == 0) "=\\<" else "?123", KeyAction.Symbols(1 - page), 1.5f, function = true)
             val third = listOf(switch) + symbolKeys(row3) + backspace()
