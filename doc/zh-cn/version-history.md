@@ -1,5 +1,11 @@
 # 版本历史
 
+## 0.1.7（2026-11-22）
+
+- 全面核查并修复混合、中文、日文、英文与 PC 模式的符号页（`Layout.symbols`、`Layout.symbolMore`）：在混合、中文与日文模式的符号第 1 页补齐 `/`、`*` 与 `_`（此前混合与中文完全缺少 `/` 与 `*`，日文仅藏在 `・` 的长按里）；移除符号第 2 页上与首行重复的 `^`、`=`、`\`，并在第 2 页补上直接可点的 `[`、`]`、`` ` ``、`%` 及日文 `"`、`'`，使所有模式两页合集零重复覆盖全部 32 个可打印 ASCII 符号；确保分离布局下全部成对括号与引号（`（）`、`「」`、`『』`、`【】`、`《》`、`〈〉`、`“”`、`‘’`、`[]`、`{}`、`<>`）不被拆分到左右两半；修复 `Mode.PC` 符号第 2 页首行与 `Mode.ENGLISH` 一致；补齐对称的 `symbolMore` 长按变体（`\` → `/`、`*` → `×`、`|` → `｜`、`:`、`;`、`[`、`]`、`~`、`` ` ``、`°`，并在 `-` 中加入日语长音符号 `ー`）。
+- 上游：与 0.1.6 相同（2026-11-22 核对 librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2，未变）。
+- 2026-11-22 标记发布（`versionCode` 8）。在开发主机上验证：`java tool/CheckDocs.java`、`./gradlew check assembleDebug assembleRelease assembleDebugAndroidTest`（`LayoutTest` `24/24`、`PcTest` `11/11`，单元测试 `310/318` 通过、8 项主机跳过）、改版本号后的 `./gradlew assembleDebug assembleRelease`，以及模拟器（`Medium_Phone_API_37.0`、Android 17、x86_64、debug）：`FieldTypingTest` `35/35`（含 `symbolPagesTypeSlashAsteriskAndBracketsAcrossModes`），并核对浅色/深色混合模式、`1.5x` 字体缩放混合模式及浅色日文模式两页符号截图。本次发布周期未在物理真机上运行验证。
+
 ## 0.1.6（2026-11-22）
 
 - Gboard 式双击 Shift 大写锁定：在 `KeyboardView.kt` 中抽离 `ShiftState`（`DOUBLE_TAP_MS = 400L`）并接入 `KotomoService.kt`，单按在 `Shift.OFF` ↔ `Shift.ONCE` 间切换，400 ms 内连续按两次 Shift 且中间无其他按键时进入 `Shift.LOCKED`（包括从英文自动大写 `Shift.ONCE` 起手时首击先关闭大写、快速再击进入锁定），在 `Shift.LOCKED` 状态下点击即解锁且不会立刻重新触发锁定；新增大写锁定图标 `ic_key_caps_lock.xml`（带下划线的实心箭头），在 `shift` 变化时刷新 `KeyboardView` 无障碍树以在 `Shift` 与 `Caps lock` 描述间即时切换，并在混合模式大写锁定期间保持大写锁定键可见而不被 `分词`（`separatorOnShift`）替换。
