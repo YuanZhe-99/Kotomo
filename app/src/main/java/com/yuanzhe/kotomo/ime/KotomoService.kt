@@ -345,7 +345,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var mode = Mode.MIXED
     private var symbols = false
     private var symbolPage = 0
-    private var shift = Shift.OFF
+    private val shiftState = ShiftState()
+    private val shift get() = shiftState.state
     /** Main thread: the field gets direct typing ([Fields.direct]). */
     private var direct = false
     /** Main thread: the field is sensitive ([Fields.sensitive]): nothing is learned or recorded. */
@@ -1771,11 +1772,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     /**
      * Decides whether the letters put the syllable separator in Shift's place (B1, device
-     * feedback 2026-11-13): Chinese or Mixed mode composing pinyin, with `keys.shift_separator` on.
+     * feedback 2026-11-13): Chinese or Mixed mode composing pinyin, with `keys.shift_separator` on
+     * and Caps Lock off (so Caps Lock stays visible and toggleable while composing capitals).
      * Notes: main thread; the layout is rebuilt on each refresh, and Chinese mode, whose
      * composition is librime's answer, refreshes when that answer changes this (A10).
      */
-    private fun separatorOnShift(s: Settings): Boolean = s.shiftSeparator && !direct && when (mode) {
+    private fun separatorOnShift(s: Settings): Boolean = s.shiftSeparator && !direct && shift != Shift.LOCKED && when (mode) {
         Mode.CHINESE -> chinesePreedit.isNotEmpty()
         Mode.MIXED -> composing.isNotEmpty()
         else -> false
@@ -2012,7 +2014,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         popupOverlayActive = false
         segmentStripItems = emptyList()
         clearDetails()
-        shift = Shift.OFF
+        shiftState.reset()
         composing.clear()
         taps.clear()
         clearChinese()
@@ -2207,6 +2209,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         ) {
             return undoMixed(undo)
         }
+        if (action != KeyAction.Shift) shiftState.cancelDoubleTap()
         emojiSearch?.let { if (searchKey(action, it)) return }
         if (onChosenKey(action, longPress, downTime)) return
         if (mode == Mode.PC && pc.onKey(action, ic, downTime)) {
@@ -2254,7 +2257,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     ic.setComposingText(composing, 1)
                 } else if (mixedOpen && !(letter && !longPress)) {
                     // Punctuation, digits and long-press symbols commit the best candidate first.
-                    if (shift == Shift.ONCE) shift = Shift.OFF
+                    shiftState.consumeOnce()
                     commitMixed(null, null, then = action.text)
                     return
                 } else if ((letter || kana) && !direct && !longPress) {
@@ -2274,7 +2277,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     typePunctuation(ic, action.text)
                     previousWord = null
                 }
-                if (shift == Shift.ONCE) shift = Shift.OFF
+                shiftState.consumeOnce()
             }
             KeyAction.Space -> if (composing.isNotEmpty() && mode == Mode.MIXED && !direct) {
                 // Mixed mode (ADR-010, `mixed.space`): space marks a boundary and commits nothing,
@@ -2330,11 +2333,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     editorEnter()
                 }
             }
-            KeyAction.Shift -> shift = when (shift) {
-                Shift.OFF -> Shift.ONCE
-                Shift.ONCE -> Shift.LOCKED
-                Shift.LOCKED -> Shift.OFF
-            }
+            KeyAction.Shift -> shiftState.tap(downTime)
             is KeyAction.Symbols -> {
                 symbols = true
                 symbolPage = action.page
@@ -2422,7 +2421,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     rimeKey(SPACE, downTime, onlyIfComposing = true) {}
                     engine.post { main.post { typePunctuation(ic, action.text) } }
                 }
-                if (shift == Shift.ONCE) shift = Shift.OFF
+                shiftState.consumeOnce()
             }
             KeyAction.Space -> rimeKey(SPACE, downTime) { typeSpace(downTime) }
             KeyAction.Backspace -> rimeKey(BACKSPACE, downTime) { if (!punctuation.backspace(ic)) sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
@@ -2800,7 +2799,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (mode != Mode.ENGLISH || symbols || shift == Shift.LOCKED || !settings.englishAutoCapitalize) return
         val info = currentInputEditorInfo ?: return
         val caps = (currentInputConnection?.getCursorCapsMode(info.inputType) ?: 0) != 0
-        shift = if (caps) Shift.ONCE else if (shift == Shift.ONCE) Shift.OFF else shift
+        shiftState.applyAutoCaps(caps)
     }
 
     private fun commitComposition() {
@@ -4045,6 +4044,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 ic.setComposingText(composing, 1)
             }
         }
+        shiftState.cancelDoubleTap()
         updateAutoCaps()
         refresh(downTime)
     }
@@ -4184,7 +4184,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun startSearch() {
         emojiSearch = StringBuilder()
         symbols = false
-        shift = Shift.OFF
+        shiftState.reset()
         showKeyboard()
         refresh(0)
     }
@@ -4197,7 +4197,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
      */
     private fun searchKey(action: KeyAction, query: StringBuilder): Boolean {
         when (action) {
-            is KeyAction.Text -> query.append(action.text.lowercase()).also { if (shift == Shift.ONCE) shift = Shift.OFF }
+            is KeyAction.Text -> query.append(action.text.lowercase()).also { shiftState.consumeOnce() }
             KeyAction.Space -> if (query.isNotEmpty() && query.last() != ' ') query.append(' ')
             KeyAction.Backspace -> if (query.isEmpty()) return true.also { leaveSearch(toPanel = true) } else query.setLength(query.length - 1)
             KeyAction.Enter -> return true.also { if (candidates.isNotEmpty()) pickFound(0) else leaveSearch(toPanel = false) }

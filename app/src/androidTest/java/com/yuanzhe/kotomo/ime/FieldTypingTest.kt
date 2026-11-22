@@ -902,6 +902,98 @@ class FieldTypingTest {
     }
 
     /**
+     * Gboard-style Shift double-tap Caps Lock:
+     * - English auto-caps: single tap turns Shift off; quick double-tap locks capitals across letters;
+     *   single tap unlocks.
+     * - Slow second tap from Shift.OFF cancels instead of locking; quick double-tap from Shift.OFF locks.
+     * - Mixed mode with `shiftSeparator` on: Caps Lock stays visible and toggleable while composing.
+     */
+    @Test
+    fun shiftDoubleTapEntersCapsLock() {
+        inMode(Mode.ENGLISH) {
+            withSettings({ it.copy(englishAutoCapitalize = true) }) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+                ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                    checkNotNull(device.wait(Until.findObject(By.desc("A")), WAIT_MS)) { "auto-caps did not start uppercase" }
+                    val bounds = checkNotNull(device.wait(Until.findObject(By.desc(SHIFT)), WAIT_MS)) { "no Shift key" }.visibleBounds
+                    val cx = bounds.centerX()
+                    val cy = bounds.centerY()
+
+                    // Single tap cancels auto-caps.
+                    device.click(cx, cy)
+                    assertTrue("single tap did not cancel auto-caps", device.wait(Until.hasObject(By.desc("a")), WAIT_MS))
+                    assertFalse("single tap from auto-caps locked", device.hasObject(By.desc(CAPS_LOCK)))
+
+                    // Wait past the double-tap window, then verify a slow second tap cancels instead of locking.
+                    Thread.sleep(ShiftState.DOUBLE_TAP_MS + 150)
+                    device.click(cx, cy)
+                    assertTrue("tap did not latch Shift", device.wait(Until.hasObject(By.desc("A")), WAIT_MS))
+                    Thread.sleep(ShiftState.DOUBLE_TAP_MS + 150)
+                    device.click(cx, cy)
+                    assertTrue("slow second tap did not cancel Shift", device.wait(Until.hasObject(By.desc("a")), WAIT_MS))
+                    assertFalse("slow second tap locked capitals", device.hasObject(By.desc(CAPS_LOCK)))
+
+                    // Quick double-tap from Shift.OFF locks capitals across multiple typed letters.
+                    Thread.sleep(ShiftState.DOUBLE_TAP_MS + 150)
+                    device.click(cx, cy)
+                    device.click(cx, cy)
+                    assertTrue("quick double-tap from OFF did not enter Caps lock", device.wait(Until.hasObject(By.desc(CAPS_LOCK)), WAIT_MS))
+                    assertTrue("keyboard did not stay uppercase in Caps lock", device.wait(Until.hasObject(By.desc("A")), WAIT_MS))
+                    listOf("A", "B", "C").forEach { checkNotNull(device.findObject(By.desc(it))).click() }
+                    Thread.sleep(READ_MS)
+                    assertTrue("Caps lock turned off while typing", device.hasObject(By.desc(CAPS_LOCK)))
+                    assertEquals("ABC", read(scenario))
+
+                    // Single tap unlocks Caps lock.
+                    device.click(cx, cy)
+                    assertTrue("single tap did not unlock Caps lock", device.wait(Until.hasObject(By.desc("a")), WAIT_MS))
+                    assertTrue("Shift description did not return after unlocking", device.wait(Until.hasObject(By.desc(SHIFT)), WAIT_MS))
+                }
+
+                // Quick double-tap starting from auto-caps (Shift.ONCE) also enters Caps lock.
+                ActivityScenario.launch<FieldTestActivity>(intent).use {
+                    checkNotNull(device.wait(Until.findObject(By.desc("A")), WAIT_MS)) { "auto-caps did not start uppercase" }
+                    val bounds = checkNotNull(device.wait(Until.findObject(By.desc(SHIFT)), WAIT_MS)) { "no Shift key" }.visibleBounds
+                    device.click(bounds.centerX(), bounds.centerY())
+                    device.click(bounds.centerX(), bounds.centerY())
+                    assertTrue("quick double-tap from auto-caps did not enter Caps lock", device.wait(Until.hasObject(By.desc(CAPS_LOCK)), WAIT_MS))
+                    assertTrue("keyboard not uppercase in Caps lock", device.hasObject(By.desc("A")))
+                }
+            }
+        }
+
+        inMode(Mode.MIXED) {
+            withSettings({ it.copy(shiftSeparator = true, chineseNineKey = false) }) {
+                val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
+                    .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+                    .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+                ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                    checkNotNull(device.wait(Until.findObject(By.desc("a")), WAIT_MS)) { "Mixed keys did not appear" }
+                    val bounds = checkNotNull(device.wait(Until.findObject(By.desc(SHIFT)), WAIT_MS)) { "no Shift key" }.visibleBounds
+                    val cx = bounds.centerX()
+                    val cy = bounds.centerY()
+
+                    device.click(cx, cy)
+                    device.click(cx, cy)
+                    assertTrue("Mixed mode did not enter Caps lock", device.wait(Until.hasObject(By.desc(CAPS_LOCK)), WAIT_MS))
+                    checkNotNull(device.wait(Until.findObject(By.desc("A")), WAIT_MS)).click()
+                    checkNotNull(device.findObject(By.desc("B"))).click()
+                    Thread.sleep(READ_MS)
+                    assertTrue("Caps lock was hidden by separator while composing", device.hasObject(By.desc(CAPS_LOCK)))
+                    assertFalse("separator appeared during Caps lock", device.hasObject(By.desc(Layout.SEPARATOR)))
+                    assertEquals("AB", read(scenario))
+
+                    // Unlocking Caps lock mid-composition restores the syllable separator.
+                    device.click(cx, cy)
+                    assertTrue("separator did not return after unlocking Caps lock", device.wait(Until.hasObject(By.desc(Layout.SEPARATOR)), WAIT_MS))
+                }
+            }
+        }
+    }
+
+    /**
      * Runs [block] with the current app fixed to [mode] in Kotomo's memory (the quick panel's
      * "Fix this mode here"), and releases it afterwards.
      */
@@ -1022,8 +1114,9 @@ class FieldTypingTest {
         /** The symbols and backspace keys' descriptions (R.string.key_symbols, key_backspace; English). */
         const val SYMBOLS = "Symbols"
         const val BACKSPACE = "Delete"
-        /** The Shift key's description (R.string.key_shift, English). */
+        /** The Shift and Caps lock keys' descriptions (R.string.key_shift, key_caps_lock; English). */
         const val SHIFT = "Shift"
+        const val CAPS_LOCK = "Caps lock"
         /** Tool labels and edit keys (R.string.tool_*, edit_*; English). */
         const val CLIPBOARD_TOOL = "Clipboard"
         const val EDIT_TOOL = "Edit text"

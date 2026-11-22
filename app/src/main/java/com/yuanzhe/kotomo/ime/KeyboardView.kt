@@ -24,6 +24,93 @@ import com.yuanzhe.kotomo.R
 /** Shift states: off, one capital, or locked capitals. */
 enum class Shift { OFF, ONCE, LOCKED }
 
+/**
+ * Tracks the Shift key's Gboard-style state machine across taps, single-letter consumption, and
+ * auto-capitalization.
+ *
+ * Notes: main thread; pure state, unit-tested. A single tap toggles [Shift.OFF] ↔ [Shift.ONCE];
+ * two Shift taps within [DOUBLE_TAP_MS] with no other key in between enter [Shift.LOCKED]
+ * (including starting from auto-caps [Shift.ONCE], where the first tap turns Shift off and the
+ * quick second tap locks); a tap on [Shift.LOCKED] turns Shift off without arming a re-lock.
+ */
+class ShiftState {
+    var state: Shift = Shift.OFF
+        private set
+
+    private var lastTapAt: Long = 0L
+    private var lockEligible: Boolean = false
+
+    /**
+     * Applies a tap on the Shift key at [at] (uptime milliseconds).
+     *
+     * Inputs: [at] the event uptime in milliseconds.
+     * Returns: the resulting [Shift] state.
+     */
+    fun tap(at: Long): Shift {
+        val quick = lockEligible && (at - lastTapAt) in 0L until DOUBLE_TAP_MS
+        when (state) {
+            Shift.OFF -> if (quick) {
+                state = Shift.LOCKED
+                cancelDoubleTap()
+            } else {
+                state = Shift.ONCE
+                lockEligible = true
+                lastTapAt = at
+            }
+            Shift.ONCE -> if (quick) {
+                state = Shift.LOCKED
+                cancelDoubleTap()
+            } else {
+                state = Shift.OFF
+                lockEligible = true
+                lastTapAt = at
+            }
+            Shift.LOCKED -> {
+                state = Shift.OFF
+                cancelDoubleTap()
+            }
+        }
+        return state
+    }
+
+    /** Consumes a one-letter [Shift.ONCE] after a character is typed and cancels pending double-tap. */
+    fun consumeOnce() {
+        if (state == Shift.ONCE) state = Shift.OFF
+        cancelDoubleTap()
+    }
+
+    /**
+     * Updates Shift for field auto-capitalization while preserving [Shift.LOCKED].
+     *
+     * Inputs: [caps] whether the field asks for a capital at the cursor.
+     */
+    fun applyAutoCaps(caps: Boolean) {
+        if (state == Shift.LOCKED) return
+        val next = if (caps) Shift.ONCE else if (state == Shift.ONCE) Shift.OFF else state
+        if (next != state) {
+            state = next
+            cancelDoubleTap()
+        }
+    }
+
+    /** Disarms any pending double-tap lock window (e.g., when another key or mode switch occurs). */
+    fun cancelDoubleTap() {
+        lockEligible = false
+        lastTapAt = 0L
+    }
+
+    /** Resets Shift to [Shift.OFF] and clears any pending double-tap state. */
+    fun reset() {
+        state = Shift.OFF
+        cancelDoubleTap()
+    }
+
+    companion object {
+        /** Two Shift taps closer than this lock capitals. */
+        const val DOUBLE_TAP_MS = 400L
+    }
+}
+
 /** Keys never shrink below this share of their height to fit a height limit. */
 private const val MIN_FIT = 0.6f
 /** How far, in touch slops, a finger must move for a flick rather than a tap (PLAN §10.9). */
@@ -193,6 +280,7 @@ class KeyboardView(
             if (field == value) return
             field = value
             invalidate()
+            if (isAttachedToWindow) access.invalidateRoot()
         }
 
     var mode = Mode.MIXED
@@ -266,6 +354,7 @@ class KeyboardView(
     private fun icon(id: Int) = ResourcesCompat.getDrawable(context.resources, id, context.theme)!!.mutate()
     private val shiftIcon = icon(R.drawable.ic_key_shift)
     private val shiftOnIcon = icon(R.drawable.ic_key_shift_on)
+    private val shiftLockedIcon = icon(R.drawable.ic_key_caps_lock)
     private val backspaceIcon = icon(R.drawable.ic_key_backspace)
     private val enterIcons = mapOf(
         EnterStyle.NEWLINE to icon(R.drawable.ic_key_enter),
@@ -517,7 +606,11 @@ class KeyboardView(
             canvas.drawRoundRect(box, radius, radius, keyPaint)
             val ink = if (enter && !isPressed) onAccentColor else inkColor
             val icon: Drawable? = when (k.key.action) {
-                KeyAction.Shift -> if (shift == Shift.OFF) shiftIcon else shiftOnIcon
+                KeyAction.Shift -> when (shift) {
+                    Shift.OFF -> shiftIcon
+                    Shift.ONCE -> shiftOnIcon
+                    Shift.LOCKED -> shiftLockedIcon
+                }
                 KeyAction.Backspace -> backspaceIcon
                 KeyAction.Enter -> enterIcons.getValue(enterStyle)
                 KeyAction.Emoji -> emojiIcon
