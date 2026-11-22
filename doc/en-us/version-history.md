@@ -1,5 +1,11 @@
 # Version history
 
+## 0.1.6 (2026-11-22)
+
+- Gboard-style Shift double-tap Caps Lock: extracted `ShiftState` in `KeyboardView.kt` (`DOUBLE_TAP_MS = 400L`) and wired it in `KotomoService.kt` so a single tap toggles `Shift.OFF` ↔ `Shift.ONCE`, two Shift taps within 400 ms with no intervening key enter `Shift.LOCKED` (including starting from English auto-capitalization `Shift.ONCE`, where the first tap turns Shift off and the quick second tap locks), and tapping `Shift.LOCKED` turns Shift off without arming a re-lock; added `ic_key_caps_lock.xml` (filled arrow with underline) for `Shift.LOCKED`, invalidated `KeyboardView`'s accessibility tree on `shift` changes so TalkBack/UiAutomator switch between `Shift` and `Caps lock`, and kept the Caps Lock key visible instead of replacing it with `分词` (`separatorOnShift`) while composing capitals in Mixed mode.
+- Upstreams: same as 0.1.5 (librime 1.17.0, Mozc 3.35.6354, OpenCC 1.4.2, HeliBoard 4.2 checked on 2026-11-22, unchanged).
+- Tagged on 2026-11-22 (`versionCode` 7). Verified on the development host: `java tool/CheckDocs.java`, `./gradlew check assembleDebug assembleRelease assembleDebugAndroidTest` (`ShiftStateTest` `8/8`, unit tests `306/314` passed, `8` host-skipped), `./gradlew assembleDebug assembleRelease` after the version bump, and on the emulator (`Medium_Phone_API_37.0`, Android 17, x86_64, debug): `FieldTypingTest` `34/34` (including `shiftDoubleTapEntersCapsLock`, B1, and A10) plus light and dark Caps Lock screenshots. Not verified on a physical device in this release cycle.
+
 ## 0.1.5 (2026-11-21)
 
 - Japanese and Mixed-mode conjugation, keigo registers, and whole-sentence forms (Stage 2): `core/mozc` shares `FindStemToken` between `LookupPosIds` and `Describe` so multi-morpheme conjugated predicates (such as `行きます`) retain verb POS in `PinnedConvert`; `Inflection` covers four politeness registers (`Plain`, `Polite`, `Honorific`, `Humble`), generic `五段動詞` row inference, normalization of Mozc pre-inflected `未然ウ接続` entries (`行こう`, `飲もう`, `食べよう`, `来よう`, `しよう`), na-adjectives, lexical keigo items, whole-sentence predicate extraction (`extractTarget`) preserving prefixes and particles, and hiragana/katakana/half-width katakana script variants.

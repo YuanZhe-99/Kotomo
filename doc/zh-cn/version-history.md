@@ -1,5 +1,11 @@
 # 版本历史
 
+## 0.1.6（2026-11-22）
+
+- Gboard 式双击 Shift 大写锁定：在 `KeyboardView.kt` 中抽离 `ShiftState`（`DOUBLE_TAP_MS = 400L`）并接入 `KotomoService.kt`，单按在 `Shift.OFF` ↔ `Shift.ONCE` 间切换，400 ms 内连续按两次 Shift 且中间无其他按键时进入 `Shift.LOCKED`（包括从英文自动大写 `Shift.ONCE` 起手时首击先关闭大写、快速再击进入锁定），在 `Shift.LOCKED` 状态下点击即解锁且不会立刻重新触发锁定；新增大写锁定图标 `ic_key_caps_lock.xml`（带下划线的实心箭头），在 `shift` 变化时刷新 `KeyboardView` 无障碍树以在 `Shift` 与 `Caps lock` 描述间即时切换，并在混合模式大写锁定期间保持大写锁定键可见而不被 `分词`（`separatorOnShift`）替换。
+- 上游：与 0.1.5 相同（2026-11-22 核对 librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2，未变）。
+- 2026-11-22 标记发布（`versionCode` 7）。在开发主机上验证：`java tool/CheckDocs.java`、`./gradlew check assembleDebug assembleRelease assembleDebugAndroidTest`（`ShiftStateTest` `8/8`，单元测试 `306/314` 通过、8 项主机跳过）、改版本号后的 `./gradlew assembleDebug assembleRelease`，以及模拟器（`Medium_Phone_API_37.0`、Android 17、x86_64、debug）：`FieldTypingTest` `34/34`（含 `shiftDoubleTapEntersCapsLock`、B1 与 A10），并核对浅色与深色模式下的大写锁定截图。本次发布周期未在物理真机上运行验证。
+
 ## 0.1.5（2026-11-21）
 
 - 日文与混合模式活用变形、敬语体裁与整句变形（第二阶段）：`core/mozc` 由 `LookupPosIds` 与 `Describe` 共用 `FindStemToken`，使多语素活用谓词（如 `行きます`）在 `PinnedConvert` 时保留动词词性；`Inflection` 支持四档礼貌体裁（普通/礼貌/尊敬/谦让）、通用 `五段動詞` 词尾推行、Mozc 词典 `未然ウ接続` 预变形条目（`行こう`、`飲もう`、`食べよう`、`来よう`、`しよう`）归一化、形容动词与换词敬语、保留前文与助词的整句谓词抽取（`extractTarget`），以及平假名/片假名/半角片假名写法变体。
