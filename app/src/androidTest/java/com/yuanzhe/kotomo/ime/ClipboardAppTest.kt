@@ -6,6 +6,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.text.InputType
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import androidx.core.content.FileProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -102,6 +104,8 @@ class ClipboardAppTest {
             runBlocking { settings.update { it.copy(clipboard = it.clipboard.copy(excludedApps = emptySet())) } }
             Thread.sleep(POLL_MS * 5)
             assertTrue("copied in an app that is not excluded: kept", copyAndWait(scenario, "$PREFIX kept ${System.nanoTime()}"))
+            // Dismiss the strip so this copy does not stay offered across subsequent tests in the run.
+            device.wait(Until.findObject(By.desc(context.getString(R.string.quick_close))), POLL_MS * 5)?.click()
         }
     }
 
@@ -228,7 +232,8 @@ class ClipboardAppTest {
                 assertTrue("sensitive image was recorded", history.items.value.none { it.isImage })
                 assertTrue(
                     "sensitive image appeared on quick paste",
-                    device.wait(Until.findObject(By.text(context.getString(R.string.quick_copied_image_hint))), POLL_MS * 3) == null,
+                    device.wait(Until.findObject(By.desc(context.getString(R.string.quick_close))), POLL_MS * 3) == null &&
+                        device.findObject(By.text(context.getString(R.string.quick_copied_image))) == null,
                 )
 
                 scenario.onActivity {
@@ -276,6 +281,84 @@ class ClipboardAppTest {
             }
         } finally {
             runBlocking { settings.update { it.copy(clipboard = previous.clipboard, toolOrder = previous.toolOrder, hiddenTools = previous.hiddenTools) } }
+        }
+    }
+
+    /**
+     * Single-row quick-paste strip keeps keyboard height constant (`0px` change), preserves the
+     * More button so tools remain one tap away, suppresses the clip once typing starts so word
+     * commits do not bounce it back, and still offers a newer copy in a non-empty field.
+     */
+    @Test
+    fun quickPasteKeepsConstantHeightMoreButtonAndSuppressesOnTyping() {
+        val previous = settings.current
+        val intent = Intent(context, FieldTestActivity::class.java)
+            .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
+            .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+        try {
+            runBlocking { settings.update { it.copy(clipboard = it.clipboard.copy(history = true, quickPaste = true)) } }
+            ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
+                val baselineTop = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) {
+                    "Kotomo's keys did not appear"
+                }.visibleBounds.top
+
+                val code = (100000..999999).random().toString()
+                scenario.onActivity {
+                    it.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null, "$PREFIX code $code"))
+                }
+                checkNotNull(device.wait(Until.findObject(By.text(code)), WAIT_MS)) { "copied code chip missing" }
+                val more = checkNotNull(device.wait(Until.findObject(By.desc(context.getString(R.string.tool_more))), WAIT_MS)) {
+                    "quick-paste strip More button missing"
+                }
+                assertEquals(baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+
+                more.click()
+                checkNotNull(device.wait(Until.findObject(By.text(context.getString(R.string.tools_more_title))), WAIT_MS)) {
+                    "More button did not open QuickPanel"
+                }
+                assertTrue(
+                    "quick-paste strip stayed over toolbar while QuickPanel is open",
+                    device.wait(Until.gone(By.desc(context.getString(R.string.quick_close))), WAIT_MS),
+                )
+                checkNotNull(device.wait(Until.findObject(By.desc(context.getString(R.string.candidates_collapse))), WAIT_MS)) {
+                    "QuickPanel back button missing"
+                }.click()
+                checkNotNull(device.wait(Until.findObject(By.text(code)), WAIT_MS)) {
+                    "quick-paste strip did not return after closing QuickPanel"
+                }
+                assertEquals(baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+
+                // Start typing and commit: quick-paste must hide on key down and stay suppressed after commit.
+                checkNotNull(device.findObject(By.desc("h"))).click()
+                checkNotNull(device.findObject(By.desc("i"))).click()
+                checkNotNull(device.findObject(By.descStartsWith("Enter"))).click()
+                Thread.sleep(POLL_MS * 4)
+                assertTrue(
+                    "quick-paste strip bounced back after typing committed",
+                    device.wait(Until.gone(By.desc(context.getString(R.string.quick_close))), WAIT_MS) &&
+                        device.findObject(By.desc(context.getString(R.string.quick_close))) == null,
+                )
+                assertEquals(baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+
+                // Copy something new while the field already contains text: the strip appears again at identical height.
+                val secondText = "$PREFIX ${(1000..9999).random()}"
+                scenario.onActivity {
+                    it.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(null, secondText))
+                }
+                checkNotNull(device.wait(Until.findObject(By.desc(context.getString(R.string.quick_close))), WAIT_MS)) {
+                    "fresh clip was not offered in non-empty field"
+                }
+                assertEquals(baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+                checkNotNull(device.wait(Until.findObject(By.textStartsWith(PREFIX)), WAIT_MS)) {
+                    "fresh copied text pill missing"
+                }.click()
+                Thread.sleep(POLL_MS * 3)
+                var typed = ""
+                scenario.onActivity { typed = it.findViewById<EditText>(FieldTestActivity.FIELD_ID).text.toString() }
+                assertTrue("expected field text '$typed' to end with '$secondText'", typed.endsWith(secondText))
+            }
+        } finally {
+            runBlocking { settings.update { it.copy(clipboard = previous.clipboard) } }
         }
     }
 

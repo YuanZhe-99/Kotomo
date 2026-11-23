@@ -74,6 +74,7 @@ class CandidateBar(
 
     private fun icon(id: Int) = ResourcesCompat.getDrawable(context.resources, id, context.theme)!!.mutate().apply { setTint(inkColor) }
     private val expandIcon = icon(R.drawable.ic_bar_expand)
+    private val collapseIcon = icon(R.drawable.ic_bar_collapse)
     private val searchIcon = icon(R.drawable.ic_key_search)
     private val searchPrompt = res.getString(R.string.emoji_search_prompt)
     private val toolIcons = HashMap<Tool, android.graphics.drawable.Drawable>()
@@ -131,6 +132,14 @@ class CandidateBar(
     /** A short status line shown in place of the toolbar when there are no candidates, or null. */
     var hint: String? = null
         set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Whether an expanded candidate or segment panel is open in the keyboard's place. */
+    var expanded = false
+        set(value) {
+            if (field == value) return
             field = value
             invalidate()
         }
@@ -317,7 +326,7 @@ class CandidateBar(
                 }
             }
         }
-        drawIcon(canvas, expandIcon, listEnd + expandWidth / 2)
+        drawIcon(canvas, if (expanded) collapseIcon else expandIcon, listEnd + expandWidth / 2)
     }
 
     /** Spreads the shown tools from one end of the bar to the other (one tool sits at the start). */

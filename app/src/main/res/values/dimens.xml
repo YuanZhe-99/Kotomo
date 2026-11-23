@@ -38,15 +38,6 @@
     <dimen name="kb_word_step">40dp</dimen>
     <!-- Candidate bar and toolbar -->
     <dimen name="bar_height">52dp</dimen>
-    <dimen name="segment_strip_height">40dp</dimen>
-    <dimen name="segment_strip_pad_h">8dp</dimen>
-    <dimen name="segment_strip_gap">6dp</dimen>
-    <dimen name="segment_chip_height">30dp</dimen>
-    <dimen name="segment_chip_radius">15dp</dimen>
-    <dimen name="segment_badge_size">22dp</dimen>
-    <dimen name="segment_badge_text">11sp</dimen>
-    <dimen name="segment_chip_text">15sp</dimen>
-    <dimen name="segment_hint_text">11sp</dimen>
     <dimen name="details_row_height">44dp</dimen>
     <dimen name="details_pad_h">8dp</dimen>
     <dimen name="details_action_height">44dp</dimen>
@@ -155,27 +146,19 @@
     <dimen name="clip_thumb_radius">8dp</dimen>
     <dimen name="clip_settings_thumb">52dp</dimen>
     <dimen name="clip_dialog_preview_height">180dp</dimen>
-    <!-- Quick-paste strip (PhoneQuickPaste). -->
-    <dimen name="quick_pad_h">8dp</dimen>
-    <dimen name="quick_pad_top">8dp</dimen>
-    <dimen name="quick_pad_bottom">4dp</dimen>
+    <!-- Quick-paste strip (single-row bar_height inside barContainer). -->
     <dimen name="quick_gap">6dp</dimen>
-    <dimen name="quick_header_pad">4dp</dimen>
-    <dimen name="quick_header_icon">14dp</dimen>
-    <dimen name="quick_header_text">12sp</dimen>
-    <dimen name="quick_close">32dp</dimen>
-    <dimen name="quick_close_icon">16dp</dimen>
-    <dimen name="quick_chip_height">60dp</dimen>
-    <dimen name="quick_chip_width">150dp</dimen>
-    <dimen name="quick_chip_best_width">168dp</dimen>
-    <dimen name="quick_chip_radius">14dp</dimen>
+    <dimen name="quick_close">40dp</dimen>
+    <dimen name="quick_close_icon">18dp</dimen>
     <dimen name="quick_chip_pad_h">12dp</dimen>
     <dimen name="quick_chip_icon">16dp</dimen>
-    <dimen name="quick_thumb_size">44dp</dimen>
-    <dimen name="quick_code_text">20sp</dimen>
-    <dimen name="quick_code_spacing">1.5sp</dimen>
+    <dimen name="quick_thumb_size">32dp</dimen>
+    <dimen name="quick_code_max_width">220dp</dimen>
+    <dimen name="quick_text_max_width">240dp</dimen>
+    <dimen name="quick_code_text">16sp</dimen>
+    <dimen name="quick_code_spacing">1sp</dimen>
     <dimen name="quick_context_text">11sp</dimen>
-    <dimen name="quick_copied_text">16sp</dimen>
+    <dimen name="quick_copied_text">14sp</dimen>
     <!-- Settings app tokens (SettingsHome, SettingsMixed, SettingsTablet). -->
     <dimen name="settings_gutter">16dp</dimen>
     <dimen name="settings_home_top">28dp</dimen>

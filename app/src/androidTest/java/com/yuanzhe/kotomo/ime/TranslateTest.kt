@@ -128,7 +128,7 @@ class TranslateTest {
     /** Taps the toolbar's last button, where the only tool on the bar sits. */
     private fun tapTranslate() {
         // The quick-paste strip of a clip an earlier test copied covers the bar for up to a minute.
-        device.wait(Until.gone(By.text(s(com.yuanzhe.kotomo.R.string.quick_copied))), QUICK_PASTE_MS)
+        device.wait(Until.gone(By.desc(s(com.yuanzhe.kotomo.R.string.quick_close))), QUICK_PASTE_MS)
         val pad = res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.toolbar_pad) + res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.toolbar_button) / 2
         device.click(device.displayWidth - pad, barY())
         device.waitForIdle()

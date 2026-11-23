@@ -90,7 +90,7 @@ class HandwritingTest {
 
     /** Taps the toolbar's last button, where the only tool on the bar sits. */
     private fun tapTool() {
-        device.wait(Until.gone(By.text(s(R.string.quick_copied))), QUICK_PASTE_MS)
+        device.wait(Until.gone(By.desc(s(R.string.quick_close))), QUICK_PASTE_MS)
         val q = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS))
         val y = q.visibleBounds.top - res.getDimensionPixelSize(R.dimen.kb_pad_top) - res.getDimensionPixelSize(R.dimen.bar_height) / 2
         val pad = res.getDimensionPixelSize(R.dimen.toolbar_pad) + res.getDimensionPixelSize(R.dimen.toolbar_button) / 2

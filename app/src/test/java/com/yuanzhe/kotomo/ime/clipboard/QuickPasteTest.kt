@@ -78,4 +78,33 @@ class QuickPasteTest {
         assertTrue(QuickPaste.chips(offer, numberField = false, acceptsImages = false).isEmpty())
         assertTrue(QuickPaste.chips(offer, numberField = true, acceptsImages = true).isEmpty())
     }
+
+    @Test
+    fun suppressInHidesOnlyInThatFieldUntilNewClip() { // QUICK-07
+        val q = QuickPaste()
+        val c1 = copied("first clip", t0)
+        q.offer(c1)
+        q.suppressIn("pkg.a#1")
+        assertNull(q.current(t0 + 1_000, "pkg.a#1"))
+        assertSame(c1, q.current(t0 + 1_000, "pkg.b#2"))
+        assertEquals(QuickPaste.WINDOW_MS - 1_000, q.remainingMs(t0 + 1_000))
+
+        // A newer copy clears prior per-field suppressions so non-empty fields still see it.
+        val c2 = copied("second clip", t0 + 2_000)
+        q.offer(c2)
+        assertSame(c2, q.current(t0 + 2_500, "pkg.a#1"))
+    }
+
+    @Test
+    fun doneDismissesEverywhereEvenAfterFieldSuppression() { // QUICK-08
+        val q = QuickPaste()
+        val c1 = copied("dismissed clip", t0)
+        q.offer(c1)
+        q.suppressIn("pkg.a#1")
+        q.done()
+        assertNull(q.current(t0 + 1_000, "pkg.a#1"))
+        assertNull(q.current(t0 + 1_000, "pkg.b#2"))
+        q.offer(c1)
+        assertNull(q.current(t0 + 1_500, "pkg.b#2"))
+    }
 }

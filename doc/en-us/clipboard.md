@@ -113,20 +113,28 @@ plausible they are all shown, the first marked as likelier (PLAN §10.7).
 
 ## Quick-paste strip
 
-`QuickPaste` offers what was just copied for 60 seconds after copying, once per clip: pasting it,
-closing the strip or copying something newer removes the offer, and the same clip (same text or
-image hash and time) is not offered again. For text, the strip shows a chip per code, the likeliest
-highlighted, then the copied text; in number fields, or when the whole clip is the code, only the
-codes. For a copied image, the strip shows a thumbnail chip only when the focused field declares
-support for a compatible image MIME type (`EditorInfoCompat.getContentMimeTypes`) and is not a
-number field; tapping it commits the image through `InputConnectionCompat.commitContent` with a
-temporary `FileProvider` URI (`${applicationId}.clipboard.fileprovider`). Nothing of the strip is
-written to disk. Codes come only from what was copied: the keyboard never reads notifications (the
-user decided on 2026-11-13 not to, since Android 15 hides one-time codes from notification listeners
-it does not trust, `upstream.md`). `ClipboardAppTest.aCopiedCodeIsOfferedAndTyped` (CLIP-27) checks
-text codes on the emulator: a copied message's code is offered and typed, the same message marked
-sensitive offers nothing; `ClipboardAppTest.aCopiedImageIsSavedAndCommitted` (CLIP-33) checks
-encrypted image capture and `commitContent` delivery.
+`QuickPaste` offers what was just copied for 60 seconds after copying, once per clip, in a
+single-row strip inside `barContainer` at the exact height of `bar_height` (`52dp`, zero keyboard
+height change, obscuring top-ordered inline autofill surfaces while shown): a leading More button
+so tools remain one tap away (opening the More panel also reveals the full toolbar above it), a
+scrollable row of rounded pill chips, and a trailing Close button. Pasting a clip, closing the strip
+or copying something newer removes the global offer, and the same clip (same text or image hash and
+time) is not offered again. Starting to type or insert text in a field (`suppressIn`) silences the
+current clip for that field so committing words never bounces it back, while still offering newer
+copies in non-empty fields and keeping unsuppressed clips available in other fields within the 60 s
+window. For text, the strip shows a pill per code, the likeliest highlighted, then the copied text;
+in number fields, or when the whole clip is the code, only the codes. For a copied image, the strip
+shows a single-row thumbnail pill only when the focused field declares support for a compatible image
+MIME type (`EditorInfoCompat.getContentMimeTypes`) and is not a number field; tapping it commits the
+image through `InputConnectionCompat.commitContent` with a temporary `FileProvider` URI
+(`${applicationId}.clipboard.fileprovider`). Nothing of the strip is written to disk. Codes come only
+from what was copied: the keyboard never reads notifications (the user decided on 2026-11-13 not to,
+since Android 15 hides one-time codes from notification listeners it does not trust, `upstream.md`).
+`ClipboardAppTest.aCopiedCodeIsOfferedAndTyped` (CLIP-27) checks text codes on the emulator: a
+copied message's code is offered and typed, the same message marked sensitive offers nothing;
+`ClipboardAppTest.aCopiedImageIsSavedAndCommitted` (CLIP-33) checks encrypted image capture and
+`commitContent` delivery; and `ClipboardAppTest.quickPasteKeepsConstantHeightMoreButtonAndSuppressesOnTyping`
+checks constant height, the More button, per-field typing suppression, and fresh offers in a non-empty field.
 
 ## Storage format
 

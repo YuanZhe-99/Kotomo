@@ -708,9 +708,10 @@ class FieldTypingTest {
     }
 
     /**
-     * T16 / v0.1.5 (PLAN §10.1): SegmentStrip's trailing Forms chip opens the 4-register panel for
-     * both single words (`tabemasu` -> Honorific `召し上がります`) and multi-segment sentences
-     * (`gakkouniiku` -> Humble `参ります`), preserving prefix and replacing the whole sentence.
+     * T16 + v0.1.8 (PLAN §10.1): Japanese typing keeps keyboard height constant (`0px` jump);
+     * expanding the candidate bar opens `SegmentPanel` with its `Forms` button for single words
+     * (`tabemasu` -> Honorific `召し上がります`) and multi-segment sentences (`gakkouniiku` -> Humble
+     * `参ります`), preserving prefix and replacing the whole sentence.
      */
     @Test
     fun japaneseFormsSwitchRegistersAndWholeSentence() {
@@ -718,19 +719,34 @@ class FieldTypingTest {
             val intent = Intent(instrumentation.targetContext, FieldTestActivity::class.java)
                 .putExtra(FieldTestActivity.EXTRA_INPUT_TYPE, InputType.TYPE_CLASS_TEXT)
                 .putExtra(FieldTestActivity.EXTRA_IME_OPTIONS, EditorInfo.IME_FLAG_NO_ENTER_ACTION)
+            val res = instrumentation.targetContext.resources
             ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
-                checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                val baselineTop = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) {
+                    "Kotomo's keys did not appear"
+                }.visibleBounds.top
                 "tabemasu".forEach { device.findObject(By.desc(it.toString())).click() }
-                checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "SegmentStrip Forms chip missing" }.click()
+                Thread.sleep(READ_MS * 3)
+                assertEquals("Japanese word shifted keyboard height", baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+                val barY = baselineTop - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+                    res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+                device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+                checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "SegmentPanel Forms button missing" }.click()
                 checkNotNull(device.wait(Until.findObject(By.text("Honorific")), WAIT_MS)) { "Honorific tab missing" }.click()
                 checkNotNull(device.wait(Until.findObject(By.text("召し上がります")), WAIT_MS)) { "召し上がります card missing" }.click()
                 assertEquals("召し上がります", read(scenario))
                 assertFalse("the form was left composing", composing(scenario))
             }
             ActivityScenario.launch<FieldTestActivity>(intent).use { scenario ->
-                checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) { "Kotomo's keys did not appear" }
+                val baselineTop = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) {
+                    "Kotomo's keys did not appear"
+                }.visibleBounds.top
                 "gakkouniiku".forEach { device.findObject(By.desc(it.toString())).click() }
-                checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "Whole-sentence Forms chip missing" }.click()
+                Thread.sleep(READ_MS * 3)
+                assertEquals("Japanese sentence shifted keyboard height", baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+                val barY = baselineTop - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.kb_pad_top) -
+                    res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_height) / 2
+                device.click(device.displayWidth - res.getDimensionPixelSize(com.yuanzhe.kotomo.R.dimen.bar_expand) / 2, barY)
+                checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "Whole-sentence Forms button missing" }.click()
                 checkNotNull(device.wait(Until.findObject(By.text("行く")), WAIT_MS)) { "Whole-sentence header missing" }
                 checkNotNull(device.wait(Until.findObject(By.text("Humble")), WAIT_MS)) { "Humble tab missing" }.click()
                 checkNotNull(device.wait(Until.findObject(By.text("参ります")), WAIT_MS)) { "参ります card missing" }.click()

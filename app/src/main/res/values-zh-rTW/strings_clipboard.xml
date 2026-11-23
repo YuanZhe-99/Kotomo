@@ -43,11 +43,7 @@
     <string name="quick_region">快速輸入</string>
     <string name="quick_close">關閉快速輸入</string>
     <string name="quick_copied">剛複製</string>
-    <string name="quick_copied_hint">輕觸即可輸入剛複製的內容</string>
     <string name="quick_copied_image">圖片</string>
-    <string name="quick_copied_image_hint">輕觸即可貼上剛複製的圖片</string>
-    <string name="quick_code_one">剛複製的內容中有驗證碼</string>
-    <string name="quick_codes_many">來自剛複製的內容 · 無法確定哪個是驗證碼，全部列出</string>
     <string name="quick_more_likely">較可能</string>
     <string name="clip_settings_section">剪貼簿</string>
     <string name="clip_settings_history">剪貼簿記錄</string>

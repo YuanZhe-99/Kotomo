@@ -154,7 +154,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private val rimeBuildLock = Mutex()
 
     private lateinit var keyboard: KeyboardView
-    private lateinit var segmentStrip: SegmentStrip
     private lateinit var barContainer: FrameLayout
     private lateinit var candidateBar: CandidateBar
     private lateinit var detailsBar: CandidateDetailsBar
@@ -170,7 +169,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private var formsReturnToSegments = false
     private var formsPickAction: ((text: String, reading: String) -> Unit)? = null
     private var kanjiScript: KanjiScript? = null
-    private var segmentStripItems: List<SegmentChipItem> = emptyList()
     private var detailsToken = 0
     private var popupOverlayActive = false
     private var quickStripWanted = false
@@ -660,6 +658,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             // The mode in use was just hidden: move to one the language choice still offers.
             if (::keyboard.isInitialized && mode !in it.modes) switchMode(it.usable(mode), 0)
             if (::candidateBar.isInitialized) candidateBar.tools = it.tools
+            if (!it.clipboard.quickPaste) quickPaste.done()
             refresh(0)
             applyEngineSettings()
         }
@@ -762,9 +761,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         val popups = PopupLayer(this)
         popupOverlayActive = false
-        segmentStripItems = emptyList()
         keyboard = KeyboardView(this, popups, ::onKey)
-        segmentStrip = SegmentStrip(this, onChipClick = { i -> showSegments(initialFocus = i) }, onFormsClick = ::openStripForms)
         detailsBar = CandidateDetailsBar(this) { clearDetails() }
         candidateBar = CandidateBar(this, ::pick, ::toggleCandidates, ::onTool, ::showDetails) { leaveSearch(toPanel = true) }
         candidateBar.onListChanged = ::clearDetails
@@ -795,6 +792,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                             quickPaste.done()
                             updateQuickStrip()
                         },
+                        onMore = ::toggleQuickPanel,
                         onClose = {
                             quickPaste.done()
                             updateQuickStrip()
@@ -803,8 +801,12 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 }
             }
         }
-        // Autofill suggestions lie over the idle toolbar (PLAN §10.10, Android 11 and later).
-        barContainer = FrameLayout(this).apply { addView(candidateBar) }
+        val barHeight = resources.getDimensionPixelSize(R.dimen.bar_height)
+        // Autofill suggestions and quick paste share the candidate bar's fixed-height slot so
+        // offering, dismissing, or switching between them never changes the keyboard's height.
+        barContainer = FrameLayout(this).apply {
+            addView(candidateBar, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Built once: the system asks for the request before the first input view exists.
             val strip = inlineAutofill ?: InlineAutofill(this).also { inlineAutofill = it }
@@ -822,11 +824,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 syncAutofillObscured()
             }
         }
+        barContainer.addView(quickStrip, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(segmentStrip, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(barContainer)
-            addView(quickStrip, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(barContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, barHeight))
             addView(detailsBar, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(panelHost)
         }
@@ -955,7 +956,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         shownCandidates.value = candidates
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
+        updateQuickStrip()
     }
 
     /**
@@ -992,10 +993,24 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
     }
 
+    /** Identifies the current focused field for per-field quick-paste typing suppression. */
+    private fun currentFieldKey(): String = currentInputEditorInfo?.let { "${it.packageName.orEmpty()}#${it.fieldId}" }.orEmpty()
+
     /**
-     * Shows the quick-paste strip in the candidate bar's place while a fresh clip is on offer
-     * (and has chips applicable to the current field) and nothing is being composed, and hides it
-     * when the offer runs out or a notice is shown.
+     * Suppresses the current quick-paste offer in the current field once typing or text insertion
+     * starts there, so word commits never make an already-seen clip bounce back.
+     */
+    private fun suppressQuickPasteInField(onlyWhenShown: Boolean) {
+        if (onlyWhenShown && !quickStripWanted) return
+        if (quickPaste.offer.value == null) return
+        quickPaste.suppressIn(currentFieldKey())
+        if (quickStripWanted) updateQuickStrip()
+    }
+
+    /**
+     * Shows the quick-paste strip in the candidate bar's slot while a fresh clip is on offer
+     * (with chips applicable to the current field, not yet suppressed by typing here) and hides it
+     * when the offer runs out, typing starts, another panel opens, or a notice is shown.
      */
     private fun updateQuickStrip() {
         if (!::quickStrip.isInitialized) return
@@ -1005,19 +1020,26 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         quickNumberField = numberField
         quickAcceptsImages = imageField
         val now = System.currentTimeMillis()
-        val offer = quickPaste.current(now)
+        val offer = quickPaste.current(now, currentFieldKey())
         val composingNow = composing.isNotEmpty() || chinesePreedit.isNotEmpty()
         val hasChips = offer != null && QuickPaste.chips(offer, numberField, imageField).isNotEmpty()
-        quickStripWanted = hasChips && notice == null && !composingNow && panelHost.getChildAt(0) === keyboard
+        quickStripWanted = settings.clipboard.quickPaste &&
+            hasChips &&
+            notice == null &&
+            !composingNow &&
+            emojiSearch == null &&
+            ::panelHost.isInitialized &&
+            panelHost.getChildAt(0) === keyboard
         updateHeaderVisibility()
         main.removeCallbacks(quickStripTimeout)
-        if (offer != null) main.postDelayed(quickStripTimeout, quickPaste.remainingMs(now))
+        val remaining = quickPaste.remainingMs(now)
+        if (remaining > 0) main.postDelayed(quickStripTimeout, remaining)
     }
 
-    /** Keeps popup overlay and detail-bar obscuring state synchronized with [inlineAutofill]. */
+    /** Keeps popup overlay, detail-bar, and quick-paste obscuring state synchronized with [inlineAutofill]. */
     private fun syncAutofillObscured() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            inlineAutofill?.obscured = popupOverlayActive || (::detailsBar.isInitialized && detailsBar.current != null)
+            inlineAutofill?.obscured = popupOverlayActive || (::detailsBar.isInitialized && detailsBar.current != null) || quickStripWanted
         }
     }
 
@@ -1026,13 +1048,11 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         detailsToken++
         if (::detailsBar.isInitialized && detailsBar.current != null) detailsBar.show(null)
         updateHeaderVisibility()
-        syncAutofillObscured()
     }
 
     /**
-     * Coordinates visibility across the header strips (`segmentStrip`, `barContainer`,
-     * `quickStrip`, and `detailsBar`) so details, quick paste, autofill, and live segment chips
-     * never fight over space.
+     * Coordinates visibility across `barContainer` (`candidateBar` + `quickStrip` + autofill)
+     * and `detailsBar`, and updates the expand/collapse arrow on [candidateBar].
      */
     private fun updateHeaderVisibility() {
         if (!::detailsBar.isInitialized) return
@@ -1045,14 +1065,8 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (quickStrip.visibility != quickVis) quickStrip.visibility = quickVis
         val candidateVis = if (quickStripWanted) View.GONE else View.VISIBLE
         if (candidateBar.visibility != candidateVis) candidateBar.visibility = candidateVis
-        val showStrip = !showingDetails &&
-            !quickStripWanted &&
-            !direct &&
-            emojiSearch == null &&
-            ::panelHost.isInitialized &&
-            panelHost.getChildAt(0) === keyboard &&
-            segmentStripItems.isNotEmpty()
-        segmentStrip.show(if (showStrip) segmentStripItems else emptyList(), hasForms = showStrip && currentFormsTarget != null)
+        candidateBar.expanded = ::panelHost.isInitialized && (panelHost.getChildAt(0) === candidatesPanel || panelHost.getChildAt(0) === segmentPanel)
+        syncAutofillObscured()
     }
 
     /** Opens the clipboard history in the keyboard's place (the toolbar's clipboard button). */
@@ -1072,6 +1086,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     history.items.collectAsState(), c.retentionDays, c.history,
                     onPaste = {
                         currentInputConnection?.commitText(it, 1)
+                        quickPaste.done()
                         showKeyboard()
                     },
                     onPin = { clip, on -> history.pin(clip.id, on) },
@@ -1105,6 +1120,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             showNotice(getString(R.string.clip_image_unsupported))
             return
         }
+        quickPaste.done()
         showKeyboard()
         lifecycleScope.launch(Dispatchers.IO) {
             val bytes = history.readImageBytes(clip) ?: return@launch
@@ -1222,7 +1238,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
+        updateQuickStrip()
     }
 
     private val shownCandidates = androidx.compose.runtime.mutableStateOf(emptyList<String>())
@@ -1293,7 +1309,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         detailsBar.show(CandidateDetailsState(info, actions))
         updateHeaderVisibility()
-        syncAutofillObscured()
         // A Japanese word or sentence also shows its dictionary form, part of speech, and forms
         // (PLAN §10.1, §10.2).
         if (mode == Mode.JAPANESE && !direct && !emoji && reading.isNotEmpty()) {
@@ -1358,7 +1373,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         detailsBar.show(CandidateDetailsState(info, actions))
         updateHeaderVisibility()
-        syncAutofillObscured()
         val hasJapaneseTail = candidate != null && !emoji && (
             candidate.target == Lang.JAPANESE ||
                 candidate.pieces.lastOrNull()?.typed == Lang.JAPANESE ||
@@ -1417,7 +1431,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         detailsBar.show(CandidateDetailsState(info, actions))
         updateHeaderVisibility()
-        syncAutofillObscured()
         if (reading.isNotEmpty()) {
             describeJapanese(token, cand.text, reading, listOf(cand.text to reading)) { chosenText, _ ->
                 lockJapaneseSegmentFromForms(focus, chosenText)
@@ -1665,15 +1678,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         formsView.value = FormsView(target)
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
-    }
-
-    /** Opens [FormsPanel] from the trailing pill on [SegmentStrip] to replace the whole composition. */
-    private fun openStripForms() {
-        val target = currentFormsTarget ?: return
-        openForms(target, returnToSegments = false) { chosenText, _ ->
-            if (mode == Mode.MIXED) commitMixedLiteral(chosenText) else commitJapaneseLiteral(chosenText)
-        }
+        updateQuickStrip()
     }
 
     /** Opens [FormsPanel] from [SegmentPanel]'s bottom button for the focused segment or whole sentence. */
@@ -1710,7 +1715,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (panelHost.getChildAt(0) !== panel) {
             panelHost.removeAllViews()
             panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, keyboard.height))
-            updateHeaderVisibility()
+            updateQuickStrip()
         }
     }
 
@@ -1846,7 +1851,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
+        updateQuickStrip()
     }
 
     /**
@@ -1936,7 +1941,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
+        updateQuickStrip()
     }
 
     /**
@@ -2012,7 +2017,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         lastSpaceAt = 0L
         autoSpaced = false
         popupOverlayActive = false
-        segmentStripItems = emptyList()
         clearDetails()
         shiftState.reset()
         composing.clear()
@@ -2072,7 +2076,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
 
     override fun onFinishInputView(finishingInput: Boolean) {
         popupOverlayActive = false
-        segmentStripItems = emptyList()
         clearDetails()
         currentInputConnection?.finishComposingText()
         composing.clear()
@@ -2212,6 +2215,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         if (action != KeyAction.Shift) shiftState.cancelDoubleTap()
         emojiSearch?.let { if (searchKey(action, it)) return }
         if (onChosenKey(action, longPress, downTime)) return
+        if (suppressesQuickPaste(action)) suppressQuickPasteInField(onlyWhenShown = true)
         if (mode == Mode.PC && pc.onKey(action, ic, downTime)) {
             refresh(downTime)
             return
@@ -2814,6 +2818,19 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         clearJapanese()
     }
 
+    /** Whether [action] starts typing or editing in the field and should silence quick paste there. */
+    private fun suppressesQuickPaste(action: KeyAction): Boolean = when (action) {
+        is KeyAction.Text,
+        KeyAction.Space,
+        KeyAction.Backspace,
+        KeyAction.Enter,
+        KeyAction.KanaModify,
+        is KeyAction.DeleteWords,
+        -> true
+        is KeyAction.Pc -> action.key is PcKey.Code
+        else -> false
+    }
+
     /**
      * Redraws the keyboard page and the candidates after a change.
      * Inputs: [downTime] is the touch that caused the change (0 for none), for [Probe].
@@ -2837,14 +2854,9 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             (h.start - at)..(h.endInclusive - at)
         }
         keyboard.maxWidth = if (posture.wide && !split) resources.getDimension(R.dimen.kb_max_width) else 0f
-        val stripReserve = if (::segmentStrip.isInitialized && segmentStrip.visibility == View.VISIBLE) {
-            segmentStrip.height.takeIf { it > 0 } ?: resources.getDimensionPixelSize(R.dimen.segment_strip_height)
-        } else {
-            0
-        }
         keyboard.heightLimit = posture.heightLimit(
             window.height(),
-            (candidateBar.height.takeIf { it > 0 } ?: resources.getDimensionPixelSize(R.dimen.bar_height)) + stripReserve + content.paddingBottom,
+            (candidateBar.height.takeIf { it > 0 } ?: resources.getDimensionPixelSize(R.dimen.bar_height)) + content.paddingBottom,
             density, ResourcesCompat.getFloat(resources, R.dimen.kb_short_window_share), s.tabletopLowerHalf,
         )
         keyboard.split = split
@@ -2899,7 +2911,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
             candidateBar.show(candidates, downTime)
             clearDetails()
             candidateBar.hint = null
-            segmentStripItems = emptyList()
             currentFormsTarget = null
             focusedFormsTarget = null
             updateQuickStrip()
@@ -2939,7 +2950,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         shownTags.value = tags
         if (activeMixed) updateSegmentPanel()
         candidateBar.hint = notice ?: chineseHint() ?: japaneseHint(raw)
-        updateSegmentStrip()
         updateQuickStrip()
         if (raw.isEmpty()) {
             clearJapanese()
@@ -3088,7 +3098,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val open = ::panelHost.isInitialized && panelHost.getChildAt(0) === segmentPanel
         mixedFocus = mixedFocus?.takeIf { open && it in mixedPieces().indices }
         updateSegmentPanel()
-        updateSegmentStrip()
         if (mixedFocus != null) focusSegment(mixedFocus)
     }
 
@@ -3433,7 +3442,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         candidateBar.show(candidates, 0, readings)
         shownCandidates.value = candidates
         updateSegmentPanel()
-        updateSegmentStrip()
     }
 
     /**
@@ -3461,7 +3469,6 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         segmentFocus = null
         currentFormsTarget = null
         focusedFormsTarget = null
-        updateSegmentStrip()
     }
 
     /** Says that this build cannot convert Japanese while Japanese mode has letters, or null. */
@@ -3480,49 +3487,22 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         Lang.JAPANESE -> if (hasKana(rawSlice)) SegmentSource.KANA else SegmentSource.ROMAJI
     }
 
-    private fun mixedChipItems(pieces: List<Piece>, raw: String): List<SegmentChipItem> {
-        val singleWord = pieces.size == 1
-        return pieces.map { piece ->
+    private fun mixedChipItems(pieces: List<Piece>, raw: String): List<SegmentChipItem> =
+        pieces.map { piece ->
             val rawSlice = raw.substring(piece.begin.coerceAtMost(raw.length), piece.end.coerceAtMost(raw.length))
-            val cross = piece.origin == Origin.PINYIN_JA || piece.origin == Origin.EN_JA
-            val showHint = (cross || singleWord) && rawSlice != piece.text
             SegmentChipItem(
                 text = piece.text,
                 source = mixedPieceSource(piece, rawSlice),
-                rawHint = if (showHint) rawSlice else "",
                 locked = piece.locked,
             )
         }
-    }
 
     private fun japaneseChipItems(): List<SegmentChipItem> {
         val source = if (hasKana(composing.toString())) SegmentSource.KANA else SegmentSource.ROMAJI
-        val singleWord = japaneseSegments.size == 1
         return japaneseSegments.map { seg ->
             val surface = seg.candidates.firstOrNull()?.value ?: seg.reading
-            val hint = if (singleWord && composing.isNotEmpty() && composing.toString() != surface) composing.toString()
-            else if (!singleWord && seg.reading != surface) seg.reading
-            else ""
-            SegmentChipItem(text = surface, source = source, rawHint = hint, locked = seg.pinned)
+            SegmentChipItem(text = surface, source = source, locked = seg.pinned)
         }
-    }
-
-    /**
-     * Updates the live [SegmentStrip] above the candidate bar from the current conversion.
-     * Notes: while a Mixed composition is open and waiting for the engine thread to answer the new
-     * key, keeps the previous snapshot's chips on screen (matching the candidate bar) so the strip
-     * never collapses to GONE and pops back to VISIBLE between keystrokes.
-     */
-    private fun updateSegmentStrip() {
-        val raw = composing.toString()
-        val snap = mixedSnapshot
-        segmentStripItems = when {
-            direct || emojiSearch != null || raw.isBlank() -> emptyList()
-            mode == Mode.MIXED && snap != null -> mixedChipItems(mixedPieces(), snap.input)
-            mode == Mode.JAPANESE -> japaneseChipItems()
-            else -> emptyList()
-        }
-        updateHeaderVisibility()
     }
 
     private fun cardSubtitle(lang: Lang, sharedZhJa: Boolean, reading: String): String {
@@ -4217,6 +4197,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
     private fun pickFound(index: Int) {
         val emoji = candidates.getOrNull(index) ?: return
         currentInputConnection?.commitText(emoji, 1)
+        suppressQuickPasteInField(onlyWhenShown = false)
         if (!locked && remembers) memory()?.update { it.copy(emoji = it.emoji.sent(emoji)) }
         leaveSearch(toPanel = false)
     }
@@ -4258,7 +4239,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                     start = InkLang.forMode(mode, script),
                     chinese = InkLang.chinese(script),
                     before = { currentInputConnection?.getTextBeforeCursor(InkRecognizer.PRE_CONTEXT, 0)?.toString().orEmpty() },
-                    onText = { currentInputConnection?.commitText(it, 1) },
+                    onText = {
+                        currentInputConnection?.commitText(it, 1)
+                        suppressQuickPasteInField(onlyWhenShown = false)
+                    },
                     onSpace = { currentInputConnection?.commitText(" ", 1) },
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onBack = ::showKeyboard,
@@ -4268,7 +4252,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
+        updateQuickStrip()
     }
 
     /** The voice panel while it is shown; leaving it closes the recognizer and the microphone. */
@@ -4302,7 +4286,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         voicePanel = panel
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
+        updateQuickStrip()
     }
 
     /** Commits what voice typing heard; Latin words after a Latin word get a space between. */
@@ -4311,6 +4295,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         val before = ic.getTextBeforeCursor(1, 0)?.toString().orEmpty()
         fun latin(c: Char) = c.isLetterOrDigit() && c.code < LATIN_END
         ic.commitText(if (before.isNotEmpty() && latin(before.last()) && latin(text.first())) " $text" else text, 1)
+        suppressQuickPasteInField(onlyWhenShown = false)
     }
 
     /** The handwriting models on the device, as last asked in this process; null before the first stylus session. */
@@ -4416,7 +4401,10 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
                 val typeface = androidx.compose.runtime.remember(style) { styles?.typeface() }
                 EmojiFont(typeface) {
                 EmojiPanel(
-                    onEmoji = { currentInputConnection?.commitText(it, 1) },
+                    onEmoji = {
+                        currentInputConnection?.commitText(it, 1)
+                        suppressQuickPasteInField(onlyWhenShown = false)
+                    },
                     onBackspace = { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) },
                     onSearch = ::startSearch,
                     onBack = ::showKeyboard,
@@ -4432,7 +4420,7 @@ class KotomoService : InputMethodService(), LifecycleOwner, SavedStateRegistryOw
         }
         panelHost.removeAllViews()
         panelHost.addView(panel, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        updateHeaderVisibility()
+        updateQuickStrip()
     }
 
     private companion object {

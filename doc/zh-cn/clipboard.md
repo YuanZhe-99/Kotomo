@@ -89,11 +89,8 @@ Kotomo 自己保存剪贴板历史：Android 13 起系统最迟在最后一次�
 
 ## 快捷输入条
 
-`QuickPaste` 在复制后 60 秒内提供刚复制的内容，每条剪贴只提供一次：输入它、关闭输入条或复制了更新的内容都会
-撤下，同一条剪贴（相同文本或图片摘要与时间）不会再次提供。对文本，输入条为每个验证码显示一个卡片，最可能的高亮，然后是复制的
-文本；在数字输入框中，或整条剪贴就是验证码时，只显示验证码。对图片，仅当当前焦点输入框声明支持兼容的图片 MIME 类型
-（`EditorInfoCompat.getContentMimeTypes`）且非数字输入框时显示图片缩略图卡片；点按时通过临时 `FileProvider` URI
-（`${applicationId}.clipboard.fileprovider`）经由 `InputConnectionCompat.commitContent` 插入。输入条的内容从不写入磁盘。验证码只来自复制的内容：键盘从不读取通知（用户 2026-11-13 决定不做，因为 Android 15 起系统对不受信任的通知监听服务隐去一次性验证码，见 `upstream.md`）。`ClipboardAppTest.aCopiedCodeIsOfferedAndTyped`（CLIP-27）在模拟器上核对文字验证码：复制的短信文字里的验证码会被提供并可输入，标记为敏感的同一段文字什么都不提供；`ClipboardAppTest.aCopiedImageIsSavedAndCommitted`（CLIP-33）核对加密图片记录与 `commitContent` 发送。
+`QuickPaste` 在复制后 60 秒内提供刚复制的内容，每条剪贴只提供一次；该输入条在 `barContainer` 中与候选栏共占固定
+`bar_height`（`52dp`）单行槽位（键盘高度变化为 `0`，显示时遮蔽顶层自动填充视图）：左侧固定“更多”按钮（打开更多面板并在上方露出完整工具栏），中间为可横向滚动的圆角胶囊芯片，右侧固定关闭按钮。输入它、关闭输入条或复制更新的内容都会全局撤下，同一条剪贴（相同文本或图片摘要与时间）不会再次提供；开始在某个输入框打字或插入内容后（`suppressIn`），当前剪贴会在该输入框静默，避免词间上屏反复回弹，同时已在输入文字的输入框仍可收到新复制内容的推荐，未静默的其他输入框在 60 秒窗口内也可继续收到。对文本，输入条为每个验证码显示一个胶囊，最可能的高亮，然后是复制的文本；在数字输入框中，或整条剪贴就是验证码时，只显示验证码。对图片，仅当当前焦点输入框声明支持兼容的图片 MIME 类型（`EditorInfoCompat.getContentMimeTypes`）且非数字输入框时显示单行缩略图胶囊；点按时通过临时 `FileProvider` URI（`${applicationId}.clipboard.fileprovider`）经由 `InputConnectionCompat.commitContent` 插入。输入条的内容从不写入磁盘。验证码只来自复制的内容：键盘从不读取通知（用户 2026-11-13 决定不做，因为 Android 15 起系统对不受信任的通知监听服务隐去一次性验证码，见 `upstream.md`）。`ClipboardAppTest.aCopiedCodeIsOfferedAndTyped`（CLIP-27）在模拟器上核对文字验证码：复制的短信文字里的验证码会被提供并可输入，标记为敏感的同一段文字什么都不提供；`ClipboardAppTest.aCopiedImageIsSavedAndCommitted`（CLIP-33）核对加密图片记录与 `commitContent` 发送；`ClipboardAppTest.quickPasteKeepsConstantHeightMoreButtonAndSuppressesOnTyping` 核对固定高度、“更多”按钮、按输入框静默与非空输入框接收新复制内容。
 
 ## 存储格式
 

@@ -9,14 +9,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,11 +29,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -40,6 +42,8 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.yuanzhe.kotomo.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,42 +51,55 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
 /**
- * Decides what the quick-paste strip offers: the text just copied, for a short window after
- * copying, shown once per clip (PLAN §10.7).
+ * Decides what the quick-paste strip offers: the text or image just copied, for a short window
+ * after copying, shown once per clip (PLAN §10.7).
  *
  * Inputs: windowMs is how long after copying the strip is offered.
  * Notes: main thread. A clip leaves the strip when it is pasted, closed, replaced by a newer copy
- * or older than the window, and the same clip (same text and time) is never offered again after
- * that. Holds the text in memory only; nothing is written.
+ * or older than the window, and the same clip (same text/image and time) is never offered again
+ * after that. Once the person begins typing in a field ([suppressIn]), that clip stays quiet in
+ * that field until a newer clip arrives while remaining available in other fields until it expires.
+ * Holds the clip in memory only; nothing is written.
  */
 class QuickPaste(private val windowMs: Long = WINDOW_MS) {
     private val state = MutableStateFlow<Copied?>(null)
-    /** The text whose strip was last pasted or closed, so the same clip is not offered twice. */
+    /** The clip whose strip was last pasted or closed, so the same clip is not offered twice. */
     private var finished: Copied? = null
+    /** Fields where typing began while the current clip was offered. */
+    private val suppressedFields = HashSet<String>()
 
     /** The clip on offer, or null; does not expire by itself (use [current]). */
     val offer: StateFlow<Copied?> = state
 
     /**
      * Offers [copied] on the strip, replacing an older offer.
-     * Notes: ignored when that same clip was already pasted or closed.
+     * Notes: ignored when that same clip was already pasted or closed; a different clip clears
+     * prior per-field typing suppressions so new copies still appear in non-empty fields.
      */
     fun offer(copied: Copied) {
         if (copied == finished) return
+        if (copied != state.value) suppressedFields.clear()
         state.value = copied
     }
 
     /**
-     * Returns the clip to show at [nowUtcMs], or null.
+     * Returns the clip to show at [nowUtcMs] for [fieldKey] (or any field when null), or null.
      * Side effects: drops an offer older than the window.
      */
-    fun current(nowUtcMs: Long): Copied? {
+    fun current(nowUtcMs: Long, fieldKey: String? = null): Copied? {
         val c = state.value ?: return null
         if (nowUtcMs - c.atUtcMs !in 0 until windowMs) {
             state.value = null
+            suppressedFields.clear()
             return null
         }
+        if (fieldKey != null && fieldKey in suppressedFields) return null
         return c
+    }
+
+    /** Suppresses the current offer in [fieldKey] once typing starts there without dismissing other fields. */
+    fun suppressIn(fieldKey: String) {
+        if (state.value != null) suppressedFields += fieldKey
     }
 
     /** Returns how long the current offer still shows at [nowUtcMs], for scheduling its hiding; 0 when none. */
@@ -90,6 +107,7 @@ class QuickPaste(private val windowMs: Long = WINDOW_MS) {
 
     /** Removes the offer after it was pasted or closed; that clip is not offered again. */
     fun done() {
+        suppressedFields.clear()
         finished = state.value ?: finished
         state.value = null
     }
@@ -124,14 +142,13 @@ class QuickPaste(private val windowMs: Long = WINDOW_MS) {
 }
 
 /**
- * Shows the quick-paste strip above the keys per the design (PhoneQuickPaste): a line saying what
- * is offered with a close button, then chips for each verification code (the likeliest
- * highlighted, marked when several are plausible, each with a little context), the copied text,
- * or a copied image.
+ * Shows the single-row `bar_height` quick-paste strip in the candidate bar's slot: a leading
+ * More button so tools remain reachable, a scrollable row of pill chips (verification codes,
+ * copied text, or a copied image thumbnail), and a trailing close button.
  *
  * Inputs: copied is [QuickPaste.current]; numberField is true in number fields; acceptsImages says
  * whether the field accepts pasted images; onPaste commits a text/code chip; onPasteImage commits
- * a copied image; onClose hides the strip.
+ * a copied image; onMore opens the More panel; onClose hides the strip.
  * Notes: the caller calls [QuickPaste.done] after onPaste, onPasteImage and onClose.
  */
 @Composable
@@ -141,108 +158,113 @@ fun QuickPasteStrip(
     acceptsImages: Boolean = true,
     onPaste: (String) -> Unit,
     onPasteImage: (CopiedImage) -> Unit = {},
+    onMore: () -> Unit = {},
     onClose: () -> Unit,
 ) {
     val chips = QuickPaste.chips(copied, numberField, acceptsImages)
     if (chips.isEmpty()) return
     val codes = chips.count { it is QuickPaste.Chip.Code }
     val region = stringResource(R.string.quick_region)
+    val moreDesc = stringResource(R.string.tool_more)
+    val closeDesc = stringResource(R.string.quick_close)
+    val ink = kbColor(R.color.kb_ink)
     val secondary = kbColor(R.color.kb_ink_secondary)
-    Column(
+    val gap = dimensionResource(R.dimen.quick_gap)
+    Row(
         Modifier
             .fillMaxWidth()
+            .height(dimensionResource(R.dimen.bar_height))
             .background(kbColor(R.color.kb_background))
-            .semantics { paneTitle = region }
-            .padding(
-                start = dimensionResource(R.dimen.quick_pad_h),
-                end = dimensionResource(R.dimen.quick_pad_h),
-                top = dimensionResource(R.dimen.quick_pad_top),
-                bottom = dimensionResource(R.dimen.quick_pad_bottom),
-            ),
-        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap)),
+            .semantics { paneTitle = region },
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.padding(start = dimensionResource(R.dimen.quick_header_pad)),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap)),
+        Box(
+            Modifier
+                .width(dimensionResource(R.dimen.toolbar_button))
+                .fillMaxHeight()
+                .clickable(onClick = onMore)
+                .semantics { contentDescription = moreDesc },
+            contentAlignment = Alignment.Center,
         ) {
             Image(
-                painterResource(R.drawable.ic_tool_clipboard),
+                painterResource(R.drawable.ic_tool_more),
                 contentDescription = null,
-                modifier = Modifier.size(dimensionResource(R.dimen.quick_header_icon)),
-                colorFilter = ColorFilter.tint(secondary),
+                modifier = Modifier.size(dimensionResource(R.dimen.kb_icon)),
+                colorFilter = ColorFilter.tint(ink),
             )
-            Text(
-                stringResource(
-                    when {
-                        copied.image != null -> R.string.quick_copied_image_hint
-                        codes > 1 -> R.string.quick_codes_many
-                        codes == 1 -> R.string.quick_code_one
-                        else -> R.string.quick_copied_hint
-                    },
-                ),
-                Modifier.weight(1f),
-                fontSize = dimensionResource(R.dimen.quick_header_text).asText(),
-                color = secondary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val close = stringResource(R.string.quick_close)
-            Box(
-                Modifier
-                    .size(dimensionResource(R.dimen.quick_close))
-                    .clip(CircleShape)
-                    .clickable(onClick = onClose)
-                    .semantics { contentDescription = close },
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painterResource(R.drawable.ic_clip_close),
-                    contentDescription = null,
-                    modifier = Modifier.size(dimensionResource(R.dimen.quick_close_icon)),
-                    colorFilter = ColorFilter.tint(secondary),
-                )
-            }
         }
         Row(
-            Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap)),
+            Modifier
+                .weight(1f)
+                .horizontalScroll(rememberScrollState())
+                .padding(end = gap),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             chips.forEach { chip ->
                 when (chip) {
-                    is QuickPaste.Chip.Code -> CodeChip(chip, marked = codes > 1) { onPaste(chip.code.value) }
+                    is QuickPaste.Chip.Code -> CodeChip(
+                        chip,
+                        marked = codes > 1,
+                        showContext = true,
+                    ) { onPaste(chip.code.value) }
                     is QuickPaste.Chip.Text -> TextChip(chip.text) { onPaste(chip.text) }
                     is QuickPaste.Chip.Image -> ImageChip(chip.image) { onPasteImage(chip.image) }
                 }
             }
         }
+        Box(
+            Modifier
+                .padding(end = gap)
+                .size(dimensionResource(R.dimen.quick_close))
+                .clip(CircleShape)
+                .clickable(onClick = onClose)
+                .semantics { contentDescription = closeDesc },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painterResource(R.drawable.ic_clip_close),
+                contentDescription = null,
+                modifier = Modifier.size(dimensionResource(R.dimen.quick_close_icon)),
+                colorFilter = ColorFilter.tint(secondary),
+            )
+        }
     }
 }
 
-/** Draws one code chip: the code in large letters, "more likely" on the best of several, its context. */
+/** Draws one code pill: icon, bold verification code, and "more likely" or compact context. */
 @Composable
-private fun CodeChip(chip: QuickPaste.Chip.Code, marked: Boolean, onClick: () -> Unit) {
-    val ink = colorResource(if (chip.best) R.color.kb_on_accent_container else R.color.kb_ink)
-    val sub = colorResource(if (chip.best) R.color.kb_on_accent_container else R.color.kb_ink_secondary)
-    Chip(
-        width = dimensionResource(if (chip.best && marked) R.dimen.quick_chip_best_width else R.dimen.quick_chip_width),
-        background = colorResource(if (chip.best) R.color.kb_accent_container else R.color.kb_key),
+private fun CodeChip(chip: QuickPaste.Chip.Code, marked: Boolean, showContext: Boolean, onClick: () -> Unit) {
+    val ink = kbColor(if (chip.best) R.color.kb_on_accent_container else R.color.kb_ink)
+    val sub = kbColor(if (chip.best) R.color.kb_on_accent_container else R.color.kb_ink_secondary)
+    val bg = kbColor(if (chip.best) R.color.kb_accent_container else R.color.kb_key)
+    PillChip(
+        background = bg,
+        maxWidth = dimensionResource(R.dimen.quick_code_max_width),
         onClick = onClick,
     ) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap))) {
+        Image(
+            painterResource(R.drawable.ic_tool_clipboard),
+            contentDescription = null,
+            modifier = Modifier.size(dimensionResource(R.dimen.quick_chip_icon)),
+            colorFilter = ColorFilter.tint(ink),
+        )
+        Text(
+            chip.code.value,
+            fontSize = dimensionResource(R.dimen.quick_code_text).asText(),
+            fontWeight = FontWeight.Bold,
+            letterSpacing = dimensionResource(R.dimen.quick_code_spacing).asText(),
+            color = ink,
+            maxLines = 1,
+        )
+        if (chip.best && marked) {
             Text(
-                chip.code.value,
-                fontSize = dimensionResource(R.dimen.quick_code_text).asText(),
-                fontWeight = FontWeight.Bold,
-                letterSpacing = dimensionResource(R.dimen.quick_code_spacing).asText(),
-                color = ink,
+                stringResource(R.string.quick_more_likely),
+                fontSize = dimensionResource(R.dimen.quick_context_text).asText(),
+                color = sub,
                 maxLines = 1,
             )
-            if (chip.best && marked) {
-                Text(stringResource(R.string.quick_more_likely), fontSize = dimensionResource(R.dimen.quick_context_text).asText(), color = ink, maxLines = 1)
-            }
-        }
-        if (chip.code.context.isNotEmpty()) {
+        } else if (showContext && chip.code.context.isNotEmpty()) {
             Text(
                 chip.code.context,
                 fontSize = dimensionResource(R.dimen.quick_context_text).asText(),
@@ -254,37 +276,36 @@ private fun CodeChip(chip: QuickPaste.Chip.Code, marked: Boolean, onClick: () ->
     }
 }
 
-/** Draws the chip of the text just copied: "Just copied" with the clipboard icon, and the text's start. */
+/** Draws a single-line pill of the copied text: clipboard icon and ellipsized preview. */
 @Composable
 private fun TextChip(text: String, onClick: () -> Unit) {
     val ink = kbColor(R.color.kb_ink)
-    Chip(dimensionResource(R.dimen.quick_chip_width), kbColor(R.color.kb_key), onClick) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap))) {
-            Image(
-                painterResource(R.drawable.ic_tool_clipboard),
-                contentDescription = null,
-                modifier = Modifier.size(dimensionResource(R.dimen.quick_chip_icon)),
-                colorFilter = ColorFilter.tint(ink),
-            )
-            Text(
-                stringResource(R.string.quick_copied),
-                fontSize = dimensionResource(R.dimen.quick_copied_text).asText(),
-                fontWeight = FontWeight.Medium,
-                color = ink,
-                maxLines = 1,
-            )
-        }
+    val secondary = kbColor(R.color.kb_ink_secondary)
+    val preview = text.replace(whitespace, " ").trim()
+    val copiedLabel = stringResource(R.string.quick_copied)
+    PillChip(
+        background = kbColor(R.color.kb_key),
+        maxWidth = dimensionResource(R.dimen.quick_text_max_width),
+        contentDescription = "$copiedLabel: $preview",
+        onClick = onClick,
+    ) {
+        Image(
+            painterResource(R.drawable.ic_tool_clipboard),
+            contentDescription = null,
+            modifier = Modifier.size(dimensionResource(R.dimen.quick_chip_icon)),
+            colorFilter = ColorFilter.tint(secondary),
+        )
         Text(
-            text.replace(whitespace, " ").trim(),
-            fontSize = dimensionResource(R.dimen.quick_context_text).asText(),
-            color = kbColor(R.color.kb_ink_secondary),
+            preview,
+            fontSize = dimensionResource(R.dimen.quick_copied_text).asText(),
+            color = ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
-/** Draws the chip of an image just copied: thumbnail preview beside "Just copied" / "Image". */
+/** Draws a single-line pill of a copied image: rounded thumbnail preview beside "Image". */
 @Composable
 private fun ImageChip(image: CopiedImage, onClick: () -> Unit) {
     val thumbSize = dimensionResource(R.dimen.quick_thumb_size)
@@ -302,57 +323,69 @@ private fun ImageChip(image: CopiedImage, onClick: () -> Unit) {
         }
     }
     val ink = kbColor(R.color.kb_ink)
-    Chip(dimensionResource(R.dimen.quick_chip_best_width), kbColor(R.color.kb_key), onClick) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap))) {
-            Box(
-                Modifier
-                    .size(thumbSize)
-                    .clip(RoundedCornerShape(dimensionResource(R.dimen.clip_thumb_radius)))
-                    .background(kbColor(R.color.kb_background)),
-                contentAlignment = Alignment.Center,
-            ) {
-                bitmap?.let { bmp ->
-                    Image(
-                        bmp.asImageBitmap(),
-                        contentDescription = stringResource(R.string.quick_copied_image),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.quick_copied),
-                    fontSize = dimensionResource(R.dimen.quick_copied_text).asText(),
-                    fontWeight = FontWeight.Medium,
-                    color = ink,
-                    maxLines = 1,
-                )
-                Text(
-                    "${stringResource(R.string.quick_copied_image)} · ${image.width}×${image.height}",
-                    fontSize = dimensionResource(R.dimen.quick_context_text).asText(),
-                    color = kbColor(R.color.kb_ink_secondary),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+    val label = stringResource(R.string.quick_copied_image)
+    PillChip(
+        background = kbColor(R.color.kb_key),
+        maxWidth = Dp.Unspecified,
+        paddingStart = 4.dp,
+        paddingEnd = dimensionResource(R.dimen.quick_chip_pad_h),
+        onClick = onClick,
+    ) {
+        Box(
+            Modifier
+                .size(thumbSize)
+                .clip(RoundedCornerShape(12.dp))
+                .background(kbColor(R.color.kb_background)),
+            contentAlignment = Alignment.Center,
+        ) {
+            bitmap?.let { bmp ->
+                Image(
+                    bmp.asImageBitmap(),
+                    contentDescription = label,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
                 )
             }
         }
+        Text(
+            label,
+            fontSize = dimensionResource(R.dimen.quick_copied_text).asText(),
+            color = ink,
+            maxLines = 1,
+        )
     }
 }
 
 private val whitespace = Regex("\\s+")
 
-/** Draws a chip's rounded, tappable frame. */
+/** Draws a single-row, `bar_pill_height`-tall tappable pill on the quick-paste strip. */
 @Composable
-private fun Chip(width: androidx.compose.ui.unit.Dp, background: androidx.compose.ui.graphics.Color, onClick: () -> Unit, content: @Composable () -> Unit) {
-    Column(
+private fun PillChip(
+    background: Color,
+    maxWidth: Dp,
+    paddingStart: Dp = dimensionResource(R.dimen.quick_chip_pad_h),
+    paddingEnd: Dp = dimensionResource(R.dimen.quick_chip_pad_h),
+    contentDescription: String? = null,
+    onClick: () -> Unit,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
         Modifier
-            .width(width)
-            .height(dimensionResource(R.dimen.quick_chip_height))
-            .clip(RoundedCornerShape(dimensionResource(R.dimen.quick_chip_radius)))
+            .height(dimensionResource(R.dimen.bar_pill_height))
+            .then(if (maxWidth != Dp.Unspecified) Modifier.widthIn(max = maxWidth) else Modifier)
+            .clip(RoundedCornerShape(dimensionResource(R.dimen.bar_pill_radius)))
             .background(background)
             .clickable(onClick = onClick)
-            .padding(horizontal = dimensionResource(R.dimen.quick_chip_pad_h)),
-        verticalArrangement = Arrangement.Center,
-    ) { content() }
+            .then(
+                if (contentDescription != null) {
+                    Modifier.semantics { this.contentDescription = contentDescription }
+                } else {
+                    Modifier
+                },
+            )
+            .padding(start = paddingStart, end = paddingEnd),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.quick_gap)),
+        content = content,
+    )
 }

@@ -536,25 +536,40 @@ class MixedTypingTest {
     }
 
     /**
-     * Stage 1 (v0.1.3): live segment strip appears for single words and sentences, tapping a chip
-     * opens the grouped panel with `Kana & original`, and tapping katakana locks it via kLockText.
+     * Stage 1 + v0.1.8: composing words and sentences keeps keyboard height constant (no top strip
+     * jump), opening `SegmentPanel` shows grouped `Kana & original` options, and tapping katakana
+     * locks it via `kLockText`.
      */
     @Test
     fun segmentStripAndGroupedPanelLockKatakana() {
         launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use { scenario ->
+            val baselineTop = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) {
+                "Kotomo's keys did not appear"
+            }.visibleBounds.top
             keys("chidai")
-            checkNotNull(device.wait(Until.findObject(By.text("痴呆")), WAIT_MS)) { "single-word strip chip missing" }.click()
+            Thread.sleep(READ_MS * 3)
+            assertEquals("composing shifted keyboard height", baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("痴呆")), WAIT_MS)) { "single-word chip missing" }
+            device.findObjects(By.text("痴呆")).first().click()
             checkNotNull(device.wait(Until.findObject(By.text("By pinyin chidai")), WAIT_MS)) { "group header missing" }
             checkNotNull(device.wait(Until.findObject(By.text("Chinese & Japanese · いけぶくろ")), WAIT_MS)) { "card subtitle missing" }
             checkNotNull(device.wait(Until.findObject(By.text("Kana & original")), WAIT_MS)) { "kana group missing" }
             checkNotNull(device.wait(Until.findObject(By.text("イケブクロ")), WAIT_MS)) { "katakana pill missing" }.click()
             checkNotNull(device.wait(Until.findObject(By.desc(BACKSPACE)), WAIT_MS)) { "keys did not return on single word" }
+            assertEquals("keyboard height shifted after lock", baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
             enter()
             assertEquals("イケブクロ", read(scenario))
         }
         launch(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_ENTER_ACTION).use {
+            val baselineTop = checkNotNull(device.wait(Until.findObject(By.desc("q")), WAIT_MS)) {
+                "Kotomo's keys did not appear"
+            }.visibleBounds.top
             keys(SENTENCE_KEYS)
-            checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "sentence strip chip 池袋 missing" }.click()
+            Thread.sleep(READ_MS * 3)
+            assertEquals("sentence composing shifted keyboard height", baselineTop, checkNotNull(device.findObject(By.desc("q"))).visibleBounds.top)
+            openSegments()
+            checkNotNull(device.wait(Until.findObject(By.text("池袋")), WAIT_MS)) { "sentence chip 池袋 missing" }.click()
             checkNotNull(device.wait(Until.findObject(By.textStartsWith("Segment 1 of")), WAIT_MS)) { "focused subtitle missing" }
             checkNotNull(device.wait(Until.findObject(By.text("イケブクロ")), WAIT_MS)) { "sentence katakana pill missing" }.click()
             checkNotNull(device.wait(Until.findObject(By.textStartsWith(SEGMENT_2)), WAIT_MS)) { "panel did not advance to segment 2" }
@@ -607,8 +622,8 @@ class MixedTypingTest {
     }
 
     /**
-     * Stage 2 (v0.1.5): Mixed whole-sentence forms via SegmentStrip's trailing Forms chip (`Humble`
-     * -> `池袋に買いに参ります`) and per-segment locking inside SegmentPanel (`Polite` -> `行きます`).
+     * Stage 2 + v0.1.8: Mixed whole-sentence forms via `SegmentPanel` (`Humble` -> `池袋に買いに参ります`)
+     * and per-segment locking inside `SegmentPanel` (`Polite` -> `行きます`).
      */
     @Test
     fun mixedFormsWholeSentenceAndSegmentLock() {
@@ -617,17 +632,18 @@ class MixedTypingTest {
             repeat(ATTEMPTS) {
                 if (matched) return@repeat
                 keys(SENTENCE_KEYS)
-                Thread.sleep(READ_MS * 3)
+                openSegments()
                 if (device.wait(Until.findObject(By.text("池袋")), WAIT_MS) != null &&
                     device.wait(Until.findObject(By.text("Forms")), WAIT_MS) != null
                 ) {
                     matched = true
                 } else {
+                    device.findObject(By.desc(BACK))?.click()
                     clear(scenario)
                 }
             }
-            check(matched) { "Mixed SegmentStrip 池袋 / Forms missing" }
-            checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "Mixed SegmentStrip Forms chip missing" }.click()
+            check(matched) { "Mixed SegmentPanel 池袋 / Forms missing" }
+            checkNotNull(device.wait(Until.findObject(By.text("Forms")), WAIT_MS)) { "Mixed SegmentPanel Forms button missing" }.click()
             checkNotNull(device.wait(Until.findObject(By.text("行く")), WAIT_MS)) { "Mixed forms header missing" }
             checkNotNull(device.wait(Until.findObject(By.text("Humble")), WAIT_MS)) { "Humble tab missing" }.click()
             checkNotNull(device.wait(Until.findObject(By.text("参ります")), WAIT_MS)) { "参ります card missing" }.click()
@@ -729,6 +745,7 @@ class MixedTypingTest {
         const val SPACE = "Space"
         const val ENTER = "Enter"
         const val BACKSPACE = "Delete"
+        const val BACK = "Back to the keyboard"
         const val WHOLE = "Whole sentence"
         /** The segment panel's position line for the second piece (R.string.segment_position, English). */
         const val SEGMENT_2 = "Segment 2 of"

@@ -594,6 +594,16 @@ fun CandidatesPanel(
 }
 
 
+/** Identifies how a segment or word on [SegmentPanel] was typed. */
+enum class SegmentSource { PINYIN, ROMAJI, KANA, ENGLISH }
+
+/** One chip displayed on [SegmentPanel]. */
+data class SegmentChipItem(
+    val text: String,
+    val source: SegmentSource,
+    val locked: Boolean = false,
+)
+
 /** One rich candidate card shown in the focused section of [SegmentPanel]. */
 data class SegmentCandidateCard(
     val text: String,

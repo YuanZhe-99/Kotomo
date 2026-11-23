@@ -43,11 +43,7 @@
     <string name="quick_region">クイック入力</string>
     <string name="quick_close">クイック入力を閉じる</string>
     <string name="quick_copied">コピーした内容</string>
-    <string name="quick_copied_hint">タップして、コピーしたばかりの内容を入力</string>
     <string name="quick_copied_image">画像</string>
-    <string name="quick_copied_image_hint">タップして、コピーした画像を貼り付け</string>
-    <string name="quick_code_one">コピーした内容に認証コードがあります</string>
-    <string name="quick_codes_many">コピーした内容から · どれが認証コードか判断できないため、すべて表示します</string>
     <string name="quick_more_likely">有力</string>
     <string name="clip_settings_section">クリップボード</string>
     <string name="clip_settings_history">クリップボード履歴</string>

@@ -43,11 +43,7 @@
     <string name="quick_region">快捷输入</string>
     <string name="quick_close">关闭快捷输入</string>
     <string name="quick_copied">刚复制</string>
-    <string name="quick_copied_hint">点按即可输入刚复制的内容</string>
     <string name="quick_copied_image">图片</string>
-    <string name="quick_copied_image_hint">点按即可粘贴刚复制的图片</string>
-    <string name="quick_code_one">刚复制的内容中有验证码</string>
-    <string name="quick_codes_many">来自刚复制的内容 · 无法确定哪个是验证码，全部列出</string>
     <string name="quick_more_likely">更可能</string>
     <string name="clip_settings_section">剪贴板</string>
     <string name="clip_settings_history">剪贴板历史</string>

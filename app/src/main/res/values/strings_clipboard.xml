@@ -48,11 +48,7 @@
     <string name="quick_region">Quick paste</string>
     <string name="quick_close">Close quick paste</string>
     <string name="quick_copied">Just copied</string>
-    <string name="quick_copied_hint">Tap to paste what you just copied</string>
     <string name="quick_copied_image">Image</string>
-    <string name="quick_copied_image_hint">Tap to paste the image you just copied</string>
-    <string name="quick_code_one">A verification code in what you just copied</string>
-    <string name="quick_codes_many">From what you just copied · Not sure which is the code, so all are listed</string>
     <string name="quick_more_likely">more likely</string>
     <string name="clip_settings_section">Clipboard</string>
     <string name="clip_settings_history">Clipboard history</string>
