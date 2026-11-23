@@ -1,5 +1,14 @@
 # 版本历史
 
+## 0.1.8（2026-11-23）
+
+- 消除输入与剪贴板推荐引起的键盘高度跳动并重构快捷输入条（`QuickPaste`、`QuickPasteStrip`、`KotomoService`、`CandidateBar`、`EmojiPanel`）：
+  - 移除打字时自动弹出于候选栏上方的独立 `SegmentStrip`（删除 `SegmentStrip.kt`），将分句调词与变形入口统一整合进候选栏右侧箭头展开的 `SegmentPanel`，确保起打与上屏全程高度恒定；`CandidateBar` 在展开 `CandidatesPanel` 或 `SegmentPanel` 时将右侧箭头由向下（`v`）翻转为向上收起（`^`）。
+  - 将原两行约 `110dp` 高的 `QuickPasteStrip` 重构为与候选栏、内联自动填充共占 `barContainer` 的等高单行（`bar_height` = `52dp`）输入条（高度变化为 `0`，显示时遮蔽顶层自动填充浮层）；左侧保留“更多”按钮（打开 `QuickPanel` 并在面板上方露出完整工具栏），中间为跟随主题 `kbColor(...)` 的 `40dp` 圆角胶囊（验证码/文本/图片缩略图），右侧保留关闭按钮。
+  - 新增按输入框区分的智能打字静默（`QuickPaste.suppressIn` / `current(nowUtcMs, fieldKey)`）：在该输入框开始按键输入或经 Emoji/手写/语音插入文字后，当前剪贴会在该框静默，避免词间上屏反复弹出，同时非空输入框仍可接收新复制内容的推荐，未静默的其他输入框在 60 秒内仍可收到；联动 `settings.clipboard.quickPaste`，开关关闭时立即隐藏并撤回推荐。
+- 上游：与 0.1.7 相同（2026-11-23 核对 librime 1.17.0、Mozc 3.35.6354、OpenCC 1.4.2、HeliBoard 4.2，未变；HeliBoard 更新标签仍为测试版预发布）。
+- 2026-11-23 标记发布（`versionCode` 9）。在开发主机上验证：`java tool/CheckDocs.java`、`./gradlew check assembleDebug assembleRelease assembleDebugAndroidTest`（`QuickPasteTest` `8/8`，单元测试 `312/320` 通过、8 项主机跳过）、改版本号后的 `./gradlew assembleDebug assembleRelease`，以及模拟器（`Medium_Phone_API_37.0`、Android 17、x86_64、debug）：`MixedTypingTest` `35/35`、`FieldTypingTest` `35/35`、`ClipboardAppTest` `5/5`（含 `quickPasteKeepsConstantHeightMoreButtonAndSuppressesOnTyping`）、`CandidateBarTest` `3/3` 与 `InlineAutofillTest` `4/4`，并核对浅色、深色（`zh-CN`）及 `1.5x` 字体缩放截图（全程 `0px` 跳动）。本次发布周期未在物理真机上运行验证。
+
 ## 0.1.7（2026-11-22）
 
 - 全面核查并修复混合、中文、日文、英文与 PC 模式的符号页（`Layout.symbols`、`Layout.symbolMore`）：在混合、中文与日文模式的符号第 1 页补齐 `/`、`*` 与 `_`（此前混合与中文完全缺少 `/` 与 `*`，日文仅藏在 `・` 的长按里）；移除符号第 2 页上与首行重复的 `^`、`=`、`\`，并在第 2 页补上直接可点的 `[`、`]`、`` ` ``、`%` 及日文 `"`、`'`，使所有模式两页合集零重复覆盖全部 32 个可打印 ASCII 符号；确保分离布局下全部成对括号与引号（`（）`、`「」`、`『』`、`【】`、`《》`、`〈〉`、`“”`、`‘’`、`[]`、`{}`、`<>`）不被拆分到左右两半；修复 `Mode.PC` 符号第 2 页首行与 `Mode.ENGLISH` 一致；补齐对称的 `symbolMore` 长按变体（`\` → `/`、`*` → `×`、`|` → `｜`、`:`、`;`、`[`、`]`、`~`、`` ` ``、`°`，并在 `-` 中加入日语长音符号 `ー`）。
